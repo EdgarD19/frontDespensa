@@ -1,0 +1,25 @@
+/*activa tailwind en todo el proyecto*/
+@import "tailwindcss";
+
+/* Fondo oscuro global */
+html, body {
+  background-color: #101419;
+  color: #f0f6fc;
+}
+
+/* Tema oscuro estilo SalesOps */
+:root {
+  --bg-main: #020203;
+  --bg-card: #040606;
+  --bg-sidebar: #040507; 
+  --bg-input: #0d1117;
+  --border: #30363d;
+  --text-primary: #f0f6fc;
+  --accent-green: #22c55e;
+  --accent-green-hover: #16a34a;
+  --accent-cyan: #06b6d4;
+  --accent-orange: #f97316;
+  --accent-red: #ef4444;
+  --accent-green-dim: rgba(34, 197, 94, 0.15);
+}
+
