@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback } from "react";
 
 // Ícono "X" (cruz para cerrar) de la librería lucide-react
-import { X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 
 // Componentes hijos: el formulario ABM y la tabla/lista de productos
 import ProductForm from "./ProductForm";
@@ -446,14 +446,23 @@ export default function Inventario() {
       */}
       <div className="flex-1 flex flex-col min-h-0 w-full">
         <ProductList
-          products={loading ? [] : productos}  // Lista de productos (vacía mientras carga)
-          onEdit={handleEdit}                  // Función a llamar al hacer clic en "Editar"
-          onDelete={handleDelete}              // Función a llamar al hacer clic en "Eliminar"
-          onAddProduct={openModalForAdd}       // Función a llamar al hacer clic en "Agregar"
-          searchNombre={searchNombre}          // Valor del filtro de nombre
-          setSearchNombre={setSearchNombre}    // Setter del filtro de nombre
-          searchCodigo={searchCodigo}          // Valor del filtro de código
-          setSearchCodigo={setSearchCodigo}    // Setter del filtro de código
+          products={loading ? [] : productos}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          filterNombre={searchNombre}
+          setFilterNombre={setSearchNombre}
+          filterCodigo={searchCodigo}
+          setFilterCodigo={setSearchCodigo}
+          primaryAction={
+            <button
+              type="button"
+              onClick={openModalForAdd}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[var(--accent-green)]/90 hover:bg-[var(--accent-green)] text-white rounded-full sm:rounded-md font-medium transition-all duration-300 whitespace-nowrap w-full sm:w-auto"
+            >
+              <Plus className="w-4 h-4 shrink-0" aria-hidden />
+              Agregar producto
+            </button>
+          }
         />
       </div>
 
