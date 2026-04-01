@@ -1,42 +1,99 @@
+
+// useState  → estado local del componente
+// useEffect → ejecuta código tras el render (aquí: carga inicial de productos)
+// useMemo   → memoriza un valor calculado para no recalcularlo en cada render
 import { useState, useEffect, useMemo } from "react";
+
+// Componentes hijos:
+//   ConsultaInventarioFilters → barra de filtros (search, categoría, marca, stock)
+//   ConsultaInventarioReport  → tabla/reporte con los productos filtrados
 import ConsultaInventarioFilters from "./ConsultaInventarioFilters";
 import ConsultaInventarioReport from "./ConsultaInventarioReport";
+
+// Función que llama al backend para obtener la lista paginada de productos
 import { getProductos } from "../../../api/productosApi";
+
+// Extrae un mensaje legible del error que devuelve Axios/fetch
 import { apiErrorMessage } from "../../../api/errors";
+
+// Función utilitaria que calcula el estado de stock de un producto:
+// devuelve "normal", "bajo" o "sin" según stockActual vs stockMinimo
 import { getEstadoStock } from "../utils";
 
+/*
+    // COMPONENTE PRINCIPAL: ConsultaInventario
+  Este componente es el "orquestador" de la vista de consulta de inventario.
+  Su trabajo:
+    1. Cargar los productos del backend al montar
+    2. Mantener el estado de los filtros
+    3. Derivar las opciones de los selects (categorías, marcas) desde los datos
+    4. Filtrar y ordenar los productos según los filtros activos
+    5. Pasarle todo a los componentes hijos (Filters y Report)
+*/
 export default function ConsultaInventario() {
-  const [productos, setProductos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
-  const [search, setSearch] = useState("");
-  const [filterCategoria, setFilterCategoria] = useState("");
-  const [filterMarca, setFilterMarca] = useState("");
-  const [filterStock, setFilterStock] = useState("todos");
+  // ESTADOS
 
+  const [productos, setProductos]           = useState([]);     // Lista completa del backend
+  const [loading, setLoading]               = useState(true);   // true mientras espera la respuesta
+  const [error, setError]                   = useState(null);   // Mensaje de error (null = sin error)
+
+  // Estados de cada filtro de la barra de búsqueda
+  const [search, setSearch]                 = useState("");         // Búsqueda libre (nombre, código, etc.)
+  const [filterCategoria, setFilterCategoria] = useState("");       // Categoría seleccionada ("" = todas)
+  const [filterMarca, setFilterMarca]       = useState("");         // Marca seleccionada ("" = todas)
+  const [filterStock, setFilterStock]       = useState("todos");    // Estado de stock: "todos"|"normal"|"bajo"|"sin"
+
+  // CARGA INICIAL DE DATOS 
+
+  /*
+    useEffect con array vacío [] → se ejecuta UNA sola vez al montar el componente.
+
+  */
   useEffect(() => {
-    let cancelled = false;
+    let cancelled = false; // Bandera: pasa a true si el componente se desmonta
+
     (async () => {
       try {
         setError(null);
         setLoading(true);
-        const res = await getProductos({ pageSize: 500 });
-        if (!cancelled) setProductos(res.content || []);
+        const res = await getProductos({ pageSize: 500 }); // Trae hasta 500 productos
+        if (!cancelled) setProductos(res.content || []); // Solo actualiza si seguimos montados
       } catch (err) {
         if (!cancelled) {
           setError(apiErrorMessage(err) || "Error al cargar productos");
           setProductos([]);
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setLoading(false); // Siempre quita el spinner (si seguimos montados)
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    })(); // ← Paréntesis que INVOCA la función async inmediatamente
 
+    // Función de limpieza: se ejecuta cuando el componente se desmonta
+    return () => {
+      cancelled = true; // Marca que ya no interesa la respuesta pendiente
+    };
+  }, []); // [] → solo al montar
+
+
+  /*
+        OPCIONES DERIVADAS PARA LOS SELECTS (useMemo) 
+    useMemo(() => calcular, [deps])
+    ───────────────────────────────
+    Memoriza el resultado de una función costosa. Solo la vuelve a calcular
+    cuando alguna dependencia del array cambia. Si las deps no cambiaron,
+    devuelve el valor anterior cacheado sin ejecutar la función de nuevo.
+
+    Aquí se usan para derivar las opciones únicas de categoría y marca
+    directamente desde el array de productos, SIN un endpoint propio.
+
+    Paso a paso de categoriasOptions:
+      productos.map(p => p.categoria)   → ["Lácteos", "Lácteos", "Bebidas", null, ...]
+      .filter(Boolean)                  → elimina null, undefined y ""
+      new Set(...)                      → elimina duplicados (Set solo guarda únicos)
+      [...new Set(...)]                 → convierte el Set de vuelta a array
+      .sort(localeCompare)              → ordena alfabéticamente en español
+  */
   const { categoriasOptions, marcasOptions } = useMemo(() => {
     const cats = [...new Set(productos.map((p) => p.categoria).filter(Boolean))].sort((a, b) =>
       a.localeCompare(b)
@@ -45,43 +102,93 @@ export default function ConsultaInventario() {
       a.localeCompare(b)
     );
     return { categoriasOptions: cats, marcasOptions: mars };
-  }, [productos]);
+  }, [productos]); // Solo recalcula cuando cambia la lista de productos
+
+  // ── PRODUCTOS FILTRADOS (useMemo) 
 
   const productosFiltrados = useMemo(() => {
     return productos
       .filter((p) => {
+        /*
+          Filtro de búsqueda libre: busca en nombre, código de barras,
+          código interno y observaciones al mismo tiempo.
+          El operador || hace que si `search` está vacío (!search = true),
+          el producto siempre pase esta condición.
+        */
         const matchSearch =
           !search ||
           p.nombre?.toLowerCase().includes(search.toLowerCase()) ||
           p.codigoBarras?.includes(search) ||
           p.codigo?.includes(search) ||
           p.observaciones?.toLowerCase().includes(search.toLowerCase());
+
+        // Filtro de categoría: coincidencia exacta (no parcial)
         const matchCat = !filterCategoria || p.categoria === filterCategoria;
+
+        // Filtro de marca: coincidencia exacta
         const matchMarca = !filterMarca || p.marca === filterMarca;
+
+        /*
+          Filtro de estado de stock:
+          getEstadoStock(p) devuelve "normal", "bajo" o "sin"
+          comparamos con el valor del select (filterStock).
+          "todos" siempre pasa (primera condición del ||).
+        */
         const estado = getEstadoStock(p);
         const matchStock =
           filterStock === "todos" ||
           (filterStock === "normal" && estado === "normal") ||
-          (filterStock === "bajo" && estado === "bajo") ||
-          (filterStock === "sin" && estado === "sin");
+          (filterStock === "bajo"   && estado === "bajo")   ||
+          (filterStock === "sin"    && estado === "sin");
+
+        // El producto pasa el filtro global solo si cumple LOS CUATRO criterios
         return matchSearch && matchCat && matchMarca && matchStock;
       })
+      // Ordena los resultados alfabéticamente por nombre
       .sort((a, b) => a.nombre?.localeCompare(b.nombre) || 0);
+
   }, [productos, search, filterCategoria, filterMarca, filterStock]);
+  // ↑ Recalcula solo cuando cambia alguno de estos cinco valores
+
 
   return (
+    // Contenedor principal con separación vertical entre secciones
     <div className="space-y-6">
+
+      {/* Encabezado de la sección */}
       <div>
-        <h1 className="text-2xl font-bold text-[#f0f6fc]">Consulta de Inventario</h1>
-        <p className="text-[#8b949e] text-sm mt-1">Listado completo de productos</p>
+        <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
+          Consulta de Inventario
+        </h1>
+        <p className="text-sm mt-1" style={{ color: "var(--border)" }}>
+          Listado completo de productos
+        </p>
       </div>
 
+      {/*
+        Renderizado condicional del error:
+        Si error tiene valor → muestra el bloque rojo
+        Si es null → no renderiza nada
+      */}
       {error && (
-        <div className="rounded-lg bg-red-500/20 border border-red-500/50 px-4 py-3 text-red-200 text-sm">
+        <div
+          className="rounded-lg px-4 py-3 text-sm"
+          style={{
+            backgroundColor: "rgba(239, 68, 68, 0.2)", // --accent-red con opacidad
+            border: "1px solid rgba(239, 68, 68, 0.5)",
+            color: "#fca5a5",                           // rojo claro para el texto
+          }}
+        >
           {error}
         </div>
       )}
 
+      {/*
+        ConsultaInventarioFilters: barra de filtros.
+        Recibe los valores actuales de cada filtro y sus setters
+        para que el hijo pueda actualizar el estado del padre (lifting state up).
+        disabled={loading} → deshabilita los inputs mientras carga
+      */}
       <ConsultaInventarioFilters
         search={search}
         setSearch={setSearch}
@@ -96,7 +203,16 @@ export default function ConsultaInventario() {
         disabled={loading}
       />
 
-      <ConsultaInventarioReport productos={loading ? [] : productosFiltrados} loading={loading} />
+      {/*
+        ConsultaInventarioReport: tabla con los productos.
+        Si loading es true → pasa [] para que muestre el estado vacío/spinner
+        Si loading es false → pasa los productos ya filtrados y ordenados
+      */}
+      <ConsultaInventarioReport
+        productos={loading ? [] : productosFiltrados}
+        loading={loading}
+      />
+
     </div>
   );
 }

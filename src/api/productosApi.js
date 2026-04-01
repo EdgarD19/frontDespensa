@@ -3,6 +3,10 @@ import { apiErrorMessage } from "./errors";
 
 export { apiErrorMessage };
 
+// ---------------------------------------------------------------------------
+// Helpers internos
+// ---------------------------------------------------------------------------
+
 function parseStockActual(raw) {
   if (raw === "" || raw === undefined || raw === null || raw === "—") return 0;
   const n = parseFloat(String(raw).replace(",", "."));
@@ -10,50 +14,68 @@ function parseStockActual(raw) {
 }
 
 /**
- * Respuesta del backend: ProductResponse (name, price, description, code) + campos opcionales.
+ * Convierte el ProductResponse del backend al shape que usa el frontend.
+ *
+ * El backend (ProductMapper) devuelve ÚNICAMENTE:
+ *   { id, name, price, description, code }
+ *
+ * Campos como category_name, unit_name, stock_actual, id_categoria, etc.
+ * NO vienen en la respuesta — quedan vacíos hasta que el backend los exponga.
  */
 function toFrontendProduct(backend) {
   if (!backend) return null;
 
-  const idCategoria = backend.id_categoria ?? backend.idCategoria;
-  const idUnidad = backend.id_unidad ?? backend.idUnidad;
-  const idProveedor = backend.id_proveedor ?? backend.idProveedor;
-  const stockRaw = backend.stock_actual ?? backend.stockActual ?? 0;
-  const precioVenta = backend.precio ?? backend.price ?? 0;
-  const codigoProducto = backend.codigo_producto ?? backend.code ?? "";
-  const isPesable =
-    backend.producto_pesable === true || backend.productoPesable === true;
+  // "price" es el único campo numérico confirmado en ProductResponse
+  const precioStr = backend.price != null ? String(backend.price) : "";
+
+  // "code" es codigo_producto / codigoBarra en la entidad
+  const codigoBarras = backend.code ?? "";
 
   return {
     id: backend.id,
     nombre: backend.name ?? "",
-    codigo: (backend.codigo_interno ?? backend.codigoInterno) || "",
-    codigoBarras: codigoProducto,
-    idCategoria: idCategoria != null ? String(idCategoria) : "",
-    categoria: backend.category_name ?? backend.categoryName ?? "",
+
+    // El backend no devuelve código interno separado; usamos code como codigoBarras
+    codigo: "",
+    codigoBarras,
+
+    // El backend no devuelve estos campos aún → vacíos por defecto
+    idCategoria: "",
+    categoria: "",
     idSubcategoria: "",
     subcategoria: "",
-    marca: backend.marca || "",
-    productoPesable: isPesable ? "si" : "no",
-    idUnidad: idUnidad != null ? String(idUnidad) : "",
-    unidadMedida: backend.unit_name ?? backend.unitName ?? "",
-    precioCompra: String(backend.precio_compra ?? backend.precioCompra ?? ""),
-    precioVenta: isPesable ? "" : String(precioVenta),
-    precioCompraKg: String(
-      backend.precio_compra_kg ?? backend.precioCompraKg ?? ""
-    ),
-    precioVentaKg: isPesable ? String(precioVenta) : "",
-    stockMinimo: String(backend.stock_minimo ?? backend.stockMinimo ?? ""),
-    stockActual: String(stockRaw),
-    idProveedor: idProveedor != null ? String(idProveedor) : "",
-    proveedor: backend.proveedor_nombre ?? backend.proveedorNombre ?? "",
-    foto: backend.foto || "",
-    observaciones: backend.descripcion ?? backend.description ?? "",
+
+    // El backend no devuelve producto_pesable → default "no"
+    productoPesable: "no",
+
+    idUnidad: "",
+    unidadMedida: "",
+
+    // El backend no devuelve precio_compra ni precios por kg
+    precioCompra: "",
+    precioVenta: precioStr,   // "price" = precio de venta
+    precioCompraKg: "",
+    precioVentaKg: "",
+
+    // El backend no devuelve stock_minimo ni stock_actual en la respuesta
+    stockMinimo: "",
+    stockActual: "",
+
+    idProveedor: "",
+    proveedor: "",
+    foto: "",
+
+    // "description" en ProductResponse
+    observaciones: backend.description ?? "",
   };
 }
 
 /**
- * POST — ProductRequest (Spring).
+ * Arma el body para POST /api/products.
+ *
+ * ProductRequest (Spring) espera:
+ *   name, descripcion, precio, id_categoria, id_unidad, id_proveedor,
+ *   stock_actual, codigo_producto
  */
 function toCreateBody(frontend, idCategoria, idUnidad, idProveedor) {
   const isPesable = frontend.productoPesable === "si";
@@ -65,8 +87,8 @@ function toCreateBody(frontend, idCategoria, idUnidad, idProveedor) {
 
   const codigoBarras = (frontend.codigoBarras || "").trim();
   const codigoInterno = (frontend.codigo || "").trim();
-  const codigoProducto =
-    codigoBarras || codigoInterno || `AUTO-${Date.now()}`;
+  // Si no hay ningún código, genera uno temporal
+  const codigoProducto = codigoBarras || codigoInterno || `AUTO-${Date.now()}`;
 
   const descripcion = (frontend.observaciones || "").trim();
 
@@ -74,16 +96,18 @@ function toCreateBody(frontend, idCategoria, idUnidad, idProveedor) {
     name: frontend.nombre?.trim(),
     descripcion: descripcion.length > 0 ? descripcion : null,
     precio,
-    id_categoria: idCategoria,
-    id_unidad: idUnidad,
-    id_proveedor: idProveedor,
+    id_categoria: Number(idCategoria),
+    id_unidad: Number(idUnidad),
+    id_proveedor: Number(idProveedor),
     stock_actual: parseStockActual(frontend.stockActual),
     codigo_producto: codigoProducto,
   };
 }
 
 /**
- * PATCH — el backend solo aplica PatchRequest.precio.
+ * Arma el body para PATCH /api/products/{id}.
+ *
+ * PatchRequest (Spring) solo acepta: { precio }
  */
 function toPatchPrecioBody(producto) {
   const isPesable = producto.productoPesable === "si";
@@ -95,45 +119,87 @@ function toPatchPrecioBody(producto) {
   return { precio };
 }
 
+// ---------------------------------------------------------------------------
+// Funciones exportadas
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /api/products
+ * Params: search?, page, pageSize, sortBy?, sortDir (ASC|DESC)
+ */
 export async function getProductos(params = {}) {
+  const searchTrim = params.search != null ? String(params.search).trim() : "";
   const { data } = await api.get("/api/products", {
     params: {
       page: params.page ?? 0,
-      pageSize: params.pageSize ?? 100,
-      search: params.search || undefined,
+      pageSize: params.pageSize ?? 20,      // default del backend: 20
+      search: searchTrim || undefined,
       sortBy: params.sortBy || undefined,
-      sortDir: params.sortDir || "ASC",
+      sortDir: params.sortDir || "ASC",     // el Controller lo recibe como "sortDir"
     },
   });
   return {
-    content: (data.content || []).map(toFrontendProduct),
-    totalElements: data.totalElements,
-    totalPages: data.totalPages,
+    content: (data?.content || []).map(toFrontendProduct).filter(Boolean),
+    totalElements: data?.totalElements ?? 0,
+    totalPages: data?.totalPages ?? 0,
+    page: data?.page ?? 0,
+    size: data?.size ?? 0,
   };
 }
 
+/**
+ * GET /api/products/{id}
+ */
 export async function getProductoById(id) {
   const { data } = await api.get(`/api/products/${id}`);
   return toFrontendProduct(data);
 }
 
-/** El backend responde 201 sin cuerpo: no hay id en la respuesta. */
+/**
+ * GET /api/products/barcode/{codigo}
+ * Devuelve null si el backend responde 404.
+ */
+export async function getProductoByCodigo(codigo) {
+  try {
+    const { data } = await api.get(`/api/products/barcode/${encodeURIComponent(codigo.trim())}`);
+    return toFrontendProduct(data);
+  } catch (err) {
+    if (err?.response?.status === 404) return null;
+    throw err;
+  }
+}
+
+/**
+ * POST /api/products
+ * El backend responde 201 sin cuerpo → no retorna nada.
+ */
 export async function createProducto(producto, idCategoria, idUnidad, idProveedor) {
   const body = toCreateBody(producto, idCategoria, idUnidad, idProveedor);
   await api.post("/api/products", body);
 }
 
+/**
+ * PATCH /api/products/{id}
+ * Solo actualiza el precio. Devuelve el producto actualizado.
+ */
 export async function updateProducto(id, producto) {
   const body = toPatchPrecioBody(producto);
   const { data } = await api.patch(`/api/products/${id}`, body);
   return toFrontendProduct(data);
 }
 
+/**
+ * PATCH /api/products/{id} — variante directa con valor numérico.
+ */
 export async function updateProductoPrecio(id, precio) {
   const { data } = await api.patch(`/api/products/${id}`, { precio });
   return toFrontendProduct(data);
 }
 
+/**
+ * DELETE /api/products/{id}
+ * El backend responde 204 sin cuerpo.
+ */
 export async function deleteProducto(id) {
   await api.delete(`/api/products/${id}`);
 }
