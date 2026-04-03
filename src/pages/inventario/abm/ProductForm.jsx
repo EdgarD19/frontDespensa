@@ -1,7 +1,6 @@
 // Íconos de lucide-react
 // Cada ícono es un componente React que recibe props
 import {
-  Hash,         //  "#" → campo código interno
   Barcode,      //  de código de barras → campo codigoBarras
   Tag,          //  de etiqueta → campo nombre
   FolderOpen,   //  de carpeta → select categoría
@@ -127,6 +126,12 @@ export default function ProductForm({
     }));
   };
 
+  /** Código de barras: solo dígitos, máximo 13 (rango válido 9–13 al enviar). */
+  const handleCodigoBarrasChange = (e) => {
+    const digits = e.target.value.replace(/\D/g, "").slice(0, 13);
+    setFormData((prev) => ({ ...prev, codigoBarras: digits }));
+  };
+
   /**
    * handleNumChange
    * Manejador específico para inputs numéricos (precios, stock).
@@ -204,44 +209,32 @@ export default function ProductForm({
         */}
         <div className="grid grid-cols-1 min-w-0 sm:grid-cols-2 xl:grid-cols-3 gap-x-4 gap-y-3">
 
-          {/* ── CAMPO: Código de barras */}
+          {/* ── CAMPO: Código de barras (solo números, 9–13 dígitos) */}
           <div className="min-w-0">
             <label className={labelClass}>
-              Código de producto <span className="text-[var(--accent-red)]">*</span>
+              Código de barras <span className="text-[var(--accent-red)]">*</span>
             </label>
             <div className={fieldClass}>
               <Barcode className={iconClass} />
               <input
                 type="text"
                 name="codigoBarras"
+                inputMode="numeric"
+                autoComplete="off"
                 value={formData.codigoBarras}
-                onChange={handleChange}   // Usa el handler genérico (texto)
-                required={!ro}            // Solo requerido si no estamos en modo edición bloqueado
-                disabled={ro}             // Bloqueado si lockNonPriceFields = true
-                className={inputClass}
-                placeholder="Barras o único (codigo_producto)"
-              />
-            </div>
-          </div>
-
-          {/* ── CAMPO: Código interno (opcional)  */}
-          <div className="min-w-0">
-            <label className={labelClass}>Código interno (opcional)</label>
-            <div className={fieldClass}>
-              <Hash className={iconClass} />
-              <input
-                type="text"
-                name="codigo"
-                value={formData.codigo}
-                onChange={handleChange}
+                onChange={handleCodigoBarrasChange}
+                required={!ro}
+                minLength={!ro ? 9 : undefined}
+                maxLength={13}
                 disabled={ro}
+                pattern={!ro ? "[0-9]{9,13}" : undefined}
                 className={inputClass}
-                placeholder="Respaldo si no hay barras"
+                placeholder="9 a 13 dígitos"
               />
             </div>
           </div>
 
-          {/* ── CAMPO: Nombre (ocupa toda la fila en sm y xl)*/}
+          {/* CAMPO: Nombre (ocupa toda la fila en sm y xl)*/}
           {/*
             sm:col-span-2 xl:col-span-3 → en pantallas medianas ocupa 2 columnas,
             en pantallas grandes ocupa las 3 columnas completas.
@@ -257,7 +250,7 @@ export default function ProductForm({
                 name="nombre"
                 value={formData.nombre}
                 onChange={handleChange}
-                required       // Siempre requerido (no depende del modo)
+                required 
                 disabled={ro}
                 className={inputClass}
                 placeholder="Nombre del producto"
@@ -265,7 +258,7 @@ export default function ProductForm({
             </div>
           </div>
 
-          {/* ── SELECT: Categoría ───────────────────────────────────────── */}
+          {/* SELECT: Categoría */}
           {/*
             Los <select> usan un onChange inline en lugar de handleChange
             porque actualizan directamente formData.idCategoria.
@@ -304,7 +297,7 @@ export default function ProductForm({
             </div>
           </div>
 
-          {/* ── SELECT: Proveedor */}
+          {/* SELECT: Proveedor */}
           <div className="min-w-0">
             <label className={labelClass}>
               Proveedor <span className="text-[var(--accent-red)]">*</span>
@@ -331,8 +324,8 @@ export default function ProductForm({
             </div>
           </div>
 
-          {/* ── SELECT: Unidad de medida ────────────────────────────────── */}
           {/*
+                 SELECT: Unidad de medida
             sm:col-span-2 xl:col-span-1 → en tablets ocupa 2 columnas (fila completa),
             en desktop vuelve a 1 columna porque hay 3 columnas disponibles.
           */}
@@ -368,12 +361,11 @@ export default function ProductForm({
             </div>
           </div>
 
-          {/* CAMPO: Precio de venta  */}
           {/*
+                  CAMPO: Precio de venta 
             Usa el componente InputPrecio definido arriba.
             En modo edición (ro=true) este campo NO se bloquea → es el único
             que el backend permite modificar con PATCH.
-            Por eso: disabled NO recibe `ro`.
           */}
           <div className="min-w-0">
             <InputPrecio

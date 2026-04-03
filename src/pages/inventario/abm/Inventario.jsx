@@ -40,7 +40,6 @@ import { absoluteApiOrigin } from "../../../api/client";
 */
 const INITIAL_FORM = {
   id: null,             // null = producto nuevo (aún no tiene ID de BD)
-  codigo: "",
   codigoBarras: "",
   nombre: "",
   idCategoria: "",
@@ -58,8 +57,6 @@ const INITIAL_FORM = {
   stockActual: "",
   idProveedor: "",
   proveedor: "",
-  foto: "",
-  imagenNombre: "",
   observaciones: "",
 };
 
@@ -87,7 +84,6 @@ function mergeProductoLista(prev, next) {
   // Precios: si next no los trajo, conservar los anteriores
   if (!next.precioCompra    && prev.precioCompra)    m.precioCompra    = prev.precioCompra;
   if (!next.precioCompraKg  && prev.precioCompraKg)  m.precioCompraKg  = prev.precioCompraKg;
-  if (!next.codigo          && prev.codigo)          m.codigo          = prev.codigo;
 
   return m;
 }
@@ -310,6 +306,15 @@ export default function Inventario() {
     if (!editingId && (!idCat || !idUnid || !idProv)) {
       setError("Debe seleccionar categoría, unidad de medida y proveedor para crear un producto.");
       return;
+    }
+
+    if (!editingId) {
+      const cb = String(data.codigoBarras || "").replace(/\D/g, "");
+      if (!/^\d{9,13}$/.test(cb)) {
+        setError("El código de barras debe tener entre 9 y 13 dígitos, solo números.");
+        return;
+      }
+      data.codigoBarras = cb;
     }
 
     try {

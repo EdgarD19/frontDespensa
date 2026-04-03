@@ -1,225 +1,158 @@
-// Íconos de lucide-react 
+import { useState, useEffect } from "react";
+// Íconos de lucide-react
 import {
-  Search,  // de lupa → estado vacío (sin resultados)
-  Tag,     // de etiqueta → input "buscar por nombre"
-  Hash,    // "#" → input "buscar por código"
-  Pencil,  // de lápiz → botón editar en la tarjeta
-  Trash2,  // de tacho → botón eliminar en la tarjeta
+  Search,
+  Tag,
+  Hash,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 
-// CONSTANTES DE ESTILOS 
-
+// Estilo del contenedor de cada campo de búsqueda (el "cajón" con ícono + input).
 const fieldClass =
   "flex items-center gap-2 rounded-[25px] py-2.5 px-4 bg-[#171717] shadow-[inset_2px_5px_10px_rgb(5,5,5)]";
+
+// Estilo del <input> de texto dentro del campo: fondo transparente, sin borde visible.
 const inputClass =
   "flex-1 bg-transparent border-none outline-none w-full text-[#d3d3d3] placeholder-[#8b949e] focus:ring-0";
+
+// Estilo común para todos los íconos del encabezado (tamaño fijo, color blanco).
 const iconClass = "w-5 h-5 flex-shrink-0 text-white";
 
+
+function formatPrecioValor(p, tipo) {
+  const isPesable = p.productoPesable === "si";
+  const valor =
+    tipo === "compra"
+      ? isPesable
+        ? p.precioCompraKg
+        : p.precioCompra
+      : isPesable
+        ? p.precioVentaKg
+        : p.precioVenta;
+  const sufijo = isPesable ? "/kg" : "";
+  const n = Number(valor || 0);
+  return {
+    text: `${n.toLocaleString("es-PY")}${sufijo}`,
+    isPesable,
+  };
+}
+
 /*
-  ProductList es el componente principal "presentacional": muestra la lista de productos 
-  y los filtros de búsqueda.
+  
+  · products        → array con todos los productos cargados desde el backend
+  · onEdit          → función que se llama cuando el usuario hace clic en "Editar"
+  · onDelete        → función que se llama cuando el usuario hace clic en "Eliminar"
+  · filterNombre    → valor actual del filtro por nombre (string controlado desde el padre)
+  · setFilterNombre → función para actualizar filterNombre (viene del useState del padre)
+  · filterCodigo    → valor actual del filtro por código
+  · setFilterCodigo → función para actualizar filterCodigo
+  · primaryAction   → (opcional) un elemento JSX que se renderiza como botón principal
+                      en el encabezado (ej: el botón "Agregar producto")
 */
 export default function ProductList({
-  products, // array completo de productos (ya cargados del backend)
-  onEdit, // función a llamar cuando el usuario hace clic en "Editar"
-  onDelete, // función a llamar cuando el usuario hace clic en "Eliminar"
-  filterNombre, // valor actual del input "buscar por nombre"
-  setFilterNombre, // función para actualizar filterNombre en el padre
-  filterCodigo, // valor actual del input "buscar por código"
-  setFilterCodigo, // función para actualizar filterCodigo en el padre
-  primaryAction, // (opcional) un elemento JSX que se renderiza como botón principal:"Agregar producto" 
+  products,
+  onEdit,
+  onDelete,
+  filterNombre,
+  setFilterNombre,
+  filterCodigo,
+  setFilterCodigo,
+  primaryAction,
 }) {
+ /*
+ * FILTRADO Y ORDENAMIENTO DE PRODUCTOS
+ *
+ * .filter() recorre el array `products` y conserva solo los elementos
+ * que cumplan con las condiciones de búsqueda por nombre y/o código.
+ * .sort() ordena el resultado alfabéticamente por nombre.
+ */
+const filteredProducts = products
+.filter((p) => {
+  // Normalizamos los filtros: si son null/undefined usamos "", luego
+  // quitamos espacios al inicio/fin y convertimos a minúsculas.
+  // Esto hace la búsqueda insensible a mayúsculas y espacios accidentales.
+  const n = (filterNombre || "").trim().toLowerCase();
+  const c = (filterCodigo || "").trim().toLowerCase();
 
-  /*
-    filteredProducts: versión filtrada y ordenada del array `products`.
-      .filter() → mantiene solo los productos que coinciden con ambos filtros
-      .sort()   → ordena los resultados alfabéticamente por nombre
-  */
-  const filteredProducts = products
-    .filter((p) => {
-      // Normaliza los filtros: quita espacios al inicio/fin y pasa a minúsculas
-      // || "" protege ante undefined (si la prop no llegó)
-      const n = (filterNombre || "").trim().toLowerCase();
-      const c = (filterCodigo || "").trim().toLowerCase();
+  // Si `n` está vacío (el usuario no escribió nada), matchNombre = true
+  // y el filtro "pasa" todos los productos por nombre.
+  // Si escribió algo, verifica que p.nombre contenga ese texto.
+  const matchNombre = !n || (p.nombre && p.nombre.toLowerCase().includes(n));
 
-      // Si el filtro está vacío (!n), el producto siempre pasa esa condición.
-      // Si hay texto, verifica que el nombre del producto lo incluya.
-      const matchNombre =
-        !n || (p.nombre && p.nombre.toLowerCase().includes(n));
+  // Convertimos codigoBarras a string por si viene como número (ej: 123 → "123").
+  // Luego aplicamos la misma lógica: si no hay filtro, pasa todo.
+  const codigoStr = String(p.codigoBarras || "").toLowerCase();
+  const matchCodigo = !c || codigoStr.includes(c);
 
-      // Combina codigoBarras y codigo en un solo string para buscar en ambos a la vez
-      const codigoStr = `${p.codigoBarras || ""} ${p.codigo || ""}`.toLowerCase();
-      const matchCodigo = !c || codigoStr.includes(c);
+  // El producto solo queda si cumple AMBAS condiciones a la vez.
+  return matchNombre && matchCodigo;
+})
+// .sort() compara pares de productos (a, b).
+// localeCompare devuelve negativo, 0 o positivo → el array queda A-Z.
+// El `|| 0` es un fallback por si `a.nombre` es undefined.
+.sort((a, b) => a.nombre?.localeCompare(b.nombre) || 0);
 
-      // Solo pasa el filtro si cumple AMBAS condiciones (nombre Y código)
-      return matchNombre && matchCodigo;
-    })
-    /*
-      .sort() con localeCompare: ordena strings considerando el idioma local
-      (respeta tildes, ñ, etc. ).
-      El || 0 evita errores si algún nombre es null/undefined.
-    */
-    .sort((a, b) => a.nombre?.localeCompare(b.nombre) || 0);
+// Cantidad de productos DESPUÉS de aplicar los filtros activos.
+const total = filteredProducts.length;
 
-  // Totales para mostrar en el encabezado
-  const total = filteredProducts.length;   // Cuántos quedan después del filtro
-  const totalCargados = products.length;   // Cuántos hay en total (sin filtrar)
+// Cantidad TOTAL de productos cargados desde el backend, sin filtrar.
+// Útil para mostrar algo como "Mostrando 3 de 20 productos".
+const totalCargados = products.length;
 
-  /*
-        FUNCIÓN AUXILIAR: formatPrecio 
-    Formatea el precio de un producto para mostrarlo en la tarjeta.
+/*
+* ESTADO: producto seleccionado para ver su detalle
+*
+* `detailProduct` guarda el objeto del producto que el usuario clickeó.
+* null  → no hay modal/panel abierto.
+* {...} → hay un producto seleccionado y su detalle está visible.
+*/
+const [detailProduct, setDetailProduct] = useState(null);
 
-    Usa el operador ?? (nullish coalescing) dos veces:
-      - Primero intenta precioVenta (producto por unidad)
-      - Si es null/undefined, intenta precioVentaKg (producto pesable)
-      - Si ambos son null/undefined, usa ""
+ //EFECTO: comportamiento del modal de detalle
+useEffect(() => {
+// Si no hay producto seleccionado, no hay nada que configurar.
+if (!detailProduct) return;
 
-    toLocaleString("es-PY") formatea el número
-  */
-  const formatPrecio = (p) => {
-    const valor = p.precioVenta ?? p.precioVentaKg ?? "";
-    return `Gs ${Number(valor || 0).toLocaleString("es-PY")}`;
-  };
+// Creamos el handler fuera del listener para poder removerlo después.
+// Si usáramos una función anónima en ambos lugares, addEventListener y
+// removeEventListener no reconocerían que es "la misma función".
+const onKey = (e) => {
+  if (e.key === "Escape") setDetailProduct(null); // cierra el modal
+};
 
-  /*
-      COMPONENTE INTERNO: ProductCard
-    ProductCard es un componente definido DENTRO de ProductList.
-    Representa la tarjeta visual de un producto en la grilla.
-  */
-  const ProductCard = ({ producto }) => {
-    /*
-      Inicial del nombre para mostrar en el placeholder de imagen.
-      producto.nombre?.[0] → accede al primer carácter con optional chaining (?.)
-      Si nombre es undefined/null, devuelve undefined → el || "?" lo convierte en "?"
-      .toUpperCase() → siempre en mayúscula
-    */
-    const inicial = (producto.nombre?.[0] || "?").toUpperCase();
+window.addEventListener("keydown", onKey);
 
-    return (
-      /*
-        "group" en el div raíz activa el sistema de group-hover de Tailwind.
-        hover:scale-[1.03] → la tarjeta crece levemente al hacer hover (efecto lift).
-        overflow-hidden → recorta el overlay para que no se salga de los bordes redondeados.
-      */
-      <div className="group relative bg-[#252525] rounded-[25px] overflow-hidden shadow-[inset_2px_5px_10px_rgb(5,5,5)] transition-all duration-300 hover:scale-[1.03] hover:shadow-lg">
+// Guardamos el valor ACTUAL de overflow antes de tocarlo,
+// para poder restaurarlo exactamente como estaba al cerrar.
+const prevOverflow = document.body.style.overflow;
 
-        {/* Área de imagen: cuadrado (aspect-square) con la inicial del producto */}
-        <div className="aspect-square bg-[#171717] flex items-center justify-center overflow-hidden">
-          <span className="text-5xl font-bold text-[#22c55e]/60">{inicial}</span>
-        </div>
+// "hidden" oculta la scrollbar y bloquea el scroll del fondo
+// mientras el modal está encima.
+document.body.style.overflow = "hidden";
 
-        {/* Información del producto */}
-        <div className="p-4">
-          {/*
-            title={producto.nombre} → tooltip nativo del navegador al hacer hover
-            sobre el nombre. Útil cuando el texto está truncado (truncate).
-          */}
-          <h3
-            className="font-semibold text-[#d3d3d3] truncate"
-            title={producto.nombre}
-          >
-            {producto.nombre}
-          </h3>
-
-          <div className="mt-2 space-y-1 text-sm">
-            <p className="text-[#8b949e]">
-              Código:{" "}
-              <span className="text-[#d3d3d3] font-mono text-xs">
-                {/* Si no hay código de barras, muestra un guión largo "—" */}
-                {producto.codigoBarras || "—"}
-              </span>
-            </p>
-            <p className="text-[#8b949e]">
-              Precio:{" "}
-              <span className="text-[#d3d3d3] font-medium">
-                {formatPrecio(producto)}
-              </span>
-            </p>
-            {/*
-              Renderizado condicional con ternario:
-              Si hay observaciones → muestra el párrafo
-              Si no hay → null (React no renderiza nada)
-              line-clamp-2 → corta el texto a 2 líneas máximo
-            */}
-            {producto.observaciones ? (
-              <p className="text-[#8b949e] line-clamp-2 text-xs">
-                {producto.observaciones}
-              </p>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="absolute inset-0 bg-black/85 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
-          <div className="flex gap-2 justify-end">
-
-            {/* Botón Editar: llama a onEdit pasando el objeto producto completo */}
-            <button
-              type="button"
-              onClick={() => onEdit(producto)}  // Pasa el producto entero al padre
-              className="p-2 rounded-md bg-[#252525] text-white hover:bg-black border border-[var(--border)] transition-all duration-300"
-              title="Editar precio"
-            >
-              <Pencil className="w-4 h-4" />
-            </button>
-
-            {/* Botón Eliminar: llama a onDelete pasando solo el ID */}
-            <button
-              type="button"
-              onClick={() => onDelete(producto.id)}  // Solo necesita el ID para el DELETE
-              className="p-2 rounded-md bg-[#252525] text-white hover:bg-red-600 border border-[var(--border)] transition-all duration-300"
-              title="Eliminar"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-
-          </div>
-        </div>
-      </div>
-    );
-  };
+return () => {
+  window.removeEventListener("keydown", onKey); // evita memory leaks
+  document.body.style.overflow = prevOverflow;  // restaura el scroll
+};
+}, [detailProduct]); // ← dependencia: el efecto se re-ejecuta solo cuando este valor cambia
 
   return (
-    /*
-      Contenedor principal: flex columna con altura mínima.
-      min-h-[60vh] → ocupa al menos el 60% de la altura de la ventana,
-      así el componente no "colapsa" cuando la lista está vacía.
-    */
     <div className="bg-[#171717] rounded-[25px] flex flex-col min-h-[60vh] transition-all duration-100 ease-in-out border border-[#30363d]/40">
-
-      {/* ── ENCABEZADO: título, contador y botón primario  */}
       <div className="p-4 sm:p-6 border-b border-[var(--border)]/50 space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <div>
-            <h2 className="text-xl font-semibold text-white tracking-tight">
-              Lista de productos
-            </h2>
-            {/*
-              Contador dinámico:
-            */}
+            <h2 className="text-xl font-semibold text-white tracking-tight">Lista de productos</h2>
             <p className="text-xs text-[#8b949e] mt-0.5">
               {totalCargados} cargados
               {total !== totalCargados ? ` · ${total} con filtros` : ""}
             </p>
           </div>
-
-          {/*
-            primaryAction: si el padre pasó un elemento JSX como prop,
-            se renderiza aquí:"Agregar producto"
-            Si no se pasó, el ternario devuelve null y no se renderiza nada.
-          */}
           {primaryAction ? (
             <div className="flex justify-end sm:justify-start shrink-0">{primaryAction}</div>
           ) : null}
         </div>
 
-        {/*
-                FILTROS DE BÚSQUEDA
-          Los inputs de filtro son "controlados":
-          su value viene del estado del padre (filterNombre, filterCodigo)
-          y onChange llama al setter del padre (setFilterNombre, setFilterCodigo).
-          Cada tecla que el usuario presiona actualiza el estado → React re-renderiza
-          → filteredProducts se recalcula → la grilla se actualiza en tiempo real.
-        */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className={fieldClass}>
             <Tag className={iconClass} />
@@ -229,7 +162,7 @@ export default function ProductList({
               onChange={(e) => setFilterNombre(e.target.value)}
               placeholder="Buscar por nombre..."
               className={`${inputClass} text-sm`}
-              aria-label="Buscar por nombre"  // Accesibilidad
+              aria-label="Buscar por nombre"
             />
           </div>
           <div className={fieldClass}>
@@ -246,53 +179,167 @@ export default function ProductList({
         </div>
       </div>
 
-      {/* ── ÁREA DE CONTENIDO: grilla de tarjetas o estado vacío ─────── */}
-      {/*
-        overflow-auto → habilita scroll si las tarjetas superan la altura disponible
-        min-h-0 → necesario en flex para que overflow-auto funcione correctamente
-      */}
       <div className="flex-1 overflow-auto min-h-0 p-4 sm:p-6">
-
-        {/*
-          Renderizado condicional:
-          - Si no hay resultados → muestra el estado vacío (ícono + mensaje)
-          - Si hay resultados    → muestra la grilla de tarjetas
-        */}
         {filteredProducts.length === 0 ? (
-
-          // Estado vacío: centrado vertical y horizontalmente
           <div className="flex flex-col items-center justify-center py-16 text-center px-4">
-            {/* aria-hidden → el ícono ess decorativo*/}
             <Search className="w-10 h-10 text-[#30363d] mb-3" aria-hidden />
             <p className="text-[#8b949e] text-sm">
               No hay productos que coincidan con nombre y código.
             </p>
           </div>
-
         ) : (
+          <div className="overflow-x-auto rounded-[20px] border border-[#30363d]/80 bg-[#0d0d0d]/50">
+            <table className="w-full min-w-[720px] text-sm border-collapse">
+              <thead>
+                <tr className="bg-[#252525] text-left">
+                  <th className="px-4 py-3 font-semibold text-[#8b949e] border-b border-[#30363d]">Código</th>
+                  <th className="px-4 py-3 font-semibold text-[#8b949e] border-b border-[#30363d]">Producto</th>
+                  <th className="px-4 py-3 font-semibold text-[#8b949e] border-b border-[#30363d] text-right">
+                    Compra
+                  </th>
+                  <th className="px-4 py-3 font-semibold text-[#8b949e] border-b border-[#30363d] text-right">
+                    Venta
+                  </th>
+                  <th className="px-4 py-3 font-semibold text-[#8b949e] border-b border-[#30363d] text-center">
+                    Stock actual
+                  </th>
+                  <th className="px-4 py-3 font-semibold text-[#8b949e] border-b border-[#30363d] text-center whitespace-nowrap">
+                    Detalle
+                  </th>
+                  <th className="px-4 py-3 font-semibold text-[#8b949e] border-b border-[#30363d] text-center">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredProducts.map((p) => {
+                  const rawStock = p.stockActual ?? p.stock;
+                  const stockUnknown =
+                    rawStock === "" || rawStock === undefined || rawStock === null;
+                  const stock = Number(rawStock ?? 0);
+                  const compra = formatPrecioValor(p, "compra");
+                  const venta = formatPrecioValor(p, "venta");
+                  const stockText =
+                    stockUnknown || !Number.isFinite(stock)
+                      ? "—"
+                      : `${stock}${p.unidadMedida ? ` ${p.unidadMedida}` : ""}`;
 
-          /*
-            Grilla responsiva de tarjetas:
-              2 columnas  en mobile
-              3 columnas  en sm  (≥640px)
-              4 columnas  en md  (≥768px)
-              5 columnas  en lg  (≥1024px)
-              6 columnas  en xl  (≥1280px)
-          */
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {/*
-              .map() recorre filteredProducts y genera una ProductCard por cada uno.
-              key={producto.id} → obligatorio en listas React: permite al algoritmo
-              de reconciliación identificar qué tarjeta actualizar/agregar/quitar
-              sin tener que re-renderizar toda la grilla.
-            */}
-            {filteredProducts.map((producto) => (
-              <ProductCard key={producto.id} producto={producto} />
-            ))}
+                  return (
+                    <tr
+                      key={p.id}
+                      className="border-b border-[#30363d]/60 hover:bg-[#252525]/40 transition-colors"
+                    >
+                      <td className="px-4 py-3 text-[#8b949e] font-mono text-xs align-middle">
+                        {p.codigoBarras || "—"}
+                      </td>
+                      <td className="px-4 py-3 align-middle">
+                        <p className="font-semibold text-[#f0f6fc] truncate max-w-[14rem] sm:max-w-xs" title={p.nombre}>
+                          {p.nombre}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3 text-right align-middle">
+                        <span className="text-[#8b949e] line-through decoration-[#6b7280]">
+                          ₲{compra.text}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right align-middle">
+                        <span className="font-bold text-[var(--accent-green)]">₲{venta.text}</span>
+                      </td>
+                      <td className="px-4 py-3 text-center text-[#d3d3d3] tabular-nums align-middle">
+                        {stockText}
+                      </td>
+                      <td className="px-4 py-3 text-center align-middle">
+                        <button
+                          type="button"
+                          onClick={() => setDetailProduct(p)}
+                          className="text-xs font-medium text-[var(--accent-cyan)] hover:text-[#67e8f9] hover:underline underline-offset-2 transition-colors"
+                        >
+                          Más detalles
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 text-center align-middle">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => onEdit(p)}
+                            className="p-2 rounded-md bg-[#252525] text-white hover:bg-black border border-[var(--border)] transition-all duration-300"
+                            title="Editar precio"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onDelete(p.id)}
+                            className="p-2 rounded-md bg-[#252525] text-white hover:bg-red-600 border border-[var(--border)] transition-all duration-300"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-
         )}
       </div>
+
+      {detailProduct ? (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]"
+          role="presentation"
+          onClick={() => setDetailProduct(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="detalles-producto-titulo"
+            className="relative w-full max-w-sm rounded-[20px] border border-[#30363d] bg-[#252525] shadow-[inset_2px_5px_10px_rgb(5,5,5)] p-5 text-left"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h4
+              id="detalles-producto-titulo"
+              className="text-[#f0f6fc] font-semibold text-sm"
+            >
+              Más detalles
+            </h4>
+            <p className="text-xs text-[#8b949e] mt-1 mb-4 line-clamp-2" title={detailProduct.nombre}>
+              {detailProduct.nombre}
+            </p>
+            <dl className="space-y-3 text-sm">
+              <div>
+                <dt className="text-[#8b949e] text-xs font-medium uppercase tracking-wide">Categoría</dt>
+                <dd className="text-[#f0f6fc] mt-0.5">
+                  {detailProduct.categoria ? (
+                    <span className="inline-block rounded-full bg-[#22c55e]/15 text-[#4ade80] px-2.5 py-0.5 text-xs font-medium">
+                      {detailProduct.categoria}
+                    </span>
+                  ) : (
+                    "—"
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[#8b949e] text-xs font-medium uppercase tracking-wide">Marca</dt>
+                <dd className="text-[#d3d3d3] mt-0.5">{detailProduct.marca || "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-[#8b949e] text-xs font-medium uppercase tracking-wide">Unidad</dt>
+                <dd className="text-[#d3d3d3] mt-0.5">{detailProduct.unidadMedida || "—"}</dd>
+              </div>
+            </dl>
+            <button
+              type="button"
+              onClick={() => setDetailProduct(null)}
+              className="mt-5 w-full py-2.5 rounded-xl text-sm font-medium bg-[#171717] text-[#f0f6fc] border border-[#30363d] hover:bg-[#30363d]/50 transition-colors"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
