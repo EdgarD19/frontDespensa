@@ -79,14 +79,7 @@ export default function ConsultaInventario() {
   /*
         OPCIONES DERIVADAS PARA LOS SELECTS (useMemo) 
     useMemo(() => calcular, [deps])
-    ───────────────────────────────
-    Memoriza el resultado de una función costosa. Solo la vuelve a calcular
-    cuando alguna dependencia del array cambia. Si las deps no cambiaron,
-    devuelve el valor anterior cacheado sin ejecutar la función de nuevo.
-
-    Aquí se usan para derivar las opciones únicas de categoría y marca
-    directamente desde el array de productos, SIN un endpoint propio.
-
+   
     Paso a paso de categoriasOptions:
       productos.map(p => p.categoria)   → ["Lácteos", "Lácteos", "Bebidas", null, ...]
       .filter(Boolean)                  → elimina null, undefined y ""
@@ -104,22 +97,19 @@ export default function ConsultaInventario() {
     return { categoriasOptions: cats, marcasOptions: mars };
   }, [productos]); // Solo recalcula cuando cambia la lista de productos
 
-  // ── PRODUCTOS FILTRADOS (useMemo) 
+  // PRODUCTOS FILTRADOS (useMemo) 
 
   const productosFiltrados = useMemo(() => {
     return productos
       .filter((p) => {
         /*
-          Filtro de búsqueda libre: busca en nombre, código de barras,
-          código interno y observaciones al mismo tiempo.
-          El operador || hace que si `search` está vacío (!search = true),
-          el producto siempre pase esta condición.
+          Filtro de búsqueda libre: nombre, código de barras y observaciones.
+          Si `search` está vacío (!search), el producto siempre pasa.
         */
         const matchSearch =
           !search ||
           p.nombre?.toLowerCase().includes(search.toLowerCase()) ||
           p.codigoBarras?.includes(search) ||
-          p.codigo?.includes(search) ||
           p.observaciones?.toLowerCase().includes(search.toLowerCase());
 
         // Filtro de categoría: coincidencia exacta (no parcial)

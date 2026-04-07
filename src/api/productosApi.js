@@ -28,16 +28,12 @@ function toFrontendProduct(backend) {
   // "price" es el único campo numérico confirmado en ProductResponse
   const precioStr = backend.price != null ? String(backend.price) : "";
 
-  // "code" es codigo_producto / codigoBarra en la entidad
-  const codigoBarras = backend.code ?? "";
-
   return {
     id: backend.id,
     nombre: backend.name ?? "",
 
-    // El backend no devuelve código interno separado; usamos code como codigoBarras
-    codigo: "",
-    codigoBarras,
+    // "code" del backend = código de barras / codigo_producto
+    codigoBarras: backend.code ?? "",
 
     // El backend no devuelve estos campos aún → vacíos por defecto
     idCategoria: "",
@@ -63,7 +59,6 @@ function toFrontendProduct(backend) {
 
     idProveedor: "",
     proveedor: "",
-    foto: "",
 
     // "description" en ProductResponse
     observaciones: backend.description ?? "",
@@ -85,10 +80,11 @@ function toCreateBody(frontend, idCategoria, idUnidad, idProveedor) {
     throw new Error("El precio de venta debe ser mayor que 0.");
   }
 
-  const codigoBarras = (frontend.codigoBarras || "").trim();
-  const codigoInterno = (frontend.codigo || "").trim();
-  // Si no hay ningún código, genera uno temporal
-  const codigoProducto = codigoBarras || codigoInterno || `AUTO-${Date.now()}`;
+  const codigoBarras = String(frontend.codigoBarras || "").replace(/\D/g, "");
+  if (!/^\d{9,13}$/.test(codigoBarras)) {
+    throw new Error("El código de barras debe tener entre 9 y 13 dígitos numéricos.");
+  }
+  const codigoProducto = codigoBarras;
 
   const descripcion = (frontend.observaciones || "").trim();
 

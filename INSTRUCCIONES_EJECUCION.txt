@@ -1,0 +1,26 @@
+INSTRUCCIONES PARA CORRER LA APLICACION (frontDespensa)
+
+Requisitos:
+- Node.js instalado (recomendado: version LTS actual)
+- npm (incluido con Node.js)
+
+Pasos para ejecutar:
+1) Abrir una terminal en la carpeta del proyecto:
+   C:\Users\carlo\Desktop\frontDespensa
+
+2) Instalar dependencias (solo la primera vez o cuando cambie package.json):
+   npm install
+
+3) Levantar el servidor de desarrollo:
+   npm run dev
+
+4) Abrir en el navegador:
+   http://localhost:5173/
+
+Comandos utiles:
+- Ejecutar lint:
+  npm run lint
+
+Notas:
+- Para detener el servidor, presionar Ctrl + C en la terminal.
+- Si el puerto 5173 esta ocupado, Vite puede usar otro puerto automaticamente y lo mostrara en la terminal.

@@ -9,6 +9,7 @@ import MainLayout from './components/layout/MainLayout';
 
 import InventarioABM from './pages/inventario/abm/Inventario'
 import ConsultaInventario from './pages/inventario/consulta/ConsultaInventario'
+import InventarioHub from './pages/inventario/InventarioHub'
 import Ventas from './pages/ventas/Ventas'
 import Compras from './pages/compras/Compras'
 import Caja from './pages/caja/Caja'
@@ -18,10 +19,10 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<MainLayout />}> 
-          <Route index element={<Navigate to="/inventario/abm" replace />} />
+          <Route index element={<Navigate to="/inventario" replace />} />
           <Route path="ventas"     element={<Ventas />} />
           <Route path="inventario">
-            <Route index element={<Navigate to="/inventario/abm" replace />} />
+            <Route index element={<InventarioHub />} />
             <Route path="abm"      element={<InventarioABM />} />
             <Route path="consulta" element={<ConsultaInventario />} />
           </Route>
