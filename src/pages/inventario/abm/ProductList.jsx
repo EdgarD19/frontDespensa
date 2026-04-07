@@ -61,8 +61,7 @@ export default function ProductList({
   primaryAction,
 }) {
  /*
- * FILTRADO Y ORDENAMIENTO DE PRODUCTOS
- *
+        FILTRADO Y ORDENAMIENTO DE PRODUCTOS
  * .filter() recorre el array `products` y conserva solo los elementos
  * que cumplan con las condiciones de búsqueda por nombre y/o código.
  * .sort() ordena el resultado alfabéticamente por nombre.
