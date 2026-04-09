@@ -1,16 +1,18 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect } from "react";
+import { getProductos } from "../../../api/productosApi";
+import { apiErrorMessage } from "../../../api/errors";
+import { getHistorialAjustes, crearAjuste } from "../../../api/ajustesApi";
 
-
-export default function AjusteInventario(){
+export default function AjusteInventario() {
     // Datos del server
-    const [productos, setProductos] = useState([]) // lista completa para el selector
-    const [historial, setHistorial]= useState([]) // ajustes registrados anteriormente
-    const [loading, setLoading] = useState(true) // spinner mientras carga (manejar el estado de carga)
-    const [error, setError] = useState(null)
+    const [productos, setProductos] = useState([]); // lista completa para el selector
+    const [historial, setHistorial] = useState([]); // ajustes registrados anteriormente
+    const [loading, setLoading] = useState(true); // spinner mientras carga (manejar el estado de carga)
+    const [error, setError] = useState(null);
 
     // interaccion del usuario
-    const [productoSeleccionado, setProductoSeleccionado] = useState(null) // fila clickeada
-    const [search, setSearch] = useState("") // texto del buscador
+    const [productoSeleccionado, setProductoSeleccionado] = useState(null); // fila clickeada
+    const [search, setSearch] = useState(""); // texto del buscador
 
     // Formulario del panel
     const [formData, setFormData] = useState({
@@ -19,50 +21,59 @@ export default function AjusteInventario(){
         nuevoStock: "", // input number
         justificacion: "", // textarea
         autorizadoPor: "", // input text
-    })
+    });
 
     const diferencia = Number(formData.nuevoStock || 0) - Number(productoSeleccionado?.stockActual || 0);
 
     // Carga la lista de productos para el selector (se ejecuta al montar el componente)
     useEffect(() => {
-        let cancelled = false // variable de control
-        (async () => { // funcion async autoejecutable
+        let cancelled = false; // variable de control
+        (async () => {
+            // funcion async autoejecutable
             try {
+                setError(null);
                 setLoading(true); // indicar que esta cargando
-                const rest = await getProductos({ pageSize: 500}); // llamada al backend, hasta 500 productos
+                const res = await getProductos({ pageSize: 500 }); // llamada al backend, hasta 500 productos
                 if (!cancelled) setProductos(res.content || []); // guarda si el componente sigue activo
             } catch (err) {
-                if(!cancelled) setError(apiErrorMessage(err) || "Error al cargar productos"); 
-            }finally {
-                if(!cancelled) setLoading (false); //exito o error
+                if (!cancelled) {
+                    setError(apiErrorMessage(err) || "Error al cargar productos");
+                    setProductos([]);
+                }
+            } finally {
+                if (!cancelled) setLoading(false); // exito o error
             }
         })();
-        return () => { cancelled = true; };// se ejecuta cuando el componente se desmonta
-    }, []);//se ejecuta una sola vez 
+        return () => {
+            cancelled = true;
+        }; // se ejecuta cuando el componente se desmonta
+    }, []); // se ejecuta una sola vez
 
     // carga el historial de ajustes anteriores
     useEffect(() => {
         let cancelled = false;
         (async () => {
             try {
-                const res = await getHistorialAjustes({ pageSize:50});
+                const res = await getHistorialAjustes({ pageSize: 50 });
                 if (!cancelled) setHistorial(res.content || []);
             } catch {
                 // historial opcional: si falla no bloquea el modulo
             }
         })();
-        return () => { cancelled = true;};
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     const handleSelectProducto = (producto) => {
         setProductoSeleccionado(producto);
-        // Pre-rellena nuevStock con el stock actual para que la diferencia arranque en 0
+        // Pre-rellena nuevoStock con el stock actual para que la diferencia arranque en 0
         setFormData((prev) => ({
             ...prev,
             nuevoStock: String(producto.stockActual ?? ""),
         }));
         setError(null);
-    }
+    };
 
     // valida, llama a la API y actualiza la UI sin recargar
     const handleSubmit = async (e) => {
@@ -72,7 +83,7 @@ export default function AjusteInventario(){
         if (!productoSeleccionado) return;
         if (!formData.tipoAjuste) {setError("Selecciona un tipo de ajuste"); return; }
         if (formData.nuevoStock === "") { setError("Ingresa el nuevo stock."); return; }
-        if (!formData.justificacion.trim()) { setError("La justificaion es obligatoria."); return; }
+        if (!formData.justificacion.trim()) { setError("La justificación es obligatoria."); return; }
         if (!formData.autorizadoPor.trim()) { setError("Ingresa quien autoriza."); return; }
 
         try {
@@ -86,7 +97,7 @@ export default function AjusteInventario(){
                 nuevoStock: Number(formData.nuevoStock),
                 justificacion: formData.justificacion,
                 autorizadoPor: formData.autorizadoPor,
-            })
+            });
 
             // actualiza el stock del producto 
             setProductos((prev) =>
@@ -115,11 +126,11 @@ export default function AjusteInventario(){
         });
         setProductoSeleccionado(null);
         setError(null);
-    }
+    };
 
     return (
         <div>
-            funciona?
+            <p>funciona?</p>
         </div>
     );
 

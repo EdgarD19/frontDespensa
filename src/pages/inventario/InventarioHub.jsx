@@ -1,15 +1,14 @@
 // Link: componente que permite navegar a una ruta
 import { Link } from "react-router-dom";
 // iconos para cada tarjeta del hub
-import { Package, Search } from "lucide-react";
-
+import { ClipboardList, Package, Search } from "lucide-react";
 
 // DATOS ESTATICOS:
 // Modulo de inventario
 const MODULOS = [
   {
     to: "/inventario/abm",
-    label: "Gestor de inventario",
+    label: "Gestor de productos",
     descripcion: "Alta, baja y modificacion de productos.",
     icon: Package,
   },
@@ -19,24 +18,28 @@ const MODULOS = [
     descripcion: "Consulta de inventario.",
     icon: Search,
   },
+  {
+    to: "/inventario/ajuste",
+    label: "Ajuste de inventario",
+    descripcion: "Registra entradas, salidas y ajuste de stock.",
+    icon: ClipboardList,
+  }
 ];
-
 
 // "group" es una clase especial de Tailwind que permite aplicar estilos a hijos
 // cuando el padre tiene hover.
 const cardClass =
   "group flex flex-col items-stretch rounded-[25px] border border-[#30363d]/50 bg-[#252525] shadow-[inset_2px_5px_10px_rgb(5,5,5)] p-6 transition-all duration-300 hover:border-[var(--accent-green)]/40 hover:shadow-lg hover:scale-[1.02] focus-within:ring-2 focus-within:ring-[var(--accent-green)]/50 focus-within:ring-offset-2 focus-within:ring-offset-[var(--bg-main)]";
 
-
 // Componente presentacional: solo muestra la interfaz, no tiene estado propio.
 export default function InventarioHub() {
   return (
-    // Contenedor con ancho máximo centrado horizontalmente
-    <div className="space-y-8 max-w-5xl mx-auto">
+    
+    <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-[#f0f6fc]">Inventario</h1>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 ">
         {/* 
           .map() recorre MODULOS y genera un <Link> (tarjeta) por cada objeto.
           Desestructuración de props dentro del .map():
