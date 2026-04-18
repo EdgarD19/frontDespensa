@@ -3,9 +3,7 @@ import { apiErrorMessage } from "./errors";
 
 export { apiErrorMessage };
 
-// ---------------------------------------------------------------------------
 // Helpers internos
-// ---------------------------------------------------------------------------
 
 function parseStockActual(raw) {
   if (raw === "" || raw === undefined || raw === null || raw === "—") return 0;
