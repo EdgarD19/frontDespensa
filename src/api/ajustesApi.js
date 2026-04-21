@@ -20,7 +20,7 @@ export async function getHistorialAjustes(params = {}) {
 
 /**
  * POST nuevo ajuste de inventario.
- * Ajustá la ruta y el body cuando el contrato del backend esté definido.
+ * Ajusta la ruta y el body cuando el contrato del backend esté definido.
  */
 export async function crearAjuste(payload) {
   const { data } = await api.post("/api/inventario/ajustes", payload);

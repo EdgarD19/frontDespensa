@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 // iconos para cada tarjeta del hub
 import { ClipboardList, Package, Search } from "lucide-react";
-
+ 
 // DATOS ESTATICOS:
 // Modulo de inventario
 const MODULOS = [
@@ -20,7 +20,7 @@ const MODULOS = [
   },
   {
     to: "/inventario/ajuste",
-    label: "Ajuste de inventario",
+    label: "Tipos de movimientos",
     descripcion: "Registra entradas, salidas y ajuste de stock.",
     icon: ClipboardList,
   }
@@ -42,12 +42,14 @@ export default function InventarioHub() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 ">
         {/* 
           .map() recorre MODULOS y genera un <Link> (tarjeta) por cada objeto.
+          convierte una lista de datos en componentes visuales
           Desestructuración de props dentro del .map():
         */}
         {MODULOS.map(({ to, label, descripcion, icon: Icon }) => (
           <Link key={to} to={to} className={cardClass}>
             <div className="flex flex-col items-center text-center gap-4 sm:flex-row sm:text-left sm:items-start">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#171717] text-[var(--accent-green)] shadow-[inset_2px_5px_10px_rgb(5,5,5)] group-hover:bg-black/60 transition-colors">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#171717] text-[var(--accent-green)] 
+                    shadow-[inset_2px_5px_10px_rgb(5,5,5)] group-hover:bg-black/60 transition-colors">
                 <Icon className="w-7 h-7" aria-hidden />
               </div>
               <div className="flex-1 min-w-0 space-y-1">
