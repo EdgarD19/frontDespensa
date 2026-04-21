@@ -1,10 +1,6 @@
-// Link: componente que permite navegar a una ruta
 import { Link } from "react-router-dom";
-// iconos para cada tarjeta del hub
-import { ClipboardList, Package, Search } from "lucide-react";
- 
-// DATOS ESTATICOS:
-// Modulo de inventario
+import { ClipboardList, Package, Search, ArrowRight } from "lucide-react";
+
 const MODULOS = [
   {
     to: "/inventario/abm",
@@ -23,40 +19,38 @@ const MODULOS = [
     label: "Tipos de movimientos",
     descripcion: "Registra entradas, salidas y ajuste de stock.",
     icon: ClipboardList,
-  }
+  },
 ];
 
-// "group" es una clase especial de Tailwind que permite aplicar estilos a hijos
-// cuando el padre tiene hover.
-const cardClass =
-  "group flex flex-col items-stretch rounded-[25px] border border-[#30363d]/50 bg-[#252525] shadow-[inset_2px_5px_10px_rgb(5,5,5)] p-6 transition-all duration-300 hover:border-[var(--accent-green)]/40 hover:shadow-lg hover:scale-[1.02] focus-within:ring-2 focus-within:ring-[var(--accent-green)]/50 focus-within:ring-offset-2 focus-within:ring-offset-[var(--bg-main)]";
-
-// Componente presentacional: solo muestra la interfaz, no tiene estado propio.
 export default function InventarioHub() {
   return (
-    
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#f0f6fc]">Inventario</h1>
+    <div className="max-w-3xl mx-auto py-10 px-2 space-y-8">
+      {/* Header */}
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold text-[#f1f1f3] tracking-tight">Inventario</h1>
+        <p className="text-sm text-[#5a5a6e]">Selecciona un modulo para continuar</p>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 ">
-        {/* 
-          .map() recorre MODULOS y genera un <Link> (tarjeta) por cada objeto.
-          convierte una lista de datos en componentes visuales
-          Desestructuración de props dentro del .map():
-        */}
+
+      {/* Cards */}
+      <div className="grid grid-cols-1 gap-3">
         {MODULOS.map(({ to, label, descripcion, icon: Icon }) => (
-          <Link key={to} to={to} className={cardClass}>
-            <div className="flex flex-col items-center text-center gap-4 sm:flex-row sm:text-left sm:items-start">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#171717] text-[var(--accent-green)] 
-                    shadow-[inset_2px_5px_10px_rgb(5,5,5)] group-hover:bg-black/60 transition-colors">
-                <Icon className="w-7 h-7" aria-hidden />
-              </div>
-              <div className="flex-1 min-w-0 space-y-1">
-                <h2 className="text-lg font-semibold text-white tracking-tight">{label}</h2>
-                <p className="text-sm text-[#8b949e] leading-relaxed">{descripcion}</p>
-              </div>
+          <Link
+            key={to}
+            to={to}
+            className="group flex items-center gap-5 rounded-xl border border-[#1e1e24] bg-[#111114] p-5 transition-all duration-200 hover:border-[#22c55e]/25 hover:bg-[#13131a]"
+          >
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#22c55e]/8 border border-[#22c55e]/15 text-[#22c55e] transition-colors group-hover:bg-[#22c55e]/15">
+              <Icon className="w-5 h-5" aria-hidden />
             </div>
+
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-[#e1e1eb] group-hover:text-white transition-colors leading-tight">
+                {label}
+              </p>
+              <p className="text-xs text-[#5a5a6e] mt-0.5 leading-relaxed">{descripcion}</p>
+            </div>
+
+            <ArrowRight className="w-4 h-4 text-[#3a3a4a] group-hover:text-[#22c55e] group-hover:translate-x-0.5 transition-all duration-200 flex-shrink-0" />
           </Link>
         ))}
       </div>
