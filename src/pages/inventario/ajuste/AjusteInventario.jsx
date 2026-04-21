@@ -1,89 +1,32 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Search, ClipboardList, Package, LayoutDashboard } from "lucide-react";
+import { ClipboardList, LayoutDashboard } from "lucide-react";
 import { getProductos } from "../../../api/productosApi";
 import { apiErrorMessage } from "../../../api/errors";
 import {
   getHistorialAjustes,
   crearAjuste,
   autorizarAjuste,
-  normalizeAjuste,
 } from "../../../api/ajustesApi";
 import {
   canGestionarAjustesInventario,
   canAutorizarAjustesInventario,
 } from "../../../auth/inventoryAccess";
-import { getEstadoStock } from "../utils";
-import FormularioAjuste from "./FormularioAjuste";
-import HistorialAjuste from "./HistorialAjuste";
+import SeleccionProductos from "./ajuste-inventario/SeleccionProductos";
+import AjusteStockPanel from "./ajuste-inventario/AjusteStockPanel";
+import HistorialAjustes from "./ajuste-inventario/HistorialAjustes";
+import { stockEntero } from "./ajuste-inventario/utils";
+
+/** Futuro: true = mostrar botón "Autorizar" en historial y flujo en dos pasos (POST pendiente + PATCH). */
+const FLUJO_AUTORIZACION_PENDIENTE = false;
+
+/*
+ * Futuro — modal de confirmación cuando el ajuste queda solo como solicitud pendiente:
+ * import ConfirmarSolicitudModal from "./ajuste-inventario/ConfirmarSolicitudModal";
+ * Tras validar, setConfirmOpen(true); en onConfirm llamar a crearAjuste.
+ */
 
 function todayISO() {
   return new Date().toISOString().split("T")[0];
-}
-
-function stockEntero(producto) {
-  const n = Number(producto?.stockActual ?? 0);
-  return Number.isFinite(n) ? Math.trunc(n) : 0;
-}
-
-function StockBadge({ producto, stock }) {
-  const est = getEstadoStock(producto);
-  if (est === "sin") {
-    return <span className="text-xs sm:text-sm font-semibold text-rose-400 whitespace-nowrap">Sin Stock</span>;
-  }
-  if (est === "bajo") {
-    return (
-      <span className="text-xs sm:text-sm font-semibold text-amber-400 tabular-nums whitespace-nowrap">
-        {stock} (Bajo)
-      </span>
-    );
-  }
-  if (est === "desconocido") {
-    return <span className="text-xs sm:text-sm text-[#5a5a6e] tabular-nums whitespace-nowrap">{stock}</span>;
-  }
-  return (
-    <span className="text-xs sm:text-sm font-semibold text-[#22c55e] tabular-nums whitespace-nowrap">{stock}</span>
-  );
-}
-
-function ConfirmarSolicitudModal({ open, onCancel, onConfirm, loading }) {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="confirm-ajuste-title"
-        className="w-full max-w-md rounded-2xl border border-[#1e1e24] bg-[#111114] shadow-2xl p-6 space-y-4"
-      >
-        <h2 id="confirm-ajuste-title" className="text-base font-semibold text-[#f1f1f3]">
-          Confirmar solicitud de ajuste
-        </h2>
-        <p className="text-sm text-[#9a9aac] leading-relaxed">
-          El ajuste quedará en estado <strong className="text-amber-400">pendiente de autorización</strong>.
-          El stock del producto se actualizará recién cuando un usuario con permisos lo{" "}
-          <strong className="text-[#e1e1eb]">autorice</strong>. ¿Deseas continuar?
-        </p>
-        <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end pt-2">
-          <button
-            type="button"
-            disabled={loading}
-            onClick={onCancel}
-            className="rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-4 py-2 text-sm text-[#e1e1eb] hover:border-[#3a3a48] disabled:opacity-40"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            disabled={loading}
-            onClick={onConfirm}
-            className="rounded-lg bg-amber-500/90 hover:bg-amber-500 text-[#0d0d0f] text-sm font-semibold px-4 py-2 disabled:opacity-40"
-          >
-            {loading ? "Guardando…" : "Sí, solicitar ajuste"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export default function AjusteInventario() {
@@ -108,7 +51,6 @@ export default function AjusteInventario() {
   });
 
   const [submitting, setSubmitting] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [autorizandoId, setAutorizandoId] = useState(null);
 
   const diferencia =
@@ -180,7 +122,7 @@ export default function AjusteInventario() {
     setError(null);
   };
 
-  function validarAntesDeConfirmar() {
+  function validarFormulario() {
     if (!puedeRegistrar) {
       setError("No tenés permisos para solicitar ajustes de inventario.");
       return false;
@@ -217,14 +159,11 @@ export default function AjusteInventario() {
     return true;
   }
 
-  const handleSolicitarClick = () => {
-    setError(null);
-    if (!validarAntesDeConfirmar()) return;
-    setConfirmOpen(true);
-  };
-
-  const ejecutarCreacion = async () => {
+  const procesarAjuste = async () => {
     if (!productoSeleccionado) return;
+    setError(null);
+    if (!validarFormulario()) return;
+
     try {
       setSubmitting(true);
       setError(null);
@@ -244,20 +183,16 @@ export default function AjusteInventario() {
         autorizadoPor: formData.autorizadoPor.trim(),
       };
 
-      const ajuste = await crearAjuste(payload);
-      const row = ajuste ?? normalizeAjuste(payload);
+      await crearAjuste(payload);
 
-      if (row?.estado === "AUTORIZADO") {
-        setProductos((prev) =>
-          prev.map((p) =>
-            p.id === productoSeleccionado.id ? { ...p, stockActual: n } : p
-          )
-        );
-      }
+      setProductos((prev) =>
+        prev.map((p) =>
+          p.id === productoSeleccionado.id ? { ...p, stockActual: n } : p
+        )
+      );
 
       await loadHistorial();
       handleClear();
-      setConfirmOpen(false);
     } catch (err) {
       setError(apiErrorMessage(err) || "Error al registrar el ajuste");
     } finally {
@@ -266,7 +201,7 @@ export default function AjusteInventario() {
   };
 
   const handleAutorizar = async (row) => {
-    if (!puedeAutorizar || row?.id == null) return;
+    if (!FLUJO_AUTORIZACION_PENDIENTE || !puedeAutorizar || row?.id == null) return;
     const ok = window.confirm(
       "Al autorizar, el stock del producto se actualizará de inmediato. ¿Confirmar autorización?"
     );
@@ -339,125 +274,36 @@ export default function AjusteInventario() {
           ) : null}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-            <div className="rounded-xl border border-[#1e1e24] bg-[#111114] overflow-hidden">
-              <div className="px-5 pt-5 pb-3 border-b border-[#1e1e24]">
-                <h2 className="text-base font-semibold text-[#e1e1eb] flex items-center gap-2">
-                  <Package className="w-5 h-5 text-[#22c55e] shrink-0" aria-hidden />
-                  Selección de Productos
-                </h2>
-              </div>
-              <div className="p-5 pt-4 space-y-4">
-                <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2.5 text-xs sm:text-sm text-amber-200/90 leading-snug">
-                  Los ajustes de inventario requieren justificación y son registrados en el historial.
-                </div>
+            <SeleccionProductos
+              loading={loading}
+              search={search}
+              onSearchChange={setSearch}
+              productosFiltrados={productosFiltrados}
+              productoSeleccionado={productoSeleccionado}
+              onSelectProducto={handleSelectProducto}
+            />
 
-                <label className="block space-y-1">
-                  <span className="sr-only">Buscar producto</span>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5a5a6e]" />
-                    <input
-                      type="search"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      disabled={loading}
-                      placeholder="Buscar por nombre o código de barras…"
-                      className="w-full rounded-lg border border-[#2a2a32] bg-[#0d0d0f] pl-10 pr-3 py-2.5 text-sm text-[#f1f1f3] placeholder:text-[#4a4a5a] focus:border-[#22c55e]/50 focus:ring-1 focus:ring-[#22c55e]/20 outline-none disabled:opacity-50"
-                    />
-                  </div>
-                </label>
-
-                <div className="rounded-lg border border-[#1e1e24] overflow-hidden max-h-[min(24rem,50vh)] overflow-y-auto bg-[#0d0d0f]">
-                  {loading ? (
-                    <p className="p-4 text-sm text-[#5a5a6e]">Cargando productos…</p>
-                  ) : productosFiltrados.length === 0 ? (
-                    <p className="p-4 text-sm text-[#5a5a6e]">No hay coincidencias.</p>
-                  ) : (
-                    <ul className="divide-y divide-[#1e1e24]">
-                      {productosFiltrados.map((p) => {
-                        const sel = productoSeleccionado?.id === p.id;
-                        const st = stockEntero(p);
-                        const sub = [p.codigoBarras ? String(p.codigoBarras) : null, p.categoria]
-                          .filter(Boolean)
-                          .join(" • ");
-                        return (
-                          <li key={p.id}>
-                            <button
-                              type="button"
-                              onClick={() => handleSelectProducto(p)}
-                              className={`w-full text-left px-4 py-3 flex items-start gap-3 transition-colors ${
-                                sel
-                                  ? "bg-[#22c55e]/10 border-l-[3px] border-l-[#22c55e]"
-                                  : "border-l-[3px] border-l-transparent hover:bg-[#15151a]"
-                              }`}
-                            >
-                              <div className="flex-1 min-w-0">
-                                <span className="font-semibold text-[#f1f1f3] block truncate">
-                                  {p.nombre}
-                                </span>
-                                {sub ? (
-                                  <span className="text-xs text-[#5a5a6e] block truncate mt-0.5">
-                                    {sub}
-                                  </span>
-                                ) : null}
-                              </div>
-                              <StockBadge producto={p} stock={st} />
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              {puedeRegistrar ? (
-                productoSeleccionado ? (
-                  <FormularioAjuste
-                    producto={productoSeleccionado}
-                    formData={formData}
-                    setFormData={setFormData}
-                    diferencia={Number.isFinite(diferencia) ? diferencia : 0}
-                    disabled={loading}
-                    submitting={submitting}
-                    onSolicitar={handleSolicitarClick}
-                    onLimpiar={handleClear}
-                  />
-                ) : (
-                  <div className="rounded-xl border border-dashed border-[#2a2a32] bg-[#111114] min-h-[20rem] flex flex-col items-center justify-center text-center px-6 py-10">
-                    <Package className="w-10 h-10 text-[#3a3a4a] mb-3" aria-hidden />
-                    <p className="text-sm text-[#9a9aac] font-medium">Seleccioná un producto</p>
-                    <p className="text-xs text-[#5a5a6e] mt-1 max-w-xs">
-                      Elegí un ítem de la lista de la izquierda para ver el formulario de ajuste de
-                      stock.
-                    </p>
-                  </div>
-                )
-              ) : (
-                <div className="rounded-xl border border-[#1e1e24] bg-[#111114] p-6 text-sm text-[#7a7a8c]">
-                  No podés crear solicitudes de ajuste con tu rol actual. Podés revisar el historial
-                  y autorizar si corresponde.
-                </div>
-              )}
-            </div>
+            <AjusteStockPanel
+              puedeRegistrar={puedeRegistrar}
+              productoSeleccionado={productoSeleccionado}
+              formData={formData}
+              setFormData={setFormData}
+              diferencia={diferencia}
+              loading={loading}
+              submitting={submitting}
+              onSolicitar={procesarAjuste}
+              onLimpiar={handleClear}
+            />
           </div>
 
-          <HistorialAjuste
+          <HistorialAjustes
             items={historial}
             autorizandoId={autorizandoId}
             onAutorizar={handleAutorizar}
-            canAutorizar={puedeAutorizar}
+            canAutorizar={puedeAutorizar && FLUJO_AUTORIZACION_PENDIENTE}
           />
         </div>
       </div>
-
-      <ConfirmarSolicitudModal
-        open={confirmOpen}
-        loading={submitting}
-        onCancel={() => (submitting ? null : setConfirmOpen(false))}
-        onConfirm={ejecutarCreacion}
-      />
     </div>
   );
 }

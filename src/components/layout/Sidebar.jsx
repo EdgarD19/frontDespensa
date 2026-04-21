@@ -77,7 +77,7 @@ export default function Sidebar() {
                 return (
                   <>
                     {active && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#22c55e] rounded-r-full" />
+                      <span className="" />
                     )}
                     <Icon className="w-4 h-4 flex-shrink-0" />
                     {!collapsed && (

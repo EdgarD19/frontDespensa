@@ -28,7 +28,7 @@ function formatFechaHora(iso) {
   return s;
 }
 
-export default function HistorialAjuste({ items, autorizandoId, onAutorizar, canAutorizar }) {
+export default function HistorialAjustes({ items, autorizandoId, onAutorizar, canAutorizar }) {
   if (!items?.length) {
     return (
       <div className="rounded-xl border border-dashed border-[#2a2a32] bg-[#111114]/50 p-10 text-center text-sm text-[#5a5a6e]">

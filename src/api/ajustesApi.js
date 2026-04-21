@@ -51,7 +51,11 @@ export async function getHistorialAjustes(params = {}) {
 }
 
 /**
- * POST nueva solicitud de ajuste (queda pendiente hasta autorización en backend).
+ * POST registrar ajuste. El backend aplica el stock y devuelve el registro (p. ej. estado AUTORIZADO).
+ *
+ * Futuro (pendiente de autorización en dos pasos):
+ * - POST solo registra solicitud con estado PENDIENTE_DE_AUTORIZACION.
+ * - PATCH /api/inventario/ajustes/{id}/autorizar aplica stock; en UI, modal previo y botón "Autorizar" en historial.
  */
 export async function crearAjuste(payload) {
   const { data } = await api.post("/api/inventario/ajustes", payload);
@@ -59,7 +63,7 @@ export async function crearAjuste(payload) {
 }
 
 /**
- * PATCH autorizar ajuste: el backend debe aplicar el stock al confirmar.
+ * PATCH autorizar ajuste (flujo opcional cuando el backend deja solicitudes pendientes).
  */
 export async function autorizarAjuste(id) {
   const { data } = await api.patch(`/api/inventario/ajustes/${id}/autorizar`, {});

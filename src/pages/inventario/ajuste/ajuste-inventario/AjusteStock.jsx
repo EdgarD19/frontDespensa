@@ -9,7 +9,7 @@ function stockEnteroActual(producto) {
 const inputClass =
   "w-full rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-3 py-2.5 text-sm text-[#f1f1f3] placeholder:text-[#4a4a5a] focus:border-[#22c55e]/50 focus:ring-1 focus:ring-[#22c55e]/25 outline-none disabled:opacity-50";
 
-export default function FormularioAjuste({
+export default function AjusteStock({
   producto,
   formData,
   setFormData,
