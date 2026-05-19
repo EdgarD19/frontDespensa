@@ -11,7 +11,6 @@ const FORM_INICIAL = {
   birthDate: "",
   gender: "",
   phoneNumber: "",
-  observations: "",
 };
 
 export default function ClientesModal({
@@ -41,7 +40,6 @@ export default function ClientesModal({
         gender: clienteEdit.gender ?? "",
         phoneNumber:
           clienteEdit.phoneNumber ?? clienteEdit.phone ?? "",
-        observations: clienteEdit.observations ?? "",
       });
     } else {
       setForm(FORM_INICIAL);
@@ -62,7 +60,6 @@ export default function ClientesModal({
       birthDate: form.birthDate || null,
       gender: form.gender || null,
       phoneNumber: form.phoneNumber?.trim() || null,
-      observations: form.observations?.trim() || null,
     };
     onGuardar(payload);
   }
@@ -164,20 +161,6 @@ export default function ClientesModal({
             onChange={handleChange}
             placeholder="+595 981 000 000"
           />
-
-          <div className="flex flex-col gap-1">
-            <label className="text-white/50 text-xs">Observaciones</label>
-            <textarea
-              name="observations"
-              value={form.observations}
-              onChange={handleChange}
-              rows={3}
-              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2
-                          text-sm text-white placeholder:text-white/20
-                          focus:outline-none focus:border-[var(--accent-green)]
-                          transition-colors resize-none"
-            />
-          </div>
         </div>
 
         <div

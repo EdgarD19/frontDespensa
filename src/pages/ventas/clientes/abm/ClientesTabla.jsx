@@ -1,4 +1,4 @@
-import { Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 
 export default function ClientesTabla({
   clientes = [],
@@ -6,6 +6,7 @@ export default function ClientesTabla({
   search = "",
   onSearch,
   onSeleccionar,
+  onEliminar,
   onNuevo,
   paginacion = { page: 0, totalPages: 0 },
   onPageChange,
@@ -50,6 +51,9 @@ export default function ClientesTabla({
               <th className="px-4 py-3 font-medium">Documento</th>
               <th className="px-4 py-3 font-medium">Telefono</th>
               <th className="px-4 py-3 font-medium">Ciudad</th>
+              {onEliminar && (
+                <th className="px-4 py-3 font-medium w-12" aria-label="Acciones" />
+              )}
             </tr>
           </thead>
 
@@ -58,7 +62,7 @@ export default function ClientesTabla({
             {loading && (
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i} className="border-b border-white/5">
-                  {Array.from({ length: 5 }).map((_, j) => (
+                  {Array.from({ length: onEliminar ? 6 : 5 }).map((_, j) => (
                     <td key={j} className="px-4 py-3">
                       <div className="h-4 bg-white/10 rounded animate-pulse w-3/4" />
                     </td>
@@ -70,7 +74,7 @@ export default function ClientesTabla({
             {/* Estado: sin resultados */}
             {!loading && clientes.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-white/30">
+                <td colSpan={onEliminar ? 6 : 5} className="px-4 py-8 text-center text-white/30">
                   No se encontraron clientes.
                 </td>
               </tr>
@@ -79,7 +83,7 @@ export default function ClientesTabla({
             {/* Filas de datos */}
             {!loading && clientes.map((c) => (
               <tr
-                key={c.id}
+                key={c.id ?? c.idCliente}
                 onClick={() => onSeleccionar(c)}
                 className="border-b border-white/5 hover:bg-white/5
                            cursor-pointer transition-colors"
@@ -89,6 +93,23 @@ export default function ClientesTabla({
                 <td className="px-4 py-3 text-white/70">{c.documentNumber ?? "—"}</td>
                 <td className="px-4 py-3 text-white/70">{c.phone ?? "—"}</td>
                 <td className="px-4 py-3 text-white/70">{c.city ?? "—"}</td>
+                {onEliminar && (
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEliminar(c);
+                      }}
+                      className="p-1.5 rounded text-white/40 hover:text-red-400
+                                 hover:bg-red-500/10 transition-colors"
+                      title="Eliminar cliente"
+                      aria-label="Eliminar cliente"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

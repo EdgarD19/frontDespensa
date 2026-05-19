@@ -1,15 +1,20 @@
-import { Link, useNavigate } from "react-router-dom";
-import { Icon, ShoppingCart, Users } from "lucide-react";
-
+import { Link } from "react-router-dom";
+import { Users, ScanLine } from "lucide-react";
 
 const MODULOS = [
-    {
-        to: "/ventas/clientes",
-        label: "Clientes",
-        descripcion: "Alta, baja y modificacion de clientes",
-        icon: Users
-    },
-]
+  {
+    to: "/ventas/registro",
+    label: "Registro de venta",
+    descripcion: "Ventas por unidad, código de barras y comprobante.",
+    icon: ScanLine,
+  },
+  {
+    to: "/ventas/clientes",
+    label: "Clientes",
+    descripcion: "Alta, baja y modificacion de clientes",
+    icon: Users,
+  },
+];
 
 const cardClass =
   "group flex flex-col items-stretch rounded-[25px] border border-[#30363d]/50 bg-[#252525] shadow-[inset_2px_5px_10px_rgb(5,5,5)] p-6 transition-all duration-300 hover:border-[var(--accent-green)]/40 hover:shadow-lg hover:scale-[1.02] focus-within:ring-2 focus-within:ring-[var(--accent-green)]/50 focus-within:ring-offset-2 focus-within:ring-offset-[var(--bg-main)]";

@@ -14,6 +14,7 @@ import AjusteInventario from './pages/inventario/ajuste/AjusteInventario'
 
 import VentasHub from './pages/ventas/VentasHub'
 import ClientesABM from './pages/ventas/clientes/abm/ClientesABM'
+import RegistroVenta from './pages/ventas/registro-venta/RegistroVenta'
 
 import Compras from './pages/compras/Compras'
 
@@ -28,6 +29,7 @@ export default function App() {
 
           <Route path="ventas"> 
             <Route index element={<VentasHub />} />
+            <Route path="registro" element={<RegistroVenta />} />
             <Route path="clientes" element={<ClientesABM />} />
           </Route>
     

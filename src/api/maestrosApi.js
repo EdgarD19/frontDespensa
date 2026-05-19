@@ -1,7 +1,7 @@
 import { api } from "./client";
 
 const PATHS = {
-  categorias: ["/api/maestros/categorias", "/api/categorias", "/api/catalogo/categorias"],
+  categorias: ["/api/v1/categories", "/api/maestros/categorias", "/api/categorias", "/api/catalogo/categorias"],
   unidades: ["/api/maestros/unidades", "/api/unidades-medida", "/api/unidad-medida"],
   proveedores: ["/api/maestros/proveedores", "/api/proveedores"],
 };

@@ -2,7 +2,13 @@
 import { useState, useEffect, useCallback } from "react"
 import ClientesTabla from "./ClientesTabla"
 import ClientesModal from "./ClientesModal"
-import { getClientes, createCliente } from "../../../../api/clientesApi"
+import {
+    getClientes,
+    createCliente,
+    updateCliente,
+    deleteCliente,
+    getClienteId,
+} from "../../../../api/clientesApi"
 import { apiErrorMessage } from "../../../../api/errors"
 
 const DEBOUNCE_MS = 400;
@@ -94,45 +100,86 @@ export default function ClientesABM(){
         setClienteEdit(null);
     }
 
-    // guardar (alta por ahora - edicion se agrega cuando el backend lo exponga)
     async function handleGuardar(formData) {
         setGuardando(true);
         setError(null);
 
+        const id = getClienteId(clienteEdit);
+
         try {
-            await createCliente(formData);
-            // alta exitosa: cerrar modal y recargar la lista
+            if (id != null) {
+                await updateCliente(id, formData);
+            } else {
+                await createCliente(formData);
+            }
             handleCerrarModal();
             await cargarClientes();
-        } catch (err){
+        } catch (err) {
             console.error("Error al guardar cliente:", err);
-            setError("No se pudo guardar el cliente. Revisa los datos e intenta de nuevo");
+            const detalle = apiErrorMessage(err);
+            setError(
+                detalle && detalle !== "Error de red"
+                    ? `No se pudo guardar el cliente: ${detalle}`
+                    : "No se pudo guardar el cliente. Revisá los datos e intentá de nuevo.",
+            );
         } finally {
             setGuardando(false);
         }
     }
 
+    async function handleEliminar(cliente) {
+        const id = getClienteId(cliente);
+        if (id == null) return;
+
+        const nombre =
+            [cliente.name ?? cliente.firstName, cliente.lastName]
+                .filter(Boolean)
+                .join(" ")
+                .trim() || `cliente #${id}`;
+
+        if (
+            !window.confirm(
+                `¿Eliminar a ${nombre}? Esta acción no se puede deshacer.`,
+            )
+        ) {
+            return;
+        }
+
+        setError(null);
+        try {
+            await deleteCliente(id);
+            await cargarClientes();
+        } catch (err) {
+            console.error("Error al eliminar cliente:", err);
+            const detalle = apiErrorMessage(err);
+            setError(
+                detalle && detalle !== "Error de red"
+                    ? `No se pudo eliminar el cliente: ${detalle}`
+                    : "No se pudo eliminar el cliente.",
+            );
+        }
+    }
+
     return (
         <div>
-            <h1 className="text-2xl font-semibold text-white">Gesto de Clientes</h1>
+            <h1 className="text-2xl font-semibold text-white mb-4">Gestión de Clientes</h1>
 
-            {/*Banner en caso de error*/}
             {error && (
-                <div className="bg-red-500/10 border border-red-500/30 text-red-400 
-                    text-sm rounded-lg py-3">
+                <div className="mb-4 px-4 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg py-3">
                     {error}
-                </div> 
+                </div>
             )}
 
             <ClientesTabla
-                clientes = {clientes} /* array de ClientResponse a mostrar*/
-                loading = {loading} /* boolean, muestra skeleton miesntras carga */
-                search = {search} /* string actual del buscador (valor controlado) */
-                onSearch = {setSearch} /* fin(valor) cuando el usuario escribe en el buscador */
-                onSeleccionar = {handleSeleccionar} /* fn(cliente) cuando el usuario hace click en una fila */
-                onNuevo = {handleNuevo} /* fn() cuando el usuario hace click en "nuevo cliente"*/
-                paginacion = {{ page, totalPages }} 
-                onPageChange = {setPage} /* nueva pagina */
+                clientes={clientes}
+                loading={loading}
+                search={search}
+                onSearch={setSearch}
+                onSeleccionar={handleSeleccionar}
+                onEliminar={handleEliminar}
+                onNuevo={handleNuevo}
+                paginacion={{ page, totalPages }}
+                onPageChange={setPage}
             />
 
             <ClientesModal

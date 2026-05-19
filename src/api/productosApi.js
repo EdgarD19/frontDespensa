@@ -79,8 +79,8 @@ function toCreateBody(frontend, idCategoria, idUnidad, idProveedor) {
   }
 
   const codigoBarras = String(frontend.codigoBarras || "").replace(/\D/g, "");
-  if (!/^\d{9,13}$/.test(codigoBarras)) {
-    throw new Error("El código de barras debe tener entre 9 y 13 dígitos numéricos.");
+  if (!/^\d{8,13}$/.test(codigoBarras)) {
+    throw new Error("El código de barras debe tener entre 8 y 13 dígitos numéricos.");
   }
   const codigoProducto = codigoBarras;
 
@@ -123,7 +123,7 @@ function toPatchPrecioBody(producto) {
  */
 export async function getProductos(params = {}) {
   const searchTrim = params.search != null ? String(params.search).trim() : "";
-  const { data } = await api.get("/api/products", {
+  const { data } = await api.get("/api/v1/products", {
     params: {
       page: params.page ?? 0,
       pageSize: params.pageSize ?? 20,      // default del backend: 20
@@ -145,7 +145,7 @@ export async function getProductos(params = {}) {
  * GET /api/products/{id}
  */
 export async function getProductoById(id) {
-  const { data } = await api.get(`/api/products/${id}`);
+  const { data } = await api.get(`/api/v1/products/${id}`);
   return toFrontendProduct(data);
 }
 
@@ -155,7 +155,7 @@ export async function getProductoById(id) {
  */
 export async function getProductoByCodigo(codigo) {
   try {
-    const { data } = await api.get(`/api/products/barcode/${encodeURIComponent(codigo.trim())}`);
+    const { data } = await api.get(`/api/v1/products/barcode/${encodeURIComponent(codigo.trim())}`);
     return toFrontendProduct(data);
   } catch (err) {
     if (err?.response?.status === 404) return null;
@@ -169,7 +169,7 @@ export async function getProductoByCodigo(codigo) {
  */
 export async function createProducto(producto, idCategoria, idUnidad, idProveedor) {
   const body = toCreateBody(producto, idCategoria, idUnidad, idProveedor);
-  await api.post("/api/products", body);
+  await api.post("/api/v1/products", body);
 }
 
 /**
@@ -178,7 +178,7 @@ export async function createProducto(producto, idCategoria, idUnidad, idProveedo
  */
 export async function updateProducto(id, producto) {
   const body = toPatchPrecioBody(producto);
-  const { data } = await api.patch(`/api/products/${id}`, body);
+  const { data } = await api.patch(`/api/v1/products/${id}`, body);
   return toFrontendProduct(data);
 }
 
@@ -186,14 +186,14 @@ export async function updateProducto(id, producto) {
  * PATCH /api/products/{id} — variante directa con valor numérico.
  */
 export async function updateProductoPrecio(id, precio) {
-  const { data } = await api.patch(`/api/products/${id}`, { precio });
+  const { data } = await api.patch(`/api/v1/products/${id}`, { precio });
   return toFrontendProduct(data);
 }
 
 /**
- * DELETE /api/products/{id}
+ * POST /api/v1/products/deactivateProduct/{id}
  * El backend responde 204 sin cuerpo.
  */
 export async function deleteProducto(id) {
-  await api.delete(`/api/products/${id}`);
+  await api.post(`/api/v1/products/deactivateProduct/${id}`);
 }
