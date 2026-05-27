@@ -1,9 +1,9 @@
 import { api } from "./client";
 
 const PATHS = {
-  categorias: ["/api/v1/categories", "/api/maestros/categorias", "/api/categorias", "/api/catalogo/categorias"],
-  unidades: ["/api/maestros/unidades", "/api/unidades-medida", "/api/unidad-medida"],
-  proveedores: ["/api/maestros/proveedores", "/api/proveedores"],
+  categorias: ["/api/v1/categories"],
+  unidades: ["/api/v1/unidades-medida"],
+  proveedores: ["/api/v1/proveedores"],
 };
 
 function parseMaestrosEnv() {
@@ -109,10 +109,7 @@ export async function getProveedores() {
 }
 
 const SUBCATEGORIA_PATH_TEMPLATES = [
-  (id) => `/api/maestros/categorias/${id}/subcategorias`,
-  (id) => `/api/categorias/${id}/subcategorias`,
-  (id) => `/api/subcategorias?categoriaId=${id}`,
-  (id) => `/api/subcategorias?categoria=${id}`,
+  (id) => `/api/v1/categories/${id}/subcategorias`,
 ];
 
 export async function getSubcategorias(idCategoria) {
