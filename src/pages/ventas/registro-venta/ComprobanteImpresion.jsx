@@ -1,4 +1,4 @@
-import { formatMoney, labelCliente } from "./utils";
+import { formatMoney, labelCliente, esProductoPesable } from "./utils";
 
 /** Contenido imprimible (window.print); estilos en index.css `.print-invoice`. */
 export default function ComprobanteImpresion({ datos }) {
@@ -38,7 +38,7 @@ export default function ComprobanteImpresion({ datos }) {
             {lineas.map((l) => (
               <tr key={l.productoId} className="border-b border-gray-300">
                 <td className="py-1 pr-2">{l.nombre}</td>
-                <td className="text-right tabular-nums">{l.cantidad}</td>
+                <td className="text-right tabular-nums">{l.cantidad} {esProductoPesable(l) ? "kg" : "u."}</td>
                 <td className="text-right tabular-nums">{formatMoney(l.precioUnitario * l.cantidad)}</td>
               </tr>
             ))}

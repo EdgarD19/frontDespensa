@@ -13,6 +13,7 @@ import ComprobanteImpresion from "./ComprobanteImpresion";
 import {
   parsePrecioVenta,
   parseStockDisponible,
+  esProductoPesable,
   labelCliente,
   labelFormaPago,
   numeroFacturaPreview,
@@ -24,13 +25,15 @@ import {
 function construirLineaCarrito(producto) {
   const stock = parseStockDisponible(producto);
   const precioUnitario = parsePrecioVenta(producto);
+  const pesable = esProductoPesable(producto);
   return {
     productoId: producto.id,
     nombre: producto.nombre || "—",
     codigoBarras: producto.codigoBarras || "",
     precioUnitario,
-    cantidad: 1,
+    cantidad: pesable ? 1.0 : 1,
     stockDisponible: stock,
+    productoPesable: producto.productoPesable,
   };
 }
 
@@ -103,27 +106,32 @@ export default function RegistroVenta() {
     );
   }, [productos, search, categoria]);
 
-  const total = useMemo(() => {
+  const subtotal = useMemo(() => {
     return carrito.reduce((acc, l) => acc + l.precioUnitario * l.cantidad, 0);
   }, [carrito]);
+  const iva = Math.round(subtotal * 0.1);
+  const totalConIva = subtotal + iva;
 
   const esEfectivo = formaPago === FORMA_PAGO_EFECTIVO;
   const montoIngresado = parseFloat(String(montoPagado).replace(",", "."));
-  const montoNum = esEfectivo ? montoIngresado : total;
+  const montoNum = esEfectivo ? montoIngresado : totalConIva;
   const montoOkEfectivo = Number.isFinite(montoIngresado) && montoIngresado >= 0;
   const cambio =
-    esEfectivo && montoOkEfectivo ? Math.max(0, montoIngresado - total) : 0;
+    esEfectivo && montoOkEfectivo ? Math.max(0, montoIngresado - totalConIva) : 0;
 
   const handleAgregarProducto = useCallback(
     (producto, cantidad) => {
       const stock = parseStockDisponible(producto);
       const precio = parsePrecioVenta(producto);
+      const pesable = esProductoPesable(producto);
       if (stock <= 0) {
         setErrorGlobal("No se puede agregar un producto sin stock.");
         return;
       }
-      const q = Math.min(Math.max(1, Math.trunc(Number(cantidad))), stock);
-      if (!Number.isFinite(q) || q < 1) return;
+      const q = pesable
+        ? Math.min(Math.max(0.001, parseFloat(String(cantidad).replace(",", "."))), stock)
+        : Math.min(Math.max(1, Math.trunc(Number(cantidad))), stock);
+      if (!Number.isFinite(q) || q <= 0) return;
       setErrorGlobal(null);
       setCarrito((prev) => {
         const idx = prev.findIndex((l) => l.productoId === producto.id);
@@ -144,19 +152,30 @@ export default function RegistroVenta() {
   );
 
   const handleCambiarCantidad = useCallback((productoId, raw) => {
-    const v = Math.trunc(Number(raw));
     setCarrito((prev) =>
       prev.map((line) => {
         if (line.productoId !== productoId) return line;
         const max = line.stockDisponible;
-        const q = Math.min(Math.max(1, v), max);
-        return { ...line, cantidad: q };
+        const pesable = esProductoPesable(line);
+        const v = pesable
+          ? parseFloat(String(raw).replace(",", "."))
+          : Math.trunc(Number(raw));
+        const min = pesable ? 0.001 : 1;
+        const q = Math.min(Math.max(min, v), max);
+        return { ...line, cantidad: Number.isFinite(q) ? q : line.cantidad };
       })
     );
   }, []);
 
   const handleEliminar = useCallback((productoId) => {
     setCarrito((prev) => prev.filter((l) => l.productoId !== productoId));
+  }, []);
+
+  const handleCancelarTodo = useCallback(() => {
+    setCarrito([]);
+    setCliente(null);
+    setMontoPagado("");
+    setErrorGlobal(null);
   }, []);
 
   const handleSearchKeyDown = useCallback(
@@ -183,13 +202,13 @@ export default function RegistroVenta() {
 
   let mensajeBloqueo = null;
   if (carrito.length === 0) mensajeBloqueo = "Agregá productos al carrito para continuar.";
-  else if (esEfectivo && (!montoOkEfectivo || montoIngresado < total))
+  else if (esEfectivo && (!montoOkEfectivo || montoIngresado < totalConIva))
     mensajeBloqueo = "El monto recibido debe cubrir el total de la venta.";
 
   const puedeConfirmar =
     carrito.length > 0 &&
-    total > 0 &&
-    (esEfectivo ? montoOkEfectivo && montoIngresado >= total : true);
+    totalConIva > 0 &&
+    (esEfectivo ? montoOkEfectivo && montoIngresado >= totalConIva : true);
 
   const handleConfirmar = async () => {
     if (!puedeConfirmar) return;
@@ -207,7 +226,7 @@ export default function RegistroVenta() {
         precioUnitario: l.precioUnitario,
         subtotal: l.precioUnitario * l.cantidad,
       })),
-      total,
+      total: subtotal,
       montoPagado: montoNum,
       cambio,
       formaPago,
@@ -231,7 +250,7 @@ export default function RegistroVenta() {
         numero: numFactura,
         cliente: clienteSnap,
         lineas: snapshotLineas,
-        total,
+        total: totalConIva,
         montoPagado: montoNum,
         cambio,
         tipo: "CONTADO",
@@ -292,7 +311,10 @@ export default function RegistroVenta() {
             lineas={carrito}
             onCambiarCantidad={handleCambiarCantidad}
             onEliminar={handleEliminar}
-            total={total}
+            onCancelarTodo={handleCancelarTodo}
+            subtotal={subtotal}
+            iva={iva}
+            total={totalConIva}
           />
           <ClienteOpcional
             cliente={cliente}
@@ -301,7 +323,7 @@ export default function RegistroVenta() {
           />
           <ResumenFactura fechaISO={hoyISO()} numeroPreview={numeroPreview} />
           <PagoVenta
-            total={total}
+            total={totalConIva}
             formaPago={formaPago}
             onFormaPagoChange={setFormaPago}
             montoPagado={montoPagado}

@@ -1,20 +1,30 @@
-/** Precio de venta numérico (producto por unidad o línea de carrito). */
+/** True si el producto se vende por peso (kg). */
+export function esProductoPesable(producto) {
+  return producto?.productoPesable === "si";
+}
+
+/** Precio de venta numérico (producto por unidad/línea). Para pesables, es precio por kg. */
 export function parsePrecioVenta(producto) {
   if (producto?.precioUnitario != null) {
     const u = Number(producto.precioUnitario);
     return Number.isFinite(u) && u >= 0 ? u : 0;
+  }
+  if (esProductoPesable(producto) && producto.precioPorKg) {
+    const n = parseFloat(String(producto.precioPorKg).replace(",", "."));
+    if (Number.isFinite(n) && n >= 0) return n;
   }
   const raw = producto?.precioVenta ?? producto?.precio ?? "";
   const n = parseFloat(String(raw).replace(",", "."));
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
-/** Stock entero disponible. Vacío o inválido → 0. */
+/** Stock disponible (entero para unidad, decimal para peso). */
 export function parseStockDisponible(producto) {
   const raw = producto?.stockDisponible ?? producto?.stockActual;
   if (raw === "" || raw === undefined || raw === null) return 0;
   const n = parseFloat(String(raw).replace(",", "."));
   if (!Number.isFinite(n)) return 0;
+  if (esProductoPesable(producto)) return Math.max(0, n);
   return Math.max(0, Math.trunc(n));
 }
 

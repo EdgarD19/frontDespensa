@@ -39,11 +39,13 @@ function toFrontendProduct(backend) {
     idSubcategoria: "",
     subcategoria: "",
 
-    // El backend no devuelve producto_pesable → default "no"
-    productoPesable: "no",
+    productoPesable: backend.productoPesable === true ? "si" : "no",
+
+    precioPorKg: backend.precioPorKg ?? "",
 
     idUnidad: "",
     unidadMedida: "",
+    unitAbbreviation: backend.unitAbbreviation ?? "",
 
     // El backend no devuelve precio_compra ni precios por kg
     precioCompra: "",
@@ -51,9 +53,8 @@ function toFrontendProduct(backend) {
     precioCompraKg: "",
     precioVentaKg: "",
 
-    // El backend no devuelve stock_minimo ni stock_actual en la respuesta
     stockMinimo: "",
-    stockActual: "",
+    stockActual: backend.stockActual ?? "",
 
     idProveedor: "",
     proveedor: "",
