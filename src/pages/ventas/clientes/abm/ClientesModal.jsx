@@ -82,6 +82,7 @@ export default function ClientesModal({
     if (form.tipoCliente === "JURIDICA") {
       payload.razonSocial = form.razonSocial.trim();
       payload.ruc = form.ruc?.trim() || null;
+      payload.documentNumber = form.ruc?.trim() || null;
       payload.descripcionEmpresa = form.descripcionEmpresa?.trim() || null;
       payload.contactoNombre = form.contactoNombre?.trim() || null;
       payload.contactoCelular = form.contactoCelular?.trim() || null;
@@ -158,20 +159,12 @@ export default function ClientesModal({
                 value={form.razonSocial}
                 onChange={handleChange}
               />
-              <div className="grid grid-cols-2 gap-3">
-                <Field
-                  label="RUC"
-                  name="ruc"
-                  value={form.ruc}
-                  onChange={handleChange}
-                />
-                <Field
-                  label="Documento"
-                  name="documentNumber"
-                  value={form.documentNumber}
-                  onChange={handleChange}
-                />
-              </div>
+              <Field
+                label="RUC / Documento"
+                name="ruc"
+                value={form.ruc}
+                onChange={handleChange}
+              />
               <Field
                 label="Descripción de la empresa"
                 name="descripcionEmpresa"

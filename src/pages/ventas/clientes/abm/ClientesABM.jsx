@@ -5,7 +5,6 @@ import {
     getClientes,
     createCliente,
     updateCliente,
-    deleteCliente,
     toggleActivoCliente,
     getClienteId,
 } from "../../../../api/clientesApi"
@@ -131,31 +130,6 @@ export default function ClientesABM() {
         }
     }
 
-    async function handleEliminar(cliente) {
-        const id = getClienteId(cliente);
-        if (id == null) return;
-
-        const nombre = cliente.razonSocial ||
-            [cliente.name ?? cliente.firstName, cliente.lastName].filter(Boolean).join(" ").trim() ||
-            `cliente #${id}`;
-
-        if (!window.confirm(`¿Eliminar a ${nombre}? Esta acción no se puede deshacer.`)) return;
-
-        setError(null);
-        try {
-            await deleteCliente(id);
-            await cargarClientes();
-        } catch (err) {
-            console.error("Error al eliminar cliente:", err);
-            const detalle = apiErrorMessage(err);
-            setError(
-                detalle && detalle !== "Error de red"
-                    ? `No se pudo eliminar el cliente: ${detalle}`
-                    : "No se pudo eliminar el cliente.",
-            );
-        }
-    }
-
     return (
         <div>
             <h1 className="text-2xl font-semibold text-white mb-4">Gestión de Clientes</h1>
@@ -172,7 +146,6 @@ export default function ClientesABM() {
                 search={search}
                 onSearch={setSearch}
                 onSeleccionar={handleSeleccionar}
-                onEliminar={handleEliminar}
                 onToggleActivo={handleToggleActivo}
                 onNuevo={handleNuevo}
                 paginacion={{ page, totalPages }}

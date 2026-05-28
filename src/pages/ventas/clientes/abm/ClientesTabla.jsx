@@ -1,4 +1,4 @@
-import { Search, ChevronLeft, ChevronRight, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, ToggleLeft, ToggleRight } from "lucide-react";
 
 export default function ClientesTabla({
   clientes = [],
@@ -6,7 +6,6 @@ export default function ClientesTabla({
   search = "",
   onSearch,
   onSeleccionar,
-  onEliminar,
   onToggleActivo,
   onNuevo,
   paginacion = { page: 0, totalPages: 0 },
@@ -128,21 +127,6 @@ export default function ClientesTabla({
                       >
                         {activo ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
                       </button>
-                      {onEliminar && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onEliminar(c);
-                          }}
-                          className="p-1.5 rounded text-white/40 hover:text-red-400
-                                     hover:bg-red-500/10 transition-colors"
-                          title="Eliminar cliente"
-                          aria-label="Eliminar cliente"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      )}
                     </div>
                   </td>
                 </tr>
