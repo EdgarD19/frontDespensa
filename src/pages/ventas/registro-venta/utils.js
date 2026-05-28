@@ -41,6 +41,7 @@ export function labelFormaPago(codigo) {
 
 export function labelCliente(c) {
   if (!c) return "Sin nombre";
+  if (c.tipoCliente === "JURIDICA" && c.razonSocial) return c.razonSocial;
   const fn = c.firstName ?? c.name ?? c.first_name ?? "";
   const ln = c.lastName ?? c.last_name ?? "";
   const nombre = `${fn} ${ln}`.trim();

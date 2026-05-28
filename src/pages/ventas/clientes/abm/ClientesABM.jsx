@@ -1,4 +1,3 @@
- 
 import { useState, useEffect, useCallback } from "react"
 import ClientesTabla from "./ClientesTabla"
 import ClientesModal from "./ClientesModal"
@@ -7,43 +6,33 @@ import {
     createCliente,
     updateCliente,
     deleteCliente,
+    toggleActivoCliente,
     getClienteId,
 } from "../../../../api/clientesApi"
 import { apiErrorMessage } from "../../../../api/errors"
 
 const DEBOUNCE_MS = 400;
- 
-export default function ClientesABM(){
-    // estado principal
-    const [clientes, setClientes] = useState([]); // array de ClientResponse
-    const [loading, setLoading] = useState(false); // boolean para el skeleton de la tabla
-    const [error, setError] = useState(null); // String de error para mostrar feedback
-    
-    // estado del buscador
-    const [search, setSearch] = useState("");
-    // search con debounce = el efecto de carga solo reacciona a este
-    const [searchDebounced, setSearchDebounced] = useState("");
 
-    // paginacion
+export default function ClientesABM() {
+    const [clientes, setClientes] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [search, setSearch] = useState("");
+    const [searchDebounced, setSearchDebounced] = useState("");
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
-
-    // modal 
     const [modalAbierto, setModalAbierto] = useState(false);
     const [clienteEdit, setClienteEdit] = useState(null);
     const [guardando, setGuardando] = useState(false);
 
-    // debounce del buscador
     useEffect(() => {
         const timer = setTimeout(() => {
             setSearchDebounced(search);
-            setPage(0); // al buscar, volver a la pagina
+            setPage(0);
         }, DEBOUNCE_MS);
-
-        return () => clearTimeout(timer); // cancelar si el usuario sigue escribiendo
+        return () => clearTimeout(timer);
     }, [search]);
 
-    // carga de clientes (mismos params que documenta clientesApi / backend)
     const cargarClientes = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -75,27 +64,21 @@ export default function ClientesABM(){
         }
     }, [searchDebounced, page]);
 
-    // disparar la carga cuando cambien busqueda o pagina
     useEffect(() => {
         cargarClientes();
     }, [cargarClientes]);
 
-    // HANDLERS
-
-    // abrir modal para alta de nuevo cliente
     function handleNuevo() {
-        setClienteEdit(null); // null = modo alta
+        setClienteEdit(null);
         setModalAbierto(true);
     }
 
-    // abrir modal para editar un cliente existente
     function handleSeleccionar(cliente) {
         setClienteEdit(cliente);
         setModalAbierto(true);
     }
 
-    // cerrar modal
-    function handleCerrarModal(){
+    function handleCerrarModal() {
         setModalAbierto(false);
         setClienteEdit(null);
     }
@@ -127,23 +110,36 @@ export default function ClientesABM(){
         }
     }
 
+    async function handleToggleActivo(cliente) {
+        const id = getClienteId(cliente);
+        if (id == null) return;
+
+        const nombre = cliente.razonSocial ||
+            [cliente.name ?? cliente.firstName, cliente.lastName].filter(Boolean).join(" ").trim() ||
+            `cliente #${id}`;
+        const nuevoEstado = cliente.activo === false ? "activar" : "inactivar";
+
+        if (!window.confirm(`¿${nuevoEstado} a ${nombre}?`)) return;
+
+        setError(null);
+        try {
+            await toggleActivoCliente(id);
+            await cargarClientes();
+        } catch (err) {
+            console.error("Error al cambiar estado:", err);
+            setError("No se pudo cambiar el estado del cliente.");
+        }
+    }
+
     async function handleEliminar(cliente) {
         const id = getClienteId(cliente);
         if (id == null) return;
 
-        const nombre =
-            [cliente.name ?? cliente.firstName, cliente.lastName]
-                .filter(Boolean)
-                .join(" ")
-                .trim() || `cliente #${id}`;
+        const nombre = cliente.razonSocial ||
+            [cliente.name ?? cliente.firstName, cliente.lastName].filter(Boolean).join(" ").trim() ||
+            `cliente #${id}`;
 
-        if (
-            !window.confirm(
-                `¿Eliminar a ${nombre}? Esta acción no se puede deshacer.`,
-            )
-        ) {
-            return;
-        }
+        if (!window.confirm(`¿Eliminar a ${nombre}? Esta acción no se puede deshacer.`)) return;
 
         setError(null);
         try {
@@ -177,17 +173,18 @@ export default function ClientesABM(){
                 onSearch={setSearch}
                 onSeleccionar={handleSeleccionar}
                 onEliminar={handleEliminar}
+                onToggleActivo={handleToggleActivo}
                 onNuevo={handleNuevo}
                 paginacion={{ page, totalPages }}
                 onPageChange={setPage}
             />
 
             <ClientesModal
-                abierto = {modalAbierto}
-                clienteEdit = {clienteEdit}
-                guardando = {guardando}
-                onGuardar = {handleGuardar}
-                onCerrar = {handleCerrarModal}
+                abierto={modalAbierto}
+                clienteEdit={clienteEdit}
+                guardando={guardando}
+                onGuardar={handleGuardar}
+                onCerrar={handleCerrarModal}
             />
         </div>
     );

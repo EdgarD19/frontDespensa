@@ -1,17 +1,7 @@
 import { api } from "./client";
 
-/*
-endpoints del backend (context-path /DespensaProyect)
-    GET     /api/v1/client     -> listado paginado con búsqueda
-    GET     /api/v1/client/:id -> detalle por id
-    POST    /api/v1/client     -> alta de cliente
-    PUT     /api/v1/client/:id -> actualización
-    DELETE  /api/v1/client/:id -> baja
-*/
-
 const BASE = "/api/v1/client";
 
-/** ID del cliente en respuestas del API (campo JSON `id`). */
 export function getClienteId(cliente) {
     const raw = cliente?.id ?? cliente?.idCliente;
     if (raw == null || raw === "") return null;
@@ -27,8 +17,7 @@ export function getClientes({
     sortDir = "asc",
 } = {}) {
     const searchTrim = search != null ? String(search).trim() : "";
-    const dir =
-        String(sortDir || "ASC").toUpperCase() === "DESC" ? "DESC" : "ASC";
+    const dir = String(sortDir || "ASC").toUpperCase() === "DESC" ? "DESC" : "ASC";
     return api.get(BASE, {
         params: {
             page,
@@ -76,21 +65,27 @@ function birthDateToIso8601(value) {
 
 function buildClientBody(clienteData) {
     const {
-        firstName,
-        lastName,
-        documentType,
-        documentNumber,
-        birthDate,
-        gender,
-        phoneNumber,
+        firstName, lastName, tipoCliente, razonSocial, ruc, descripcionEmpresa,
+        contactoNombre, contactoCelular,
+        documentType, documentNumber, birthDate, gender, phoneNumber, celular,
+        email, direccion, activo, observaciones,
     } = clienteData ?? {};
 
     const body = {
         firstName: String(firstName ?? "").trim(),
         lastName: String(lastName ?? "").trim(),
+        tipoCliente: tipoCliente || "FISICA",
         id_ciudad: resolveIdCiudad(),
         nationality_id_pais: resolveNationalityIdPais(),
     };
+
+    if (tipoCliente === "JURIDICA") {
+        body.razonSocial = String(razonSocial ?? "").trim();
+        body.ruc = String(ruc ?? "").trim() || null;
+        body.descripcionEmpresa = String(descripcionEmpresa ?? "").trim() || null;
+        body.contactoNombre = String(contactoNombre ?? "").trim() || null;
+        body.contactoCelular = String(contactoCelular ?? "").trim() || null;
+    }
 
     const iso = birthDateToIso8601(birthDate);
     if (iso) body.birthDate = iso;
@@ -103,6 +98,21 @@ function buildClientBody(clienteData) {
     if (phoneNumber != null && String(phoneNumber).trim() !== "") {
         body.phoneNumber = String(phoneNumber).trim();
     }
+    if (celular != null && String(celular).trim() !== "") {
+        body.celular = String(celular).trim();
+    }
+    if (email != null && String(email).trim() !== "") {
+        body.email = String(email).trim();
+    }
+    if (direccion != null && String(direccion).trim() !== "") {
+        body.direccion = String(direccion).trim();
+    }
+    if (observaciones != null && String(observaciones).trim() !== "") {
+        body.observaciones = String(observaciones).trim();
+    }
+    if (activo != null) {
+        body.activo = activo;
+    }
 
     return body;
 }
@@ -113,6 +123,10 @@ export function createCliente(clienteData) {
 
 export function updateCliente(id, clienteData) {
     return api.put(`${BASE}/${id}`, buildClientBody(clienteData));
+}
+
+export function toggleActivoCliente(id) {
+    return api.patch(`${BASE}/${id}/toggle-activo`);
 }
 
 export function deleteCliente(id) {

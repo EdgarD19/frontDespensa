@@ -1,4 +1,4 @@
-import { Search, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
 
 export default function ClientesTabla({
   clientes = [],
@@ -7,6 +7,7 @@ export default function ClientesTabla({
   onSearch,
   onSeleccionar,
   onEliminar,
+  onToggleActivo,
   onNuevo,
   paginacion = { page: 0, totalPages: 0 },
   onPageChange,
@@ -14,23 +15,21 @@ export default function ClientesTabla({
   return (
     <div className="flex flex-col gap-4">
       
-      {/* Barra superior: buscador + botón */}
+      {/* Barra superior */}
       <div className="flex items-center gap-3 py-3">
-        {/*Buscador*/}
         <div className="relative flex-1">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40"/>
           <input 
             type="text" 
             value={search}
             onChange={(e) => onSearch(e.target.value)}
-            placeholder="Buscar por nombre, apellido o C.I"
+            placeholder="Buscar por nombre, apellido, razón social, RUC o documento"
             className="w-full bg-white/5 border border-white/10 rounded-lg
                       pl-9 pr-4 py-2 text-sm text-white placeholder:text-white/30
                       focus:outline-none focus:border-[var(--accent-green)] transition-colors"
           />
         </div>
 
-        {/*Boton nuevo cliente*/}
         <button
           onClick={onNuevo}
           className="flex items-center gap-2 bg-[var(--accent-green)] hover:opacity-90
@@ -42,27 +41,23 @@ export default function ClientesTabla({
       </div>
       
       {/* Tabla */}
-      <div className="bg-[var(--bg-card)] border border-white/5 rounded-xl overflow-hidden ">
+      <div className="bg-[var(--bg-card)] border border-white/5 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/10 text-white/40 text-left">
-              <th className="px-4 py-3 font-medium">Nombre</th>
-              <th className="px-4 py-3 font-medium">Apellido</th>
+              <th className="px-4 py-3 font-medium">Nombre / Razón Social</th>
               <th className="px-4 py-3 font-medium">Documento</th>
-              <th className="px-4 py-3 font-medium">Telefono</th>
-              <th className="px-4 py-3 font-medium">Ciudad</th>
-              {onEliminar && (
-                <th className="px-4 py-3 font-medium w-12" aria-label="Acciones" />
-              )}
+              <th className="px-4 py-3 font-medium">Tipo</th>
+              <th className="px-4 py-3 font-medium">Estado</th>
+              <th className="px-4 py-3 font-medium w-20" aria-label="Acciones" />
             </tr>
           </thead>
 
           <tbody>
-            {/* Estado: cargando — muestra filas skeleton */}
             {loading && (
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i} className="border-b border-white/5">
-                  {Array.from({ length: onEliminar ? 6 : 5 }).map((_, j) => (
+                  {Array.from({ length: 5 }).map((_, j) => (
                     <td key={j} className="px-4 py-3">
                       <div className="h-4 bg-white/10 rounded animate-pulse w-3/4" />
                     </td>
@@ -71,47 +66,88 @@ export default function ClientesTabla({
               ))
             )}
 
-            {/* Estado: sin resultados */}
             {!loading && clientes.length === 0 && (
               <tr>
-                <td colSpan={onEliminar ? 6 : 5} className="px-4 py-8 text-center text-white/30">
+                <td colSpan={5} className="px-4 py-8 text-center text-white/30">
                   No se encontraron clientes.
                 </td>
               </tr>
             )}
 
-            {/* Filas de datos */}
-            {!loading && clientes.map((c) => (
-              <tr
-                key={c.id ?? c.idCliente}
-                onClick={() => onSeleccionar(c)}
-                className="border-b border-white/5 hover:bg-white/5
-                           cursor-pointer transition-colors"
-              >
-                <td className="px-4 py-3 text-white">{c.name ?? "—"}</td>
-                <td className="px-4 py-3 text-white/70">{c.lastName ?? "—"}</td>
-                <td className="px-4 py-3 text-white/70">{c.documentNumber ?? "—"}</td>
-                <td className="px-4 py-3 text-white/70">{c.phone ?? "—"}</td>
-                <td className="px-4 py-3 text-white/70">{c.city ?? "—"}</td>
-                {onEliminar && (
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEliminar(c);
-                      }}
-                      className="p-1.5 rounded text-white/40 hover:text-red-400
-                                 hover:bg-red-500/10 transition-colors"
-                      title="Eliminar cliente"
-                      aria-label="Eliminar cliente"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+            {!loading && clientes.map((c) => {
+              const esJuridica = c.tipoCliente === "JURIDICA";
+              const nombre = esJuridica
+                ? (c.razonSocial || "—")
+                : ([c.name ?? c.firstName, c.lastName].filter(Boolean).join(" ") || "—");
+              const doc = c.documentNumber || "—";
+              const activo = c.activo !== false;
+
+              return (
+                <tr
+                  key={c.id ?? c.idCliente}
+                  onClick={() => onSeleccionar(c)}
+                  className={`border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors ${
+                    !activo ? "opacity-60" : ""
+                  }`}
+                >
+                  <td className="px-4 py-3 text-white">{nombre}</td>
+                  <td className="px-4 py-3 text-white/70">{doc}</td>
+                  <td className="px-4 py-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      esJuridica
+                        ? "bg-blue-500/10 text-blue-400"
+                        : "bg-green-500/10 text-green-400"
+                    }`}>
+                      {esJuridica ? "Jurídica" : "Física"}
+                    </span>
                   </td>
-                )}
-              </tr>
-            ))}
+                  <td className="px-4 py-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      activo
+                        ? "bg-green-500/10 text-green-400"
+                        : "bg-red-500/10 text-red-400"
+                    }`}>
+                      {activo ? "Activo" : "Inactivo"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleActivo?.(c);
+                        }}
+                        className={`p-1.5 rounded transition-colors ${
+                          activo
+                            ? "text-green-400 hover:bg-green-500/10"
+                            : "text-white/40 hover:text-green-400 hover:bg-green-500/10"
+                        }`}
+                        title={activo ? "Inactivar cliente" : "Activar cliente"}
+                        aria-label={activo ? "Inactivar cliente" : "Activar cliente"}
+                      >
+                        {activo ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+                      </button>
+                      {onEliminar && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEliminar(c);
+                          }}
+                          className="p-1.5 rounded text-white/40 hover:text-red-400
+                                     hover:bg-red-500/10 transition-colors"
+                          title="Eliminar cliente"
+                          aria-label="Eliminar cliente"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -142,7 +178,6 @@ export default function ClientesTabla({
           </button>
         </div>
       )}
-
     </div>
   );
 }
