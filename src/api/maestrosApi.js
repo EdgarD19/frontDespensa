@@ -4,6 +4,9 @@ const PATHS = {
   categorias: ["/api/v1/categories"],
   unidades: ["/api/v1/unidades-medida"],
   proveedores: ["/api/v1/proveedores"],
+  marcas: ["/api/v1/marcas"],
+  rubros: ["/api/v1/rubros"],
+  paises: ["/api/v1/paises"],
 };
 
 function parseMaestrosEnv() {
@@ -106,6 +109,46 @@ export async function getUnidades() {
 
 export async function getProveedores() {
   return loadProveedores();
+}
+
+async function loadMarcas() {
+  const env = parseMaestrosEnv();
+  if (env?.marcas?.length) return normalizeList(env.marcas);
+  return fetchFirst(PATHS.marcas);
+}
+
+export async function getMarcas() {
+  return loadMarcas();
+}
+
+async function loadRubros() {
+  const env = parseMaestrosEnv();
+  if (env?.rubros?.length) return normalizeList(env.rubros);
+  return fetchFirst(PATHS.rubros);
+}
+
+export async function getRubros() {
+  return loadRubros();
+}
+
+async function loadPaises() {
+  const env = parseMaestrosEnv();
+  if (env?.paises?.length) return normalizeList(env.paises);
+  return fetchFirst(PATHS.paises);
+}
+
+export async function getPaises() {
+  return loadPaises();
+}
+
+export async function getCiudades(idPais) {
+  if (!idPais) return [];
+  try {
+    const { data } = await api.get(`/api/v1/paises/${idPais}/ciudades`);
+    return normalizeList(data);
+  } catch {
+    return [];
+  }
 }
 
 const SUBCATEGORIA_PATH_TEMPLATES = [

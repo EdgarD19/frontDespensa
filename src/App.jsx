@@ -16,7 +16,8 @@ import VentasHub from './pages/ventas/VentasHub'
 import ClientesABM from './pages/ventas/clientes/abm/ClientesABM'
 import RegistroVenta from './pages/ventas/registro-venta/RegistroVenta'
 
-import Compras from './pages/compras/Compras'
+import ComprasHub from './pages/compras/ComprasHub'
+import ProveedoresABM from './pages/compras/proveedores/abm/ProveedoresABM'
 
 import Caja from './pages/caja/Caja'
 
@@ -40,7 +41,10 @@ export default function App() {
             <Route path="ajuste" element={<AjusteInventario />} />
           </Route>
 
-          <Route path="compras"    element={<Compras />} />
+          <Route path="compras">
+            <Route index element={<ComprasHub />} />
+            <Route path="proveedores" element={<ProveedoresABM />} />
+          </Route>
 
           <Route path="caja"       element={<Caja />} />
         </Route>

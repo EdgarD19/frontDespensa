@@ -43,17 +43,21 @@ function toFrontendProduct(backend) {
 
     precioPorKg: backend.precioPorKg ?? "",
 
+    idMarca: backend.idMarca ?? "",
+    marca: backend.marcaName ?? "",
+    precioCompra: backend.precioCompra ?? "",
+    stockMinimo: backend.stockMinimo ?? "",
+    contenido: backend.contenido ?? "",
+    activo: backend.activo !== false,
+
     idUnidad: "",
     unidadMedida: "",
     unitAbbreviation: backend.unitAbbreviation ?? "",
 
-    // El backend no devuelve precio_compra ni precios por kg
-    precioCompra: "",
     precioVenta: precioStr,   // "price" = precio de venta
     precioCompraKg: "",
     precioVentaKg: "",
 
-    stockMinimo: "",
     stockActual: backend.stockActual ?? "",
 
     idProveedor: "",
@@ -71,19 +75,16 @@ function toFrontendProduct(backend) {
  *   name, descripcion, precio, id_categoria, id_unidad, id_proveedor,
  *   stock_actual, codigo_producto
  */
-function toCreateBody(frontend, idCategoria, idUnidad, idProveedor) {
-  const isPesable = frontend.productoPesable === "si";
-  const precioStr = isPesable ? frontend.precioVentaKg : frontend.precioVenta;
-  const precio = parseFloat(String(precioStr || "").replace(",", "."));
+function toCreateBody(frontend, idUnidad, idProveedor) {
+  const precio = parseFloat(String(frontend.precioVenta || "").replace(",", "."));
   if (!Number.isFinite(precio) || precio <= 0) {
     throw new Error("El precio de venta debe ser mayor que 0.");
   }
 
   const codigoBarras = String(frontend.codigoBarras || "").replace(/\D/g, "");
-  if (!/^\d{8,13}$/.test(codigoBarras)) {
-    throw new Error("El código de barras debe tener entre 8 y 13 dígitos numéricos.");
-  }
-  const codigoProducto = codigoBarras;
+  const codigoProducto = /^\d{8,13}$/.test(codigoBarras)
+    ? codigoBarras
+    : `GEN-${Date.now()}`;
 
   const descripcion = (frontend.observaciones || "").trim();
 
@@ -91,10 +92,16 @@ function toCreateBody(frontend, idCategoria, idUnidad, idProveedor) {
     name: frontend.nombre?.trim(),
     descripcion: descripcion.length > 0 ? descripcion : null,
     precio,
-    id_categoria: Number(idCategoria),
+    id_subcategoria: Number(frontend.idSubcategoria) || undefined,
     id_unidad: Number(idUnidad),
     id_proveedor: Number(idProveedor),
+    id_marca: Number(frontend.idMarca) || undefined,
+    precio_compra: parseFloat(String(frontend.precioCompra || "0").replace(",", ".")),
     stock_actual: parseStockActual(frontend.stockActual),
+    stock_minimo: parseFloat(String(frontend.stockMinimo || "0").replace(",", ".")),
+    contenido: frontend.contenido?.trim() || undefined,
+    activo: frontend.activo !== false,
+    producto_pesable: frontend.productoPesable === "si",
     codigo_producto: codigoProducto,
   };
 }
@@ -104,14 +111,27 @@ function toCreateBody(frontend, idCategoria, idUnidad, idProveedor) {
  *
  * PatchRequest (Spring) solo acepta: { precio }
  */
-function toPatchPrecioBody(producto) {
-  const isPesable = producto.productoPesable === "si";
-  const precioStr = isPesable ? producto.precioVentaKg : producto.precioVenta;
-  const precio = parseFloat(String(precioStr || "").replace(",", "."));
+function toPatchBody(producto) {
+  const precio = parseFloat(String(producto.precioVenta || "").replace(",", "."));
   if (!Number.isFinite(precio) || precio <= 0) {
     throw new Error("El precio de venta debe ser mayor que 0.");
   }
-  return { precio };
+  return {
+    nombre: producto.nombre?.trim(),
+    precio,
+    precio_compra: parseFloat(String(producto.precioCompra || "0").replace(",", ".")),
+    stock_actual: parseStockActual(producto.stockActual),
+    stock_minimo: parseFloat(String(producto.stockMinimo || "0").replace(",", ".")),
+    codigo_producto: String(producto.codigoBarras || "").replace(/\D/g, "") || undefined,
+    id_subcategoria: Number(producto.idSubcategoria) || undefined,
+    id_unidad: Number(producto.idUnidad) || undefined,
+    id_proveedor: Number(producto.idProveedor) || undefined,
+    id_marca: Number(producto.idMarca) || undefined,
+    contenido: producto.contenido?.trim() || undefined,
+    activo: producto.activo !== false,
+    descripcion: (producto.observaciones || "").trim() || undefined,
+    producto_pesable: producto.productoPesable === "si",
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -168,8 +188,8 @@ export async function getProductoByCodigo(codigo) {
  * POST /api/products
  * El backend responde 201 sin cuerpo → no retorna nada.
  */
-export async function createProducto(producto, idCategoria, idUnidad, idProveedor) {
-  const body = toCreateBody(producto, idCategoria, idUnidad, idProveedor);
+export async function createProducto(producto, idUnidad, idProveedor) {
+  const body = toCreateBody(producto, idUnidad, idProveedor);
   await api.post("/api/v1/products", body);
 }
 
@@ -178,7 +198,7 @@ export async function createProducto(producto, idCategoria, idUnidad, idProveedo
  * Solo actualiza el precio. Devuelve el producto actualizado.
  */
 export async function updateProducto(id, producto) {
-  const body = toPatchPrecioBody(producto);
+  const body = toPatchBody(producto);
   const { data } = await api.patch(`/api/v1/products/${id}`, body);
   return toFrontendProduct(data);
 }
