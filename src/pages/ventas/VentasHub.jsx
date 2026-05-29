@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Users, ScanLine } from "lucide-react";
+import { Users, ScanLine, History } from "lucide-react";
 
 const MODULOS = [
   {
@@ -14,6 +14,13 @@ const MODULOS = [
     descripcion: "Alta, baja y modificacion de clientes",
     icon: Users,
   },
+  {
+    to: null,
+    label: "Historial de Ventas",
+    descripcion: "Consulta de ventas anteriores. Próximamente.",
+    icon: History,
+    pronto: true,
+  },
 ];
 
 const cardClass =
@@ -26,9 +33,10 @@ export default function Ventas() {
                 <h1 className="text-2xl font-bold text-[var(--text-primary)]">Ventas</h1>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {MODULOS.map(({to, label, descripcion, icon: Icon}) => (
-                    <Link key={to} to={to} className={cardClass}>
-                        <div className="flex flex-col items-center gap-4 sm:flex-row sm:text-left sm:items-start">
+                {MODULOS.map((m) => {
+                    const {to, label, descripcion, icon: Icon, pronto} = m;
+                    const contenido = (
+                        <div className={`flex flex-col items-center gap-4 sm:flex-row sm:text-left sm:items-start ${pronto ? "opacity-50" : ""}`}>
                             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#171717] text-[var(--accent-green)] shadow-[inset_2px_5px_10px_rgb(5,5,5)] group-hover:bg-black/60" >
                                 <Icon className="w-7 h-7 aria-hidden"/>
                             </div>    
@@ -37,8 +45,13 @@ export default function Ventas() {
                                 <p className="text-sm text-[#8b949e] leading-relaxed">{descripcion}</p>
                             </div>
                         </div>
-                    </Link>
-                ))}
+                    );
+                    return to ? (
+                        <Link key={label} to={to} className={cardClass}>{contenido}</Link>
+                    ) : (
+                        <div key={label} className={`${cardClass} cursor-default`}>{contenido}</div>
+                    );
+                })}
             </div>
 
         

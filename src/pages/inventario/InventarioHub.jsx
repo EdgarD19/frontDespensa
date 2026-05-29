@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ClipboardList, Package, Search, ArrowRight } from "lucide-react";
+import { ClipboardList, Package, Search, Settings, ArrowRight } from "lucide-react";
 
 const MODULOS = [
   {
@@ -16,9 +16,15 @@ const MODULOS = [
   },
   {
     to: "/inventario/ajuste",
-    label: "Tipos de movimientos",
+    label: "Movimientos de stock",
     descripcion: "Registra entradas, salidas y ajuste de stock.",
     icon: ClipboardList,
+  },
+  {
+    to: "/inventario/maestros",
+    label: "Administrar Maestros",
+    descripcion: "Categorías, subcategorías, marcas, países y ciudades.",
+    icon: Settings,
   },
 ];
 

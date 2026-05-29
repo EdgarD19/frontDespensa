@@ -11,6 +11,7 @@ import InventarioHub from './pages/inventario/InventarioHub'
 import InventarioABM from './pages/inventario/abm/Inventario'
 import ConsultaInventario from './pages/inventario/consulta/ConsultaInventario'
 import AjusteInventario from './pages/inventario/ajuste/AjusteInventario'
+import MaestrosABM from './pages/inventario/maestros/MaestrosABM'
 
 import VentasHub from './pages/ventas/VentasHub'
 import ClientesABM from './pages/ventas/clientes/abm/ClientesABM'
@@ -39,6 +40,7 @@ export default function App() {
             <Route path="abm"      element={<InventarioABM />} />
             <Route path="consulta" element={<ConsultaInventario />} />
             <Route path="ajuste" element={<AjusteInventario />} />
+            <Route path="maestros" element={<MaestrosABM />} />
           </Route>
 
           <Route path="compras">
