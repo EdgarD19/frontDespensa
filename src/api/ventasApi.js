@@ -39,3 +39,19 @@ export async function registrarVentaFactura(payload) {
   const { data } = await api.post("/api/ventas/facturas", payload);
   return data;
 }
+
+export async function getFacturas(params = {}) {
+  const { data } = await api.get("/api/ventas/facturas", {
+    params: {
+      search: params.search || undefined,
+      page: params.page ?? 0,
+      size: params.size ?? 20,
+    },
+  });
+  return {
+    content: data?.content || [],
+    totalPages: data?.totalPages ?? 0,
+    totalElements: data?.totalElements ?? 0,
+    page: data?.page ?? 0,
+  };
+}

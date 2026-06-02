@@ -16,9 +16,12 @@ import MaestrosABM from './pages/inventario/maestros/MaestrosABM'
 import VentasHub from './pages/ventas/VentasHub'
 import ClientesABM from './pages/ventas/clientes/abm/ClientesABM'
 import RegistroVenta from './pages/ventas/registro-venta/RegistroVenta'
+import HistorialVentas from './pages/ventas/historial/HistorialVentas'
 
 import ComprasHub from './pages/compras/ComprasHub'
 import ProveedoresABM from './pages/compras/proveedores/abm/ProveedoresABM'
+import NuevaCompra from './pages/compras/nueva/NuevaCompra'
+import HistorialCompras from './pages/compras/historial/HistorialCompras'
 
 import Caja from './pages/caja/Caja'
 
@@ -33,6 +36,7 @@ export default function App() {
             <Route index element={<VentasHub />} />
             <Route path="registro" element={<RegistroVenta />} />
             <Route path="clientes" element={<ClientesABM />} />
+            <Route path="historial" element={<HistorialVentas />} />
           </Route>
     
           <Route path="inventario">
@@ -45,7 +49,9 @@ export default function App() {
 
           <Route path="compras">
             <Route index element={<ComprasHub />} />
+            <Route path="nueva" element={<NuevaCompra />} />
             <Route path="proveedores" element={<ProveedoresABM />} />
+            <Route path="historial" element={<HistorialCompras />} />
           </Route>
 
           <Route path="caja"       element={<Caja />} />

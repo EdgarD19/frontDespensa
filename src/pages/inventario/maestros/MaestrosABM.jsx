@@ -424,36 +424,39 @@ function SeccionMarcas() {
   );
 }
 
-function AccordionSection({ titulo, defaultOpen = false, children }) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="border border-white/10 rounded-xl overflow-hidden">
-      <button onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-5 py-3.5 bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-left">
-        <h3 className="text-white font-medium text-sm">{titulo}</h3>
-        <ChevronDown className={`w-4 h-4 text-white/40 transition-transform ${open ? "" : "-rotate-90"}`} />
-      </button>
-      {open && <div className="p-4">{children}</div>}
-    </div>
-  );
-}
+const TABS = [
+  { id: "categorias", label: "Categorías + Subcategorías" },
+  { id: "paises", label: "Países + Ciudades" },
+  { id: "marcas", label: "Marcas" },
+];
+
+const CLS_ACTIVE = "border-b-2 border-[#22c55e] text-[#22c55e]";
+const CLS_INACTIVE = "text-white/40 hover:text-white/70 border-b-2 border-transparent";
 
 export default function MaestrosABM() {
+  const [tab, setTab] = useState("categorias");
+
   return (
     <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-semibold text-white mb-1">Administrar Maestros</h1>
-        <p className="text-sm text-white/40">Gestiona categorías, subcategorías, marcas y países</p>
+        <p className="text-sm text-white/40">Gestiona categorías, subcategorías, marcas, países y ciudades</p>
       </div>
-      <AccordionSection titulo="Categorías + Subcategorías" defaultOpen={true}>
-        <SeccionCategorias />
-      </AccordionSection>
-      <AccordionSection titulo="Países + Ciudades">
-        <SeccionPaises />
-      </AccordionSection>
-      <AccordionSection titulo="Marcas">
-        <SeccionMarcas />
-      </AccordionSection>
+
+      <div className="flex gap-6 border-b border-white/10">
+        {TABS.map((t) => (
+          <button key={t.id} onClick={() => setTab(t.id)}
+            className={`pb-2 text-sm font-medium transition-colors ${tab === t.id ? CLS_ACTIVE : CLS_INACTIVE}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="pt-1">
+        {tab === "categorias" && <SeccionCategorias />}
+        {tab === "paises" && <SeccionPaises />}
+        {tab === "marcas" && <SeccionMarcas />}
+      </div>
     </div>
   );
 }
