@@ -124,7 +124,7 @@ export default function ProductForm({
           <div className="grid grid-cols-1 min-w-0 sm:grid-cols-2 xl:grid-cols-3 gap-x-4 gap-y-3">
 
           <div className="min-w-0">
-            <label className={labelClass}>C\u00f3digo de barras</label>
+            <label className={labelClass}>Codigo de barras</label>
             <div className={fieldClass}>
               <Barcode className={iconClass} />
               <input
@@ -163,7 +163,7 @@ export default function ProductForm({
 
           <div className="min-w-0">
             <label className={labelClass}>
-              Categor\u00eda <span className="text-red-400">*</span>
+              Categoria <span className="text-red-400">*</span>
             </label>
             <div className={fieldClass}>
               <FolderOpen className={iconClass} />
@@ -186,7 +186,7 @@ export default function ProductForm({
           </div>
 
           <div className="min-w-0">
-            <label className={labelClass}>Subcategor\u00eda</label>
+            <label className={labelClass}>Subcategoria</label>
             <div className={fieldClass}>
               <List className={iconClass} />
               <select
@@ -235,7 +235,7 @@ export default function ProductForm({
 
           <div className="min-w-0 sm:col-span-1 xl:col-span-2">
             <label className={labelClass}>
-              \u00bfSe vende por peso? <span className="text-red-400">*</span>
+              Producto vende por peso? <span className="text-red-400">*</span>
             </label>
             <div className={fieldClass}>
               <Scale className={iconClass} />

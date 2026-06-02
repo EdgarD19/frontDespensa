@@ -1,4 +1,4 @@
-import { LogIn, LogOut, BarChart3, ArrowRight } from "lucide-react";
+import { LogIn, LogOut, BarChart3 } from "lucide-react";
 
 const MODULOS = [
   {
@@ -24,29 +24,27 @@ const MODULOS = [
   },
 ];
 
-const cardBase =
-  "group flex items-center gap-5 rounded-xl border border-[#1e1e24] bg-[#111114] p-5";
+const cardClass =
+  "group flex flex-col items-center justify-center gap-3 rounded-2xl border border-[#1e1e24] bg-[#111114] p-6 transition-all duration-200 aspect-[4/3] cursor-default";
 
 export default function Caja() {
   return (
-    <div className="max-w-3xl mx-auto py-10 px-2 space-y-8">
+    <div className="max-w-5xl mx-auto py-8 px-4 space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold text-[#f1f1f3] tracking-tight">Caja</h1>
         <p className="text-sm text-[#5a5a6e]">Selecciona un modulo para continuar</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-3">
-        {MODULOS.map(({ to, label, descripcion, icon: Icon, pronto }) => (
-          <div key={label}
-            className={`${cardBase} ${pronto ? "opacity-50 cursor-default" : "hover:border-[#22c55e]/25 hover:bg-[#13131a] transition-all duration-200 cursor-pointer"}`}>
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#22c55e]/8 border border-[#22c55e]/15 text-[#22c55e]">
-              <Icon className="w-5 h-5" aria-hidden />
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        {MODULOS.map(({ label, descripcion, icon: Icon, pronto }) => (
+          <div key={label} className={`${cardClass} ${pronto ? "opacity-40" : ""}`}>
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#22c55e]/8 border border-[#22c55e]/15 text-[#22c55e]">
+              <Icon className="w-8 h-8" aria-hidden />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-[#e1e1eb] leading-tight">{label}</p>
-              <p className="text-xs text-[#5a5a6e] mt-0.5 leading-relaxed">{descripcion}</p>
+            <div className="text-center space-y-1">
+              <p className="text-base font-semibold text-white leading-tight">{label}</p>
+              <p className="text-xs text-[#5a5a6e] leading-relaxed line-clamp-2">{descripcion}</p>
             </div>
-            <ArrowRight className="w-4 h-4 text-[#3a3a4a]" />
           </div>
         ))}
       </div>

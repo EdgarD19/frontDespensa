@@ -24,25 +24,26 @@ const MODULOS = [
 ];
 
 const cardClass =
-  "group flex flex-col items-stretch rounded-[25px] border border-[#30363d]/50 bg-[#252525] shadow-[inset_2px_5px_10px_rgb(5,5,5)] p-6 transition-all duration-300 hover:border-[var(--accent-green)]/40 hover:shadow-lg hover:scale-[1.02] focus-within:ring-2 focus-within:ring-[var(--accent-green)]/50 focus-within:ring-offset-2 focus-within:ring-offset-[var(--bg-main)]";
+  "group flex flex-col items-center justify-center gap-3 rounded-2xl border border-[#1e1e24] bg-[#111114] p-6 transition-all duration-200 hover:border-[#22c55e]/40 hover:bg-[#13131a] aspect-[4/3]";
 
 export default function Ventas() {
     return (
-        <div className="p-6 space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold text-[var(--text-primary)]">Ventas</h1>
+        <div className="max-w-5xl mx-auto py-8 px-4 space-y-6">
+            <div className="space-y-1">
+                <h1 className="text-2xl font-semibold text-[#f1f1f3] tracking-tight">Ventas</h1>
+                <p className="text-sm text-[#5a5a6e]">Selecciona un modulo para continuar</p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                 {MODULOS.map((m) => {
                     const {to, label, descripcion, icon: Icon, pronto} = m;
                     const contenido = (
-                        <div className={`flex flex-col items-center gap-4 sm:flex-row sm:text-left sm:items-start ${pronto ? "opacity-50" : ""}`}>
-                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#171717] text-[var(--accent-green)] shadow-[inset_2px_5px_10px_rgb(5,5,5)] group-hover:bg-black/60" >
-                                <Icon className="w-7 h-7 aria-hidden"/>
-                            </div>    
-                            <div className="flex-1 space-y-1">
-                                <h2 className="text-lg font-semibold text-white tracking-tight">{label}</h2>
-                                <p className="text-sm text-[#8b949e] leading-relaxed">{descripcion}</p>
+                        <div className={`flex flex-col items-center justify-center gap-3 ${pronto ? "opacity-40" : ""}`}>
+                            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#22c55e]/8 border border-[#22c55e]/15 text-[#22c55e]">
+                                <Icon className="w-8 h-8" aria-hidden/>
+                            </div>
+                            <div className="text-center space-y-1">
+                                <h2 className="text-base font-semibold text-white tracking-tight">{label}</h2>
+                                <p className="text-xs text-[#5a5a6e] leading-relaxed line-clamp-2">{descripcion}</p>
                             </div>
                         </div>
                     );
@@ -53,10 +54,7 @@ export default function Ventas() {
                     );
                 })}
             </div>
-
-        
         </div>
     );
-
 }
  
