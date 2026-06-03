@@ -59,7 +59,7 @@ const grupos = [
     icon: Wallet,
     to: "/caja",
     items: [
-      { to: "/caja/apertura", label: "Apertura y cierre", icon: LogIn, pronto: true },
+      { to: "/caja/apertura", label: "Apertura y cierre", icon: LogIn },
       { to: "/caja/ingresos", label: "Ingresos y egresos", icon: LogOut, pronto: true },
       { to: "/caja/estado", label: "Estado de caja", icon: BarChart3, pronto: true },
     ],

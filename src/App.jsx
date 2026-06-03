@@ -24,6 +24,7 @@ import NuevaCompra from './pages/compras/nueva/NuevaCompra'
 import HistorialCompras from './pages/compras/historial/HistorialCompras'
 
 import Caja from './pages/caja/Caja'
+import AperturaCaja from './pages/caja/apertura/AperturaCaja'
 
 export default function App() {
   return (
@@ -54,7 +55,10 @@ export default function App() {
             <Route path="historial" element={<HistorialCompras />} />
           </Route>
 
-          <Route path="caja"       element={<Caja />} />
+          <Route path="caja">
+            <Route index element={<Caja />} />
+            <Route path="apertura" element={<AperturaCaja />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

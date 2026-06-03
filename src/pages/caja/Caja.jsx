@@ -1,7 +1,9 @@
+import { Link } from "react-router-dom";
 import { DollarSign, TrendingUp, TrendingDown, LogIn, LogOut, Lock, Unlock, History } from "lucide-react";
 
 const KPI_CLASS = "flex flex-col gap-1 rounded-xl border border-[#1e1e24] bg-[#111114] px-5 py-4";
-const CARD_CLASS = "group flex flex-col items-center justify-center gap-3 rounded-2xl border border-[#1e1e24] bg-[#111114] p-6 aspect-[4/3] opacity-40 cursor-default";
+const CARD_LINK_CLASS = "group flex flex-col items-center justify-center gap-3 rounded-2xl border border-[#1e1e24] bg-[#111114] p-6 transition-all duration-200 hover:border-[#22c55e]/40 hover:bg-[#13131a] aspect-[4/3]";
+const CARD_DISABLED_CLASS = "group flex flex-col items-center justify-center gap-3 rounded-2xl border border-[#1e1e24] bg-[#111114] p-6 aspect-[4/3] opacity-40 cursor-default";
 
 export default function Caja() {
   return (
@@ -41,30 +43,30 @@ export default function Caja() {
       <section className="space-y-3">
         <h2 className="text-xs font-semibold text-[#3a3a4a] uppercase tracking-widest">Acciones rápidas</h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className={CARD_CLASS}>
+          <Link to="/caja/apertura" className={CARD_LINK_CLASS}>
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#22c55e]/8 border border-[#22c55e]/15 text-[#22c55e]">
               <Unlock className="w-7 h-7" />
             </div>
             <span className="text-sm font-semibold text-white">Abrir Caja</span>
-          </div>
-          <div className={CARD_CLASS}>
+          </Link>
+          <div className={CARD_DISABLED_CLASS}>
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#22c55e]/8 border border-[#22c55e]/15 text-[#22c55e]">
               <LogIn className="w-7 h-7" />
             </div>
             <span className="text-sm font-semibold text-white">Registrar Ingreso</span>
           </div>
-          <div className={CARD_CLASS}>
+          <div className={CARD_DISABLED_CLASS}>
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#22c55e]/8 border border-[#22c55e]/15 text-[#22c55e]">
               <LogOut className="w-7 h-7" />
             </div>
             <span className="text-sm font-semibold text-white">Registrar Egreso</span>
           </div>
-          <div className={CARD_CLASS}>
+          <Link to="/caja/apertura" className={CARD_LINK_CLASS}>
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#22c55e]/8 border border-[#22c55e]/15 text-[#22c55e]">
               <Lock className="w-7 h-7" />
             </div>
             <span className="text-sm font-semibold text-white">Cerrar Caja</span>
-          </div>
+          </Link>
         </div>
       </section>
 
