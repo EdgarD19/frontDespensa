@@ -32,10 +32,11 @@ export default function AjusteStock({
     setFormData((prev) => ({ ...prev, [name]: value }));
   }
 
-  const nuevoNum =
-    formData.nuevoStock === "" || Number.isNaN(Number(formData.nuevoStock))
+  const cantNum =
+    formData.cantidad === "" || Number.isNaN(Number(formData.cantidad))
       ? null
-      : Number(formData.nuevoStock);
+      : Number(formData.cantidad);
+  const nuevoStockCalc = cantNum != null ? stockBase + cantNum : null;
 
   return (
     <div className="rounded-xl border border-[#1e1e24] bg-[#111114] overflow-hidden">
@@ -134,21 +135,29 @@ export default function AjusteStock({
 
           <label className="block space-y-1">
             <span className="text-xs font-medium text-[#7a7a8c]">
-              Nuevo Stock <span className="text-amber-500">*</span>
+              Cantidad <span className="text-amber-500">*</span>
             </span>
             <input
               type="number"
-              name="nuevoStock"
+              name="cantidad"
               inputMode="numeric"
               step={1}
-              min={0}
-              value={formData.nuevoStock}
+              value={formData.cantidad}
               onChange={handleChange}
               disabled={disabled}
               required
+              placeholder="Ej: -3 o 5"
               className={inputClass}
             />
+            <p className="text-[10px] text-[#5a5a6e] mt-0.5">Usá valores negativos para pérdidas, positivos para ingresos</p>
           </label>
+        </div>
+
+        <div className="rounded-lg bg-[#0d0d0f] border border-[#2a2a32] px-4 py-3 flex items-center justify-between">
+          <span className="text-sm text-[#7a7a8c]">Nuevo stock calculado</span>
+          <span className={`text-lg font-bold tabular-nums ${nuevoStockCalc != null && nuevoStockCalc < 0 ? "text-rose-400" : "text-[#22c55e]"}`}>
+            {nuevoStockCalc != null ? nuevoStockCalc : "—"}
+          </span>
         </div>
 
         <label className="block space-y-1">
@@ -190,7 +199,7 @@ export default function AjusteStock({
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-[#7a7a8c]">Nuevo stock</span>
-            <span className="tabular-nums font-medium">{nuevoNum == null ? "—" : nuevoNum}</span>
+            <span className="tabular-nums font-medium">{nuevoStockCalc == null ? "—" : nuevoStockCalc}</span>
           </div>
           <div className="pt-2 border-t border-[#2a2a36] flex justify-between items-baseline">
             <span className="text-[#7a7a8c] text-sm">Diferencia</span>

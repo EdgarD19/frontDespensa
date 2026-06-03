@@ -44,7 +44,7 @@ export default function AjusteInventario() {
   const [formData, setFormData] = useState({
     tipoAjuste: "",
     fechaAjuste: todayISO(),
-    nuevoStock: "",
+    cantidad: "",
     justificacion: "",
     detalleOtro: "",
     autorizadoPor: "",
@@ -53,11 +53,12 @@ export default function AjusteInventario() {
   const [submitting, setSubmitting] = useState(false);
   const [autorizandoId, setAutorizandoId] = useState(null);
 
-  const diferencia =
-    productoSeleccionado != null
-      ? Number(formData.nuevoStock === "" ? NaN : formData.nuevoStock) -
-        stockEntero(productoSeleccionado)
-      : 0;
+  const cantidad = formData.cantidad === "" ? null : Number(formData.cantidad);
+  const nuevoStockCalc =
+    productoSeleccionado != null && cantidad != null && Number.isFinite(cantidad)
+      ? stockEntero(productoSeleccionado) + cantidad
+      : null;
+  const diferencia = cantidad ?? 0;
 
   const loadHistorial = useCallback(async () => {
     const res = await getHistorialAjustes({ pageSize: 50 });
@@ -104,7 +105,7 @@ export default function AjusteInventario() {
     setProductoSeleccionado(producto);
     setFormData((prev) => ({
       ...prev,
-      nuevoStock: String(stockEntero(producto)),
+      cantidad: "0",
     }));
     setError(null);
   };
@@ -113,7 +114,7 @@ export default function AjusteInventario() {
     setFormData({
       tipoAjuste: "",
       fechaAjuste: todayISO(),
-      nuevoStock: "",
+      cantidad: "",
       justificacion: "",
       detalleOtro: "",
       autorizadoPor: "",
@@ -143,9 +144,14 @@ export default function AjusteInventario() {
       setError('Completá el detalle para el tipo "Otro".');
       return false;
     }
-    const n = Number(formData.nuevoStock);
-    if (formData.nuevoStock === "" || !Number.isInteger(n) || n < 0) {
-      setError("El nuevo stock debe ser un número entero mayor o igual a 0.");
+    const c = Number(formData.cantidad);
+    if (formData.cantidad === "" || !Number.isInteger(c)) {
+      setError("La cantidad debe ser un número entero.");
+      return false;
+    }
+    const stockBase = stockEntero(productoSeleccionado);
+    if (stockBase + c < 0) {
+      setError("El resultado no puede ser negativo. Verificá la cantidad.");
       return false;
     }
     if (!formData.justificacion.trim()) {
@@ -167,8 +173,9 @@ export default function AjusteInventario() {
     try {
       setSubmitting(true);
       setError(null);
-      const n = Number(formData.nuevoStock);
       const stockAnt = stockEntero(productoSeleccionado);
+      const c = Number(formData.cantidad);
+      const n = stockAnt + c;
 
       const payload = {
         idProducto: productoSeleccionado.id,

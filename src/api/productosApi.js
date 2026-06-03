@@ -65,6 +65,8 @@ function toFrontendProduct(backend) {
 
     // "description" en ProductResponse
     observaciones: backend.description ?? "",
+
+    fechaActualizacion: backend.fechaActualizacion ?? "",
   };
 }
 

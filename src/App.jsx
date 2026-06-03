@@ -25,6 +25,7 @@ import HistorialCompras from './pages/compras/historial/HistorialCompras'
 
 import Caja from './pages/caja/Caja'
 import AperturaCaja from './pages/caja/apertura/AperturaCaja'
+import MovimientosCaja from './pages/caja/movimientos/MovimientosCaja'
 
 export default function App() {
   return (
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="caja">
             <Route index element={<Caja />} />
             <Route path="apertura" element={<AperturaCaja />} />
+          <Route path="movimientos" element={<MovimientosCaja />} />
           </Route>
         </Route>
       </Routes>

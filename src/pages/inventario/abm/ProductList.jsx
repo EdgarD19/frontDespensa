@@ -1,15 +1,5 @@
-import { Search, Pencil, Trash2, ChevronLeft, ChevronRight, Plus } from "lucide-react";
-
-function formatPrecioValor(p, tipo) {
-  const isPesable = p.productoPesable === "si";
-  const valor =
-    tipo === "compra"
-      ? isPesable ? p.precioCompraKg : p.precioCompra
-      : isPesable ? p.precioVentaKg : p.precioVenta;
-  const sufijo = isPesable ? "/kg" : "";
-  const n = Number(valor || 0);
-  return { text: `${n.toLocaleString("es-PY")}${sufijo}`, isPesable };
-}
+import { useState } from "react";
+import { Search, Pencil, Ban, X, ChevronLeft, ChevronRight, Plus, Eye } from "lucide-react";
 
 const fieldClass = "flex items-center gap-2 rounded-lg px-3 py-2 bg-white/5 border border-white/10";
 const inputClass = "flex-1 bg-transparent border-none outline-none w-full text-white placeholder:text-white/30 focus:ring-0 text-sm";
@@ -26,6 +16,7 @@ export default function ProductList({
   paginacion,
   onPageChange,
 }) {
+  const [detalleProducto, setDetalleProducto] = useState(null);
   const page = paginacion?.page ?? 0;
   const totalPages = paginacion?.totalPages ?? 0;
 
@@ -64,28 +55,23 @@ export default function ProductList({
           </div>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-white/10">
-            <table className="w-full min-w-[680px] text-sm">
+            <table className="w-full min-w-[700px] text-sm">
               <thead>
                 <tr className="bg-white/5 text-left">
                   <th className="px-4 py-3 font-medium text-white/40 border-b border-white/10">Código</th>
                   <th className="px-4 py-3 font-medium text-white/40 border-b border-white/10">Producto</th>
+                  <th className="px-4 py-3 font-medium text-white/40 border-b border-white/10">Categoría</th>
                   <th className="px-4 py-3 font-medium text-white/40 border-b border-white/10">Marca</th>
-                  <th className="px-4 py-3 font-medium text-white/40 border-b border-white/10 text-right">Costo</th>
-                  <th className="px-4 py-3 font-medium text-white/40 border-b border-white/10 text-right">Venta</th>
-                  <th className="px-4 py-3 font-medium text-white/40 border-b border-white/10 text-center">Stock</th>
+                  <th className="px-4 py-3 font-medium text-white/40 border-b border-white/10 text-right">P. Venta</th>
+                  <th className="px-4 py-3 font-medium text-white/40 border-b border-white/10 text-center">Estado</th>
                   <th className="px-4 py-3 font-medium text-white/40 border-b border-white/10 text-center">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {products.map((p) => {
-                  const rawStock = p.stockActual ?? p.stock;
-                  const stockUnknown = rawStock === "" || rawStock === undefined || rawStock === null;
-                  const stock = Number(rawStock ?? 0);
-                  const compra = formatPrecioValor(p, "compra");
-                  const venta = formatPrecioValor(p, "venta");
-                  const stockText = stockUnknown || !Number.isFinite(stock)
-                    ? "—"
-                    : `${stock}${p.unidadMedida ? ` ${p.unidadMedida}` : ""}`;
+                  const precio = Number(p.precioVenta || 0);
+                  const precioText = precio > 0 ? `₲ ${precio.toLocaleString("es-PY")}` : "—";
+                  const activo = p.activo !== false;
 
                   return (
                     <tr key={p.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
@@ -93,10 +79,20 @@ export default function ProductList({
                       <td className="px-4 py-3 align-middle">
                         <p className="font-medium text-white truncate max-w-[14rem]" title={p.nombre}>{p.nombre}</p>
                       </td>
-                      <td className="px-4 py-3 align-middle"><span className="text-white/50 text-sm">{p.marca || "—"}</span></td>
-                      <td className="px-4 py-3 text-right align-middle"><span className="text-white/50 line-through">₲{compra.text}</span></td>
-                      <td className="px-4 py-3 text-right align-middle"><span className="font-semibold text-[var(--accent-green)]">₲{venta.text}</span></td>
-                      <td className="px-4 py-3 text-center text-white/60 tabular-nums align-middle">{stockText}</td>
+                      <td className="px-4 py-3 align-middle text-white/60 text-sm">{p.categoria || "—"}</td>
+                      <td className="px-4 py-3 align-middle text-white/60 text-sm">{p.marca || "—"}</td>
+                      <td className="px-4 py-3 text-right align-middle">
+                        <span className="font-semibold text-[var(--accent-green)]">{precioText}</span>
+                      </td>
+                      <td className="px-4 py-3 text-center align-middle">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          activo
+                            ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                            : "bg-red-500/10 text-red-400 border border-red-500/20"
+                        }`}>
+                          {activo ? "Activo" : "Inactivo"}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-center align-middle">
                         <div className="flex items-center justify-center gap-1">
                           <button type="button" onClick={() => onEdit(p)}
@@ -105,9 +101,14 @@ export default function ProductList({
                             <Pencil className="w-4 h-4" />
                           </button>
                           <button type="button" onClick={() => onDelete(p.id)}
-                            className="p-2 rounded-md bg-white/5 text-white/70 hover:bg-red-500/20 border border-white/10 transition-all"
-                            title="Eliminar">
-                            <Trash2 className="w-4 h-4" />
+                            className="p-2 rounded-md bg-white/5 text-white/70 hover:bg-orange-500/20 border border-white/10 transition-all"
+                            title="Inactivar">
+                            <Ban className="w-4 h-4" />
+                          </button>
+                          <button type="button" onClick={() => setDetalleProducto(p)}
+                            className="p-2 rounded-md bg-white/5 text-white/70 hover:bg-white/10 border border-white/10 transition-all"
+                            title="Detalles">
+                            <Eye className="w-4 h-4" />
                           </button>
                         </div>
                       </td>
@@ -132,6 +133,53 @@ export default function ProductList({
               className="p-2 rounded-md bg-white/5 text-white/70 hover:bg-white/10 border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
               <ChevronRight className="w-4 h-4" />
             </button>
+          </div>
+        </div>
+      )}
+
+      {detalleProducto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setDetalleProducto(null)}>
+          <div className="bg-[#1a1f2e] rounded-xl border border-white/10 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+              <h3 className="text-lg font-semibold text-white">{detalleProducto.nombre}</h3>
+              <button type="button" onClick={() => setDetalleProducto(null)}
+                className="p-1 rounded-md text-white/40 hover:text-white hover:bg-white/10 transition-all">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-white/40 mb-1">Precio compra</p>
+                  <p className="text-white font-medium">
+                    {detalleProducto.precioCompra
+                      ? `₲ ${Number(detalleProducto.precioCompra).toLocaleString("es-PY")}`
+                      : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-white/40 mb-1">Subcategoría</p>
+                  <p className="text-white font-medium">{detalleProducto.subcategoria || "—"}</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-white/40 mb-1">Última actualización</p>
+                <p className="text-white font-medium">
+                  {detalleProducto.fechaActualizacion
+                    ? new Date(detalleProducto.fechaActualizacion).toLocaleString("es-PY", {
+                        year: "numeric", month: "2-digit", day: "2-digit",
+                        hour: "2-digit", minute: "2-digit",
+                      })
+                    : "—"}
+                </p>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-white/10 flex justify-end">
+              <button type="button" onClick={() => setDetalleProducto(null)}
+                className="px-4 py-2 rounded-lg bg-white/10 text-white/70 hover:bg-white/20 transition-all text-sm">
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       )}
