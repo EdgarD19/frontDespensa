@@ -1,11 +1,10 @@
-/*
-  BrowserRouter: activa el sistema de rutas (activa el enrutamiento)
-  Routes: Contenedor de rutas
-  Route: Define una ruta
-  Navigate: Redirecciona
-*/
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './auth/AuthContext';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 import MainLayout from './components/layout/MainLayout';
+
+import LoginPage from './pages/auth/LoginPage';
+import RegisterPage from './pages/auth/RegisterPage';
 
 import InventarioHub from './pages/inventario/InventarioHub'
 import InventarioABM from './pages/inventario/abm/Inventario'
@@ -29,40 +28,48 @@ import MovimientosCaja from './pages/caja/movimientos/MovimientosCaja'
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<MainLayout />}> 
-          <Route index element={<Navigate to="/inventario" replace />} />
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
 
-          <Route path="ventas"> 
-            <Route index element={<VentasHub />} />
-            <Route path="registro" element={<RegistroVenta />} />
-            <Route path="clientes" element={<ClientesABM />} />
-            <Route path="historial" element={<HistorialVentas />} />
-          </Route>
-    
-          <Route path="inventario">
-            <Route index element={<InventarioHub />} />
-            <Route path="abm"      element={<InventarioABM />} />
-            <Route path="consulta" element={<ConsultaInventario />} />
-            <Route path="ajuste" element={<AjusteInventario />} />
-            <Route path="maestros" element={<MaestrosABM />} />
+          <Route path="/usuarios" element={<ProtectedRoute adminOnly><MainLayout /></ProtectedRoute>}>
+            <Route index element={<RegisterPage />} />
           </Route>
 
-          <Route path="compras">
-            <Route index element={<ComprasHub />} />
-            <Route path="nueva" element={<NuevaCompra />} />
-            <Route path="proveedores" element={<ProveedoresABM />} />
-            <Route path="historial" element={<HistorialCompras />} />
-          </Route>
+          <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+            <Route index element={<Navigate to="/inventario" replace />} />
 
-          <Route path="caja">
-            <Route index element={<Caja />} />
-            <Route path="apertura" element={<AperturaCaja />} />
-          <Route path="movimientos" element={<MovimientosCaja />} />
+            <Route path="ventas">
+              <Route index element={<VentasHub />} />
+              <Route path="registro" element={<RegistroVenta />} />
+              <Route path="clientes" element={<ClientesABM />} />
+              <Route path="historial" element={<HistorialVentas />} />
+            </Route>
+
+            <Route path="inventario">
+              <Route index element={<InventarioHub />} />
+              <Route path="abm" element={<InventarioABM />} />
+              <Route path="consulta" element={<ConsultaInventario />} />
+              <Route path="ajuste" element={<AjusteInventario />} />
+              <Route path="maestros" element={<MaestrosABM />} />
+            </Route>
+
+            <Route path="compras">
+              <Route index element={<ComprasHub />} />
+              <Route path="nueva" element={<NuevaCompra />} />
+              <Route path="proveedores" element={<ProveedoresABM />} />
+              <Route path="historial" element={<HistorialCompras />} />
+            </Route>
+
+            <Route path="caja">
+              <Route index element={<Caja />} />
+              <Route path="apertura" element={<AperturaCaja />} />
+              <Route path="movimientos" element={<MovimientosCaja />} />
+            </Route>
           </Route>
-        </Route>
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   )
 }

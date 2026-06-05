@@ -29,6 +29,14 @@ export const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("despensa_token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 /** URL absoluta para enlaces en el navegador (Swagger, etc.) */
 export function absoluteApiOrigin() {
   const base = API_BASE_URL;
