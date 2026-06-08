@@ -28,7 +28,7 @@ export default function ComprasHub() {
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#22c55e]/8 border border-[#22c55e]/15 text-[#22c55e]">
                 <Truck className="w-7 h-7" />
               </div>
-              <span className="text-sm font-semibold text-white">Proveedores</span>
+              <span className="text-sm font-semibold text-white">ABM Proveedores</span>
             </Link>
             <Link to="/compras/historial" className={CARD_CLASS}>
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#22c55e]/8 border border-[#22c55e]/15 text-[#22c55e]">

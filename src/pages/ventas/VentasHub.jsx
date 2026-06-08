@@ -31,7 +31,7 @@ export default function VentasHub() {
                 <Users className="w-7 h-7" />
               </div>
               <div className="text-center">
-                <span className="text-sm font-semibold text-white">Clientes</span>
+                <span className="text-sm font-semibold text-white">ABM Clientes</span>
               </div>
             </Link>
             <Link to="/ventas/historial" className={CARD_CLASS}>

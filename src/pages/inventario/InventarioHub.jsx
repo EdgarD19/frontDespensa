@@ -22,19 +22,19 @@ export default function InventarioHub() {
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#22c55e]/8 border border-[#22c55e]/15 text-[#22c55e]">
                 <PackageSearch className="w-7 h-7" />
               </div>
-              <span className="text-sm font-semibold text-white">Productos</span>
+              <span className="text-sm font-semibold text-white">Gestion de productos</span>
             </Link>
             <Link to="/inventario/consulta" className={CARD_CLASS}>
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#22c55e]/8 border border-[#22c55e]/15 text-[#22c55e]">
                 <Search className="w-7 h-7" />
               </div>
-              <span className="text-sm font-semibold text-white">Consulta Stock</span>
+              <span className="text-sm font-semibold text-white">Consulta de Stock</span>
             </Link>
             <Link to="/inventario/ajuste" className={CARD_CLASS}>
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#22c55e]/8 border border-[#22c55e]/15 text-[#22c55e]">
                 <ClipboardList className="w-7 h-7" />
               </div>
-              <span className="text-sm font-semibold text-white">Movimientos</span>
+              <span className="text-sm font-semibold text-white">Ajuste de Inventario</span>
             </Link>
             <Link to="/inventario/maestros" className={CARD_CLASS}>
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#22c55e]/8 border border-[#22c55e]/15 text-[#22c55e]">
