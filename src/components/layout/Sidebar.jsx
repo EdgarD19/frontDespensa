@@ -38,9 +38,6 @@ export default function Sidebar() {
       icon: ShoppingCart,
       to: "/ventas",
       items: [
-        { to: "/ventas/registro", label: "Nueva Venta", icon: Plus },
-        { to: "/ventas/clientes", label: "Clientes", icon: Users },
-        { to: "/ventas/historial", label: "Comprobantes", icon: FileText },
         { to: "/ventas/ingresos", label: "Ingresos", icon: BarChart3 },
         { to: "/ventas/mas-vendidos", label: "M\u00e1s vendidos", icon: TrendingUp },
       ],
@@ -49,35 +46,24 @@ export default function Sidebar() {
       label: "Compras",
       icon: TrendingUp,
       to: "/compras",
-      items: [
-        { to: "/compras/nueva", label: "Nueva Compra", icon: Plus },
-        { to: "/compras/proveedores", label: "Proveedores", icon: Truck },
-        { to: "/compras/historial", label: "Compras", icon: History },
-      ],
+      items: [],
     },
     {
       label: "Inventario",
       icon: Package,
       to: "/inventario",
-      items: [
-        { to: "/inventario/abm", label: "Productos", icon: Package },
-        { to: "/inventario/consulta", label: "Stock", icon: Search },
-        { to: "/inventario/ajuste", label: "Movimientos", icon: ClipboardList },
-        { to: "/inventario/maestros", label: "Maestros", icon: Settings },
-      ],
+      items: [],
     },
     {
       label: "Caja",
       icon: Wallet,
       to: "/caja",
       items: [
-        { to: "/caja/apertura", label: "Apertura y cierre", icon: LogIn },
-        { to: "/caja/movimientos", label: "Ingresos y egresos", icon: LogOut },
         { to: "/caja/estado", label: "Estado de caja", icon: BarChart3, pronto: true },
         ...(isAdmin ? [{ to: "/caja/dashboard-financiero", label: "Dashboard Financiero", icon: BarChart3 }] : []),
-    ],
-  },
-];
+      ],
+    },
+  ];
 
   const configGrupo = {
     label: "Configuracion",
@@ -166,7 +152,7 @@ export default function Sidebar() {
                   <GroupIcon className="w-4 h-4 flex-shrink-0" />
                   {!collapsed && <span className="text-sm font-medium whitespace-nowrap">{grupo.label}</span>}
                 </NavLink>
-                {!collapsed && (
+                {!collapsed && grupo.items?.length > 0 && (
                   <button onClick={() => toggleGroup(grupo.label)}
                     className="p-2 text-[#3a3a4a] hover:text-[#8a8a9a] transition-colors">
                     <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? "" : "-rotate-90"}`} />
