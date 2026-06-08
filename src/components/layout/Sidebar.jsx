@@ -41,6 +41,8 @@ export default function Sidebar() {
         { to: "/ventas/registro", label: "Nueva Venta", icon: Plus },
         { to: "/ventas/clientes", label: "Clientes", icon: Users },
         { to: "/ventas/historial", label: "Comprobantes", icon: FileText },
+        { to: "/ventas/ingresos", label: "Ingresos", icon: BarChart3 },
+        { to: "/ventas/mas-vendidos", label: "M\u00e1s vendidos", icon: TrendingUp },
       ],
     },
     {
@@ -71,7 +73,8 @@ export default function Sidebar() {
       items: [
         { to: "/caja/apertura", label: "Apertura y cierre", icon: LogIn },
         { to: "/caja/movimientos", label: "Ingresos y egresos", icon: LogOut },
-      { to: "/caja/estado", label: "Estado de caja", icon: BarChart3, pronto: true },
+        { to: "/caja/estado", label: "Estado de caja", icon: BarChart3, pronto: true },
+        ...(isAdmin ? [{ to: "/caja/dashboard-financiero", label: "Dashboard Financiero", icon: BarChart3 }] : []),
     ],
   },
 ];

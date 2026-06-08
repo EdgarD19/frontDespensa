@@ -16,6 +16,8 @@ import VentasHub from './pages/ventas/VentasHub'
 import ClientesABM from './pages/ventas/clientes/abm/ClientesABM'
 import RegistroVenta from './pages/ventas/registro-venta/RegistroVenta'
 import HistorialVentas from './pages/ventas/historial/HistorialVentas'
+import IngresosDashboard from './pages/ventas/ingresos/IngresosDashboard'
+import ProductosMasVendidosDashboard from './pages/ventas/ingresos/ProductosMasVendidosDashboard'
 
 import ComprasHub from './pages/compras/ComprasHub'
 import ProveedoresABM from './pages/compras/proveedores/abm/ProveedoresABM'
@@ -25,6 +27,7 @@ import HistorialCompras from './pages/compras/historial/HistorialCompras'
 import Caja from './pages/caja/Caja'
 import AperturaCaja from './pages/caja/apertura/AperturaCaja'
 import MovimientosCaja from './pages/caja/movimientos/MovimientosCaja'
+import DashboardFinanciero from './pages/caja/dashboard/DashboardFinanciero'
 
 export default function App() {
   return (
@@ -45,6 +48,8 @@ export default function App() {
               <Route path="registro" element={<RegistroVenta />} />
               <Route path="clientes" element={<ClientesABM />} />
               <Route path="historial" element={<HistorialVentas />} />
+              <Route path="ingresos" element={<IngresosDashboard />} />
+              <Route path="mas-vendidos" element={<ProductosMasVendidosDashboard />} />
             </Route>
 
             <Route path="inventario">
@@ -66,6 +71,7 @@ export default function App() {
               <Route index element={<Caja />} />
               <Route path="apertura" element={<AperturaCaja />} />
               <Route path="movimientos" element={<MovimientosCaja />} />
+              <Route path="dashboard-financiero" element={<ProtectedRoute adminOnly><DashboardFinanciero /></ProtectedRoute>} />
             </Route>
           </Route>
         </Routes>

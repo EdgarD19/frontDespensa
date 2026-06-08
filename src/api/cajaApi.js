@@ -18,3 +18,8 @@ export async function getCajaActual() {
     return null;
   }
 }
+
+export async function getDashboardFinanciero(periodo = "HOY") {
+  const { data } = await api.get("/api/caja/dashboard-financiero", { params: { periodo } });
+  return data;
+}
