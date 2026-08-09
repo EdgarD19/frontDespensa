@@ -1,138 +1,84 @@
-// ClipboardList → ícono del encabezado del reporte
-// Loader2       → ícono de spinner animado (animate-spin) mientras carga
-import { ClipboardList, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { ClipboardList, Loader2, Eye, X, Package } from "lucide-react";
+import { getEstadoStock } from "../utils";
 
-// COMPONENTE PRINCIPAL: ConsultaInventarioReport
+function statusBadge(estado) {
+  if (estado === "normal") return "text-green-400 bg-green-400/10 border border-green-400/20";
+  if (estado === "bajo") return "text-amber-400 bg-amber-400/10 border border-amber-400/20";
+  if (estado === "sin") return "text-red-400 bg-red-400/10 border border-red-400/20";
+  return "text-[#5a5a6e] bg-white/5 border border-white/10";
+}
 
-/*
-  Muestra la tabla detallada del inventario con tres estados posibles:
-    1. Cargando  → spinner centrado
-    2. Sin datos → mensaje vacío
-    3. Con datos → tabla con una fila por producto
+const fmt = (n) =>
+  Number.isFinite(n) && n > 0
+    ? "$" + n.toLocaleString("es-PY", { minimumFractionDigits: 2 })
+    : "—";
 
-  Props:
-    productos → array de productos ya filtrados (viene de ConsultaInventario)
-    loading   → booleano: true mientras el padre está esperando la respuesta del backend
-*/
 export default function ConsultaInventarioReport({ productos, loading }) {
-  // ?? 0 → si productos es undefined/null, usa 0 en lugar de romper
   const count = productos?.length ?? 0;
+  const [detalle, setDetalle] = useState(null);
 
   return (
-    // Tarjeta contenedora. overflow-hidden recorta la tabla dentro de los bordes redondeados.
-    <div className="bg-[#171717] rounded-[25px] overflow-hidden shadow-[inset_2px_5px_10px_rgb(5,5,5)]">
-
-      {/* Encabezado con contador dinámico */}
-      <div className="flex items-center gap-2 px-6 pt-6 pb-4 border-b border-[#30363d]">
-        <ClipboardList className="w-5 h-5 text-[var(--accent-cyan)] flex-shrink-0" />
-        <h3 className="text-[#f0f6fc] font-semibold text-base">
-          {/*
-            Mientras carga muestra "…" en lugar del número.
-            Cuando termina muestra la cantidad real de productos filtrados.
-          */}
+    <div className="rounded-xl border border-[#1e1e24] bg-[#111114] overflow-hidden">
+      <div className="flex items-center gap-2 px-5 py-4 border-b border-[#1e1e24]">
+        <ClipboardList className="w-5 h-5 text-[#22c55e] flex-shrink-0" />
+        <h3 className="text-[#f1f1f3] font-semibold text-base">
           Inventario detallado — {loading ? "…" : count} productos
         </h3>
       </div>
 
-      <div className="p-4 sm:p-6 pt-2">
-
-        {/*
-          Renderizado condicional con tres ramas (ternario anidado):
-            loading          → Spinner
-            !loading y count === 0  → Mensaje vacío
-            !loading y count > 0    → Tabla
-        */}
+      <div className="p-4 sm:p-5">
         {loading ? (
-
-          // ── ESTADO: CARGANDO ─────────────────────────────────────────
-          // animate-spin → clase que aplica una rotación CSS infinita
-          <div className="flex flex-col items-center justify-center py-20 text-[#8b949e] gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-[var(--accent-cyan)]" />
-            <span className="text-sm">Cargando inventario…</span>
+          <div className="flex flex-col items-center justify-center py-16 gap-3">
+            <Loader2 className="w-8 h-8 animate-spin text-[#22c55e]" />
+            <span className="text-sm text-[#5a5a6e]">Cargando inventario…</span>
           </div>
-
         ) : count === 0 ? (
-
-          // ── ESTADO: SIN RESULTADOS 
-          <p className="text-[#8b949e] text-center py-16 text-sm">
-            No hay productos que coincidan con los filtros o el catálogo está vacío.
-          </p>
-
+          <p className="text-[#5a5a6e] text-center py-12 text-sm">No hay productos que coincidan con los filtros.</p>
         ) : (
-
-          // ── ESTADO: TABLA CON DATOS
-          /*
-            overflow-x-auto → habilita scroll horizontal en mobile.
-            min-w-[640px]  → ancho mínimo de la tabla;
-                              en lugar de colapsar columnas, el usuario scrollea.
-            border-collapse → fusiona los bordes de celdas adyacentes (sin gap entre ellos).
-          */
-          <div className="overflow-x-auto rounded-[20px] border border-[#30363d]/80 bg-[#0d0d0d]/50">
-            <table className="w-full min-w-[640px] text-sm border-collapse">
-
-              {/* ── ENCABEZADO DE COLUMNAS ─────────────────────────── */}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px] text-sm">
               <thead>
-                <tr className="bg-[#252525] text-left">
-                  <th className="px-4 py-3 font-semibold text-[#8b949e] border-b border-[#30363d]">Código</th>
-                  <th className="px-4 py-3 font-semibold text-[#8b949e] border-b border-[#30363d]">Producto</th>
-                  <th className="px-4 py-3 font-semibold text-[#8b949e] border-b border-[#30363d]">Categoría</th>
-                  <th className="px-4 py-3 font-semibold text-[#8b949e] border-b border-[#30363d]">Marca</th>
-                  <th className="px-4 py-3 font-semibold text-[#8b949e] border-b border-[#30363d]">Unidad</th>
-                  <th className="px-4 py-3 font-semibold text-[#8b949e] border-b border-[#30363d] text-center">
-                    Stock actual
-                  </th>
+                <tr className="text-xs text-[#5a5a6e] uppercase tracking-wider border-b border-white/10">
+                  <th className="text-left py-3 pr-2">Código</th>
+                  <th className="text-left py-3 px-2">Producto</th>
+                  <th className="text-center py-3 px-2">Stock</th>
+                  <th className="text-center py-3 px-2">Stock mín.</th>
+                  <th className="text-right py-3 px-2">Precio venta</th>
+                  <th className="text-right py-3 px-2">Precio compra</th>
+                  <th className="text-center py-3 px-2">Estado</th>
+                  <th className="text-center py-3 pl-2">Detalles</th>
                 </tr>
               </thead>
-
-              {/* ── CUERPO DE LA TABLA ─────────────────────────────── */}
               <tbody>
-                {/*
-                  .map() genera un <tr> (fila) por cada producto.
-                  key={p.id} → obligatorio para el algoritmo de reconciliación de React.
-
-                  Variables locales (stock) por fila.
-                */}
                 {productos.map((p) => {
                   const rawStock = p.stockActual ?? p.stock;
-                  const stockUnknown =
-                    rawStock === "" || rawStock === undefined || rawStock === null;
                   const stock = Number(rawStock ?? 0);
-                  const stockText =
-                    stockUnknown || !Number.isFinite(stock)
-                      ? "—"
-                      : `${stock}${p.unidadMedida ? ` ${p.unidadMedida}` : ""}`;
+                  const stockMin = Number(p.stockMinimo ?? 0);
+                  const estado = getEstadoStock(p);
+                  const precioVenta = Number(p.precioVenta ?? 0);
+                  const precioCompra = Number(p.precioCompra ?? 0);
 
                   return (
-                    <tr
-                      key={p.id}
-                      className="border-b border-[#30363d]/60 hover:bg-[#252525]/40 transition-colors"
-                    >
-                      <td className="px-4 py-3 text-[#8b949e] font-mono text-xs align-middle">
-                        {p.codigoBarras || "—"}
+                    <tr key={p.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                      <td className="py-3 pr-2 text-[#5a5a6e] font-mono text-xs">{p.codigoBarras || "—"}</td>
+                      <td className="py-3 px-2">
+                        <p className="text-white font-medium truncate max-w-[12rem]" title={p.nombre}>{p.nombre}</p>
                       </td>
-
-                      <td className="px-4 py-3 align-middle">
-                        <p className="font-semibold text-[#f0f6fc] truncate max-w-[14rem] sm:max-w-xs" title={p.nombre}>
-                          {p.nombre}
-                        </p>
+                      <td className="py-3 px-2 text-center text-white tabular-nums">{Number.isFinite(stock) ? stock : "—"}</td>
+                      <td className="py-3 px-2 text-center text-white/60 tabular-nums">{Number.isFinite(stockMin) && stockMin > 0 ? stockMin : "—"}</td>
+                      <td className="py-3 px-2 text-right text-white tabular-nums">{fmt(precioVenta)}</td>
+                      <td className="py-3 px-2 text-right text-white/60 tabular-nums">{fmt(precioCompra)}</td>
+                      <td className="py-3 px-2 text-center">
+                        <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${statusBadge(estado)}`}>
+                          {estado === "normal" ? "Normal" : estado === "bajo" ? "Bajo" : estado === "sin" ? "Sin stock" : "—"}
+                        </span>
                       </td>
-
-                      <td className="px-4 py-3 align-middle">
-                        {p.categoria ? (
-                          <span className="inline-block rounded-full bg-[#22c55e]/15 text-[#4ade80] px-2.5 py-0.5 text-xs font-medium">
-                            {p.categoria}
-                          </span>
-                        ) : (
-                          <span className="text-[#8b949e]">—</span>
-                        )}
-                      </td>
-
-                      <td className="px-4 py-3 text-[#d3d3d3] align-middle">{p.marca || "—"}</td>
-
-                      <td className="px-4 py-3 text-[#d3d3d3] align-middle">{p.unidadMedida || "—"}</td>
-
-                      <td className="px-4 py-3 text-center text-[#d3d3d3] tabular-nums align-middle">
-                        {stockText}
+                      <td className="py-3 pl-2 text-center">
+                        <button onClick={() => setDetalle(p)}
+                          className="p-1.5 rounded-lg text-[#5a5a6e] hover:text-[#22c55e] hover:bg-[#22c55e]/10 transition-colors">
+                          <Eye className="w-4 h-4" />
+                        </button>
                       </td>
                     </tr>
                   );
@@ -142,6 +88,39 @@ export default function ConsultaInventarioReport({ productos, loading }) {
           </div>
         )}
       </div>
+
+      {detalle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setDetalle(null)}>
+          <div onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm mx-4 rounded-2xl border border-[#1e1e24] bg-[#111114] shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#1e1e24]">
+              <div className="flex items-center gap-2 min-w-0">
+                <Package className="w-4 h-4 text-[#22c55e] flex-shrink-0" />
+                <h3 className="text-sm font-semibold text-white truncate">{detalle.nombre}</h3>
+              </div>
+              <button onClick={() => setDetalle(null)}
+                className="p-1 rounded-lg text-[#5a5a6e] hover:text-white hover:bg-white/5 transition-colors flex-shrink-0 ml-2">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 space-y-3 text-sm">
+              <div className="flex justify-between py-2 border-b border-white/5">
+                <span className="text-[#5a5a6e]">Categoría</span>
+                <span className="text-white font-medium">{detalle.categoria || "—"}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-white/5">
+                <span className="text-[#5a5a6e]">Subcategoría</span>
+                <span className="text-white font-medium">{detalle.subcategoria || "—"}</span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="text-[#5a5a6e]">Marca</span>
+                <span className="text-white font-medium">{detalle.marca || "—"}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

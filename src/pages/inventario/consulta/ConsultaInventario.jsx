@@ -142,15 +142,14 @@ export default function ConsultaInventario() {
 
 
   return (
-    // Contenedor principal con separación vertical entre secciones
-    <div className="space-y-6">
+    <div className="max-w-5xl mx-auto py-8 px-4 space-y-6">
 
       {/* Encabezado de la sección */}
       <div>
-        <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
+        <h1 className="text-2xl font-semibold text-[#f1f1f3] tracking-tight">
           Consulta de Inventario
         </h1>
-        <p className="text-sm mt-1" style={{ color: "var(--border)" }}>
+        <p className="text-sm text-[#5a5a6e]">
           Listado completo de productos
         </p>
       </div>
@@ -161,14 +160,7 @@ export default function ConsultaInventario() {
         Si es null → no renderiza nada
       */}
       {error && (
-        <div
-          className="rounded-lg px-4 py-3 text-sm"
-          style={{
-            backgroundColor: "rgba(239, 68, 68, 0.2)", // --accent-red con opacidad
-            border: "1px solid rgba(239, 68, 68, 0.5)",
-            color: "#fca5a5",                           // rojo claro para el texto
-          }}
-        >
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
           {error}
         </div>
       )}

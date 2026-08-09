@@ -23,3 +23,22 @@ html, body {
   --accent-green-dim: rgba(34, 197, 94, 0.15);
 }
 
+/* Comprobante de venta: al imprimir, ocultar el resto de la UI */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-invoice,
+  .print-invoice * {
+    visibility: visible;
+  }
+  .print-invoice {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white !important;
+    color: black !important;
+  }
+}
+
