@@ -1,66 +1,50 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { ClipboardList, LayoutDashboard } from "lucide-react";
+import {
+  ClipboardList,
+  ArrowLeftRight,
+  Search,
+  X,
+} from "lucide-react";
 import { getProductos } from "../../../api/productosApi";
 import { apiErrorMessage } from "../../../api/errors";
 import {
-  getHistorialAjustes,
-  crearAjuste,
-  autorizarAjuste,
+  getMovimientosStock,
+  registrarMovimiento,
+  getTiposMovimiento,
 } from "../../../api/ajustesApi";
-import {
-  canGestionarAjustesInventario,
-  canAutorizarAjustesInventario,
-} from "../../../auth/inventoryAccess";
-import SeleccionProductos from "./ajuste-inventario/SeleccionProductos";
-import AjusteStockPanel from "./ajuste-inventario/AjusteStockPanel";
+import { canGestionarAjustesInventario } from "../../../auth/inventoryAccess";
+import AjusteStock from "./ajuste-inventario/AjusteStock";
 import HistorialAjustes from "./ajuste-inventario/HistorialAjustes";
 import { stockEntero } from "./ajuste-inventario/utils";
 
-/** Futuro: true = mostrar botón "Autorizar" en historial y flujo en dos pasos (POST pendiente + PATCH). */
-const FLUJO_AUTORIZACION_PENDIENTE = false;
-
-/*
- * Futuro — modal de confirmación cuando el ajuste queda solo como solicitud pendiente:
- * import ConfirmarSolicitudModal from "./ajuste-inventario/ConfirmarSolicitudModal";
- * Tras validar, setConfirmOpen(true); en onConfirm llamar a crearAjuste.
- */
-
-function todayISO() {
-  return new Date().toISOString().split("T")[0];
-}
-
 export default function AjusteInventario() {
   const puedeRegistrar = canGestionarAjustesInventario();
-  const puedeAutorizar = canAutorizarAjustesInventario();
 
   const [productos, setProductos] = useState([]);
+  const [tiposMovimiento, setTiposMovimiento] = useState([]);
   const [historial, setHistorial] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [search, setSearch] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
 
   const [formData, setFormData] = useState({
-    tipoAjuste: "",
-    fechaAjuste: todayISO(),
-    nuevoStock: "",
-    justificacion: "",
-    detalleOtro: "",
-    autorizadoPor: "",
+    tipoMovimiento: "",
+    clasificacion: "",
+    cantidad: "",
+    referencia: "",
   });
 
   const [submitting, setSubmitting] = useState(false);
-  const [autorizandoId, setAutorizandoId] = useState(null);
 
-  const diferencia =
-    productoSeleccionado != null
-      ? Number(formData.nuevoStock === "" ? NaN : formData.nuevoStock) -
-        stockEntero(productoSeleccionado)
-      : 0;
+  const tipoPorNombre = useMemo(() => {
+    return Object.fromEntries(tiposMovimiento.map((t) => [t.nombre, t.id]));
+  }, [tiposMovimiento]);
 
-  const loadHistorial = useCallback(async () => {
-    const res = await getHistorialAjustes({ pageSize: 50 });
+  const loadMovimientos = useCallback(async () => {
+    const res = await getMovimientosStock({ pageSize: 50 });
     setHistorial(res.content || []);
   }, []);
 
@@ -70,8 +54,14 @@ export default function AjusteInventario() {
       try {
         setError(null);
         setLoading(true);
-        const res = await getProductos({ pageSize: 500 });
-        if (!cancelled) setProductos(res.content || []);
+        const [prodRes, tipos] = await Promise.all([
+          getProductos({ pageSize: 500 }),
+          getTiposMovimiento(),
+        ]);
+        if (!cancelled) {
+          setProductos(prodRes.content || []);
+          setTiposMovimiento(tipos);
+        }
       } catch (err) {
         if (!cancelled) {
           setError(apiErrorMessage(err) || "Error al cargar productos");
@@ -87,183 +77,159 @@ export default function AjusteInventario() {
   }, []);
 
   useEffect(() => {
-    loadHistorial();
-  }, [loadHistorial]);
+    loadMovimientos();
+  }, [loadMovimientos]);
 
   const productosFiltrados = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return productos;
-    return productos.filter(
-      (p) =>
-        p.nombre?.toLowerCase().includes(q) ||
-        (p.codigoBarras && String(p.codigoBarras).includes(search.trim()))
-    );
+    if (!q) return [];
+    return productos
+      .filter(
+        (p) =>
+          p.nombre?.toLowerCase().includes(q) ||
+          (p.codigoBarras && String(p.codigoBarras).includes(search.trim()))
+      )
+      .slice(0, 20);
   }, [productos, search]);
 
   const handleSelectProducto = (producto) => {
     setProductoSeleccionado(producto);
-    setFormData((prev) => ({
-      ...prev,
-      nuevoStock: String(stockEntero(producto)),
-    }));
+    setSearch("");
+    setShowDropdown(false);
+    setFormData({ tipoMovimiento: "", clasificacion: "", cantidad: "", referencia: "" });
     setError(null);
   };
 
   const handleClear = () => {
-    setFormData({
-      tipoAjuste: "",
-      fechaAjuste: todayISO(),
-      nuevoStock: "",
-      justificacion: "",
-      detalleOtro: "",
-      autorizadoPor: "",
-    });
+    setFormData({ tipoMovimiento: "", clasificacion: "", cantidad: "", referencia: "" });
     setProductoSeleccionado(null);
+    setSearch("");
     setError(null);
   };
 
+  const cantidadNum =
+    formData.cantidad === "" || Number.isNaN(Number(formData.cantidad))
+      ? null
+      : Number(formData.cantidad);
+
+  const stockResultante =
+    productoSeleccionado != null && cantidadNum != null
+      ? stockEntero(productoSeleccionado) + cantidadNum
+      : null;
+
   function validarFormulario() {
     if (!puedeRegistrar) {
-      setError("No tenés permisos para solicitar ajustes de inventario.");
+      setError("No tenés permisos para registrar movimientos de stock.");
       return false;
     }
     if (!productoSeleccionado) {
       setError("Seleccioná un producto.");
       return false;
     }
-    if (!formData.tipoAjuste) {
-      setError("Seleccioná un tipo de ajuste.");
+    if (!formData.tipoMovimiento) {
+      setError("Seleccioná el tipo de movimiento (Entrada, Salida o Ajuste).");
       return false;
     }
-    if (!formData.fechaAjuste) {
-      setError("Indicá la fecha de ajuste.");
+    if (!formData.clasificacion) {
+      setError("Seleccioná la clasificación del movimiento.");
       return false;
     }
-    if (formData.tipoAjuste === "OTRO" && !formData.detalleOtro.trim()) {
-      setError('Completá el detalle para el tipo "Otro".');
+    if (cantidadNum == null || Number.isNaN(cantidadNum)) {
+      setError("Indicá una cantidad válida.");
       return false;
     }
-    const n = Number(formData.nuevoStock);
-    if (formData.nuevoStock === "" || !Number.isInteger(n) || n < 0) {
-      setError("El nuevo stock debe ser un número entero mayor o igual a 0.");
+    if (cantidadNum === 0) {
+      setError("La cantidad del movimiento debe ser distinta de 0.");
       return false;
     }
-    if (!formData.justificacion.trim()) {
-      setError("La justificación es obligatoria.");
-      return false;
-    }
-    if (!formData.autorizadoPor.trim()) {
-      setError('Completá el campo "Autorizado por".');
+    if (formData.tipoMovimiento !== "AJUSTE" && cantidadNum < 0) {
+      setError("La cantidad debe ser mayor a 0 para entradas y salidas.");
       return false;
     }
     return true;
   }
 
-  const procesarAjuste = async () => {
+  const procesarMovimiento = async () => {
     if (!productoSeleccionado) return;
     setError(null);
     if (!validarFormulario()) return;
 
+    const tipoId = tipoPorNombre[formData.tipoMovimiento];
+    if (tipoId == null) {
+      setError(
+        "No se pudo determinar el tipo de movimiento. Verificá que el backend tenga cargados los tipos."
+      );
+      return;
+    }
+
     try {
       setSubmitting(true);
-      setError(null);
-      const n = Number(formData.nuevoStock);
-      const stockAnt = stockEntero(productoSeleccionado);
-
       const payload = {
-        idProducto: productoSeleccionado.id,
-        nombreProducto: productoSeleccionado.nombre,
-        tipoAjuste: formData.tipoAjuste,
-        fechaAjuste: formData.fechaAjuste,
-        stockAnterior: stockAnt,
-        nuevoStock: n,
-        justificacion: formData.justificacion.trim(),
-        detalleOtro:
-          formData.tipoAjuste === "OTRO" ? formData.detalleOtro.trim() : undefined,
-        autorizadoPor: formData.autorizadoPor.trim(),
+        producto_id: productoSeleccionado.id,
+        tipo_movimiento_id: tipoId,
+        cantidad: cantidadNum,
+        clasificacion: formData.clasificacion,
+        referencia: formData.referencia.trim() || undefined,
+        requiere_auditoria: false,
       };
 
-      await crearAjuste(payload);
+      await registrarMovimiento(payload);
 
       setProductos((prev) =>
         prev.map((p) =>
-          p.id === productoSeleccionado.id ? { ...p, stockActual: n } : p
+          p.id === productoSeleccionado.id
+            ? { ...p, stockActual: stockResultante }
+            : p
         )
       );
 
-      await loadHistorial();
+      await loadMovimientos();
       handleClear();
     } catch (err) {
-      setError(apiErrorMessage(err) || "Error al registrar el ajuste");
+      setError(apiErrorMessage(err) || "Error al registrar el movimiento");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleAutorizar = async (row) => {
-    if (!FLUJO_AUTORIZACION_PENDIENTE || !puedeAutorizar || row?.id == null) return;
-    const ok = window.confirm(
-      "Al autorizar, el stock del producto se actualizará de inmediato. ¿Confirmar autorización?"
-    );
-    if (!ok) return;
-    try {
-      setAutorizandoId(row.id);
-      setError(null);
-      const actualizado = await autorizarAjuste(row.id);
-      const nuevo = actualizado?.nuevoStock ?? row.nuevoStock;
-      const idProd = actualizado?.idProducto ?? row.idProducto;
-
-      if (idProd != null && nuevo != null) {
-        setProductos((prev) =>
-          prev.map((p) =>
-            p.id === idProd ? { ...p, stockActual: Number(nuevo) } : p
-          )
-        );
-      }
-
-      await loadHistorial();
-    } catch (err) {
-      setError(
-        apiErrorMessage(err) ||
-          "No se pudo autorizar. Verificá que el endpoint PATCH /api/inventario/ajustes/{id}/autorizar exista en el backend."
-      );
-    } finally {
-      setAutorizandoId(null);
-    }
-  };
-
-  if (!puedeRegistrar && !puedeAutorizar) {
+  if (!puedeRegistrar) {
     return (
       <div className="max-w-xl mx-auto py-12 px-4 text-center space-y-3">
         <ClipboardList className="w-10 h-10 text-[#5a5a6e] mx-auto" aria-hidden />
-        <h1 className="text-lg font-semibold text-[#e1e1eb]">Ajuste de inventario</h1>
+        <h1 className="text-lg font-semibold text-[#e1e1eb]">
+          Ajuste de Movimientos
+        </h1>
         <p className="text-sm text-[#7a7a8c]">
-          No tenés permisos para acceder a los ajustes de inventario. Solo usuarios con rol{" "}
+          No tenés permisos para acceder a los movimientos de stock. Solo
+          usuarios con rol{" "}
           <span className="text-[#9a9aac]">ADMIN</span> o{" "}
-          <span className="text-[#9a9aac]">ENCARGADO_INVENTARIO</span> pueden utilizar este módulo
-          (configurá <code className="text-xs text-amber-400/90">VITE_USER_ROLES</code> cuando
-          exista autenticación).
+          <span className="text-[#9a9aac]">ENCARGADO_INVENTARIO</span> pueden
+          utilizar este módulo.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto pb-10">
+    <div className="max-w-3xl mx-auto pb-10">
       <div className="rounded-2xl border border-[#1e1e24] bg-[#111114] overflow-hidden">
-        <header className="bg-[#0d0d0f] border-b border-[#1e1e24] px-4 sm:px-6 py-4 flex items-center gap-3">
-          <div
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#22c55e]/10 border border-[#22c55e]/20"
-            aria-hidden
-          >
-            <LayoutDashboard className="w-5 h-5 text-[#22c55e]" />
+        <header className="px-5 sm:px-6 pt-5 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-[#f1f1f3] tracking-tight flex items-center gap-2">
+              <ArrowLeftRight className="w-5 h-5 text-[#22c55e]" />
+              Ajuste de Movimientos
+            </h1>
+            <p className="text-sm text-[#7a7a8c] mt-0.5">
+              Registrá entradas, salidas y correcciones de stock.
+            </p>
           </div>
-          <h1 className="text-lg sm:text-xl font-semibold text-[#f1f1f3] tracking-tight truncate min-w-0">
-            Ajuste de Inventario
-          </h1>
+          <span className="text-xs text-[#7a7a8c] border border-[#2a2a32] rounded-full px-3 py-1.5 tabular-nums whitespace-nowrap self-start sm:self-auto">
+            {historial.length} movimiento{historial.length !== 1 ? "s" : ""}{" "}
+            reciente{historial.length !== 1 ? "s" : ""}
+          </span>
         </header>
 
-        <div className="p-4 sm:p-6 space-y-6">
+        <div className="px-5 sm:px-6 pb-5 space-y-5">
           {error ? (
             <div
               role="alert"
@@ -273,35 +239,112 @@ export default function AjusteInventario() {
             </div>
           ) : null}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-            <SeleccionProductos
-              loading={loading}
-              search={search}
-              onSearchChange={setSearch}
-              productosFiltrados={productosFiltrados}
-              productoSeleccionado={productoSeleccionado}
-              onSelectProducto={handleSelectProducto}
-            />
+          <div className="rounded-xl border border-[#1e1e24] bg-[#0d0d0f] p-5 space-y-5">
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium text-[#9a9aac]">
+                Producto
+              </span>
+              {!productoSeleccionado ? (
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5a5a6e]" />
+                  <input
+                    type="search"
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setShowDropdown(true);
+                    }}
+                    onFocus={() => setShowDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                    disabled={loading}
+                    placeholder="Buscar producto por nombre o código de barras…"
+                    className="w-full rounded-lg border border-[#2a2a32] bg-[#111114] pl-10 pr-3 py-2.5 text-sm text-[#f1f1f3] placeholder:text-[#4a4a5a] focus:border-[#22c55e]/50 focus:ring-1 focus:ring-[#22c55e]/20 outline-none disabled:opacity-50"
+                  />
+                  {showDropdown && search.trim() && (
+                    <div className="absolute z-30 left-0 right-0 mt-1 rounded-lg border border-[#1e1e24] bg-[#111114] shadow-xl overflow-hidden max-h-60 overflow-y-auto">
+                      {productosFiltrados.length === 0 ? (
+                        <p className="p-3 text-sm text-[#5a5a6e]">
+                          No hay coincidencias.
+                        </p>
+                      ) : (
+                        <ul className="divide-y divide-[#1e1e24]">
+                          {productosFiltrados.map((p) => {
+                            const st = stockEntero(p);
+                            return (
+                              <li key={p.id}>
+                                <button
+                                  type="button"
+                                  onMouseDown={() => handleSelectProducto(p)}
+                                  className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-[#1a1a22] transition-colors"
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <span className="font-medium text-[#f1f1f3] text-sm block truncate">
+                                      {p.nombre}
+                                    </span>
+                                    {p.codigoBarras ? (
+                                      <span className="text-xs text-[#5a5a6e] block truncate">
+                                        {p.codigoBarras}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                  <span className="text-xs font-semibold text-[#22c55e] tabular-nums whitespace-nowrap">
+                                    {st}
+                                  </span>
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-[#22c55e]/20 bg-[#22c55e]/5 px-4 py-3 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-[#f1f1f3] text-sm truncate">
+                      {productoSeleccionado.nombre}
+                    </p>
+                    <p className="text-xs text-[#5a5a6e] truncate mt-0.5">
+                      {productoSeleccionado.codigoBarras
+                        ? `Cód. ${productoSeleccionado.codigoBarras}`
+                        : null}
+                      {productoSeleccionado.codigoBarras &&
+                      productoSeleccionado.stockActual != null
+                        ? " • "
+                        : ""}
+                      {productoSeleccionado.stockActual != null
+                        ? `Stock actual ${stockEntero(productoSeleccionado)}`
+                        : ""}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClear}
+                    className="shrink-0 p-1.5 rounded-lg text-[#5a5a6e] hover:text-[#f1f1f3] hover:bg-[#1e1e24] transition-colors"
+                    title="Cambiar producto"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </label>
 
-            <AjusteStockPanel
-              puedeRegistrar={puedeRegistrar}
-              productoSeleccionado={productoSeleccionado}
-              formData={formData}
-              setFormData={setFormData}
-              diferencia={diferencia}
-              loading={loading}
-              submitting={submitting}
-              onSolicitar={procesarAjuste}
-              onLimpiar={handleClear}
-            />
+            {productoSeleccionado && (
+              <AjusteStock
+                producto={productoSeleccionado}
+                formData={formData}
+                setFormData={setFormData}
+                stockResultante={stockResultante}
+                disabled={loading}
+                submitting={submitting}
+                onSolicitar={procesarMovimiento}
+                onLimpiar={handleClear}
+              />
+            )}
           </div>
 
-          <HistorialAjustes
-            items={historial}
-            autorizandoId={autorizandoId}
-            onAutorizar={handleAutorizar}
-            canAutorizar={puedeAutorizar && FLUJO_AUTORIZACION_PENDIENTE}
-          />
+          <HistorialAjustes items={historial} />
         </div>
       </div>
     </div>

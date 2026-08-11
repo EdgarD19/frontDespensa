@@ -1,71 +1,69 @@
 import { api } from "./client";
 
-/** Normaliza una fila de ajuste (snake_case / camelCase / aliases). */
-export function normalizeAjuste(row) {
+/** Normaliza una fila de movimiento de inventario (snake_case / camelCase / aliases). */
+export function normalizeMovimiento(row) {
   if (!row) return null;
-  const stockAnt = row.stockAnterior ?? row.stock_anterior;
-  const stockNuevo = row.nuevoStock ?? row.nuevo_stock;
-  let diff = row.diferencia;
-  if (diff == null && stockAnt != null && stockNuevo != null) {
-    diff = Number(stockNuevo) - Number(stockAnt);
-  }
   return {
     id: row.id,
-    idProducto: row.idProducto ?? row.id_producto,
-    nombreProducto:
-      row.nombreProducto ??
-      row.nombre_producto ??
-      row.productName ??
-      row.product_name ??
-      "",
-    tipoAjuste: row.tipoAjuste ?? row.tipo_ajuste ?? "",
-    fechaAjuste: row.fechaAjuste ?? row.fecha_ajuste ?? "",
-    stockAnterior: stockAnt,
-    nuevoStock: stockNuevo,
-    diferencia: diff,
-    justificacion: row.justificacion ?? "",
-    detalleOtro: row.detalleOtro ?? row.detalle_otro ?? "",
-    autorizadoPor: row.autorizadoPor ?? row.autorizado_por ?? "",
-    estado: String(row.estado ?? row.status ?? "PENDIENTE_DE_AUTORIZACION").toUpperCase(),
+    idProducto: row.idProducto ?? row.id_producto ?? row.productoId,
+    producto: row.producto ?? row.nombreProducto ?? row.nombre_producto ?? "",
+    tipoMovimiento: row.tipoMovimiento ?? row.tipo_movimiento ?? "",
+    clasificacion: row.clasificacion ?? "",
+    cantidad: row.cantidad != null ? Number(row.cantidad) : null,
+    fecha: row.fecha ?? "",
+    referencia: row.referencia ?? "",
+    estado: row.estado ?? "ACTIVO",
   };
 }
 
 /**
- * GET historial de ajustes (paginado).
- * Si el endpoint aún no existe en el backend, devuelve lista vacía sin bloquear el módulo.
+ * GET historial de movimientos de stock (paginado).
+ * Si el endpoint falla, devuelve lista vacía sin bloquear el módulo.
  */
-export async function getHistorialAjustes(params = {}) {
+export async function getMovimientosStock(params = {}) {
   try {
-    const { data } = await api.get("/api/inventario/ajustes", {
+    const { data } = await api.get("/api/movimientos-inventario", {
       params: {
         page: params.page ?? 0,
         pageSize: params.pageSize ?? 50,
+        search: params.search || undefined,
+        fechaInicio: params.fechaInicio || undefined,
+        fechaFin: params.fechaFin || undefined,
+        sortBy: params.sortBy || undefined,
+        sortDir: params.sortDir || undefined,
       },
     });
     const raw = data?.content ?? data ?? [];
     const list = Array.isArray(raw) ? raw : [];
-    return { content: list.map(normalizeAjuste).filter(Boolean) };
+    return {
+      content: list.map(normalizeMovimiento).filter(Boolean),
+      total: data?.totalElements ?? list.length,
+    };
   } catch {
-    return { content: [] };
+    return { content: [], total: 0 };
   }
 }
 
 /**
- * POST registrar ajuste. El backend aplica el stock y devuelve el registro (p. ej. estado AUTORIZADO).
- *
- * Futuro (pendiente de autorización en dos pasos):
- * - POST solo registra solicitud con estado PENDIENTE_DE_AUTORIZACION.
- * - PATCH /api/inventario/ajustes/{id}/autorizar aplica stock; en UI, modal previo y botón "Autorizar" en historial.
+ * POST registrar movimiento de stock.
+ * Payload esperado por el backend: producto_id, tipo_movimiento_id, cantidad, clasificacion, referencia.
  */
-export async function crearAjuste(payload) {
-  const { data } = await api.post("/api/inventario/ajustes", payload);
-  return normalizeAjuste(data);
+export async function registrarMovimiento(payload) {
+  const { data } = await api.post("/api/movimientos-inventario", payload);
+  return normalizeMovimiento(data);
 }
 
-/**
- * PATCH autorizar ajuste (flujo opcional cuando el backend deja solicitudes pendientes).
- */
-export async function autorizarAjuste(id) {
-  const { data } = await api.patch(`/api/inventario/ajustes/${id}/autorizar`, {});
-  return normalizeAjuste(data);
+/** GET tipos de movimiento (ENTRADA / SALIDA / AJUSTE) desde el backend. */
+export async function getTiposMovimiento() {
+  try {
+    const { data } = await api.get("/api/tipo-movimientos-inventario");
+    if (!Array.isArray(data)) return [];
+    return data.map((t) => ({
+      id: t.idMovimiento ?? t.id,
+      nombre: t.nombre ?? "",
+      descripcion: t.descripcion ?? t.description ?? "",
+    }));
+  } catch {
+    return [];
+  }
 }

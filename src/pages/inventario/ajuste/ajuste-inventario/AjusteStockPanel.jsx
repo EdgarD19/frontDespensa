@@ -6,7 +6,7 @@ export default function AjusteStockPanel({
   productoSeleccionado,
   formData,
   setFormData,
-  diferencia,
+  stockResultante,
   loading,
   submitting,
   onSolicitar,
@@ -15,8 +15,7 @@ export default function AjusteStockPanel({
   if (!puedeRegistrar) {
     return (
       <div className="rounded-xl border border-[#1e1e24] bg-[#111114] p-6 text-sm text-[#7a7a8c]">
-        No podés crear solicitudes de ajuste con tu rol actual. Podés revisar el historial y autorizar si
-        corresponde.
+        No podés crear movimientos de stock con tu rol actual. Podés revisar el historial si corresponde.
       </div>
     );
   }
@@ -27,7 +26,7 @@ export default function AjusteStockPanel({
         <Package className="w-10 h-10 text-[#3a3a4a] mb-3" aria-hidden />
         <p className="text-sm text-[#9a9aac] font-medium">Seleccioná un producto</p>
         <p className="text-xs text-[#5a5a6e] mt-1 max-w-xs">
-          Elegí un ítem de la lista de la izquierda para ver el formulario de ajuste de stock.
+          Elegí un ítem de la lista de la izquierda para registrar el movimiento de stock.
         </p>
       </div>
     );
@@ -38,7 +37,7 @@ export default function AjusteStockPanel({
       producto={productoSeleccionado}
       formData={formData}
       setFormData={setFormData}
-      diferencia={Number.isFinite(diferencia) ? diferencia : 0}
+      stockResultante={stockResultante}
       disabled={loading}
       submitting={submitting}
       onSolicitar={onSolicitar}

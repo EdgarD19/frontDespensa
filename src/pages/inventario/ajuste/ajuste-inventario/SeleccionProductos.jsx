@@ -39,8 +39,9 @@ export default function SeleccionProductos({
         </h2>
       </div>
       <div className="p-5 pt-4 space-y-4">
-        <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2.5 text-xs sm:text-sm text-amber-200/90 leading-snug">
-          Los ajustes de inventario requieren justificación y son registrados en el historial.
+        <div className="rounded-lg border border-[#1e1e24] bg-[#0d0d0f] px-3 py-2.5 text-xs sm:text-sm text-[#9a9aac] leading-snug">
+          Registrá entradas, salidas o ajustes de stock. Cada movimiento queda en el historial y actualiza
+          el stock del producto.
         </div>
 
         <label className="block space-y-1">
