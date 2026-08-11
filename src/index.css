@@ -1,3 +1,6 @@
+/* Fuentes del diseño de registro de venta */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
 /*activa tailwind en todo el proyecto*/
 @import "tailwindcss";
 
@@ -21,6 +24,26 @@ html, body {
   --accent-orange: #f97316;
   --accent-red: #ef4444;
   --accent-green-dim: rgba(34, 197, 94, 0.15);
+
+  /* Tokens del diseño de registro de venta */
+  --surface-0: #0b0f14;
+  --surface-1: #111620;
+  --surface-2: #1a2030;
+  --surface-3: #243040;
+  --border-accent: rgba(34, 197, 94, 0.35);
+  --accent: #22c55e;
+  --accent-hover: #16a34a;
+  --accent-dim: rgba(34, 197, 94, 0.12);
+  --accent-glow: rgba(34, 197, 94, 0.18);
+  --cyan: #06b6d4;
+  --orange: #f97316;
+  --red: #ef4444;
+  --text-1: #e8ecf0;
+  --text-2: #7a8599;
+  --text-3: #4a5568;
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
 /* Comprobante de venta: al imprimir, ocultar el resto de la UI */

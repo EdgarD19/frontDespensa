@@ -1,9 +1,7 @@
-/** True si el producto se vende por peso (kg). */
 export function esProductoPesable(producto) {
   return producto?.productoPesable === "si";
 }
 
-/** Precio de venta numérico (producto por unidad/línea). Para pesables, es precio por kg. */
 export function parsePrecioVenta(producto) {
   if (producto?.precioUnitario != null) {
     const u = Number(producto.precioUnitario);
@@ -18,7 +16,6 @@ export function parsePrecioVenta(producto) {
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
-/** Stock disponible (entero para unidad, decimal para peso). */
 export function parseStockDisponible(producto) {
   const raw = producto?.stockDisponible ?? producto?.stockActual;
   if (raw === "" || raw === undefined || raw === null) return 0;
@@ -28,7 +25,6 @@ export function parseStockDisponible(producto) {
   return Math.max(0, Math.trunc(n));
 }
 
-/** Formato en guaraníes (Paraguay). */
 export function formatMoney(n) {
   const x = Number(n);
   if (!Number.isFinite(x)) return "—";
@@ -40,7 +36,6 @@ export function formatMoney(n) {
   }).format(x);
 }
 
-/** Valores enviados al backend (`formaPago`). */
 export const FORMA_PAGO_EFECTIVO = "EFECTIVO";
 export const FORMA_PAGO_TRANSFERENCIA = "TRANSFERENCIA";
 
@@ -73,4 +68,31 @@ export function hoyISO() {
 export function esSoloDigitosBarras(s) {
   const t = String(s || "").trim();
   return /^\d{8,14}$/.test(t);
+}
+
+/**
+ * Parses barcode input with optional quantity prefix.
+ * "3*1234567890123" -> { quantity: 3, barcode: "1234567890123" }
+ * "*1234567890123"  -> { quantity: 1, barcode: "1234567890123" }
+ * "1234567890123"   -> { quantity: 1, barcode: "1234567890123" }
+ */
+export function parseBarcodeInput(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return null;
+
+  const starIdx = s.indexOf("*");
+  if (starIdx !== -1) {
+    const qtyPart = s.substring(0, starIdx);
+    const barcode = s.substring(starIdx + 1).trim();
+    const quantity = qtyPart === "" ? 1 : parseInt(qtyPart, 10);
+    if (barcode && (Number.isFinite(quantity) && quantity > 0)) {
+      return { quantity, barcode };
+    }
+  }
+
+  if (esSoloDigitosBarras(s)) {
+    return { quantity: 1, barcode: s };
+  }
+
+  return null;
 }

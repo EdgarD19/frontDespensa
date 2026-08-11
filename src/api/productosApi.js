@@ -92,6 +92,7 @@ function toCreateBody(frontend, idUnidad, idProveedor) {
     name: frontend.nombre?.trim(),
     descripcion: descripcion.length > 0 ? descripcion : null,
     precio,
+    id_categoria: Number(frontend.idCategoria) || undefined,
     id_subcategoria: Number(frontend.idSubcategoria) || undefined,
     id_unidad: Number(idUnidad),
     id_proveedor: Number(idProveedor),
@@ -123,6 +124,7 @@ function toPatchBody(producto) {
     stock_actual: parseStockActual(producto.stockActual),
     stock_minimo: parseFloat(String(producto.stockMinimo || "0").replace(",", ".")),
     codigo_producto: String(producto.codigoBarras || "").replace(/\D/g, "") || undefined,
+    id_categoria: Number(producto.idCategoria) || undefined,
     id_subcategoria: Number(producto.idSubcategoria) || undefined,
     id_unidad: Number(producto.idUnidad) || undefined,
     id_proveedor: Number(producto.idProveedor) || undefined,
@@ -144,7 +146,7 @@ function toPatchBody(producto) {
  */
 export async function getProductos(params = {}) {
   const searchTrim = params.search != null ? String(params.search).trim() : "";
-  const { data } = await api.get("/api/v1/products", {
+  const { data } = await api.get("/api/products", {
     params: {
       page: params.page ?? 0,
       pageSize: params.pageSize ?? 20,      // default del backend: 20
@@ -166,7 +168,7 @@ export async function getProductos(params = {}) {
  * GET /api/products/{id}
  */
 export async function getProductoById(id) {
-  const { data } = await api.get(`/api/v1/products/${id}`);
+  const { data } = await api.get(`/api/products/${id}`);
   return toFrontendProduct(data);
 }
 
@@ -176,7 +178,7 @@ export async function getProductoById(id) {
  */
 export async function getProductoByCodigo(codigo) {
   try {
-    const { data } = await api.get(`/api/v1/products/barcode/${encodeURIComponent(codigo.trim())}`);
+    const { data } = await api.get(`/api/products/barcode/${encodeURIComponent(codigo.trim())}`);
     return toFrontendProduct(data);
   } catch (err) {
     if (err?.response?.status === 404) return null;
@@ -190,7 +192,7 @@ export async function getProductoByCodigo(codigo) {
  */
 export async function createProducto(producto, idUnidad, idProveedor) {
   const body = toCreateBody(producto, idUnidad, idProveedor);
-  await api.post("/api/v1/products", body);
+  await api.post("/api/products", body);
 }
 
 /**
@@ -199,7 +201,7 @@ export async function createProducto(producto, idUnidad, idProveedor) {
  */
 export async function updateProducto(id, producto) {
   const body = toPatchBody(producto);
-  const { data } = await api.patch(`/api/v1/products/${id}`, body);
+  const { data } = await api.patch(`/api/products/${id}`, body);
   return toFrontendProduct(data);
 }
 
@@ -207,7 +209,7 @@ export async function updateProducto(id, producto) {
  * PATCH /api/products/{id} — variante directa con valor numérico.
  */
 export async function updateProductoPrecio(id, precio) {
-  const { data } = await api.patch(`/api/v1/products/${id}`, { precio });
+  const { data } = await api.patch(`/api/products/${id}`, { precio });
   return toFrontendProduct(data);
 }
 
@@ -216,5 +218,5 @@ export async function updateProductoPrecio(id, precio) {
  * El backend responde 204 sin cuerpo.
  */
 export async function deleteProducto(id) {
-  await api.post(`/api/v1/products/deactivateProduct/${id}`);
+  await api.post(`/api/products/deactivateProduct/${id}`);
 }

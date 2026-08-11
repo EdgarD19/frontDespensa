@@ -1,6 +1,6 @@
 import { api } from "./client";
 
-const BASE = "/api/v1/client";
+const BASE = "/api/client";
 
 export function getClienteId(cliente) {
     const raw = cliente?.id ?? cliente?.idCliente;
