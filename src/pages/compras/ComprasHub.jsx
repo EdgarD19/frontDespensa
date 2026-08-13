@@ -9,11 +9,10 @@ const MODULOS = [
     icon: Truck,
   },
   {
-    to: null,
-    label: "Registro de Compras",
-    descripcion: "Órdenes de compra y recepción de mercadería. Próximamente.",
+    to: "/compras/nueva",
+    label: "Registro de Compra",
+    descripcion: "Registrá una factura de compra a un proveedor.",
     icon: ShoppingCart,
-    pronto: true,
   },
 ];
 

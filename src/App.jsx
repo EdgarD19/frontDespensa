@@ -19,6 +19,7 @@ import RegistroVenta from './pages/ventas/registro-venta/RegistroVenta'
 
 import ComprasHub from './pages/compras/ComprasHub'
 import ProveedoresABM from './pages/compras/proveedores/abm/ProveedoresABM'
+import NuevaCompra from './pages/compras/nueva/NuevaCompra'
 
 import Caja from './pages/caja/Caja'
 
@@ -46,6 +47,7 @@ export default function App() {
           <Route path="compras">
             <Route index element={<ComprasHub />} />
             <Route path="proveedores" element={<ProveedoresABM />} />
+            <Route path="nueva" element={<NuevaCompra />} />
           </Route>
 
           <Route path="caja"       element={<Caja />} />

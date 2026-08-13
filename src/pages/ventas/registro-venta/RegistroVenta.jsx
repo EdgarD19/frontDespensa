@@ -311,9 +311,9 @@ export default function RegistroVenta() {
           {/* Search bar */}
           <div className="pb-1.5 shrink-0 relative" ref={dropdownRef}>
             <div className="relative">
-              <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded"
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded"
                 style={{ border: '1px solid var(--border-accent)', color: 'var(--accent)' }}>
-                <span className="text-[10px] font-bold">|||</span>
+                <span className="text-xs font-bold">|||</span>
               </div>
               <input
                 ref={searchRef}
@@ -324,7 +324,7 @@ export default function RegistroVenta() {
                 placeholder="Escanee o escriba y presione Enter..."
                 disabled={loading}
                 autoFocus
-                className="w-full rounded-lg pl-10 pr-28 py-2.5 text-sm outline-none transition-all disabled:opacity-50"
+                className="w-full rounded-lg pl-12 pr-32 py-3.5 text-base outline-none transition-all disabled:opacity-50"
                 style={{
                   background: 'var(--surface-0)',
                   color: 'var(--text-1)',
@@ -426,30 +426,30 @@ export default function RegistroVenta() {
                     const sub = line.precioUnitario * line.cantidad;
                     const editando = editandoCantidad === line.productoId;
                     return (
-                      <div key={line.productoId} className="px-4 py-3 flex items-center gap-2 group transition-colors"
+                      <div key={line.productoId} className="px-4 py-4 flex items-center gap-2 group transition-colors"
                         style={{ borderBottom: '1px solid var(--border)' }}
                         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(26,32,48,0.5)'}
                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-                        <span className="w-6 text-[11px] text-center shrink-0" style={{ color: 'var(--text-3)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>{idx + 1}</span>
+                        <span className="w-7 text-xs text-center shrink-0" style={{ color: 'var(--text-3)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>{idx + 1}</span>
                         <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                          {pesable && <Scale className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--cyan)' }} />}
-                          <span className="text-sm font-semibold truncate" style={{ color: 'var(--text-1)' }}>{line.nombre}</span>
+                          {pesable && <Scale className="w-4 h-4 shrink-0" style={{ color: 'var(--cyan)' }} />}
+                          <span className="text-base font-semibold truncate" style={{ color: 'var(--text-1)' }}>{line.nombre}</span>
                         </div>
                         {editando ? (
-                          <div className="w-20 text-center">
+                          <div className="w-28 text-center">
                             <input ref={qtyInputRef} type="number"
                               min={pesable ? 0.001 : 1} max={line.stockDisponible} step={pesable ? 0.1 : 1}
                               value={line.cantidad}
                               onChange={(e) => handleCambiarCantidad(line.productoId, e.target.value)}
                               onBlur={() => setEditandoCantidad(null)}
                               onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Tab") setEditandoCantidad(null); e.stopPropagation(); }}
-                              className="w-16 rounded px-2 py-1 text-sm text-center outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              className="w-20 rounded px-2 py-1.5 text-base text-center outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               style={{ border: '1px solid var(--border-accent)', background: 'var(--surface-0)', color: 'var(--text-1)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}
                             />
                           </div>
                         ) : (
                           <button type="button" onClick={() => setEditandoCantidad(line.productoId)}
-                            className="w-20 text-center text-sm cursor-pointer transition-colors"
+                            className="w-24 text-center text-base cursor-pointer transition-colors"
                             style={{ color: 'var(--text-2)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}
                             onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-1)'}
                             onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-2)'}
@@ -457,10 +457,10 @@ export default function RegistroVenta() {
                             {line.cantidad} {pesable ? "kg" : "u."}
                           </button>
                         )}
-                        <span className="w-28 text-right text-sm shrink-0" style={{ color: 'var(--text-2)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>{formatMoney(line.precioUnitario)}</span>
-                        <span className="w-28 text-right text-sm font-bold shrink-0" style={{ color: 'var(--text-1)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>{formatMoney(sub)}</span>
+                        <span className="w-32 text-right text-base shrink-0" style={{ color: 'var(--text-2)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>{formatMoney(line.precioUnitario)}</span>
+                        <span className="w-32 text-right text-base font-bold shrink-0" style={{ color: 'var(--text-1)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>{formatMoney(sub)}</span>
                         <button type="button" onClick={() => handleEliminar(line.productoId)}
-                          className="p-1 rounded opacity-0 group-hover:opacity-100 transition-all shrink-0" title="Supr"
+                          className="p-1.5 rounded opacity-0 group-hover:opacity-100 transition-all shrink-0" title="Supr"
                           style={{ color: 'var(--text-3)' }}
                           onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--red)'; e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
                           onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-3)'; e.currentTarget.style.background = 'transparent'; }}>
@@ -548,7 +548,16 @@ export default function RegistroVenta() {
             <div className="px-5 py-4 grid grid-cols-2 gap-4" style={{ borderBottom: '1px solid var(--border)' }}>
               <div>
                 <p className="text-xs uppercase mb-1" style={{ color: 'var(--text-3)' }}>Recibido</p>
-                <p className="text-3xl font-bold" style={{ color: 'var(--text-1)', fontFamily: 'var(--font-display)', fontVariantNumeric: 'tabular-nums' }}>{montoPagado || "0"}</p>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={montoPagado}
+                  onChange={(e) => setMontoPagado(e.target.value)}
+                  placeholder="0"
+                  autoComplete="off"
+                  className="w-full bg-transparent text-3xl font-bold outline-none rounded px-2 py-1 -mx-2 tabular-nums focus:bg-[var(--surface-2)]"
+                  style={{ color: 'var(--text-1)', fontFamily: 'var(--font-display)', fontVariantNumeric: 'tabular-nums' }}
+                />
               </div>
               <div className="text-right">
                 <p className="text-xs uppercase mb-1" style={{ color: 'var(--text-3)' }}>Vuelto</p>

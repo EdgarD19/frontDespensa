@@ -13,7 +13,6 @@ const FORM_INICIAL = {
   idCiudad: "",
   direccion: "",
   fechaNacimiento: "",
-  idNacionalidad: "",
   telefono: "",
   celular: "",
   formaPago: "EFECTIVO",
@@ -56,7 +55,6 @@ export default function ProveedoresModal({
         fechaNacimiento: proveedorEdit.fechaNacimiento
           ? new Date(proveedorEdit.fechaNacimiento).toISOString().split("T")[0]
           : "",
-        idNacionalidad: proveedorEdit.idNacionalidad ?? "",
         telefono: proveedorEdit.telefono ?? "",
         celular: proveedorEdit.celular ?? "",
         formaPago: proveedorEdit.formaPago ?? "EFECTIVO",
@@ -93,8 +91,6 @@ export default function ProveedoresModal({
     if (!form.numeroDocumento.trim()) errs.numeroDocumento = "Requerido";
     if (!form.descripcionNegocio.trim()) errs.descripcionNegocio = "Requerido";
     if (!form.personaContacto.trim()) errs.personaContacto = "Requerido";
-    if (!form.idPais) errs.idPais = "Requerido";
-    if (!form.idCiudad) errs.idCiudad = "Requerido";
     if (!form.direccion.trim()) errs.direccion = "Requerido";
     return errs;
   }
@@ -156,19 +152,7 @@ export default function ProveedoresModal({
           </div>
 
           {!esJuridica && (
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Fecha de Nacimiento" name="fechaNacimiento" value={form.fechaNacimiento} onChange={handleChange} type="date" />
-              <div className="flex flex-col gap-1">
-                <label className="text-white/50 text-xs">Nacionalidad</label>
-                <select name="idNacionalidad" value={form.idNacionalidad} onChange={handleChange}
-                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[var(--accent-green)] transition-colors">
-                  <option value="">-- Selecciona --</option>
-                  {paises.map((p) => (
-                    <option key={p.id} value={p.id}>{p.nombre}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
+            <Field label="Fecha de Nacimiento" name="fechaNacimiento" value={form.fechaNacimiento} onChange={handleChange} type="date" />
           )}
 
           <div className="grid grid-cols-2 gap-3">
@@ -192,9 +176,9 @@ export default function ProveedoresModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
-              <label className="text-white/50 text-xs">País *</label>
-              <select name="idPais" value={form.idPais} onChange={handlePaisChange}
-                className={`bg-white/5 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[var(--accent-green)] transition-colors ${errores.idPais ? "border-red-500/50" : "border-white/10"}`}>
+              <label className="text-white/50 text-xs">País</label>
+              <select name="idPais" value={form.idPais} onChange={handlePaisChange} disabled
+                className={`bg-white/5 border rounded-lg px-3 py-2 text-sm text-white/40 focus:outline-none transition-colors border-white/10 ${errores.idPais ? "border-red-500/50" : "border-white/10"}`}>
                 <option value="">-- Selecciona --</option>
                 {paises.map((p) => (
                   <option key={p.id} value={p.id}>{p.nombre}</option>
@@ -203,9 +187,9 @@ export default function ProveedoresModal({
               {errores.idPais && <span className="text-red-400 text-xs">{errores.idPais}</span>}
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-white/50 text-xs">Ciudad *</label>
-              <select name="idCiudad" value={form.idCiudad} onChange={handleChange}
-                className={`bg-white/5 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[var(--accent-green)] transition-colors ${errores.idCiudad ? "border-red-500/50" : "border-white/10"}`}>
+              <label className="text-white/50 text-xs">Ciudad</label>
+              <select name="idCiudad" value={form.idCiudad} onChange={handleChange} disabled
+                className={`bg-white/5 border rounded-lg px-3 py-2 text-sm text-white/40 focus:outline-none transition-colors border-white/10 ${errores.idCiudad ? "border-red-500/50" : "border-white/10"}`}>
                 <option value="">-- Selecciona --</option>
                 {ciudades.map((c) => (
                   <option key={c.id} value={c.id}>{c.nombre}</option>

@@ -57,7 +57,6 @@ function buildProveedorBody(data) {
     if (data.fechaNacimiento) {
       body.fechaNacimiento = new Date(data.fechaNacimiento).toISOString();
     }
-    body.nacionalidad_id_pais = data.idNacionalidad ? Number(data.idNacionalidad) : null;
   }
 
   if (data.formaPago !== "TRANSFERENCIA") {

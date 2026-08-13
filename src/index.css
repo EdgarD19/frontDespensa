@@ -10,6 +10,19 @@ html, body {
   color: #f0f6fc;
 }
 
+/* Dropdown nativo (select) en dark mode: fondo y texto oscuros */
+
+select option {
+  background-color: #111620;
+  color: #e8ecf0;
+}
+
+select option:hover,
+select option:checked {
+  background-color: #22c55e;
+  color: #000;
+}
+
 
 :root {
   --bg-main: #020203;
