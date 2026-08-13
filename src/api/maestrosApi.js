@@ -1,9 +1,9 @@
 import { api } from "./client";
 
 const PATHS = {
-  categorias: ["/api/v1/categories"],
-  unidades: ["/api/v1/unidades-medida"],
-  proveedores: ["/api/v1/proveedores"],
+  categorias: ["/api/categories"],
+  unidades: ["/api/unidades-medida"],
+  proveedores: ["/api/v1/proveedor"],
   marcas: ["/api/v1/marcas"],
   rubros: ["/api/v1/rubros"],
   paises: ["/api/v1/paises"],
@@ -152,7 +152,7 @@ export async function getCiudades(idPais) {
 }
 
 const SUBCATEGORIA_PATH_TEMPLATES = [
-  (id) => `/api/v1/categories/${id}/subcategorias`,
+  (id) => `/api/categories/${id}/subcategorias`,
 ];
 
 export async function getSubcategorias(idCategoria) {
