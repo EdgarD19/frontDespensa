@@ -20,12 +20,6 @@ const MODULOS = [
     descripcion: "Registra entradas, salidas y ajuste de stock.",
     icon: ClipboardList,
   },
-  {
-    to: "/inventario/maestros",
-    label: "Administrar Maestros",
-    descripcion: "Categorías, subcategorías, marcas, países y ciudades.",
-    icon: Settings,
-  },
 ];
 
 export default function InventarioHub() {

@@ -99,9 +99,9 @@ export default function ProductList({
                       <td className="px-4 py-3 text-center text-white/60 tabular-nums align-middle">{stockText}</td>
                       <td className="px-4 py-3 text-center align-middle">
                         <div className="flex items-center justify-center gap-1">
-                          <button type="button" onClick={() => onEdit(p)}
-                            className="p-2 rounded-md bg-white/5 text-white/70 hover:bg-white/10 border border-white/10 transition-all"
-                            title="Editar">
+                          <button type="button" disabled
+                            className="p-2 rounded-md bg-white/5 text-white/20 border border-white/10 cursor-not-allowed"
+                            title="Editar (deshabilitado)">
                             <Pencil className="w-4 h-4" />
                           </button>
                           <button type="button" onClick={() => onDelete(p.id)}

@@ -43,12 +43,6 @@ const INITIAL_FORM = {
   productoPesable: "no",
   idUnidad: "",
   unidadMedida: "",
-  precioCompra: "",
-  precioVenta: "",
-  precioCompraKg: "",
-  precioVentaKg: "",
-  stockMinimo: "",
-  stockActual: "",
   idProveedor: "",
   proveedor: "",
   contenido: "",
@@ -70,12 +64,6 @@ function mergeProductoLista(prev, next) {
   if (!next.unidadMedida)  m.unidadMedida  = prev.unidadMedida;
   if (!next.idProveedor)   m.idProveedor   = prev.idProveedor;
   if (!next.proveedor)     m.proveedor     = prev.proveedor;
-
-  // stockActual vacío o null → conservar el anterior
-  if (next.stockActual === "" || next.stockActual == null) m.stockActual = prev.stockActual;
-
-  // stockMinimo vacío (y el anterior tenía valor) → conservar el anterior
-  if (next.stockMinimo === "" && prev.stockMinimo !== "") m.stockMinimo = prev.stockMinimo;
 
   // Precios: si next no los trajo, conservar los anteriores
   if (!next.precioCompra    && prev.precioCompra)    m.precioCompra    = prev.precioCompra;
@@ -181,10 +169,6 @@ export default function Inventario() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const data = { ...formData };
-    const precioCompra = data.precioCompra;
-    const precioVenta  = data.precioVenta;
-    if (Number(precioCompra) < 0 || Number(precioVenta) < 0) return;
-    if (Number(data.stockMinimo || 0) < 0) return;
 
     const idCat  = data.idCategoria  ? Number(data.idCategoria)  : null;
     const idUnid = data.idUnidad     ? Number(data.idUnidad)     : null;

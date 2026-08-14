@@ -7,8 +7,6 @@ import {
   Scale,
   Ruler,
   Package,
-  DollarSign,
-  AlertTriangle,
   Truck,
   FileText,
 } from "lucide-react";
@@ -24,32 +22,6 @@ const iconClass = "w-5 h-5 flex-shrink-0 text-white/50";
 const labelClass = "block text-sm text-white/50 mb-1";
 
 const selectClass = "w-full bg-transparent border-none outline-none text-white focus:ring-0 cursor-pointer text-sm";
-
-function InputPrecio({ label, name, value, onChange, required, disabled }) {
-  return (
-    <div>
-      <label className={labelClass}>
-        {label} {required && <span className="text-red-400">*</span>}
-      </label>
-      <div className={`${fieldClass} gap-2`}>
-        <DollarSign className={iconClass} />
-        <span className="text-[#8b949e] text-sm">Gs.</span>
-        <input
-          type="number"
-          name={name}
-          value={value}
-          onChange={onChange}
-          required={required}
-          disabled={disabled}
-          min="0"
-          step="0.01"
-          className={inputClass}
-          placeholder="0"
-        />
-      </div>
-    </div>
-  );
-}
 
 export default function ProductForm({
   formData,
@@ -94,7 +66,6 @@ export default function ProductForm({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (Number(formData.precioVenta) < 0) return;
     onSubmit(e);
   };
 
@@ -117,7 +88,7 @@ export default function ProductForm({
 
           {lockNonPriceFields && (
             <div className="px-3 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs rounded-lg">
-              Modo edición — solo se modificará el precio y stock.
+              Modo edición — campos bloqueados.
             </div>
           )}
 
@@ -199,7 +170,7 @@ export default function ProductForm({
                 className={selectClass}
               >
                 <option value="">
-                  {formData.idCategoria ? "Seleccionar..." : "Sin categor\u00eda"}
+                  {formData.idCategoria ? "Seleccionar..." : "Sin categoría"}
                 </option>
                 {subcategorias.map((s) => (
                   <option key={s.id} value={s.id}>{s.nombre}</option>
@@ -249,7 +220,7 @@ export default function ProductForm({
                   disabled={ro}
                   className="accent-[var(--accent-green)]"
                 />
-                <span className="text-[#d3d3d3] text-sm">S\u00ed</span>
+                <span className="text-[#d3d3d3] text-sm">Sí</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer ml-4">
                 <input
@@ -304,81 +275,6 @@ export default function ProductForm({
                 disabled={ro}
                 className={inputClass}
                 placeholder='Opcional — ej: "30 unidades", "500g", "1L"'
-              />
-            </div>
-          </div>
-
-          <div className="col-span-1 sm:col-span-2 xl:col-span-3 -mb-1 mt-1">
-            <hr className="border-t border-[#30363d]/60" />
-          </div>
-
-          <div className="min-w-0">
-            <InputPrecio
-              label="Precio de costo"
-              name="precioCompra"
-              value={formData.precioCompra}
-              onChange={handleNumChange}
-              required
-            />
-          </div>
-
-          <div className="min-w-0">
-            <InputPrecio
-              label="Precio de venta"
-              name="precioVenta"
-              value={formData.precioVenta}
-              onChange={handleNumChange}
-              required
-            />
-          </div>
-
-          <div className="min-w-0">
-            <label className={labelClass}>
-              Stock actual <span className="text-red-400">*</span>
-            </label>
-            <div className={fieldClass}>
-              <Package className={iconClass} />
-              <input
-                type="number"
-                name="stockActual"
-                value={
-                  formData.stockActual === "" ||
-                  formData.stockActual === undefined ||
-                  formData.stockActual === null
-                    ? ""
-                    : formData.stockActual
-                }
-                onChange={handleNumChange}
-                min="0"
-                step="0.01"
-                required={!ro}
-                disabled={ro}
-                className={inputClass}
-                placeholder="0"
-              />
-            </div>
-          </div>
-
-          <div className="min-w-0 sm:col-span-2 xl:col-span-1">
-            <label className={labelClass}>Stock m\u00ednimo</label>
-            <div className={fieldClass}>
-              <AlertTriangle className={iconClass} />
-              <input
-                type="number"
-                name="stockMinimo"
-                value={
-                  formData.stockMinimo === "" ||
-                  formData.stockMinimo === undefined ||
-                  formData.stockMinimo === null
-                    ? ""
-                    : formData.stockMinimo
-                }
-                onChange={handleNumChange}
-                disabled={ro}
-                min="0"
-                step="0.01"
-                className={inputClass}
-                placeholder="Opcional — alerta de reposici\u00f3n"
               />
             </div>
           </div>
