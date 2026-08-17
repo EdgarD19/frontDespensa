@@ -23,17 +23,14 @@ function parseStockActual(raw) {
 function toFrontendProduct(backend) {
   if (!backend) return null;
 
-  // "price" es el único campo numérico confirmado en ProductResponse
   const precioStr = backend.price != null ? String(backend.price) : "";
 
   return {
     id: backend.id,
     nombre: backend.name ?? "",
-
-    // "code" del backend = código de barras / codigo_producto
+    descripcion: backend.description ?? "",
     codigoBarras: backend.code ?? "",
 
-    // El backend no devuelve estos campos aún → vacíos por defecto
     idCategoria: "",
     categoria: "",
     idSubcategoria: "",
@@ -41,30 +38,22 @@ function toFrontendProduct(backend) {
 
     productoPesable: backend.productoPesable === true ? "si" : "no",
 
-    precioPorKg: backend.precioPorKg ?? "",
-
     idMarca: backend.idMarca ?? "",
     marca: backend.marcaName ?? "",
-    precioCompra: backend.precioCompra ?? "",
-    stockMinimo: backend.stockMinimo ?? "",
-    contenido: backend.contenido ?? "",
-    activo: backend.activo !== false,
 
     idUnidad: "",
     unidadMedida: "",
     unitAbbreviation: backend.unitAbbreviation ?? "",
 
-    precioVenta: precioStr,   // "price" = precio de venta
-    precioCompraKg: "",
-    precioVentaKg: "",
+    precioVenta: precioStr,
+    precio: precioStr,
 
     stockActual: backend.stockActual ?? "",
 
     idProveedor: "",
     proveedor: "",
 
-    // "description" en ProductResponse
-    observaciones: backend.description ?? "",
+    activo: backend.activo !== false,
   };
 }
 
@@ -76,7 +65,7 @@ function toFrontendProduct(backend) {
  *   stock_actual, codigo_producto
  */
 function toCreateBody(frontend, idUnidad, idProveedor) {
-  const precio = parseFloat(String(frontend.precioVenta || "").replace(",", "."));
+  const precio = parseFloat(String(frontend.precio || "").replace(",", "."));
   if (!Number.isFinite(precio) || precio <= 0) {
     throw new Error("El precio de venta debe ser mayor que 0.");
   }
@@ -86,24 +75,19 @@ function toCreateBody(frontend, idUnidad, idProveedor) {
     ? codigoBarras
     : `GEN-${Date.now()}`;
 
-  const descripcion = (frontend.observaciones || "").trim();
+  const descripcion = (frontend.descripcion || "").trim();
 
   return {
     name: frontend.nombre?.trim(),
     descripcion: descripcion.length > 0 ? descripcion : null,
     precio,
     id_categoria: Number(frontend.idCategoria) || undefined,
-    id_subcategoria: Number(frontend.idSubcategoria) || undefined,
     id_unidad: Number(idUnidad),
     id_proveedor: Number(idProveedor),
-    id_marca: Number(frontend.idMarca) || undefined,
-    precio_compra: parseFloat(String(frontend.precioCompra || "0").replace(",", ".")),
-    stock_actual: parseStockActual(frontend.stockActual),
-    stock_minimo: parseFloat(String(frontend.stockMinimo || "0").replace(",", ".")),
-    contenido: frontend.contenido?.trim() || undefined,
-    activo: frontend.activo !== false,
-    producto_pesable: frontend.productoPesable === "si",
+    stock_actual: 0,
     codigo_producto: codigoProducto,
+    activo: true,
+    producto_pesable: frontend.productoPesable === "si",
   };
 }
 
@@ -113,25 +97,19 @@ function toCreateBody(frontend, idUnidad, idProveedor) {
  * PatchRequest (Spring) solo acepta: { precio }
  */
 function toPatchBody(producto) {
-  const precio = parseFloat(String(producto.precioVenta || "").replace(",", "."));
+  const precio = parseFloat(String(producto.precio || "").replace(",", "."));
   if (!Number.isFinite(precio) || precio <= 0) {
     throw new Error("El precio de venta debe ser mayor que 0.");
   }
   return {
-    nombre: producto.nombre?.trim(),
     precio,
-    precio_compra: parseFloat(String(producto.precioCompra || "0").replace(",", ".")),
-    stock_actual: parseStockActual(producto.stockActual),
-    stock_minimo: parseFloat(String(producto.stockMinimo || "0").replace(",", ".")),
+    nombre: producto.nombre?.trim(),
+    descripcion: (producto.descripcion || "").trim() || undefined,
     codigo_producto: String(producto.codigoBarras || "").replace(/\D/g, "") || undefined,
     id_categoria: Number(producto.idCategoria) || undefined,
-    id_subcategoria: Number(producto.idSubcategoria) || undefined,
     id_unidad: Number(producto.idUnidad) || undefined,
     id_proveedor: Number(producto.idProveedor) || undefined,
-    id_marca: Number(producto.idMarca) || undefined,
-    contenido: producto.contenido?.trim() || undefined,
     activo: producto.activo !== false,
-    descripcion: (producto.observaciones || "").trim() || undefined,
     producto_pesable: producto.productoPesable === "si",
   };
 }

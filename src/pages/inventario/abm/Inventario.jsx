@@ -10,7 +10,6 @@ import {
   getProductos,
   createProducto,
   updateProducto,
-  deleteProducto,
   apiErrorMessage,
 } from "../../../api/productosApi";
 import {
@@ -34,6 +33,7 @@ const INITIAL_FORM = {
   id: null,
   codigoBarras: "",
   nombre: "",
+  descripcion: "",
   idCategoria: "",
   categoria: "",
   idSubcategoria: "",
@@ -45,9 +45,8 @@ const INITIAL_FORM = {
   unidadMedida: "",
   idProveedor: "",
   proveedor: "",
-  contenido: "",
+  precio: "",
   activo: true,
-  observaciones: "",
 };
 
 // FUNCIÓN AUXILIAR: mergeProductoLista
@@ -227,15 +226,23 @@ export default function Inventario() {
     setModalOpen(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("¿Está seguro de eliminar este producto?")) return;
+  const handleToggleActivo = async (producto) => {
+    const id = producto.id;
+    const nombre = producto.nombre || `producto #${id}`;
+    const nuevoEstado = producto.activo === false ? "activar" : "inactivar";
+
+    if (!window.confirm(`¿${nuevoEstado} "${nombre}"?`)) return;
+
+    setError(null);
     try {
-      setError(null);
-      await deleteProducto(id);
-      setProductos((prev) => prev.filter((p) => p.id !== id));
-      if (editingId === id) { setFormData(INITIAL_FORM); setEditingId(null); setModalOpen(false); }
+      await updateProducto(id, { ...producto, activo: producto.activo === false });
+      setProductos((prev) =>
+        prev.map((p) =>
+          p.id === id ? { ...p, activo: p.activo === false ? true : false } : p
+        )
+      );
     } catch (err) {
-      setError(apiErrorMessage(err) || "Error al eliminar");
+      setError(apiErrorMessage(err) || "No se pudo cambiar el estado del producto.");
     }
   };
 
@@ -256,8 +263,8 @@ export default function Inventario() {
         loading={loading}
         search={search}
         onSearch={setSearch}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
+        onSeleccionar={handleEdit}
+        onToggleActivo={handleToggleActivo}
         onNuevo={openModalForAdd}
         paginacion={{ page, totalPages }}
         onPageChange={setPage}
@@ -271,17 +278,13 @@ export default function Inventario() {
               formData={formData}
               setFormData={setFormData}
               onSubmit={handleSubmit}
-              onClear={handleClear}
               onClose={closeModal}
               isEditing={!!editingId}
-              lockNonPriceFields={!!editingId}
               categorias={categorias}
               subcategorias={subcategorias}
               unidades={unidades}
               proveedores={proveedores}
-              marcas={marcas}
               loading={loading}
-              titleId="modal-gestion-producto"
             />
           </div>
         </div>

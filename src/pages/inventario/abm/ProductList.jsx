@@ -1,138 +1,193 @@
-import { Search, Pencil, Trash2, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { Search, Pencil, ChevronLeft, ChevronRight, ToggleLeft, ToggleRight, Plus } from "lucide-react";
 
-function formatPrecioValor(p, tipo) {
-  const isPesable = p.productoPesable === "si";
-  const valor =
-    tipo === "compra"
-      ? isPesable ? p.precioCompraKg : p.precioCompra
-      : isPesable ? p.precioVentaKg : p.precioVenta;
-  const sufijo = isPesable ? "/kg" : "";
-  const n = Number(valor || 0);
-  return { text: `${n.toLocaleString("es-PY")}${sufijo}`, isPesable };
+function formatPrecioVenta(p) {
+  const n = Number(p.precioVenta ?? p.price ?? 0);
+  return n.toLocaleString("es-PY");
 }
 
-const fieldClass = "flex items-center gap-2 rounded-lg px-3 py-2 bg-white/5 border border-white/10";
-const inputClass = "flex-1 bg-transparent border-none outline-none w-full text-white placeholder:text-white/30 focus:ring-0 text-sm";
-const btnPrimary = "inline-flex items-center justify-center gap-2 px-4 py-2 bg-[var(--accent-green)]/90 hover:bg-[var(--accent-green)] text-white rounded-lg font-medium transition-all duration-300 text-sm";
-
 export default function ProductList({
-  products,
-  loading,
-  search,
+  products = [],
+  loading = false,
+  search = "",
   onSearch,
-  onEdit,
-  onDelete,
+  onSeleccionar,
+  onToggleActivo,
   onNuevo,
-  paginacion,
+  paginacion = { page: 0, totalPages: 0 },
   onPageChange,
 }) {
-  const page = paginacion?.page ?? 0;
-  const totalPages = paginacion?.totalPages ?? 0;
-
   return (
-    <div className="rounded-lg bg-white/5 border border-white/10 flex flex-col min-h-[60vh]">
-      <div className="p-4 border-b border-white/10 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-white">Lista de productos</h2>
-            <p className="text-xs text-white/40 mt-0.5">{products.length} productos</p>
-          </div>
-          <button type="button" onClick={onNuevo} className={btnPrimary}>
-            <Plus className="w-4 h-4" />
-            Nuevo producto
-          </button>
-        </div>
-        <div className={fieldClass}>
-          <Search className="w-4 h-4 text-white/30" />
+    <div className="flex flex-col gap-4">
+
+      {/* Barra superior */}
+      <div className="flex items-center gap-3 py-3">
+        <div className="relative flex-1">
+          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
           <input
             type="text"
             value={search}
             onChange={(e) => onSearch(e.target.value)}
-            placeholder="Buscar por nombre..."
-            className={inputClass}
+            placeholder="Buscar por nombre, código de barras..."
+            className="w-full bg-white/5 border border-white/10 rounded-lg
+              pl-9 pr-4 py-2 text-sm text-white placeholder:text-white/30
+              focus:outline-none focus:border-[var(--accent-green)] transition-colors"
           />
         </div>
+
+        <button
+          type="button"
+          onClick={onNuevo}
+          className="flex items-center gap-2 bg-[var(--accent-green)] hover:opacity-90
+            text-black text-sm font-medium px-4 py-2 rounded-lg
+            transition-opacity whitespace-nowrap"
+        >
+          <Plus className="w-4 h-4" />
+          Nuevo producto
+        </button>
       </div>
 
-      <div className="flex-1 overflow-auto p-4">
-        {loading ? (
-          <div className="flex items-center justify-center py-16 text-white/40 text-sm">Cargando...</div>
-        ) : products.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Search className="w-8 h-8 text-white/20 mb-3" />
-            <p className="text-white/40 text-sm">No se encontraron productos</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto rounded-lg border border-white/10">
-            <table className="w-full min-w-[680px] text-sm">
-              <thead>
-                <tr className="bg-white/5 text-left">
-                  <th className="px-4 py-3 font-medium text-white/40 border-b border-white/10">Código</th>
-                  <th className="px-4 py-3 font-medium text-white/40 border-b border-white/10">Producto</th>
-                  <th className="px-4 py-3 font-medium text-white/40 border-b border-white/10">Marca</th>
-                  <th className="px-4 py-3 font-medium text-white/40 border-b border-white/10 text-right">Costo</th>
-                  <th className="px-4 py-3 font-medium text-white/40 border-b border-white/10 text-right">Venta</th>
-                  <th className="px-4 py-3 font-medium text-white/40 border-b border-white/10 text-center">Stock</th>
-                  <th className="px-4 py-3 font-medium text-white/40 border-b border-white/10 text-center">Acciones</th>
+      {/* Tabla */}
+      <div className="bg-[var(--bg-card)] border border-white/5 rounded-xl overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-white/10 text-white/40 text-left">
+              <th className="px-4 py-3 font-medium">Código</th>
+              <th className="px-4 py-3 font-medium">Producto</th>
+              <th className="px-4 py-3 font-medium">Categoría</th>
+              <th className="px-4 py-3 font-medium">Unidad</th>
+              <th className="px-4 py-3 font-medium text-right">Precio venta</th>
+              <th className="px-4 py-3 font-medium">Estado</th>
+              <th className="px-4 py-3 font-medium w-24" aria-label="Acciones" />
+            </tr>
+          </thead>
+
+          <tbody>
+            {loading && (
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i} className="border-b border-white/5">
+                  {Array.from({ length: 7 }).map((_, j) => (
+                    <td key={j} className="px-4 py-3">
+                      <div className="h-4 bg-white/10 rounded animate-pulse w-3/4" />
+                    </td>
+                  ))}
                 </tr>
-              </thead>
-              <tbody>
-                {products.map((p) => {
-                  const rawStock = p.stockActual ?? p.stock;
-                  const stockUnknown = rawStock === "" || rawStock === undefined || rawStock === null;
-                  const stock = Number(rawStock ?? 0);
-                  const compra = formatPrecioValor(p, "compra");
-                  const venta = formatPrecioValor(p, "venta");
-                  const stockText = stockUnknown || !Number.isFinite(stock)
-                    ? "—"
-                    : `${stock}${p.unidadMedida ? ` ${p.unidadMedida}` : ""}`;
+              ))
+            )}
 
-                  return (
-                    <tr key={p.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                      <td className="px-4 py-3 text-white/40 font-mono text-xs align-middle">{p.codigoBarras || "—"}</td>
-                      <td className="px-4 py-3 align-middle">
-                        <p className="font-medium text-white truncate max-w-[14rem]" title={p.nombre}>{p.nombre}</p>
-                      </td>
-                      <td className="px-4 py-3 align-middle"><span className="text-white/50 text-sm">{p.marca || "—"}</span></td>
-                      <td className="px-4 py-3 text-right align-middle"><span className="text-white/50 line-through">₲{compra.text}</span></td>
-                      <td className="px-4 py-3 text-right align-middle"><span className="font-semibold text-[var(--accent-green)]">₲{venta.text}</span></td>
-                      <td className="px-4 py-3 text-center text-white/60 tabular-nums align-middle">{stockText}</td>
-                      <td className="px-4 py-3 text-center align-middle">
-                        <div className="flex items-center justify-center gap-1">
-                          <button type="button" disabled
-                            className="p-2 rounded-md bg-white/5 text-white/20 border border-white/10 cursor-not-allowed"
-                            title="Editar (deshabilitado)">
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button type="button" onClick={() => onDelete(p.id)}
-                            className="p-2 rounded-md bg-white/5 text-white/70 hover:bg-red-500/20 border border-white/10 transition-all"
-                            title="Eliminar">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+            {!loading && products.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-white/30">
+                  No se encontraron productos.
+                </td>
+              </tr>
+            )}
+
+            {!loading && products.map((p) => {
+              const activo = p.activo !== false;
+
+              return (
+                <tr
+                  key={p.id}
+                  onClick={() => onSeleccionar?.(p)}
+                  className={`border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors ${
+                    !activo ? "opacity-60" : ""
+                  }`}
+                >
+                  <td className="px-4 py-3 text-white/40 font-mono text-xs">
+                    {p.codigoBarras || "—"}
+                  </td>
+                  <td className="px-4 py-3 text-white font-medium truncate max-w-[14rem]" title={p.nombre}>
+                    {p.nombre}
+                  </td>
+                  <td className="px-4 py-3">
+                    {p.categoria ? (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400">
+                        {p.categoria}
+                      </span>
+                    ) : (
+                      <span className="text-white/30">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-white/70">
+                    {p.unidadMedida || "—"}
+                  </td>
+                  <td className="px-4 py-3 text-right font-semibold text-[var(--accent-green)] tabular-nums">
+                    ₲{formatPrecioVenta(p)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      activo
+                        ? "bg-green-500/10 text-green-400"
+                        : "bg-red-500/10 text-red-400"
+                    }`}>
+                      {activo ? "Activo" : "Inactivo"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSeleccionar?.(p);
+                        }}
+                        className="p-1.5 rounded text-white/40 hover:text-green-400 hover:bg-green-500/10 transition-colors"
+                        title="Editar producto"
+                        aria-label="Editar producto"
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleActivo?.(p);
+                        }}
+                        className={`p-1.5 rounded transition-colors ${
+                          activo
+                            ? "text-green-400 hover:bg-green-500/10"
+                            : "text-white/40 hover:text-green-400 hover:bg-green-500/10"
+                        }`}
+                        title={activo ? "Inactivar producto" : "Activar producto"}
+                        aria-label={activo ? "Inactivar producto" : "Activar producto"}
+                      >
+                        {activo ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-white/10">
-          <span className="text-xs text-white/40">Página {page + 1} de {totalPages}</span>
-          <div className="flex gap-1">
-            <button type="button" onClick={() => onPageChange(page - 1)} disabled={page <= 0}
-              className="p-2 rounded-md bg-white/5 text-white/70 hover:bg-white/10 border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button type="button" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages - 1}
-              className="p-2 rounded-md bg-white/5 text-white/70 hover:bg-white/10 border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+      {/* Paginación */}
+      {paginacion.totalPages > 1 && (
+        <div className="flex items-center justify-end gap-2 text-sm text-white/50">
+          <button
+            type="button"
+            onClick={() => onPageChange(paginacion.page - 1)}
+            disabled={paginacion.page === 0}
+            className="p-1.5 rounded hover:bg-white/10 disabled:opacity-30
+              disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft size={16} />
+          </button>
+
+          <span>
+            Página {paginacion.page + 1} de {paginacion.totalPages}
+          </span>
+
+          <button
+            type="button"
+            onClick={() => onPageChange(paginacion.page + 1)}
+            disabled={paginacion.page >= paginacion.totalPages - 1}
+            className="p-1.5 rounded hover:bg-white/10 disabled:opacity-30
+              disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight size={16} />
+          </button>
         </div>
       )}
     </div>
