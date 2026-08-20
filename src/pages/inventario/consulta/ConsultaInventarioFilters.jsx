@@ -17,12 +17,9 @@ export default function ConsultaInventarioFilters({
   setSearch,
   filterCategoria,
   setFilterCategoria,
-  filterMarca,
-  setFilterMarca,
   filterStock,
   setFilterStock,
   categoriasOptions = [],
-  marcasOptions = [],
   disabled = false,
 }) {
   return (
@@ -33,7 +30,7 @@ export default function ConsultaInventarioFilters({
         <h3 className="text-white font-semibold text-sm">Búsqueda y filtrado de productos</h3>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
         <div className="sm:col-span-2">
           <label className={labelClass}>Búsqueda general</label>
@@ -62,23 +59,6 @@ export default function ConsultaInventarioFilters({
               <option value="">Todas las categorías</option>
               {categoriasOptions.map((c) => (
                 <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label className={labelClass}>Marca</label>
-          <div className={fieldClass}>
-            <select
-              value={filterMarca}
-              onChange={(e) => setFilterMarca(e.target.value)}
-              disabled={disabled}
-              className={selectClass}
-            >
-              <option value="">Todas las marcas</option>
-              {marcasOptions.map((m) => (
-                <option key={m} value={m}>{m}</option>
               ))}
             </select>
           </div>

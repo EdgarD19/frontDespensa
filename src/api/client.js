@@ -12,8 +12,6 @@ function normalizeBaseUrl(raw) {
 }
 
 function resolveBaseUrl() {
-  // 1) Prioridad: variable de entorno explícita (ngrok, servidor remoto, etc.).
-  //    Acepta VITE_API_URL (nombre que usa el equipo en ngrok) o VITE_API_BASE_URL.
   const fromEnv = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "").trim();
   if (fromEnv) return normalizeBaseUrl(fromEnv);
 
@@ -33,7 +31,6 @@ export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
-    // Evita el aviso intermedio "ngrok-free.app" en peticiones del navegador.
     "ngrok-skip-browser-warning": "true",
   },
 });

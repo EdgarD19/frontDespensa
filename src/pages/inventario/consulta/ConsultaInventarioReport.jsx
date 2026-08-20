@@ -1,89 +1,109 @@
-import { Search, Loader2 } from "lucide-react";
+import { Search } from "lucide-react";
+import { getEstadoStock } from "../utils";
 
-const fieldClass = "flex items-center gap-2 rounded-lg px-3 py-2 bg-white/5 border border-white/10";
-const inputClass = "flex-1 bg-transparent border-none outline-none w-full text-white placeholder:text-white/30 focus:ring-0 text-sm";
+const estadoStockConfig = {
+  normal: { label: "Normal", cls: "bg-green-500/10 text-green-400" },
+  bajo: { label: "Bajo", cls: "bg-amber-500/10 text-amber-400" },
+  sin: { label: "Sin stock", cls: "bg-red-500/10 text-red-400" },
+  desconocido: { label: "Desconocido", cls: "bg-white/10 text-white/40" },
+};
 
 export default function ConsultaInventarioReport({ productos, loading }) {
   const count = productos?.length ?? 0;
 
   return (
-    <div className="rounded-lg bg-white/5 border border-white/10 flex flex-col min-h-[60vh]">
+    <div className="flex flex-col gap-4">
+      <div className="bg-[var(--bg-card)] border border-white/5 rounded-xl overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-white/10 text-white/40 text-left">
+              <th className="px-4 py-3 font-medium">Código</th>
+              <th className="px-4 py-3 font-medium">Producto</th>
+              <th className="px-4 py-3 font-medium">Categoría</th>
+              <th className="px-4 py-3 font-medium">Unidad</th>
+              <th className="px-4 py-3 font-medium text-right">Stock actual</th>
+              <th className="px-4 py-3 font-medium">Estado de stock</th>
+            </tr>
+          </thead>
 
-      <div className="p-4 border-b border-white/10 space-y-4">
-        <div>
-          <h2 className="text-lg font-semibold text-white">Inventario detallado</h2>
-          <p className="text-xs text-white/40 mt-0.5">{loading ? "Cargando..." : `${count} productos`}</p>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-auto p-4">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 text-white/40 gap-3">
-            <Loader2 className="w-8 h-8 animate-spin" />
-            <span className="text-sm">Cargando inventario...</span>
-          </div>
-        ) : count === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Search className="w-8 h-8 text-white/20 mb-3" />
-            <p className="text-white/40 text-sm">No hay productos que coincidan con los filtros</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto rounded-lg border border-white/10">
-            <table className="w-full min-w-[700px] text-sm">
-              <thead>
-                <tr className="bg-white/5 text-left">
-                  <th className="px-4 py-3 font-medium text-white/40 border-b border-white/10">Código</th>
-                  <th className="px-4 py-3 font-medium text-white/40 border-b border-white/10">Producto</th>
-                  <th className="px-4 py-3 font-medium text-white/40 border-b border-white/10">Categoría</th>
-                  <th className="px-4 py-3 font-medium text-white/40 border-b border-white/10">Marca</th>
-                  <th className="px-4 py-3 font-medium text-white/40 border-b border-white/10">Unidad</th>
-                  <th className="px-4 py-3 font-medium text-white/40 border-b border-white/10 text-center">Stock</th>
+          <tbody>
+            {loading && (
+              Array.from({ length: 6 }).map((_, i) => (
+                <tr key={i} className="border-b border-white/5">
+                  {Array.from({ length: 6 }).map((_, j) => (
+                    <td key={j} className="px-4 py-3">
+                      <div className="h-4 bg-white/10 rounded animate-pulse w-3/4" />
+                    </td>
+                  ))}
                 </tr>
-              </thead>
-              <tbody>
-                {productos.map((p) => {
-                  const rawStock = p.stockActual ?? p.stock;
-                  const stockUnknown = rawStock === "" || rawStock === undefined || rawStock === null;
-                  const stock = Number(rawStock ?? 0);
-                  const stockText = stockUnknown || !Number.isFinite(stock)
+              ))
+            )}
+
+            {!loading && count === 0 && (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-white/30">
+                  No hay productos que coincidan con los filtros.
+                </td>
+              </tr>
+            )}
+
+            {!loading &&
+              productos.map((p) => {
+                const rawStock = p.stockActual ?? p.stock;
+                const stockUnknown =
+                  rawStock === "" || rawStock === undefined || rawStock === null;
+                const stock = Number(rawStock ?? 0);
+                const stockText =
+                  stockUnknown || !Number.isFinite(stock)
                     ? "—"
                     : `${stock}${p.unidadMedida ? ` ${p.unidadMedida}` : ""}`;
+                const estado = getEstadoStock(p);
+                const estadoCfg = estadoStockConfig[estado] || estadoStockConfig.desconocido;
 
-                  return (
-                    <tr key={p.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                      <td className="px-4 py-3 text-white/40 font-mono text-xs align-middle">
-                        {p.codigoBarras || "—"}
-                      </td>
-                      <td className="px-4 py-3 align-middle">
-                        <p className="font-medium text-white truncate max-w-[14rem]" title={p.nombre}>{p.nombre}</p>
-                      </td>
-                      <td className="px-4 py-3 align-middle">
-                        {p.categoria ? (
-                          <span className="inline-block rounded-full bg-[var(--accent-green)]/15 text-[var(--accent-green)] px-2.5 py-0.5 text-xs font-medium">
-                            {p.categoria}
-                          </span>
-                        ) : (
-                          <span className="text-white/40">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 align-middle">
-                        <span className="text-white/50 text-sm">{p.marca || "—"}</span>
-                      </td>
-                      <td className="px-4 py-3 align-middle">
-                        <span className="text-white/50 text-sm">{p.unidadMedida || "—"}</span>
-                      </td>
-                      <td className="px-4 py-3 text-center text-white/60 tabular-nums align-middle">
-                        {stockText}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                return (
+                  <tr
+                    key={p.id}
+                    className="border-b border-white/5 hover:bg-white/5 transition-colors"
+                  >
+                    <td className="px-4 py-3 text-white/40 font-mono text-xs">
+                      {p.codigoBarras || "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="text-white font-medium truncate max-w-[14rem]" title={p.nombre}>
+                        {p.nombre}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3">
+                      {p.categoria ? (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400">
+                          {p.categoria}
+                        </span>
+                      ) : (
+                        <span className="text-white/30">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-white/70">{p.unidadMedida || "—"}</td>
+                    <td className="px-4 py-3 text-right text-white/80 tabular-nums">
+                      {stockText}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${estadoCfg.cls}`}>
+                        {estadoCfg.label}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+          </tbody>
+        </table>
       </div>
 
+      {!loading && count > 0 && (
+        <div className="flex items-center gap-2 text-sm text-white/50">
+          <Search size={14} />
+          <span>{count} productos</span>
+        </div>
+      )}
     </div>
   );
 }

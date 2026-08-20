@@ -12,7 +12,6 @@ export default function ConsultaInventario() {
 
   const [search, setSearch]                 = useState("");
   const [filterCategoria, setFilterCategoria] = useState("");
-  const [filterMarca, setFilterMarca]       = useState("");
   const [filterStock, setFilterStock]       = useState("todos");
 
   useEffect(() => {
@@ -35,14 +34,11 @@ export default function ConsultaInventario() {
     return () => { cancelled = true; };
   }, []);
 
-  const { categoriasOptions, marcasOptions } = useMemo(() => {
+  const { categoriasOptions } = useMemo(() => {
     const cats = [...new Set(productos.map((p) => p.categoria).filter(Boolean))].sort((a, b) =>
       a.localeCompare(b)
     );
-    const mars = [...new Set(productos.map((p) => p.marca).filter(Boolean))].sort((a, b) =>
-      a.localeCompare(b)
-    );
-    return { categoriasOptions: cats, marcasOptions: mars };
+    return { categoriasOptions: cats };
   }, [productos]);
 
   const productosFiltrados = useMemo(() => {
@@ -52,19 +48,18 @@ export default function ConsultaInventario() {
           !search ||
           p.nombre?.toLowerCase().includes(search.toLowerCase()) ||
           p.codigoBarras?.includes(search) ||
-          p.observaciones?.toLowerCase().includes(search.toLowerCase());
+          p.descripcion?.toLowerCase().includes(search.toLowerCase());
         const matchCat = !filterCategoria || p.categoria === filterCategoria;
-        const matchMarca = !filterMarca || p.marca === filterMarca;
         const estado = getEstadoStock(p);
         const matchStock =
           filterStock === "todos" ||
           (filterStock === "normal" && estado === "normal") ||
           (filterStock === "bajo"   && estado === "bajo")   ||
           (filterStock === "sin"    && estado === "sin");
-        return matchSearch && matchCat && matchMarca && matchStock;
+        return matchSearch && matchCat && matchStock;
       })
       .sort((a, b) => a.nombre?.localeCompare(b.nombre) || 0);
-  }, [productos, search, filterCategoria, filterMarca, filterStock]);
+  }, [productos, search, filterCategoria, filterStock]);
 
   return (
     <div className="max-w-7xl mx-auto py-8 px-4 space-y-6">
@@ -82,12 +77,9 @@ export default function ConsultaInventario() {
         setSearch={setSearch}
         filterCategoria={filterCategoria}
         setFilterCategoria={setFilterCategoria}
-        filterMarca={filterMarca}
-        setFilterMarca={setFilterMarca}
         filterStock={filterStock}
         setFilterStock={setFilterStock}
         categoriasOptions={categoriasOptions}
-        marcasOptions={marcasOptions}
         disabled={loading}
       />
 
