@@ -1,4 +1,15 @@
-import { Search, Pencil, ChevronLeft, ChevronRight, ToggleLeft, ToggleRight, Plus } from "lucide-react";
+import {
+  Search,
+  Pencil,
+  Plus,
+  ChevronsLeft,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsRight,
+  Check,
+  X,
+  CircleDollarSign,
+} from "lucide-react";
 
 function formatPrecioVenta(p) {
   const n = Number(p.precioVenta ?? p.price ?? 0);
@@ -12,10 +23,13 @@ export default function ProductList({
   onSearch,
   onSeleccionar,
   onToggleActivo,
+  onPrecio,
   onNuevo,
   paginacion = { page: 0, totalPages: 0 },
   onPageChange,
 }) {
+  const { page = 0, totalPages = 0 } = paginacion;
+
   return (
     <div className="flex flex-col gap-4">
 
@@ -57,7 +71,7 @@ export default function ProductList({
               <th className="px-4 py-3 font-medium">Unidad</th>
               <th className="px-4 py-3 font-medium text-right">Precio venta</th>
               <th className="px-4 py-3 font-medium">Estado</th>
-              <th className="px-4 py-3 font-medium w-24" aria-label="Acciones" />
+              <th className="px-4 py-3 font-medium w-28" aria-label="Acciones" />
             </tr>
           </thead>
 
@@ -125,6 +139,7 @@ export default function ProductList({
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
+                      {/* M — Modificar */}
                       <button
                         type="button"
                         onClick={(e) => {
@@ -137,6 +152,8 @@ export default function ProductList({
                       >
                         <Pencil size={16} />
                       </button>
+
+                      {/* B — Baja / Desactivar (✓/✕) */}
                       <button
                         type="button"
                         onClick={(e) => {
@@ -148,10 +165,24 @@ export default function ProductList({
                             ? "text-green-400 hover:bg-green-500/10"
                             : "text-white/40 hover:text-green-400 hover:bg-green-500/10"
                         }`}
-                        title={activo ? "Inactivar producto" : "Activar producto"}
-                        aria-label={activo ? "Inactivar producto" : "Activar producto"}
+                        title={activo ? "Desactivar producto" : "Activar producto"}
+                        aria-label={activo ? "Desactivar producto" : "Activar producto"}
                       >
-                        {activo ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+                        {activo ? <Check size={16} /> : <X size={16} />}
+                      </button>
+
+                      {/* P — Precio venta */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onPrecio?.(p);
+                        }}
+                        className="p-1.5 rounded text-white/40 hover:text-[var(--accent-cyan)] hover:bg-cyan-500/10 transition-colors"
+                        title="Actualizar precio de venta"
+                        aria-label="Actualizar precio de venta"
+                      >
+                        <CircleDollarSign size={16} />
                       </button>
                     </div>
                   </td>
@@ -162,31 +193,53 @@ export default function ProductList({
         </table>
       </div>
 
-      {/* Paginación */}
-      {paginacion.totalPages > 1 && (
-        <div className="flex items-center justify-end gap-2 text-sm text-white/50">
+      {/* Paginación << < > >> */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-end gap-1 text-sm text-white/50">
           <button
             type="button"
-            onClick={() => onPageChange(paginacion.page - 1)}
-            disabled={paginacion.page === 0}
+            onClick={() => onPageChange(0)}
+            disabled={page === 0}
             className="p-1.5 rounded hover:bg-white/10 disabled:opacity-30
               disabled:cursor-not-allowed transition-colors"
+            title="Primera página"
+          >
+            <ChevronsLeft size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => onPageChange(page - 1)}
+            disabled={page === 0}
+            className="p-1.5 rounded hover:bg-white/10 disabled:opacity-30
+              disabled:cursor-not-allowed transition-colors"
+            title="Página anterior"
           >
             <ChevronLeft size={16} />
           </button>
 
-          <span>
-            Página {paginacion.page + 1} de {paginacion.totalPages}
+          <span className="px-2">
+            Página {page + 1} de {totalPages}
           </span>
 
           <button
             type="button"
-            onClick={() => onPageChange(paginacion.page + 1)}
-            disabled={paginacion.page >= paginacion.totalPages - 1}
+            onClick={() => onPageChange(page + 1)}
+            disabled={page >= totalPages - 1}
             className="p-1.5 rounded hover:bg-white/10 disabled:opacity-30
               disabled:cursor-not-allowed transition-colors"
+            title="Página siguiente"
           >
             <ChevronRight size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => onPageChange(totalPages - 1)}
+            disabled={page >= totalPages - 1}
+            className="p-1.5 rounded hover:bg-white/10 disabled:opacity-30
+              disabled:cursor-not-allowed transition-colors"
+            title="Última página"
+          >
+            <ChevronsRight size={16} />
           </button>
         </div>
       )}

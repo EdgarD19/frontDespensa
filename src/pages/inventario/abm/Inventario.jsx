@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from "react";
 
 import ProductForm from "./ProductForm";
 import ProductList from "./ProductList";
+import PrecioProductoModal from "./PrecioProductoModal";
 import {
   getProductos,
   createProducto,
@@ -90,6 +91,7 @@ export default function Inventario() {
   const [page, setPage]                 = useState(0);
   const [totalPages, setTotalPages]     = useState(0);
   const [modalOpen, setModalOpen]       = useState(false);
+  const [precioProducto, setPrecioProducto] = useState(null);
 
   const [categorias, setCategorias]     = useState([]);
   const [unidades, setUnidades]         = useState([]);
@@ -226,6 +228,23 @@ export default function Inventario() {
     setModalOpen(true);
   };
 
+  const openPrecioModal = (producto) => {
+    setError(null);
+    setPrecioProducto(producto);
+  };
+
+  const closePrecioModal = () => {
+    setPrecioProducto(null);
+  };
+
+  const handlePrecioActualizado = (updated) => {
+    if (updated?.id) {
+      setProductos((prev) =>
+        prev.map((p) => (p.id === updated.id ? mergeProductoLista(p, updated) : p))
+      );
+    }
+  };
+
   const handleToggleActivo = async (producto) => {
     const id = producto.id;
     const nombre = producto.nombre || `producto #${id}`;
@@ -265,6 +284,7 @@ export default function Inventario() {
         onSearch={setSearch}
         onSeleccionar={handleEdit}
         onToggleActivo={handleToggleActivo}
+        onPrecio={openPrecioModal}
         onNuevo={openModalForAdd}
         paginacion={{ page, totalPages }}
         onPageChange={setPage}
@@ -288,6 +308,14 @@ export default function Inventario() {
             />
           </div>
         </div>
+      )}
+
+      {precioProducto && (
+        <PrecioProductoModal
+          producto={precioProducto}
+          onClose={closePrecioModal}
+          onPrecioActualizado={handlePrecioActualizado}
+        />
       )}
     </div>
   );

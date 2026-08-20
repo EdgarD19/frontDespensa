@@ -192,6 +192,30 @@ export async function updateProductoPrecio(id, precio) {
 }
 
 /**
+ * GET /api/productos-detalle/producto/{productoId}
+ * Historial de precios (precio compra/venta) de un producto.
+ */
+export async function getHistorialPrecios(productoId) {
+  const { data } = await api.get(`/api/productos-detalle/producto/${productoId}`);
+  const rows = Array.isArray(data) ? data : [];
+  return rows
+    .map((r) => ({
+      id: r.idProductoDetalle,
+      codigoBarra: r.codigoBarra ?? "",
+      precioCompra: r.precioCompra ?? "",
+      precioVenta: r.precioVenta ?? "",
+      margen: r.margen ?? "",
+      margenPorcentaje: r.margenPorcentaje ?? "",
+      fecha: r.fecha ?? "",
+      hora: r.hora ?? "",
+    }))
+    .sort((a, b) => {
+      if (!a.fecha || !b.fecha) return 0;
+      return String(b.fecha).localeCompare(String(a.fecha)) || String(b.hora || "").localeCompare(String(a.hora || ""));
+    });
+}
+
+/**
  * POST /api/v1/products/deactivateProduct/{id}
  * El backend responde 204 sin cuerpo.
  */
