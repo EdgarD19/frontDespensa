@@ -50,6 +50,8 @@ function toFrontendProduct(backend) {
 
     stockActual: backend.stockActual ?? "",
 
+    precioCompra: backend.price ?? "",
+
     idProveedor: "",
     proveedor: "",
 

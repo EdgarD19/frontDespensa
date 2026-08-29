@@ -1,18 +1,24 @@
 import { Link } from "react-router-dom";
-import { Truck, ShoppingCart } from "lucide-react";
+import { Truck, ShoppingCart, ClipboardList } from "lucide-react";
 
 const MODULOS = [
   {
-    to: "/compras/proveedores",
-    label: "ABM Proveedores",
-    descripcion: "Alta, baja y modificacion de proveedores.",
-    icon: Truck,
+    to: "/compras/factura",
+    label: "Registro de Compra",
+    descripcion: "Ingreso inmediato de productos con factura del proveedor.",
+    icon: ShoppingCart,
   },
   {
-    to: "/compras/nueva",
-    label: "Registro de Compra",
-    descripcion: "Registrá una factura de compra a un proveedor.",
-    icon: ShoppingCart,
+    to: "/compras/pedidos",
+    label: "Gestión de Pedidos",
+    descripcion: "Crear solicitudes de compra y recepcionar pedidos pendientes.",
+    icon: ClipboardList,
+  },
+  {
+    to: "/compras/proveedores",
+    label: "Gestión de Proveedores",
+    descripcion: "Registro de distribuidores, rubros de productos y datos de contacto.",
+    icon: Truck,
   },
 ];
 
@@ -24,27 +30,24 @@ export default function ComprasHub() {
     <div className="max-w-5xl mx-auto py-8 px-4 space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold text-[#f1f1f3] tracking-tight">Compras</h1>
-        <p className="text-sm text-[#5a5a6e]">Selecciona un modulo para continuar</p>
+        <p className="text-sm text-[#5a5a6e]">Selecciona un módulo para continuar</p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {MODULOS.map((m) => {
-          const { to, label, descripcion, icon: Icon, pronto } = m;
-          const contenido = (
-            <div className={`flex flex-col items-center justify-center gap-3 ${pronto ? "opacity-40" : ""}`}>
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#22c55e]/8 border border-[#22c55e]/15 text-[#22c55e]">
-                <Icon className="w-8 h-8" aria-hidden />
+          const { to, label, descripcion, icon: Icon } = m;
+          return (
+            <Link key={label} to={to} className={cardClass}>
+              <div className="flex flex-col items-center justify-center gap-3">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#22c55e]/8 border border-[#22c55e]/15 text-[#22c55e]">
+                  <Icon className="w-8 h-8" aria-hidden />
+                </div>
+                <div className="text-center space-y-1">
+                  <p className="text-base font-semibold text-white leading-tight">{label}</p>
+                  <p className="text-xs text-[#5a5a6e] leading-relaxed line-clamp-2">{descripcion}</p>
+                </div>
               </div>
-              <div className="text-center space-y-1">
-                <p className="text-base font-semibold text-white leading-tight">{label}</p>
-                <p className="text-xs text-[#5a5a6e] leading-relaxed line-clamp-2">{descripcion}</p>
-              </div>
-            </div>
-          );
-          return to ? (
-            <Link key={label} to={to} className={cardClass}>{contenido}</Link>
-          ) : (
-            <div key={label} className={`${cardClass} cursor-default`}>{contenido}</div>
+            </Link>
           );
         })}
       </div>

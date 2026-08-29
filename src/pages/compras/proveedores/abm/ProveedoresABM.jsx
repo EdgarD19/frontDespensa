@@ -33,7 +33,9 @@ export default function ProveedoresABM() {
       try {
         const p = await getPaises();
         setPaises(p);
-      } catch {}
+      } catch {
+        setPaises([]);
+      }
     }
     load();
   }, []);
@@ -51,9 +53,20 @@ export default function ProveedoresABM() {
     setError(null);
     try {
       const res = await getProveedores({ search: searchDebounced, page, pageSize: 10, sortBy: "nombre", sortDir: "ASC" });
-      const body = res.data ?? {};
-      setProveedores(Array.isArray(body.content) ? body.content : []);
-      setTotalPages(typeof body.totalPages === "number" ? body.totalPages : 0);
+      const raw = res.data;
+      const filas = Array.isArray(raw)
+        ? raw
+        : Array.isArray(raw?.content)
+          ? raw.content
+          : [];
+      setProveedores(filas);
+      setTotalPages(
+        Array.isArray(raw)
+          ? 1
+          : typeof raw?.totalPages === "number"
+            ? raw.totalPages
+            : 0,
+      );
     } catch (err) {
       const detalle = apiErrorMessage(err);
       setError(detalle && detalle !== "Error de red"
