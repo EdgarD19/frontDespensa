@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Truck, Search, Barcode, Trash2, ShoppingCart, Check, Calendar, FileText } from "lucide-react";
 import { getProductos, getProductoByCodigo } from "../../../api/productosApi";
 import { getProveedores } from "../../../api/proveedoresApi";
@@ -381,88 +381,85 @@ export default function CompraEspontanea({ onVolver }) {
         </div>
 
         {/* Tabla */}
-        <div className="mt-3">
-          <table className="w-full" style={{ borderCollapse: "separate", borderSpacing: "0 0.25rem" }}>
-            <thead>
-              <tr>
-                <th className="pb-0.5 text-left text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Producto</th>
-                <th className="pb-0.5 text-center text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">U.M.</th>
-                <th className="pb-0.5 text-right text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Cantidad</th>
-                <th className="pb-0.5 text-right text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Precio costo</th>
-                <th className="pb-0.5 text-right text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Subtotal</th>
-                <th className="pb-0.5 w-8"></th>
-              </tr>
-            </thead>
-          </table>
-          <div className="max-h-[26vh] overflow-y-auto">
-            <table className="w-full" style={{ borderCollapse: "separate", borderSpacing: "0 0.25rem" }}>
-              <tbody>
-                {lineas.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="text-center py-6 text-sm text-[#5a5a6e] border border-dashed border-white/10 rounded-xl">
-                      Todavía no agregaste productos a esta factura.
-                    </td>
-                  </tr>
-                ) : lineas.map((l) => (
-                  <tr key={l.producto.id} className="bg-white/[0.03]">
-                    <td className="py-1.5 px-2 pl-2.5 text-sm font-medium text-white rounded-l-lg">
-                      {l.nuevo ? (
-                        <div className="flex flex-col gap-0.5">
-                          <input value={l.producto.nombre}
-                            onChange={(e) => setLineas((prev) => prev.map((x) => x.producto.id === l.producto.id ? { ...x, producto: { ...x.producto, nombre: e.target.value } } : x))}
-                            placeholder="Nombre del producto"
-                            className={`${S.field} !py-0.5 !px-1.5 !text-sm border-[#22c55e]/30`}
-                          />
-                          <input value={l.producto.codigo}
-                            onChange={(e) => setLineas((prev) => prev.map((x) => x.producto.id === l.producto.id ? { ...x, producto: { ...x.producto, codigo: e.target.value } } : x))}
-                            placeholder="Código de barras"
-                            className={`${S.field} !py-0.5 !px-1.5 !text-xs`}
-                          />
-                          <span className="text-[0.625rem] font-medium uppercase tracking-[0.1em] text-[#22c55e]">Producto nuevo</span>
-                        </div>
-                      ) : l.producto.nombre}
-                    </td>
-                    <td className="py-1.5 px-2 text-center text-sm text-white">
-                      <span className="rounded px-1.5 py-0.5 text-xs bg-white/10 text-[#5a5a6e]">
-                        {l.producto.unitAbbreviation || l.producto.unidadMedida || "UNI"}
-                      </span>
-                    </td>
-                    <td className="py-1.5 px-2">
-                      <input
-                        type="number"
-                        min={esKG(l.producto) ? "0.001" : "1"}
-                        step={stepCant(l.producto)}
-                        value={l.cantidad}
-                        onChange={(e) => actualizarCantidad(l.producto.id, e.target.value)}
-                        className="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-right text-sm font-mono text-white outline-none transition-colors focus:border-[#22c55e]/50"
+        <div className="mt-3 max-h-[26vh] overflow-y-auto rounded-xl">
+          <div className="w-full grid grid-cols-[1fr_80px_90px_120px_120px_36px] gap-x-2 gap-y-1 items-center">
+            {/* Headers */}
+            <div className="pb-1 pl-3 text-left text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Producto</div>
+            <div className="pb-1 text-center text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">U.M.</div>
+            <div className="pb-1 text-right text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Cantidad</div>
+            <div className="pb-1 text-right text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Precio costo</div>
+            <div className="pb-1 pr-3 text-right text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Subtotal</div>
+            <div className="pb-1"></div>
+
+            {/* Filas */}
+            {lineas.length === 0 ? (
+              <div className="col-span-6 text-center py-6 text-sm text-[#5a5a6e] border border-dashed border-white/10 rounded-xl">
+                Todavía no agregaste productos a esta factura.
+              </div>
+            ) : lineas.map((l) => (
+              <React.Fragment key={l.producto.id}>
+                {/* Producto */}
+                <div className="py-1.5 pl-3 text-sm font-medium text-white bg-white/[0.03] rounded-l-xl">
+                  {l.nuevo ? (
+                    <div className="flex flex-col gap-0.5">
+                      <input value={l.producto.nombre}
+                        onChange={(e) => setLineas((prev) => prev.map((x) => x.producto.id === l.producto.id ? { ...x, producto: { ...x.producto, nombre: e.target.value } } : x))}
+                        placeholder="Nombre del producto"
+                        className={`${S.field} !py-0.5 !px-1.5 !text-sm border-[#22c55e]/30`}
                       />
-                    </td>
-                    <td className="py-1.5 px-2">
-                      <input
-                        type="number"
-                        min="0"
-                        step="any"
-                        value={l.precioUnitario}
-                        onChange={(e) => actualizarPrecio(l.producto.id, e.target.value)}
-                        className="w-28 bg-white/5 border border-white/10 rounded px-2 py-1 text-right text-sm font-mono text-white outline-none transition-colors focus:border-[#22c55e]/50"
+                      <input value={l.producto.codigo}
+                        onChange={(e) => setLineas((prev) => prev.map((x) => x.producto.id === l.producto.id ? { ...x, producto: { ...x.producto, codigo: e.target.value } } : x))}
+                        placeholder="Código de barras"
+                        className={`${S.field} !py-0.5 !px-1.5 !text-xs`}
                       />
-                    </td>
-                    <td className="py-1.5 px-2.5 text-right font-semibold font-mono text-sm text-white">
-                      ₲ {money(subtotalLinea(l))}
-                    </td>
-                    <td className="py-1.5 px-1.5 pr-2.5 text-right rounded-r-lg">
-                      <button
-                        onClick={() => eliminarLinea(l.producto.id)}
-                        className="rounded p-1 text-[#5a5a6e] hover:bg-red-500/15 hover:text-red-400 transition-colors"
-                        aria-label={`Quitar ${l.producto.nombre}`}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <span className="text-[0.625rem] font-medium uppercase tracking-[0.1em] text-[#22c55e]">Producto nuevo</span>
+                    </div>
+                  ) : l.producto.nombre}
+                </div>
+                {/* U.M. */}
+                <div className="py-1.5 text-center text-sm text-white bg-white/[0.03]">
+                  <span className="rounded px-1.5 py-0.5 text-xs bg-white/10 text-[#5a5a6e]">
+                    {l.producto.unitAbbreviation || l.producto.unidadMedida || "UNI"}
+                  </span>
+                </div>
+                {/* Cantidad */}
+                <div className="py-1.5 text-right bg-white/[0.03]">
+                  <input
+                    type="number"
+                    min={esKG(l.producto) ? "0.001" : "1"}
+                    step={stepCant(l.producto)}
+                    value={l.cantidad}
+                    onChange={(e) => actualizarCantidad(l.producto.id, e.target.value)}
+                    className="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-right text-sm font-mono text-white outline-none transition-colors focus:border-[#22c55e]/50"
+                  />
+                </div>
+                {/* Precio costo */}
+                <div className="py-1.5 text-right bg-white/[0.03]">
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={l.precioUnitario}
+                    onChange={(e) => actualizarPrecio(l.producto.id, e.target.value)}
+                    className="w-28 bg-white/5 border border-white/10 rounded px-2 py-1 text-right text-sm font-mono text-white outline-none transition-colors focus:border-[#22c55e]/50"
+                  />
+                </div>
+                {/* Subtotal */}
+                <div className="py-1.5 pr-3 text-right font-semibold font-mono text-sm text-white bg-white/[0.03]">
+                  ₲ {money(subtotalLinea(l))}
+                </div>
+                {/* Eliminar */}
+                <div className="py-1.5 pr-3 text-right bg-white/[0.03] rounded-r-xl">
+                  <button
+                    onClick={() => eliminarLinea(l.producto.id)}
+                    className="rounded p-1 text-[#5a5a6e] hover:bg-red-500/15 hover:text-red-400 transition-colors"
+                    aria-label={`Quitar ${l.producto.nombre}`}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </React.Fragment>
+            ))}
           </div>
         </div>
 

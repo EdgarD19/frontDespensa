@@ -20,7 +20,6 @@ export default function ProductForm({
   subcategorias = [],
   marcas = [],
   unidades = [],
-  proveedores = [],
   loading = false,
 }) {
   const handleChange = (e) => {
@@ -197,75 +196,26 @@ export default function ProductForm({
             </div>
           </div>
 
-          {/* Fila 5: Unidad + Precio venta */}
-          <div className="grid grid-cols-2 gap-3">
-            <label className={labelClass}>
-              <span className={labelText}>
-                Unidad de medida <span className="text-rose-400">*</span>
-              </span>
-              <select
-                name="idUnidad"
-                value={formData.idUnidad ?? ""}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, idUnidad: e.target.value }))
-                }
-                required
-                disabled={loading}
-                className={selectClass}
-              >
-                <option value="">Seleccionar...</option>
-                {unidadOptions.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.nombre}{u.abreviatura ? ` (${u.abreviatura})` : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className={labelClass}>
-              <span className={labelText}>
-                Precio de venta <span className="text-rose-400">*</span>
-              </span>
-              <input
-                type="number"
-                name="precio"
-                min="0"
-                step="1"
-                inputMode="numeric"
-                value={formData.precio ?? ""}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setFormData((prev) => ({
-                    ...prev,
-                    precio: v === "" ? "" : Math.max(0, parseFloat(v) || 0),
-                  }));
-                }}
-                required
-                
-                placeholder="0"
-                className={`${inputClass} tabular-nums`}
-              />
-            </label>
-          </div>
-
-          {/* Fila 6: Proveedor */}
+          {/* Fila 5: Unidad de medida */}
           <label className={labelClass}>
             <span className={labelText}>
-              Proveedor <span className="text-rose-400">*</span>
+              Unidad de medida <span className="text-rose-400">*</span>
             </span>
             <select
-              name="idProveedor"
-              value={formData.idProveedor ?? ""}
+              name="idUnidad"
+              value={formData.idUnidad ?? ""}
               onChange={(e) =>
-                setFormData((prev) => ({ ...prev, idProveedor: e.target.value }))
+                setFormData((prev) => ({ ...prev, idUnidad: e.target.value }))
               }
-                required
-                disabled={loading}
-                className={selectClass}
-              >
-                <option value="">Seleccionar...</option>
-                {proveedores.map((p) => (
-                <option key={p.id} value={p.id}>{p.nombre}</option>
+              required
+              disabled={loading}
+              className={selectClass}
+            >
+              <option value="">Seleccionar...</option>
+              {unidadOptions.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.nombre}{u.abreviatura ? ` (${u.abreviatura})` : ""}
+                </option>
               ))}
             </select>
           </label>

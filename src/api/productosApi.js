@@ -67,10 +67,8 @@ function toFrontendProduct(backend) {
  *   stock_actual, codigo_producto
  */
 function toCreateBody(frontend, idUnidad, idProveedor) {
-  const precio = parseFloat(String(frontend.precio || "").replace(",", "."));
-  if (!Number.isFinite(precio) || precio <= 0) {
-    throw new Error("El precio de venta debe ser mayor que 0.");
-  }
+  const precio = parseFloat(String(frontend.precio ?? "").replace(",", "."));
+  const precioFinal = Number.isFinite(precio) && precio >= 0 ? precio : 0;
 
   const codigoBarras = String(frontend.codigoBarras || "").replace(/\D/g, "");
   const codigoProducto = /^\d{8,13}$/.test(codigoBarras)
@@ -82,10 +80,10 @@ function toCreateBody(frontend, idUnidad, idProveedor) {
   return {
     name: frontend.nombre?.trim(),
     descripcion: descripcion.length > 0 ? descripcion : null,
-    precio,
+    precio: precioFinal,
     id_categoria: Number(frontend.idCategoria) || undefined,
     id_unidad: Number(idUnidad),
-    id_proveedor: Number(idProveedor),
+    id_proveedor: idProveedor ? Number(idProveedor) : undefined,
     stock_actual: 0,
     codigo_producto: codigoProducto,
     activo: true,
@@ -99,18 +97,16 @@ function toCreateBody(frontend, idUnidad, idProveedor) {
  * PatchRequest (Spring) solo acepta: { precio }
  */
 function toPatchBody(producto) {
-  const precio = parseFloat(String(producto.precio || "").replace(",", "."));
-  if (!Number.isFinite(precio) || precio <= 0) {
-    throw new Error("El precio de venta debe ser mayor que 0.");
-  }
+  const precio = parseFloat(String(producto.precio ?? "").replace(",", "."));
+  const precioFinal = Number.isFinite(precio) && precio >= 0 ? precio : 0;
   return {
-    precio,
+    precio: precioFinal,
     nombre: producto.nombre?.trim(),
     descripcion: (producto.descripcion || "").trim() || undefined,
     codigo_producto: String(producto.codigoBarras || "").replace(/\D/g, "") || undefined,
     id_categoria: Number(producto.idCategoria) || undefined,
     id_unidad: Number(producto.idUnidad) || undefined,
-    id_proveedor: Number(producto.idProveedor) || undefined,
+    id_proveedor: producto.idProveedor ? Number(producto.idProveedor) : undefined,
     activo: producto.activo !== false,
     producto_pesable: producto.productoPesable === "si",
   };

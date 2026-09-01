@@ -173,10 +173,9 @@ export default function Inventario() {
 
     const idCat  = data.idCategoria  ? Number(data.idCategoria)  : null;
     const idUnid = data.idUnidad     ? Number(data.idUnidad)     : null;
-    const idProv = data.idProveedor  ? Number(data.idProveedor)  : null;
 
-    if (!editingId && (!idCat || !idUnid || !idProv)) {
-      setError("Debe seleccionar categoría, unidad de medida y proveedor para crear un producto.");
+    if (!editingId && (!idCat || !idUnid)) {
+      setError("Debe seleccionar categoría y unidad de medida para crear un producto.");
       return;
     }
 
@@ -196,7 +195,7 @@ export default function Inventario() {
         setProductos((prev) => prev.map((p) => (p.id === editingId ? mergeProductoLista(p, updated) : p)));
         setEditingId(null);
       } else {
-        await createProducto(data, idUnid, idProv);
+        await createProducto(data, idUnid);
         await loadProductos();
       }
       setFormData(INITIAL_FORM);
