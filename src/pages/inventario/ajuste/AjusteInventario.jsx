@@ -1,138 +1,352 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import {
+  ClipboardList,
+  ArrowLeftRight,
+  Search,
+  X,
+} from "lucide-react";
 import { getProductos } from "../../../api/productosApi";
 import { apiErrorMessage } from "../../../api/errors";
-import { getHistorialAjustes, crearAjuste } from "../../../api/ajustesApi";
+import {
+  getMovimientosStock,
+  registrarMovimiento,
+  getTiposMovimiento,
+} from "../../../api/ajustesApi";
+import { canGestionarAjustesInventario } from "../../../auth/inventoryAccess";
+import AjusteStock from "./ajuste-inventario/AjusteStock";
+import HistorialAjustes from "./ajuste-inventario/HistorialAjustes";
+import { stockEntero } from "./ajuste-inventario/utils";
 
 export default function AjusteInventario() {
-    // Datos del server
-    const [productos, setProductos] = useState([]); // lista completa para el selector
-    const [historial, setHistorial] = useState([]); // ajustes registrados anteriormente
-    const [loading, setLoading] = useState(true); // spinner mientras carga (manejar el estado de carga)
-    const [error, setError] = useState(null);
+  const puedeRegistrar = canGestionarAjustesInventario();
 
-    // interaccion del usuario
-    const [productoSeleccionado, setProductoSeleccionado] = useState(null); // fila clickeada
-    const [search, setSearch] = useState(""); // texto del buscador
+  const [productos, setProductos] = useState([]);
+  const [tiposMovimiento, setTiposMovimiento] = useState([]);
+  const [historial, setHistorial] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-    // Formulario del panel
-    const [formData, setFormData] = useState({
-        tipoAjuste: "", // select: "Robo", "Vencimiento", etc.
-        fechaAjuste: "", // input date
-        nuevoStock: "", // input number
-        justificacion: "", // textarea
-        autorizadoPor: "", // input text
-    });
+  const [productoSeleccionado, setProductoSeleccionado] = useState(null);
+  const [search, setSearch] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
 
-    const diferencia = Number(formData.nuevoStock || 0) - Number(productoSeleccionado?.stockActual || 0);
+  const [formData, setFormData] = useState({
+    tipoMovimiento: "",
+    clasificacion: "",
+    cantidad: "",
+    referencia: "",
+  });
 
-    // Carga la lista de productos para el selector (se ejecuta al montar el componente)
-    useEffect(() => {
-        let cancelled = false; // variable de control
-        (async () => {
-            // funcion async autoejecutable
-            try {
-                setError(null);
-                setLoading(true); // indicar que esta cargando
-                const res = await getProductos({ pageSize: 500 }); // llamada al backend, hasta 500 productos
-                if (!cancelled) setProductos(res.content || []); // guarda si el componente sigue activo
-            } catch (err) {
-                if (!cancelled) {
-                    setError(apiErrorMessage(err) || "Error al cargar productos");
-                    setProductos([]);
-                }
-            } finally {
-                if (!cancelled) setLoading(false); // exito o error
-            }
-        })();
-        return () => {
-            cancelled = true;
-        }; // se ejecuta cuando el componente se desmonta
-    }, []); // se ejecuta una sola vez
+  const [submitting, setSubmitting] = useState(false);
 
-    // carga el historial de ajustes anteriores
-    useEffect(() => {
-        let cancelled = false;
-        (async () => {
-            try {
-                const res = await getHistorialAjustes({ pageSize: 50 });
-                if (!cancelled) setHistorial(res.content || []);
-            } catch {
-                // historial opcional: si falla no bloquea el modulo
-            }
-        })();
-        return () => {
-            cancelled = true;
-        };
-    }, []);
+  const tipoPorNombre = useMemo(() => {
+    return Object.fromEntries(tiposMovimiento.map((t) => [t.nombre, t.id]));
+  }, [tiposMovimiento]);
 
-    const handleSelectProducto = (producto) => {
-        setProductoSeleccionado(producto);
-        // Pre-rellena nuevoStock con el stock actual para que la diferencia arranque en 0
-        setFormData((prev) => ({
-            ...prev,
-            nuevoStock: String(producto.stockActual ?? ""),
-        }));
+  const loadMovimientos = useCallback(async () => {
+    const res = await getMovimientosStock({ pageSize: 50 });
+    setHistorial(res.content || []);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
         setError(null);
-    };
-
-    // valida, llama a la API y actualiza la UI sin recargar
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-
-        // validaciones antes de tocar el servidor
-        if (!productoSeleccionado) return;
-        if (!formData.tipoAjuste) {setError("Selecciona un tipo de ajuste"); return; }
-        if (formData.nuevoStock === "") { setError("Ingresa el nuevo stock."); return; }
-        if (!formData.justificacion.trim()) { setError("La justificación es obligatoria."); return; }
-        if (!formData.autorizadoPor.trim()) { setError("Ingresa quien autoriza."); return; }
-
-        try {
-            setError(null);
-
-            const ajuste = await crearAjuste({
-                idProducto: productoSeleccionado.id,
-                tipoAjuste: formData.tipoAjuste,
-                fechaAjuste: formData.fechaAjuste,
-                stockAnterior: productoSeleccionado.stockActual,
-                nuevoStock: Number(formData.nuevoStock),
-                justificacion: formData.justificacion,
-                autorizadoPor: formData.autorizadoPor,
-            });
-
-            // actualiza el stock del producto 
-            setProductos((prev) =>
-                prev.map((p) => 
-                    p.id === productoSeleccionado.id
-                        ? { ...p, stockActual: Number(formData.nuevoStock) }
-                        : p
-                )
-            );
-
-            // agrega el ajuste nuevo al principio del historial local
-            setHistorial((prev) => [ajuste, ...prev]);
-            // limpa el formulario despues del exito
-            handleClear();
-
-        } catch (err) {
-            setError(apiErrorMessage(err) || "Error al registrar el ajuste");
+        setLoading(true);
+        const [prodRes, tipos] = await Promise.all([
+          getProductos({ pageSize: 500 }),
+          getTiposMovimiento(),
+        ]);
+        if (!cancelled) {
+          setProductos(prodRes.content || []);
+          setTiposMovimiento(tipos);
         }
+      } catch (err) {
+        if (!cancelled) {
+          setError(apiErrorMessage(err) || "Error al cargar productos");
+          setProductos([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
     };
+  }, []);
 
-    // resetea todo al estado inicial
-    const handleClear = () => {
-        setFormData({
-            tipoAjuste: "", fechaAjuste: "",
-            nuevoStock: "", justificacion: "", autorizadoPor: "",
-        });
-        setProductoSeleccionado(null);
-        setError(null);
-    };
+  useEffect(() => {
+    loadMovimientos();
+  }, [loadMovimientos]);
 
+  const productosFiltrados = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return [];
+    return productos
+      .filter(
+        (p) =>
+          p.nombre?.toLowerCase().includes(q) ||
+          (p.codigoBarras && String(p.codigoBarras).includes(search.trim()))
+      )
+      .slice(0, 20);
+  }, [productos, search]);
+
+  const handleSelectProducto = (producto) => {
+    setProductoSeleccionado(producto);
+    setSearch("");
+    setShowDropdown(false);
+    setFormData({ tipoMovimiento: "", clasificacion: "", cantidad: "", referencia: "" });
+    setError(null);
+  };
+
+  const handleClear = () => {
+    setFormData({ tipoMovimiento: "", clasificacion: "", cantidad: "", referencia: "" });
+    setProductoSeleccionado(null);
+    setSearch("");
+    setError(null);
+  };
+
+  const cantidadNum =
+    formData.cantidad === "" || Number.isNaN(Number(formData.cantidad))
+      ? null
+      : Number(formData.cantidad);
+
+  const stockResultante =
+    productoSeleccionado != null && cantidadNum != null
+      ? stockEntero(productoSeleccionado) + cantidadNum
+      : null;
+
+  function validarFormulario() {
+    if (!puedeRegistrar) {
+      setError("No tenés permisos para registrar movimientos de stock.");
+      return false;
+    }
+    if (!productoSeleccionado) {
+      setError("Seleccioná un producto.");
+      return false;
+    }
+    if (!formData.tipoMovimiento) {
+      setError("Seleccioná el tipo de movimiento (Entrada, Salida o Ajuste).");
+      return false;
+    }
+    if (!formData.clasificacion) {
+      setError("Seleccioná la clasificación del movimiento.");
+      return false;
+    }
+    if (cantidadNum == null || Number.isNaN(cantidadNum)) {
+      setError("Indicá una cantidad válida.");
+      return false;
+    }
+    if (cantidadNum === 0) {
+      setError("La cantidad del movimiento debe ser distinta de 0.");
+      return false;
+    }
+    if (formData.tipoMovimiento !== "AJUSTE" && cantidadNum < 0) {
+      setError("La cantidad debe ser mayor a 0 para entradas y salidas.");
+      return false;
+    }
+    return true;
+  }
+
+  const procesarMovimiento = async () => {
+    if (!productoSeleccionado) return;
+    setError(null);
+    if (!validarFormulario()) return;
+
+    const tipoId = tipoPorNombre[formData.tipoMovimiento];
+    if (tipoId == null) {
+      setError(
+        "No se pudo determinar el tipo de movimiento. Verificá que el backend tenga cargados los tipos."
+      );
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const payload = {
+        producto_id: productoSeleccionado.id,
+        tipo_movimiento_id: tipoId,
+        cantidad: cantidadNum,
+        clasificacion: formData.clasificacion,
+        referencia: formData.referencia.trim() || undefined,
+        requiere_auditoria: false,
+      };
+
+      await registrarMovimiento(payload);
+
+      setProductos((prev) =>
+        prev.map((p) =>
+          p.id === productoSeleccionado.id
+            ? { ...p, stockActual: stockResultante }
+            : p
+        )
+      );
+
+      await loadMovimientos();
+      handleClear();
+    } catch (err) {
+      setError(apiErrorMessage(err) || "Error al registrar el movimiento");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!puedeRegistrar) {
     return (
-        <div>
-            <p>funciona?</p>
-        </div>
+      <div className="max-w-xl mx-auto py-12 px-4 text-center space-y-3">
+        <ClipboardList className="w-10 h-10 text-[#5a5a6e] mx-auto" aria-hidden />
+        <h1 className="text-lg font-semibold text-[#e1e1eb]">
+          Ajuste de Movimientos
+        </h1>
+        <p className="text-sm text-[#7a7a8c]">
+          No tenés permisos para acceder a los movimientos de stock. Solo
+          usuarios con rol{" "}
+          <span className="text-[#9a9aac]">ADMIN</span> o{" "}
+          <span className="text-[#9a9aac]">ENCARGADO_INVENTARIO</span> pueden
+          utilizar este módulo.
+        </p>
+      </div>
     );
+  }
 
+  return (
+    <div className="max-w-3xl mx-auto pb-10">
+      <div className="rounded-2xl border border-[#1e1e24] bg-[#111114] overflow-hidden">
+        <header className="px-5 sm:px-6 pt-5 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-[#f1f1f3] tracking-tight flex items-center gap-2">
+              <ArrowLeftRight className="w-5 h-5 text-[#22c55e]" />
+              Ajuste de Movimientos
+            </h1>
+            <p className="text-sm text-[#7a7a8c] mt-0.5">
+              Registrá entradas, salidas y correcciones de stock.
+            </p>
+          </div>
+          <span className="text-xs text-[#7a7a8c] border border-[#2a2a32] rounded-full px-3 py-1.5 tabular-nums whitespace-nowrap self-start sm:self-auto">
+            {historial.length} movimiento{historial.length !== 1 ? "s" : ""}{" "}
+            reciente{historial.length !== 1 ? "s" : ""}
+          </span>
+        </header>
+
+        <div className="px-5 sm:px-6 pb-5 space-y-5">
+          {error ? (
+            <div
+              role="alert"
+              className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200"
+            >
+              {error}
+            </div>
+          ) : null}
+
+          <div className="rounded-xl border border-[#1e1e24] bg-[#0d0d0f] p-5 space-y-5">
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium text-[#9a9aac]">
+                Producto
+              </span>
+              {!productoSeleccionado ? (
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5a5a6e]" />
+                  <input
+                    type="search"
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setShowDropdown(true);
+                    }}
+                    onFocus={() => setShowDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                    disabled={loading}
+                    placeholder="Buscar producto por nombre o código de barras…"
+                    className="w-full rounded-lg border border-[#2a2a32] bg-[#111114] pl-10 pr-3 py-2.5 text-sm text-[#f1f1f3] placeholder:text-[#4a4a5a] focus:border-[#22c55e]/50 focus:ring-1 focus:ring-[#22c55e]/20 outline-none disabled:opacity-50"
+                  />
+                  {showDropdown && search.trim() && (
+                    <div className="absolute z-30 left-0 right-0 mt-1 rounded-lg border border-[#1e1e24] bg-[#111114] shadow-xl overflow-hidden max-h-60 overflow-y-auto">
+                      {productosFiltrados.length === 0 ? (
+                        <p className="p-3 text-sm text-[#5a5a6e]">
+                          No hay coincidencias.
+                        </p>
+                      ) : (
+                        <ul className="divide-y divide-[#1e1e24]">
+                          {productosFiltrados.map((p) => {
+                            const st = stockEntero(p);
+                            return (
+                              <li key={p.id}>
+                                <button
+                                  type="button"
+                                  onMouseDown={() => handleSelectProducto(p)}
+                                  className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-[#1a1a22] transition-colors"
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <span className="font-medium text-[#f1f1f3] text-sm block truncate">
+                                      {p.nombre}
+                                    </span>
+                                    {p.codigoBarras ? (
+                                      <span className="text-xs text-[#5a5a6e] block truncate">
+                                        {p.codigoBarras}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                  <span className="text-xs font-semibold text-[#22c55e] tabular-nums whitespace-nowrap">
+                                    {st}
+                                  </span>
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-[#22c55e]/20 bg-[#22c55e]/5 px-4 py-3 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-[#f1f1f3] text-sm truncate">
+                      {productoSeleccionado.nombre}
+                    </p>
+                    <p className="text-xs text-[#5a5a6e] truncate mt-0.5">
+                      {productoSeleccionado.codigoBarras
+                        ? `Cód. ${productoSeleccionado.codigoBarras}`
+                        : null}
+                      {productoSeleccionado.codigoBarras &&
+                      productoSeleccionado.stockActual != null
+                        ? " • "
+                        : ""}
+                      {productoSeleccionado.stockActual != null
+                        ? `Stock actual ${stockEntero(productoSeleccionado)}`
+                        : ""}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClear}
+                    className="shrink-0 p-1.5 rounded-lg text-[#5a5a6e] hover:text-[#f1f1f3] hover:bg-[#1e1e24] transition-colors"
+                    title="Cambiar producto"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </label>
+
+            {productoSeleccionado && (
+              <AjusteStock
+                producto={productoSeleccionado}
+                formData={formData}
+                setFormData={setFormData}
+                stockResultante={stockResultante}
+                disabled={loading}
+                submitting={submitting}
+                onSolicitar={procesarMovimiento}
+                onLimpiar={handleClear}
+              />
+            )}
+          </div>
+
+          <HistorialAjustes items={historial} />
+        </div>
+      </div>
+    </div>
+  );
 }
-

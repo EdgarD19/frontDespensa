@@ -7,12 +7,21 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from './components/layout/MainLayout';
 
+import InventarioHub from './pages/inventario/InventarioHub'
 import InventarioABM from './pages/inventario/abm/Inventario'
 import ConsultaInventario from './pages/inventario/consulta/ConsultaInventario'
 import AjusteInventario from './pages/inventario/ajuste/AjusteInventario'
-import InventarioHub from './pages/inventario/InventarioHub'
-import Ventas from './pages/ventas/Ventas'
-import Compras from './pages/compras/Compras'
+import MaestrosABM from './pages/inventario/maestros/MaestrosABM'
+
+import VentasHub from './pages/ventas/VentasHub'
+import ClientesABM from './pages/ventas/clientes/abm/ClientesABM'
+import RegistroVenta from './pages/ventas/registro-venta/RegistroVenta'
+
+import ComprasHub from './pages/compras/ComprasHub'
+import RegistroFactura from './pages/compras/factura/RegistroFactura'
+import PedidosHub from './pages/compras/pedidos/PedidosHub'
+import ProveedoresABM from './pages/compras/proveedores/abm/ProveedoresABM'
+
 import Caja from './pages/caja/Caja'
 
 export default function App() {
@@ -21,14 +30,28 @@ export default function App() {
       <Routes>
         <Route path="/" element={<MainLayout />}> 
           <Route index element={<Navigate to="/inventario" replace />} />
-          <Route path="ventas"     element={<Ventas />} />
+
+          <Route path="ventas"> 
+            <Route index element={<VentasHub />} />
+            <Route path="registro" element={<RegistroVenta />} />
+            <Route path="clientes" element={<ClientesABM />} />
+          </Route>
+    
           <Route path="inventario">
             <Route index element={<InventarioHub />} />
             <Route path="abm"      element={<InventarioABM />} />
             <Route path="consulta" element={<ConsultaInventario />} />
             <Route path="ajuste" element={<AjusteInventario />} />
+            <Route path="maestros" element={<MaestrosABM />} />
           </Route>
-          <Route path="compras"    element={<Compras />} />
+
+          <Route path="compras">
+            <Route index element={<ComprasHub />} />
+            <Route path="factura" element={<RegistroFactura />} />
+            <Route path="pedidos" element={<PedidosHub />} />
+            <Route path="proveedores" element={<ProveedoresABM />} />
+          </Route>
+
           <Route path="caja"       element={<Caja />} />
         </Route>
       </Routes>

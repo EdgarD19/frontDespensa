@@ -1,9 +1,12 @@
 import { api } from "./client";
 
 const PATHS = {
-  categorias: ["/api/maestros/categorias", "/api/categorias", "/api/catalogo/categorias"],
-  unidades: ["/api/maestros/unidades", "/api/unidades-medida", "/api/unidad-medida"],
-  proveedores: ["/api/maestros/proveedores", "/api/proveedores"],
+  categorias: ["/api/categories"],
+  unidades: ["/api/unidades-medida"],
+  proveedores: ["/api/v1/proveedor"],
+  marcas: ["/api/v1/marcas"],
+  rubros: ["/api/v1/rubros"],
+  paises: ["/api/v1/paises"],
 };
 
 function parseMaestrosEnv() {
@@ -108,11 +111,48 @@ export async function getProveedores() {
   return loadProveedores();
 }
 
+async function loadMarcas() {
+  const env = parseMaestrosEnv();
+  if (env?.marcas?.length) return normalizeList(env.marcas);
+  return fetchFirst(PATHS.marcas);
+}
+
+export async function getMarcas() {
+  return loadMarcas();
+}
+
+async function loadRubros() {
+  const env = parseMaestrosEnv();
+  if (env?.rubros?.length) return normalizeList(env.rubros);
+  return fetchFirst(PATHS.rubros);
+}
+
+export async function getRubros() {
+  return loadRubros();
+}
+
+async function loadPaises() {
+  const env = parseMaestrosEnv();
+  if (env?.paises?.length) return normalizeList(env.paises);
+  return fetchFirst(PATHS.paises);
+}
+
+export async function getPaises() {
+  return loadPaises();
+}
+
+export async function getCiudades(idPais) {
+  if (!idPais) return [];
+  try {
+    const { data } = await api.get(`/api/v1/paises/${idPais}/ciudades`);
+    return normalizeList(data);
+  } catch {
+    return [];
+  }
+}
+
 const SUBCATEGORIA_PATH_TEMPLATES = [
-  (id) => `/api/maestros/categorias/${id}/subcategorias`,
-  (id) => `/api/categorias/${id}/subcategorias`,
-  (id) => `/api/subcategorias?categoriaId=${id}`,
-  (id) => `/api/subcategorias?categoria=${id}`,
+  (id) => `/api/categories/${id}/subcategorias`,
 ];
 
 export async function getSubcategorias(idCategoria) {
