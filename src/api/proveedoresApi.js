@@ -43,13 +43,6 @@ function buildProveedorBody(data) {
     direccion: data.direccion?.trim() || null,
     telefono: data.telefono?.trim() || null,
     celular: data.celular?.trim() || null,
-    formaPago: data.formaPago || null,
-    banco: data.banco?.trim() || null,
-    numeroCuenta: data.numeroCuenta?.trim() || null,
-    documentoTransferencia: data.documentoTransferencia?.trim() || null,
-    nombreRazonSocial: data.nombreRazonSocial?.trim() || null,
-    alias: data.alias?.trim() || null,
-    rubros: Array.isArray(data.rubroIds) ? data.rubroIds.map(Number) : [],
   };
 
   if (data.tipoPersona === "FISICA") {
@@ -57,14 +50,6 @@ function buildProveedorBody(data) {
     if (data.fechaNacimiento) {
       body.fechaNacimiento = new Date(data.fechaNacimiento).toISOString();
     }
-  }
-
-  if (data.formaPago !== "TRANSFERENCIA") {
-    body.banco = null;
-    body.numeroCuenta = null;
-    body.documentoTransferencia = null;
-    body.nombreRazonSocial = null;
-    body.alias = null;
   }
 
   return body;

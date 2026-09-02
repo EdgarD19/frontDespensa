@@ -1,6 +1,16 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 
+const inputClass =
+  "w-full rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-3 py-1.5 text-sm text-[#f1f1f3] placeholder:text-[#4a4a5a] focus:border-[#22c55e]/50 outline-none transition-colors";
+
+const selectClass =
+  "w-full rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-3 py-1.5 text-sm text-[#f1f1f3] focus:border-[#22c55e]/50 outline-none cursor-pointer transition-colors";
+
+const labelClass = "block space-y-0.5";
+
+const labelText = "text-[11px] text-[#7a7a8c]";
+
 const FORM_INICIAL = {
   nombre: "",
   tipoPersona: "FISICA",
@@ -15,13 +25,6 @@ const FORM_INICIAL = {
   fechaNacimiento: "",
   telefono: "",
   celular: "",
-  formaPago: "EFECTIVO",
-  banco: "",
-  numeroCuenta: "",
-  documentoTransferencia: "",
-  nombreRazonSocial: "",
-  alias: "",
-
 };
 
 export default function ProveedoresModal({
@@ -30,7 +33,6 @@ export default function ProveedoresModal({
   guardando = false,
   paises = [],
   ciudades = [],
-
   onGuardar,
   onCerrar,
   onPaisChange,
@@ -57,14 +59,8 @@ export default function ProveedoresModal({
           : "",
         telefono: proveedorEdit.telefono ?? "",
         celular: proveedorEdit.celular ?? "",
-        formaPago: proveedorEdit.formaPago ?? "EFECTIVO",
-        banco: proveedorEdit.banco ?? "",
-        numeroCuenta: proveedorEdit.numeroCuenta ?? "",
-        documentoTransferencia: proveedorEdit.documentoTransferencia ?? "",
-        nombreRazonSocial: proveedorEdit.nombreRazonSocial ?? "",
-        alias: proveedorEdit.alias ?? "",
       });
-      if (proveedorEdit.idPais) onPaisChange?.(proveedorEdit.idPais);
+      onPaisChange?.(proveedorEdit.idPais);
     } else {
       setForm(FORM_INICIAL);
     }
@@ -77,11 +73,18 @@ export default function ProveedoresModal({
     if (errores[name]) setErrores((prev) => ({ ...prev, [name]: null }));
   }
 
+  const handleTipoPersonaChange = (value) => {
+    setForm((prev) => ({
+      ...prev,
+      tipoPersona: value,
+      tipoDocumento: value === "JURIDICA" ? "RUC" : "",
+    }));
+  };
+
   function handlePaisChange(e) {
     const val = e.target.value;
-    handleChange(e);
+    setForm((prev) => ({ ...prev, idPais: val, idCiudad: "" }));
     onPaisChange?.(val);
-    setForm((prev) => ({ ...prev, idCiudad: "" }));
   }
 
   function validar() {
@@ -95,7 +98,8 @@ export default function ProveedoresModal({
     return errs;
   }
 
-  function handleSubmit() {
+  function handleSubmit(e) {
+    e.preventDefault();
     const errs = validar();
     if (Object.keys(errs).length > 0) {
       setErrores(errs);
@@ -109,154 +113,274 @@ export default function ProveedoresModal({
   }
 
   const esJuridica = form.tipoPersona === "JURIDICA";
-  const esTransferencia = form.formaPago === "TRANSFERENCIA";
 
   if (!abierto) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-      <div className="bg-[var(--bg-card)] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-          <h2 className="text-white font-semibold text-lg">
+      <div className="bg-[#111114] border border-[#1e1e24] rounded-xl w-full max-w-2xl flex flex-col shadow-2xl">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#1e1e24] shrink-0">
+          <h2 className="text-sm font-semibold text-[#f1f1f3]">
             {proveedorEdit ? "Editar Proveedor" : "Nuevo Proveedor"}
           </h2>
-          <button type="button" onClick={onCerrar} className="text-white/40 hover:text-white transition-colors p-1" aria-label="Cerrar">
-            <X />
+          <button type="button" onClick={onCerrar}
+            className="p-1 rounded text-[#5a5a6e] hover:text-[#e1e1eb] hover:bg-[#1a1f2e] transition-colors">
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="px-6 py-5 flex flex-col gap-4">
-          {errores._general && (
-            <div className="px-4 py-2 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg">
-              {errores._general}
-            </div>
-          )}
+        {/* Body */}
+        <form onSubmit={handleSubmit} className="p-4 flex flex-col gap-2.5">
 
-          <div className="flex flex-col gap-1">
-            <label className="text-white/50 text-xs">Tipo de persona *</label>
-            <div className="flex gap-3">
-              {["FISICA", "JURIDICA"].map((t) => (
-                <label key={t} className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" name="tipoPersona" value={t} checked={form.tipoPersona === t} onChange={handleChange} className="accent-[var(--accent-green)]" />
-                  <span className="text-sm text-white">{t === "FISICA" ? "Persona Física" : "Persona Jurídica"}</span>
-                </label>
-              ))}
+          {/* Tipo de persona */}
+          <div>
+            <span className={labelText}>Tipo de persona *</span>
+            <div className="flex items-center gap-4 mt-1">
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="radio"
+                  name="tipoPersona"
+                  value="FISICA"
+                  checked={form.tipoPersona === "FISICA"}
+                  onChange={(e) => handleTipoPersonaChange(e.target.value)}
+                  className="accent-[#22c55e]"
+                />
+                <span className="text-xs text-[#9a9aac]">Persona Física</span>
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="radio"
+                  name="tipoPersona"
+                  value="JURIDICA"
+                  checked={form.tipoPersona === "JURIDICA"}
+                  onChange={(e) => handleTipoPersonaChange(e.target.value)}
+                  className="accent-[#22c55e]"
+                />
+                <span className="text-xs text-[#9a9aac]">Persona Jurídica</span>
+              </label>
             </div>
           </div>
 
+          {/* Nombre + Apellido */}
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Nombre / Razón Social *" name="nombre" value={form.nombre} onChange={handleChange} error={errores.nombre} />
+            <label className={labelClass}>
+              <span className={labelText}>
+                {esJuridica ? "Razón social" : "Nombre"} <span className="text-rose-400">*</span>
+              </span>
+              <input
+                type="text"
+                name="nombre"
+                value={form.nombre}
+                onChange={handleChange}
+                required
+                placeholder={esJuridica ? "Razón social" : "Nombre"}
+                className={inputClass}
+              />
+              {errores.nombre && <span className="text-[11px] text-rose-400">{errores.nombre}</span>}
+            </label>
+
             {!esJuridica && (
-              <Field label="Apellido" name="apellido" value={form.apellido} onChange={handleChange} />
+              <label className={labelClass}>
+                <span className={labelText}>Apellido</span>
+                <input
+                  type="text"
+                  name="apellido"
+                  value={form.apellido}
+                  onChange={handleChange}
+                  placeholder="Apellido"
+                  className={inputClass}
+                />
+              </label>
             )}
           </div>
 
-          {!esJuridica && (
-            <Field label="Fecha de Nacimiento" name="fechaNacimiento" value={form.fechaNacimiento} onChange={handleChange} type="date" />
-          )}
-
+          {/* Fecha nacimiento + Tipo documento */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-white/50 text-xs">Tipo de documento *</label>
-              <select name="tipoDocumento" value={form.tipoDocumento} onChange={handleChange}
-                className={`bg-white/5 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[var(--accent-green)] transition-colors ${errores.tipoDocumento ? "border-red-500/50" : "border-white/10"}`}>
-                <option value="">-- Selecciona --</option>
-                <option value="RUC">RUC</option>
-                <option value="CI">CI</option>
+            {!esJuridica && (
+              <label className={labelClass}>
+                <span className={labelText}>Fecha de nacimiento</span>
+                <input
+                  type="date"
+                  name="fechaNacimiento"
+                  value={form.fechaNacimiento}
+                  onChange={handleChange}
+                  className={inputClass}
+                />
+              </label>
+            )}
+
+            <label className={labelClass}>
+              <span className={labelText}>
+                Tipo de documento <span className="text-rose-400">*</span>
+              </span>
+              <select
+                name="tipoDocumento"
+                value={form.tipoDocumento}
+                onChange={handleChange}
+                required
+                className={selectClass}
+              >
+                {esJuridica ? (
+                  <option value="RUC">RUC</option>
+                ) : (
+                  <>
+                    <option value="">Seleccionar...</option>
+                    <option value="RUC">RUC</option>
+                    <option value="CI">CI</option>
+                  </>
+                )}
               </select>
-              {errores.tipoDocumento && <span className="text-red-400 text-xs">{errores.tipoDocumento}</span>}
-            </div>
-            <Field label="Número de documento *" name="numeroDocumento" value={form.numeroDocumento} onChange={handleChange} error={errores.numeroDocumento} />
+              {errores.tipoDocumento && <span className="text-[11px] text-rose-400">{errores.tipoDocumento}</span>}
+            </label>
           </div>
 
+          {/* Numero documento + Persona contacto */}
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Descripción del negocio *" name="descripcionNegocio" value={form.descripcionNegocio} onChange={handleChange} error={errores.descripcionNegocio} />
-            <Field label="Persona de Contacto *" name="personaContacto" value={form.personaContacto} onChange={handleChange} error={errores.personaContacto} />
+            <label className={labelClass}>
+              <span className={labelText}>
+                Número de documento <span className="text-rose-400">*</span>
+              </span>
+              <input
+                type="text"
+                name="numeroDocumento"
+                value={form.numeroDocumento}
+                onChange={handleChange}
+                required
+                placeholder="Número de documento"
+                className={inputClass}
+              />
+              {errores.numeroDocumento && <span className="text-[11px] text-rose-400">{errores.numeroDocumento}</span>}
+            </label>
+
+            <label className={labelClass}>
+              <span className={labelText}>
+                Persona de contacto <span className="text-rose-400">*</span>
+              </span>
+              <input
+                type="text"
+                name="personaContacto"
+                value={form.personaContacto}
+                onChange={handleChange}
+                required
+                placeholder="Persona de contacto"
+                className={inputClass}
+              />
+              {errores.personaContacto && <span className="text-[11px] text-rose-400">{errores.personaContacto}</span>}
+            </label>
           </div>
 
+          {/* Descripcion + Direccion */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-white/50 text-xs">País</label>
-              <select name="idPais" value={form.idPais} onChange={handlePaisChange} disabled
-                className={`bg-white/5 border rounded-lg px-3 py-2 text-sm text-white/40 focus:outline-none transition-colors border-white/10 ${errores.idPais ? "border-red-500/50" : "border-white/10"}`}>
-                <option value="">-- Selecciona --</option>
+            <label className={labelClass}>
+              <span className={labelText}>
+                Descripción del negocio <span className="text-rose-400">*</span>
+              </span>
+              <input
+                type="text"
+                name="descripcionNegocio"
+                value={form.descripcionNegocio}
+                onChange={handleChange}
+                required
+                placeholder="Descripción del negocio"
+                className={inputClass}
+              />
+              {errores.descripcionNegocio && <span className="text-[11px] text-rose-400">{errores.descripcionNegocio}</span>}
+            </label>
+
+            <label className={labelClass}>
+              <span className={labelText}>
+                Dirección <span className="text-rose-400">*</span>
+              </span>
+              <input
+                type="text"
+                name="direccion"
+                value={form.direccion}
+                onChange={handleChange}
+                required
+                placeholder="Calle, número y barrio"
+                className={inputClass}
+              />
+              {errores.direccion && <span className="text-[11px] text-rose-400">{errores.direccion}</span>}
+            </label>
+          </div>
+
+          {/* Pais + Ciudad */}
+          <div className="grid grid-cols-2 gap-3">
+            <label className={labelClass}>
+              <span className={labelText}>País</span>
+              <select
+                name="idPais"
+                value={form.idPais ?? ""}
+                onChange={handlePaisChange}
+                className={`${selectClass} text-[#4a4a5a] cursor-not-allowed opacity-50`}
+                disabled
+              >
+                <option value="">Proximamente...</option>
                 {paises.map((p) => (
                   <option key={p.id} value={p.id}>{p.nombre}</option>
                 ))}
               </select>
-              {errores.idPais && <span className="text-red-400 text-xs">{errores.idPais}</span>}
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-white/50 text-xs">Ciudad</label>
-              <select name="idCiudad" value={form.idCiudad} onChange={handleChange} disabled
-                className={`bg-white/5 border rounded-lg px-3 py-2 text-sm text-white/40 focus:outline-none transition-colors border-white/10 ${errores.idCiudad ? "border-red-500/50" : "border-white/10"}`}>
-                <option value="">-- Selecciona --</option>
+            </label>
+
+            <label className={labelClass}>
+              <span className={labelText}>Ciudad</span>
+              <select
+                name="idCiudad"
+                value={form.idCiudad ?? ""}
+                onChange={handleChange}
+                className={`${selectClass} text-[#4a4a5a] cursor-not-allowed opacity-50`}
+                disabled
+              >
+                <option value="">Proximamente...</option>
                 {ciudades.map((c) => (
                   <option key={c.id} value={c.id}>{c.nombre}</option>
                 ))}
               </select>
-              {errores.idCiudad && <span className="text-red-400 text-xs">{errores.idCiudad}</span>}
-            </div>
+            </label>
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-white/50 text-xs">Dirección completa *</label>
-            <textarea name="direccion" value={form.direccion} onChange={handleChange} rows={2}
-              className={`bg-white/5 border rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-[var(--accent-green)] transition-colors resize-none ${errores.direccion ? "border-red-500/50" : "border-white/10"}`}
-              placeholder="Calle, número y barrio" />
-            {errores.direccion && <span className="text-red-400 text-xs">{errores.direccion}</span>}
-          </div>
-
+          {/* Telefono + Celular */}
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Teléfono" name="telefono" value={form.telefono} onChange={handleChange} type="tel" />
-            <Field label="Celular" name="celular" value={form.celular} onChange={handleChange} type="tel" />
+            <label className={labelClass}>
+              <span className={labelText}>Teléfono</span>
+              <input
+                type="tel"
+                name="telefono"
+                value={form.telefono}
+                onChange={handleChange}
+                placeholder="Teléfono"
+                className={inputClass}
+              />
+            </label>
+
+            <label className={labelClass}>
+              <span className={labelText}>Celular</span>
+              <input
+                type="tel"
+                name="celular"
+                value={form.celular}
+                onChange={handleChange}
+                placeholder="Celular"
+                className={inputClass}
+              />
+            </label>
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-white/50 text-xs">Forma de pago</label>
-            <div className="flex gap-3">
-              {["EFECTIVO", "TRANSFERENCIA"].map((f) => (
-                <label key={f} className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" name="formaPago" value={f} checked={form.formaPago === f} onChange={handleChange} className="accent-[var(--accent-green)]" />
-                  <span className="text-sm text-white">{f === "EFECTIVO" ? "Efectivo" : "Transferencia"}</span>
-                </label>
-              ))}
-            </div>
+          {/* Botones */}
+          <div className="flex gap-2 pt-1">
+            <button type="button" onClick={onCerrar}
+              className="flex-1 rounded-lg border border-[#2a2a32] bg-[#0d0d0f] py-1.5 text-sm text-[#9a9aac] hover:text-[#e1e1eb] transition-colors">
+              Cancelar
+            </button>
+            <button type="submit" disabled={guardando}
+              className="flex-1 rounded-lg bg-[#22c55e] py-1.5 text-sm font-semibold text-[#0d0d0f] hover:bg-[#16a34a] disabled:opacity-40 transition-colors">
+              {guardando ? "Guardando..." : proveedorEdit ? "Guardar cambios" : "Agregar proveedor"}
+            </button>
           </div>
-
-          {esTransferencia && (
-            <div className="border border-white/10 rounded-lg p-4 space-y-3">
-              <h3 className="text-white/50 text-xs font-semibold">Datos de Transferencia</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Banco" name="banco" value={form.banco} onChange={handleChange} />
-                <Field label="Número de cuenta" name="numeroCuenta" value={form.numeroCuenta} onChange={handleChange} />
-                <Field label="Documento" name="documentoTransferencia" value={form.documentoTransferencia} onChange={handleChange} />
-                <Field label="Nombre o Razón Social" name="nombreRazonSocial" value={form.nombreRazonSocial} onChange={handleChange} />
-                <Field label="Alias (opcional)" name="alias" value={form.alias} onChange={handleChange} />
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-white/10">
-          <button type="button" onClick={onCerrar} className="px-4 py-2 text-sm text-white/60 hover:text-white transition-colors">Cancelar</button>
-          <button type="button" onClick={handleSubmit} disabled={guardando}
-            className="px-5 py-2 text-sm font-medium bg-[var(--accent-green)] text-black rounded-lg hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed">
-            {guardando ? "Guardando..." : "Guardar"}
-          </button>
-        </div>
+        </form>
       </div>
-    </div>
-  );
-}
-
-function Field({ label, name, value, onChange, type = "text", placeholder = "", error }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-white/50 text-xs">{label}</label>
-      <input type={type} name={name} value={value} onChange={onChange} placeholder={placeholder}
-        className={`bg-white/5 border rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-[var(--accent-green)] transition-colors ${error ? "border-red-500/50" : "border-white/10"}`} />
-      {error && <span className="text-red-400 text-xs">{error}</span>}
     </div>
   );
 }
