@@ -51,6 +51,9 @@ function toFrontendProduct(backend) {
     proveedor: "",
 
     activo: backend.activo !== false,
+
+    precioFuturo: backend.precioFuturo ?? null,
+    fechaVigencia: backend.fechaVigencia ?? null,
   };
 }
 
@@ -103,14 +106,21 @@ function toPatchBody(producto) {
  */
 export async function getProductos(params = {}) {
   const searchTrim = params.search != null ? String(params.search).trim() : "";
-  const { data } = await api.get("/api/productos", {
-    params: {
-      page: params.page ?? 0,
-      size: params.pageSize ?? 20,
-      search: searchTrim || undefined,
-      sortBy: params.sortBy || params.sortField || undefined,
-      sortDirection: params.sortDir || "asc",
-    },
+  const { data } = await api.get(searchTrim ? "/api/productos/buscar" : "/api/productos", {
+    params: searchTrim
+      ? {
+          nombre: searchTrim,
+          page: params.page ?? 0,
+          size: params.pageSize ?? 20,
+          sortBy: params.sortBy || params.sortField || undefined,
+          sortDirection: params.sortDir || "asc",
+        }
+      : {
+          page: params.page ?? 0,
+          size: params.pageSize ?? 20,
+          sortBy: params.sortBy || params.sortField || undefined,
+          sortDirection: params.sortDir || "asc",
+        },
   });
 
   const pageData = data?.data ?? data ?? {};
@@ -174,19 +184,34 @@ export async function updateProducto(id, producto) {
 /**
  * POST /api/precios-venta
  * Crea/actualiza el precio de venta vigente de un producto (APPEND-ONLY).
+ * fechaVigencia (ISO local) intenta programarlo a futuro; el contrato actual
+ * no lo soporta, por lo que se envía de todas formas (puede fallar).
  */
-export async function updateProductoPrecio(id, precio) {
+export async function updateProductoPrecio(id, precio, fechaVigencia = null) {
   const precioNum = Number(precio);
-  const { data } = await api.post("/api/precios-venta", {
+  const body = {
     productoId: Number(id),
     precio: Number.isFinite(precioNum) ? precioNum : 0,
-  });
+  };
+  if (fechaVigencia) body.fecha_vigencia = fechaVigencia;
+  const { data } = await api.post("/api/precios-venta", body);
+  return toFrontendProduct(data?.data ?? data);
+}
+
+/**
+ * DELETE /api/productos/{id}/programacion
+ * Cancela el precio de venta programado a futuro.
+ * El contrato actual no lo expone: puede fallar hasta que el duo lo implemente.
+ */
+export async function cancelarProgramacionPrecio(id) {
+  const { data } = await api.delete(`/api/productos/${id}/programacion`);
   return toFrontendProduct(data?.data ?? data);
 }
 
 /**
  * GET /api/precios-venta/producto/{productoId}
  * Historial de precios de venta de un producto.
+ * Mapea al shape que espera el modal (incluye estado / variación).
  */
 export async function getHistorialPrecios(productoId) {
   const { data } = await api.get(`/api/precios-venta/producto/${productoId}`, {
@@ -194,16 +219,23 @@ export async function getHistorialPrecios(productoId) {
   });
   const rows = Array.isArray(data) ? data : (data?.content || data?.data?.content || []);
   return rows
-    .map((r) => ({
-      id: r.idPrecioVenta ?? r.id,
-      codigoBarra: "",
-      precioCompra: "",
-      precioVenta: r.precio ?? "",
-      margen: "",
-      margenPorcentaje: "",
-      fecha: r.fechaHora ? String(r.fechaHora).slice(0, 10) : (r.fecha ?? ""),
-      hora: r.fechaHora ? String(r.fechaHora).slice(11, 19) : (r.hora ?? ""),
-    }))
+    .map((r, idx) => {
+      const venta = Number(r.precio ?? 0);
+      return {
+        id: r.idPrecioVenta ?? r.id ?? (idx + 1),
+        codigoBarra: "",
+        precioCompra: "",
+        precioVenta: r.precio ?? "",
+        margen: "",
+        margenPorcentaje: "",
+        estado: idx === 0 ? "VIGENTE" : "HISTORICO",
+        precioVentaAnterior: null,
+        variacionPorcentaje: null,
+        vigencia: "",
+        fecha: r.fechaHora ? String(r.fechaHora).slice(0, 10) : (r.fecha ?? ""),
+        hora: r.fechaHora ? String(r.fechaHora).slice(11, 19) : (r.hora ?? ""),
+      };
+    })
     .sort((a, b) => {
       if (!a.fecha || !b.fecha) return 0;
       return String(b.fecha).localeCompare(String(a.fecha)) || String(b.hora || "").localeCompare(String(a.hora || ""));

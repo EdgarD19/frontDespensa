@@ -118,16 +118,13 @@ export default function ProductForm({
           {/* Fila 3: Categoria + Subcategoria */}
           <div className="grid grid-cols-2 gap-3">
             <label className={labelClass}>
-              <span className={labelText}>
-                Categoria <span className="text-rose-400">*</span>
-              </span>
+              <span className={labelText}>Categoria</span>
               <select
                 name="idCategoria"
                 value={formData.idCategoria ?? ""}
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, idCategoria: e.target.value }))
                 }
-                required
                 disabled={loading}
                 className={selectClass}
               >
@@ -151,23 +148,11 @@ export default function ProductForm({
             </label>
           </div>
 
-          {/* Fila 4: Marca + Pesable */}
+          {/* Fila 4: Vende por peso + Unidad de medida */}
           <div className="grid grid-cols-2 gap-3">
-            <label className={labelClass}>
-              <span className={labelText}>Marca</span>
-              <select
-                name="idMarca"
-                value={formData.idMarca ?? ""}
-                disabled
-                className={`${selectClass} text-[#4a4a5a] cursor-not-allowed opacity-50`}
-              >
-                <option value="">Proximamente...</option>
-              </select>
-            </label>
-
             <div>
               <span className={labelText}>Vende por peso?</span>
-              <div className="flex items-center gap-3 mt-1">
+              <div className="flex items-center gap-3">
                 <label className="flex items-center gap-1.5 cursor-pointer">
                   <input
                     type="radio"
@@ -194,31 +179,27 @@ export default function ProductForm({
                 </label>
               </div>
             </div>
-          </div>
 
-          {/* Fila 5: Unidad de medida */}
-          <label className={labelClass}>
-            <span className={labelText}>
-              Unidad de medida <span className="text-rose-400">*</span>
-            </span>
-            <select
-              name="idUnidad"
-              value={formData.idUnidad ?? ""}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, idUnidad: e.target.value }))
-              }
-              required
-              disabled={loading}
-              className={selectClass}
-            >
-              <option value="">Seleccionar...</option>
-              {unidadOptions.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nombre}{u.abreviatura ? ` (${u.abreviatura})` : ""}
-                </option>
-              ))}
-            </select>
-          </label>
+            <label className={labelClass}>
+              <span className={labelText}>Unidad de medida</span>
+              <select
+                name="idUnidad"
+                value={formData.idUnidad ?? ""}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, idUnidad: e.target.value }))
+                }
+                disabled={loading}
+                className={selectClass}
+              >
+                <option value="">Seleccionar...</option>
+                {unidadOptions.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.nombre}{u.abreviatura ? ` (${u.abreviatura})` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
 
           {/* Botones */}
           <div className="flex gap-2 pt-1">

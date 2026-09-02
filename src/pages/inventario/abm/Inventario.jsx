@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback } from "react";
 import ProductForm from "./ProductForm";
 import ProductList from "./ProductList";
 import PrecioProductoModal from "./PrecioProductoModal";
+import ConfirmModal from "./ConfirmModal";
 import {
   getProductos,
   createProducto,
@@ -92,6 +93,7 @@ export default function Inventario() {
   const [totalPages, setTotalPages]     = useState(0);
   const [modalOpen, setModalOpen]       = useState(false);
   const [precioProducto, setPrecioProducto] = useState(null);
+  const [confirmarProducto, setConfirmarProducto] = useState(null);
 
   const [categorias, setCategorias]     = useState([]);
   const [unidades, setUnidades]         = useState([]);
@@ -171,11 +173,10 @@ export default function Inventario() {
     e.preventDefault();
     const data = { ...formData };
 
-    const idCat  = data.idCategoria  ? Number(data.idCategoria)  : null;
     const idUnid = data.idUnidad     ? Number(data.idUnidad)     : null;
 
-    if (!editingId && (!idCat || !idUnid)) {
-      setError("Debe seleccionar categoría y unidad de medida para crear un producto.");
+    if (!String(data.nombre || "").trim()) {
+      setError("El nombre del producto es obligatorio.");
       return;
     }
 
@@ -244,23 +245,31 @@ export default function Inventario() {
     }
   };
 
-  const handleToggleActivo = async (producto) => {
+  const handleToggleActivo = (producto) => {
     const id = producto.id;
     const nombre = producto.nombre || `producto #${id}`;
-    const nuevoEstado = producto.activo === false ? "activar" : "inactivar";
+    const nuevoEstado = producto.activo === false;
+    setConfirmarProducto({
+      id,
+      nombre,
+      activar: nuevoEstado,
+    });
+  };
 
-    if (!window.confirm(`¿${nuevoEstado} "${nombre}"?`)) return;
+  const confirmarCambioEstado = async () => {
+    if (!confirmarProducto) return;
+    const { id, activar } = confirmarProducto;
 
     setError(null);
     try {
-      await updateProducto(id, { ...producto, activo: producto.activo === false });
+      await updateProducto(id, { ...productos.find((p) => p.id === id), activo: activar });
       setProductos((prev) =>
-        prev.map((p) =>
-          p.id === id ? { ...p, activo: p.activo === false ? true : false } : p
-        )
+        prev.map((p) => (p.id === id ? { ...p, activo: activar } : p))
       );
+      setConfirmarProducto(null);
     } catch (err) {
       setError(apiErrorMessage(err) || "No se pudo cambiar el estado del producto.");
+      setConfirmarProducto(null);
     }
   };
 
@@ -314,6 +323,22 @@ export default function Inventario() {
           producto={precioProducto}
           onClose={closePrecioModal}
           onPrecioActualizado={handlePrecioActualizado}
+        />
+      )}
+
+      {confirmarProducto && (
+        <ConfirmModal
+          abierto
+          titulo={confirmarProducto.activar ? "Activar producto" : "Inactivar producto"}
+          mensaje={`¿${confirmarProducto.activar ? "Activar" : "Inactivar"} "${confirmarProducto.nombre}"?`}
+          confirmarLabel={confirmarProducto.activar ? "Activar" : "Inactivar"}
+          confirmarClass={
+            confirmarProducto.activar
+              ? "bg-[#22c55e] text-[#0d0d0f] hover:bg-[#16a34a]"
+              : "bg-[#ef4444] text-[#0d0d0f] hover:bg-[#dc2626]"
+          }
+          onConfirmar={confirmarCambioEstado}
+          onCerrar={() => setConfirmarProducto(null)}
         />
       )}
     </div>

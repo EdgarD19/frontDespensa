@@ -53,20 +53,8 @@ export default function ProveedoresABM() {
     setError(null);
     try {
       const res = await getProveedores({ search: searchDebounced, page, pageSize: 10, sortBy: "nombre", sortDir: "ASC" });
-      const raw = res.data;
-      const filas = Array.isArray(raw)
-        ? raw
-        : Array.isArray(raw?.content)
-          ? raw.content
-          : [];
-      setProveedores(filas);
-      setTotalPages(
-        Array.isArray(raw)
-          ? 1
-          : typeof raw?.totalPages === "number"
-            ? raw.totalPages
-            : 0,
-      );
+      setProveedores(res.content || []);
+      setTotalPages(typeof res.totalPages === "number" ? res.totalPages : 0);
     } catch (err) {
       const detalle = apiErrorMessage(err);
       setError(detalle && detalle !== "Error de red"
@@ -140,7 +128,7 @@ export default function ProveedoresABM() {
     if (!window.confirm(`¿${nuevoEstado} a ${nombre}?`)) return;
     setError(null);
     try {
-      await toggleActivoProveedor(id);
+      await toggleActivoProveedor(id, proveedor.activo);
       await cargarProveedores();
     } catch {
       setError("No se pudo cambiar el estado del proveedor.");
