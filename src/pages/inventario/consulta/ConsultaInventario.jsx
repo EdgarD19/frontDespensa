@@ -5,6 +5,8 @@ import { getProductos } from "../../../api/productosApi";
 import { apiErrorMessage } from "../../../api/errors";
 import { getEstadoStock } from "../utils";
 
+const ITEMS_PER_PAGE = 10;
+
 export default function ConsultaInventario() {
   const [productos, setProductos]           = useState([]);
   const [loading, setLoading]               = useState(true);
@@ -13,6 +15,7 @@ export default function ConsultaInventario() {
   const [search, setSearch]                 = useState("");
   const [filterCategoria, setFilterCategoria] = useState("");
   const [filterStock, setFilterStock]       = useState("todos");
+  const [currentPage, setCurrentPage]       = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,12 +64,18 @@ export default function ConsultaInventario() {
       .sort((a, b) => a.nombre?.localeCompare(b.nombre) || 0);
   }, [productos, search, filterCategoria, filterStock]);
 
+  const totalItems    = productosFiltrados.length;
+  const totalPages    = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
+  const safePage      = Math.min(currentPage, totalPages - 1);
+  const pageProductos = productosFiltrados.slice(safePage * ITEMS_PER_PAGE, (safePage + 1) * ITEMS_PER_PAGE);
+
+  const handleSearch        = (v) => { setSearch(v);                 setCurrentPage(0); };
+  const handleCategoria    = (v) => { setFilterCategoria(v);        setCurrentPage(0); };
+  const handleStock        = (v) => { setFilterStock(v);            setCurrentPage(0); };
+
   return (
     <div className="max-w-7xl mx-auto py-8 px-4 space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold text-[#f1f1f3] tracking-tight">Consulta de Inventario</h1>
-        <p className="text-sm text-[#5a5a6e]">Listado completo de productos</p>
-      </div>
+      <h1 className="text-2xl font-semibold text-[#f1f1f3] tracking-tight">Consulta de Inventario</h1>
 
       {error && (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>
@@ -74,18 +83,22 @@ export default function ConsultaInventario() {
 
       <ConsultaInventarioFilters
         search={search}
-        setSearch={setSearch}
+        setSearch={handleSearch}
         filterCategoria={filterCategoria}
-        setFilterCategoria={setFilterCategoria}
+        setFilterCategoria={handleCategoria}
         filterStock={filterStock}
-        setFilterStock={setFilterStock}
+        setFilterStock={handleStock}
         categoriasOptions={categoriasOptions}
         disabled={loading}
       />
 
       <ConsultaInventarioReport
-        productos={loading ? [] : productosFiltrados}
+        productos={loading ? [] : pageProductos}
         loading={loading}
+        currentPage={safePage}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        setCurrentPage={setCurrentPage}
       />
     </div>
   );

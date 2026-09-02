@@ -1,4 +1,3 @@
-import { Search } from "lucide-react";
 import { getEstadoStock } from "../utils";
 
 const estadoStockConfig = {
@@ -8,7 +7,16 @@ const estadoStockConfig = {
   desconocido: { label: "Desconocido", cls: "bg-white/10 text-white/40" },
 };
 
-export default function ConsultaInventarioReport({ productos, loading }) {
+const pageBtn = "px-2 py-1 rounded text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm";
+
+export default function ConsultaInventarioReport({
+  productos,
+  loading,
+  currentPage = 0,
+  totalPages = 1,
+  totalItems = 0,
+  setCurrentPage,
+}) {
   const count = productos?.length ?? 0;
 
   return (
@@ -22,7 +30,7 @@ export default function ConsultaInventarioReport({ productos, loading }) {
               <th className="px-4 py-3 font-medium">Categoría</th>
               <th className="px-4 py-3 font-medium">Unidad</th>
               <th className="px-4 py-3 font-medium text-right">Stock actual</th>
-              <th className="px-4 py-3 font-medium">Estado de stock</th>
+              <th className="px-4 py-3 font-medium">Estado</th>
             </tr>
           </thead>
 
@@ -98,10 +106,45 @@ export default function ConsultaInventarioReport({ productos, loading }) {
         </table>
       </div>
 
-      {!loading && count > 0 && (
-        <div className="flex items-center gap-2 text-sm text-white/50">
-          <Search size={14} />
-          <span>{count} productos</span>
+      {!loading && totalItems > 0 && (
+        <div className="flex items-center justify-center gap-1 text-sm select-none">
+          <button
+            disabled={currentPage <= 0}
+            onClick={() => setCurrentPage(0)}
+            className={pageBtn}
+            title="Primera página"
+          >
+            &laquo;
+          </button>
+          <button
+            disabled={currentPage <= 0}
+            onClick={() => setCurrentPage(currentPage - 1)}
+            className={pageBtn}
+            title="Página anterior"
+          >
+            &lsaquo;
+          </button>
+
+          <span className="px-3 text-white/50">
+            Página {currentPage + 1} de {totalPages}
+          </span>
+
+          <button
+            disabled={currentPage >= totalPages - 1}
+            onClick={() => setCurrentPage(currentPage + 1)}
+            className={pageBtn}
+            title="Página siguiente"
+          >
+            &rsaquo;
+          </button>
+          <button
+            disabled={currentPage >= totalPages - 1}
+            onClick={() => setCurrentPage(totalPages - 1)}
+            className={pageBtn}
+            title="Última página"
+          >
+            &raquo;
+          </button>
         </div>
       )}
     </div>
