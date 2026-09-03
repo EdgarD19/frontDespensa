@@ -239,9 +239,13 @@ export default function Inventario() {
 
   const handlePrecioActualizado = (updated) => {
     if (updated?.id) {
-      setProductos((prev) =>
-        prev.map((p) => (p.id === updated.id ? mergeProductoLista(p, updated) : p))
-      );
+      setProductos((prev) => {
+        const m = prev.map((p) => (p.id === updated.id ? mergeProductoLista(p, updated) : p));
+        const index = m.findIndex((p) => p.id === updated.id);
+        if (index === -1) return m;
+        const [producto] = m.splice(index, 1);
+        return [producto, ...m];
+      });
     }
   };
 

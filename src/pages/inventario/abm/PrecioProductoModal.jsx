@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { X, Save, History, Search, Clock } from "lucide-react";
-import { getHistorialPrecios, updateProductoPrecio, cancelarProgramacionPrecio } from "../../../api/productosApi";
+import { getHistorialPrecios, updateProductoPrecio, cancelarProgramacionPrecio, getProductoById } from "../../../api/productosApi";
 import { apiErrorMessage } from "../../../api/errors";
 
 const inputClass =
@@ -94,20 +94,24 @@ export default function PrecioProductoModal({ producto, onClose, onPrecioActuali
     setError(null);
     setAviso(null);
     try {
-      const updated = await updateProductoPrecio(productoActual.id, precio, vigencia);
-      setProductoActual(updated);
-      onPrecioActualizado?.(updated);
-      await cargarHistorial();
-      setNuevoPrecio(String(precio));
-      setFechaVigencia("");
-      if (updated?.fechaVigencia) {
-        setAviso(`Cambio programado: el precio pasará a ₲${precio.toLocaleString("es-PY")} el ${String(updated.fechaVigencia).replace("T", " ").slice(0, 16)}.`);
-      } else {
-        setAviso(`Precio actualizado a ₲${precio.toLocaleString("es-PY")}.`);
+      await updateProductoPrecio(productoActual.id, precio, vigencia);
+      let updated = null;
+      try {
+        updated = await getProductoById(productoActual.id);
+      } catch {
+        updated = null;
       }
+      const precioData = {
+        ...(updated?.id ? updated : productoActual),
+        id: productoActual.id,
+        precioVenta: String(precio),
+        precio: String(precio),
+      };
+      setProductoActual(precioData);
+      onPrecioActualizado?.(precioData);
+      onClose?.();
     } catch (err) {
       setError(apiErrorMessage(err) || "No se pudo actualizar el precio.");
-    } finally {
       setGuardando(false);
     }
   }
