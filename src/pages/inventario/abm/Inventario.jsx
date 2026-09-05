@@ -19,7 +19,6 @@ import {
   getUnidades,
   getProveedores,
   getSubcategorias,
-  getMarcas,
 } from "../../../api/maestrosApi";
 
 const DEBOUNCE_MS = 400;
@@ -99,19 +98,15 @@ export default function Inventario() {
   const [unidades, setUnidades]         = useState([]);
   const [proveedores, setProveedores]   = useState([]);
   const [subcategorias, setSubcategorias] = useState([]);
-  const [marcas, setMarcas]             = useState([]);
-  const [maestrosAviso, setMaestrosAviso] = useState(null);
 
   useEffect(() => {
     const safe = async (fn) => { try { const v = await fn(); return Array.isArray(v) ? v : []; } catch { return []; } };
     (async () => {
-      const [cats, unids, provs, marcasData] = await Promise.all([
-        safe(getCategorias), safe(getUnidades), safe(getProveedores), safe(getMarcas),
+      const [cats, unids, provsRes] = await Promise.all([
+        safe(getCategorias), safe(getUnidades), safe(getProveedores),
       ]);
-      setCategorias(cats); setUnidades(unids); setProveedores(provs); setMarcas(marcasData);
-      if (cats.length === 0 && unids.length === 0 && provs.length === 0) {
-        setMaestrosAviso("No hay categorías, unidades ni proveedores para el alta de productos.");
-      }
+      const provs = Array.isArray(provsRes) ? provsRes : (provsRes?.content ?? []);
+      setCategorias(cats); setUnidades(unids); setProveedores(provs);
     })();
   }, []);
 
@@ -283,10 +278,6 @@ export default function Inventario() {
 
       {error && (
         <div className="mb-4 px-4 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg py-3">{error}</div>
-      )}
-
-      {maestrosAviso && (
-        <div className="mb-4 px-4 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm rounded-lg py-3">{maestrosAviso}</div>
       )}
 
       <ProductList

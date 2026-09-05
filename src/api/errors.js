@@ -17,6 +17,12 @@ export function apiErrorMessage(err) {
 
   if (typeof d === "string") return d.trim() || err.message || `Error HTTP ${status}`;
 
+  if (d.errores && typeof d.errores === "object" && Object.keys(d.errores).length > 0) {
+    return Object.entries(d.errores)
+      .map(([campo, msg]) => `${campo}: ${msg}`)
+      .join("; ");
+  }
+
   if (Array.isArray(d.errors) && d.errors.length > 0) {
     return d.errors
       .map((e) => e.defaultMessage ?? e.message ?? String(e))

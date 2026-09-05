@@ -30,20 +30,6 @@ export async function eliminarSubcategoria(id) {
   await api.delete(`${BASE}/subcategorias/${id}`);
 }
 
-export async function crearMarca(nombre) {
-  const { data } = await api.post(`${BASE}/marcas`, { nombre });
-  return data;
-}
-
-export async function actualizarMarca(id, nombre) {
-  const { data } = await api.put(`${BASE}/marcas/${id}`, { nombre });
-  return data;
-}
-
-export async function eliminarMarca(id) {
-  await api.delete(`${BASE}/marcas/${id}`);
-}
-
 export async function crearPais(nombre) {
   const { data } = await api.post(`${BASE}/paises`, { nombre });
   return data;

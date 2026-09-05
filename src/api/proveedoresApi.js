@@ -72,7 +72,7 @@ function buildProveedorBody(data) {
   if (data.tipoPersona === "FISICA") {
     body.apellido = data.apellido?.trim() || null;
     if (data.fechaNacimiento) {
-      body.fechaNacimiento = new Date(data.fechaNacimiento).toISOString();
+      body.fechaNacimiento = data.fechaNacimiento;
     }
   } else {
     body.apellido = null;

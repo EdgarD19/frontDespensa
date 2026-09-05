@@ -8,6 +8,26 @@ export async function crearCompra(payload) {
   return data;
 }
 
+/** Devuelve true si ya existe una compra con ese timbrado (200 = existe). */
+export async function compraTimbradoExiste(timbrado) {
+  try {
+    await api.get(`/api/compras/timbrado/${encodeURIComponent(timbrado)}`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Devuelve true si ya existe una compra con ese número de factura (200 = existe). */
+export async function compraFacturaExiste(numeroFactura) {
+  try {
+    await api.get(`/api/compras/factura/${encodeURIComponent(numeroFactura)}`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Órdenes de compra pendientes de recepción. */
 export async function getOrdenesPendientes() {
   const { data } = await api.get("/api/compras/ordenes-pendientes");

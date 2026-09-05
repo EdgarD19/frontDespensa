@@ -49,7 +49,7 @@ export default function ProveedoresModal({
         apellido: proveedorEdit.apellido ?? "",
         tipoDocumento: proveedorEdit.tipoDocumento ?? "",
         numeroDocumento: proveedorEdit.numeroDocumento ?? "",
-        descripcionNegocio: proveedorEdit.descripcionNegocio ?? "",
+        descripcionNegocio: proveedorEdit.descripcion ?? "",
         personaContacto: proveedorEdit.personaContacto ?? "",
         idPais: proveedorEdit.idPais ?? "",
         idCiudad: proveedorEdit.idCiudad ?? "",
@@ -91,10 +91,29 @@ export default function ProveedoresModal({
     const errs = {};
     if (!form.nombre.trim()) errs.nombre = "Requerido";
     if (!form.tipoDocumento) errs.tipoDocumento = "Requerido";
-    if (!form.numeroDocumento.trim()) errs.numeroDocumento = "Requerido";
+    if (!form.numeroDocumento.trim()) {
+      errs.numeroDocumento = "Requerido";
+    } else if (form.numeroDocumento.trim().length < 8) {
+      errs.numeroDocumento = "Mínimo 8 caracteres";
+    }
+    if (
+      form.telefono &&
+      !/^0(2|3|4|5|6|7)\d\s?\d{4}$/.test(form.telefono.trim())
+    ) {
+      errs.telefono = "Formato 0XX XXXXXX";
+    }
+    if (form.celular && !/^\+5959\d{8}$/.test(form.celular.trim())) {
+      errs.celular = "Formato +5959XXXXXXXX";
+    }
     if (!form.descripcionNegocio.trim()) errs.descripcionNegocio = "Requerido";
     if (!form.personaContacto.trim()) errs.personaContacto = "Requerido";
     if (!form.direccion.trim()) errs.direccion = "Requerido";
+    if (!form.tipoPersona || form.tipoPersona === "FISICA") {
+      if (!form.apellido.trim()) errs.apellido = "Requerido";
+      if (!form.fechaNacimiento) errs.fechaNacimiento = "Requerido";
+    }
+    if (!form.idPais) errs.idPais = "Requerido";
+    if (!form.idCiudad) errs.idCiudad = "Requerido";
     return errs;
   }
 
@@ -183,15 +202,17 @@ export default function ProveedoresModal({
 
             {!esJuridica && (
               <label className={labelClass}>
-                <span className={labelText}>Apellido</span>
+                <span className={labelText}>Apellido <span className="text-rose-400">*</span></span>
                 <input
                   type="text"
                   name="apellido"
                   value={form.apellido}
                   onChange={handleChange}
+                  required
                   placeholder="Apellido"
                   className={inputClass}
                 />
+                {errores.apellido && <span className="text-[11px] text-rose-400">{errores.apellido}</span>}
               </label>
             )}
           </div>
@@ -200,14 +221,16 @@ export default function ProveedoresModal({
           <div className="grid grid-cols-2 gap-3">
             {!esJuridica && (
               <label className={labelClass}>
-                <span className={labelText}>Fecha de nacimiento</span>
+                <span className={labelText}>Fecha de nacimiento <span className="text-rose-400">*</span></span>
                 <input
                   type="date"
                   name="fechaNacimiento"
                   value={form.fechaNacimiento}
                   onChange={handleChange}
+                  required
                   className={inputClass}
                 />
+                {errores.fechaNacimiento && <span className="text-[11px] text-rose-400">{errores.fechaNacimiento}</span>}
               </label>
             )}
 
@@ -309,35 +332,37 @@ export default function ProveedoresModal({
           {/* Pais + Ciudad */}
           <div className="grid grid-cols-2 gap-3">
             <label className={labelClass}>
-              <span className={labelText}>País</span>
+              <span className={labelText}>País <span className="text-rose-400">*</span></span>
               <select
                 name="idPais"
                 value={form.idPais ?? ""}
                 onChange={handlePaisChange}
-                className={`${selectClass} text-[#4a4a5a] cursor-not-allowed opacity-50`}
-                disabled
+                required
+                className={selectClass}
               >
-                <option value="">Proximamente...</option>
+                <option value="">Seleccionar...</option>
                 {paises.map((p) => (
                   <option key={p.id} value={p.id}>{p.nombre}</option>
                 ))}
               </select>
+              {errores.idPais && <span className="text-[11px] text-rose-400">{errores.idPais}</span>}
             </label>
 
             <label className={labelClass}>
-              <span className={labelText}>Ciudad</span>
+              <span className={labelText}>Ciudad <span className="text-rose-400">*</span></span>
               <select
                 name="idCiudad"
                 value={form.idCiudad ?? ""}
                 onChange={handleChange}
-                className={`${selectClass} text-[#4a4a5a] cursor-not-allowed opacity-50`}
-                disabled
+                required
+                className={selectClass}
               >
-                <option value="">Proximamente...</option>
+                <option value="">Seleccionar...</option>
                 {ciudades.map((c) => (
                   <option key={c.id} value={c.id}>{c.nombre}</option>
                 ))}
               </select>
+              {errores.idCiudad && <span className="text-[11px] text-rose-400">{errores.idCiudad}</span>}
             </label>
           </div>
 
@@ -353,6 +378,7 @@ export default function ProveedoresModal({
                 placeholder="Teléfono"
                 className={inputClass}
               />
+              {errores.telefono && <span className="text-[11px] text-rose-400">{errores.telefono}</span>}
             </label>
 
             <label className={labelClass}>
@@ -365,6 +391,7 @@ export default function ProveedoresModal({
                 placeholder="Celular"
                 className={inputClass}
               />
+              {errores.celular && <span className="text-[11px] text-rose-400">{errores.celular}</span>}
             </label>
           </div>
 

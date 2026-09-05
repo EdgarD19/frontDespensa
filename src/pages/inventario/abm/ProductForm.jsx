@@ -18,7 +18,6 @@ export default function ProductForm({
   isEditing,
   categorias = [],
   subcategorias = [],
-  marcas = [],
   unidades = [],
   loading = false,
 }) {

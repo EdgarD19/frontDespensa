@@ -2,11 +2,10 @@ import { useState, useEffect } from "react";
 import {
   Plus, Pencil, Trash2, ChevronDown, ChevronRight, X, Check
 } from "lucide-react";
-import { getCategorias, getPaises, getMarcas, getSubcategorias, getCiudades } from "../../../api/maestrosApi";
+import { getCategorias, getPaises, getSubcategorias, getCiudades } from "../../../api/maestrosApi";
 import {
   crearCategoria, actualizarCategoria, eliminarCategoria,
   crearSubcategoria, actualizarSubcategoria, eliminarSubcategoria,
-  crearMarca, actualizarMarca, eliminarMarca,
   crearPais, actualizarPais, eliminarPais,
   crearCiudad, actualizarCiudad, eliminarCiudad,
 } from "../../../api/maestrosABMApi";
@@ -342,88 +341,6 @@ function SeccionPaises() {
   );
 }
 
-function SeccionMarcas() {
-  const [marcas, setMarcas] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [newName, setNewName] = useState("");
-  const [editId, setEditId] = useState(null);
-  const [editName, setEditName] = useState("");
-
-  const load = async () => {
-    setLoading(true);
-    try {
-      const d = await getMarcas();
-      setMarcas(Array.isArray(d) ? d : []);
-    } finally { setLoading(false); }
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const handleAdd = async () => {
-    if (!newName.trim()) return;
-    await crearMarca(newName.trim());
-    setNewName("");
-    await load();
-  };
-
-  const handleEdit = async (id) => {
-    if (!editName.trim()) return;
-    await actualizarMarca(id, editName.trim());
-    setEditId(null);
-    setEditName("");
-    await load();
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm("¿Eliminar esta marca?")) return;
-    await eliminarMarca(id);
-    await load();
-  };
-
-  return (
-    <div>
-      <div className="flex items-center gap-2 mb-4">
-        <input value={newName} onChange={(e) => setNewName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-          placeholder="Nueva marca..."
-          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent-green)]" />
-        <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent-green)]/90 hover:bg-[var(--accent-green)] text-black text-sm font-medium rounded-lg transition-colors">
-          <Plus className="w-4 h-4" /> Agregar
-        </button>
-      </div>
-      {loading ? (
-        <div className="text-white/40 text-sm py-4 text-center">Cargando...</div>
-      ) : marcas.length === 0 ? (
-        <div className="text-white/30 text-sm py-4 text-center">Sin marcas</div>
-      ) : (
-        <div className="space-y-1">
-          {marcas.map((m) => (
-            <div key={m.id} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 group">
-              {editId === m.id ? (
-                <>
-                  <input value={editName} onChange={(e) => setEditName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleEdit(m.id)}
-                    className="flex-1 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm text-white focus:outline-none" autoFocus />
-                  <button onClick={() => handleEdit(m.id)} className="p-1 text-green-400"><Check className="w-4 h-4" /></button>
-                  <button onClick={() => { setEditId(null); setEditName(""); }} className="p-1 text-white/40"><X className="w-4 h-4" /></button>
-                </>
-              ) : (
-                <>
-                  <span className="flex-1 text-sm text-white">{m.nombre}</span>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => { setEditId(m.id); setEditName(m.nombre); }} className="p-1 text-white/40 hover:text-[var(--accent-green)]"><Pencil className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => handleDelete(m.id)} className="p-1 text-white/40 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
-                  </div>
-                </>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function AccordionSection({ titulo, defaultOpen = false, children }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
@@ -443,16 +360,13 @@ export default function MaestrosABM() {
     <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-semibold text-white mb-1">Administrar Maestros</h1>
-        <p className="text-sm text-white/40">Gestiona categorías, subcategorías, marcas y países</p>
+        <p className="text-sm text-white/40">Gestiona categorías, subcategorías y países</p>
       </div>
       <AccordionSection titulo="Categorías + Subcategorías" defaultOpen={true}>
         <SeccionCategorias />
       </AccordionSection>
       <AccordionSection titulo="Países + Ciudades">
         <SeccionPaises />
-      </AccordionSection>
-      <AccordionSection titulo="Marcas">
-        <SeccionMarcas />
       </AccordionSection>
     </div>
   );

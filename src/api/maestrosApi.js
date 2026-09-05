@@ -1,12 +1,22 @@
 import { api } from "./client";
 
 const PATHS = {
-  categorias: ["/api/categories"],
+  categorias: ["/api/categorias"],
   unidades: ["/api/unidades-medida"],
-  proveedores: ["/api/v1/proveedor"],
-  marcas: ["/api/v1/marcas"],
+  proveedores: ["/api/proveedores"],
   rubros: ["/api/v1/rubros"],
   paises: ["/api/v1/paises"],
+};
+
+// TODO temporal: lista local fija de países/ciudades mientras el endpoint
+// /api/v1/paises no esté disponible en el backend. Eliminar una vez que
+// el endpoint funcione correctamente.
+const LOCAL_PAISES = [
+  { id: 1, nombre: "Paraguay" },
+];
+
+const LOCAL_CIUDADES = {
+  1: [{ id: 1, nombre: "Capiata" }],
 };
 
 function parseMaestrosEnv() {
@@ -22,6 +32,7 @@ function parseMaestrosEnv() {
 function unwrapList(data) {
   if (Array.isArray(data)) return data;
   if (Array.isArray(data?.content)) return data.content;
+  if (Array.isArray(data?.data?.content)) return data.data.content;
   if (Array.isArray(data?.data)) return data.data;
   return [];
 }
@@ -111,16 +122,6 @@ export async function getProveedores() {
   return loadProveedores();
 }
 
-async function loadMarcas() {
-  const env = parseMaestrosEnv();
-  if (env?.marcas?.length) return normalizeList(env.marcas);
-  return fetchFirst(PATHS.marcas);
-}
-
-export async function getMarcas() {
-  return loadMarcas();
-}
-
 async function loadRubros() {
   const env = parseMaestrosEnv();
   if (env?.rubros?.length) return normalizeList(env.rubros);
@@ -134,7 +135,13 @@ export async function getRubros() {
 async function loadPaises() {
   const env = parseMaestrosEnv();
   if (env?.paises?.length) return normalizeList(env.paises);
-  return fetchFirst(PATHS.paises);
+  try {
+    const lista = await fetchFirst(PATHS.paises);
+    if (lista.length) return lista;
+  } catch {
+    /* fallback local */
+  }
+  return LOCAL_PAISES;
 }
 
 export async function getPaises() {
@@ -143,16 +150,19 @@ export async function getPaises() {
 
 export async function getCiudades(idPais) {
   if (!idPais) return [];
+  const key = Number(idPais);
   try {
     const { data } = await api.get(`/api/v1/paises/${idPais}/ciudades`);
-    return normalizeList(data);
+    const lista = normalizeList(data);
+    if (lista.length) return lista;
   } catch {
-    return [];
+    /* fallback local */
   }
+  return LOCAL_CIUDADES[key] ?? [];
 }
 
 const SUBCATEGORIA_PATH_TEMPLATES = [
-  (id) => `/api/categories/${id}/subcategorias`,
+  (id) => `/api/subcategorias/categoria/${id}`,
 ];
 
 export async function getSubcategorias(idCategoria) {

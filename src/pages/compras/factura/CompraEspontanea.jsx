@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Truck, Search, Barcode, Trash2, ShoppingCart, Check, Calendar, FileText } from "lucide-react";
 import { getProductos, getProductoByCodigo } from "../../../api/productosApi";
-import { getProveedores } from "../../../api/proveedoresApi";
-import { crearCompra } from "../../../api/comprasApi";
+import { getProveedores, getProveedorId } from "../../../api/proveedoresApi";
+import { crearCompra, compraTimbradoExiste, compraFacturaExiste } from "../../../api/comprasApi";
 import { apiErrorMessage } from "../../../api/errors";
 
 const money = (n) => n.toLocaleString("es-PY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -82,7 +82,7 @@ export default function CompraEspontanea({ onVolver }) {
     const t = setTimeout(async () => {
       try {
         const res = await getProveedores({ search: proveedorSearch || undefined, pageSize: 20 });
-        setProveedores(res?.data?.content || []);
+        setProveedores(res?.content || []);
       } catch { setProveedores([]); }
     }, proveedorSearch.length > 0 ? 300 : 0);
     return () => clearTimeout(t);
@@ -155,16 +155,34 @@ export default function CompraEspontanea({ onVolver }) {
       if (l.precioUnitario <= 0) { setError(`Indicá el precio de costo de "${l.producto.nombre}"`); return; }
       if (l.cantidad <= 0) { setError(`La cantidad de "${l.producto.nombre}" debe ser mayor a cero`); return; }
     }
-    setError(null);
     setGuardando(true);
     try {
+      const [timbradoUsado, facturaUsada] = await Promise.all([
+        compraTimbradoExiste(timbrado.trim()),
+        compraFacturaExiste(numeroComprobante.trim()),
+      ]);
+      if (timbradoUsado) {
+        setError(`El timbrado ${timbrado.trim()} ya está registrado en otra compra.`);
+        setGuardando(false);
+        return;
+      }
+      if (facturaUsada) {
+        setError(`El número de factura ${numeroComprobante.trim()} ya está registrado en otra compra.`);
+        setGuardando(false);
+        return;
+      }
+    } catch {
+      /* si la verificación falla, se deja pasar y el backend lo valida */
+    }
+    setError(null);
+    try {
       await crearCompra({
-        idProveedor: proveedorSel.id,
-        numero_comprobante: numeroComprobante.trim(),
+        idProveedor: getProveedorId(proveedorSel),
+        numeroFactura: numeroComprobante.trim(),
         timbrado: timbrado.trim(),
-        formaPago,
+        condicionPago: formaPago,
         fechaEmision,
-        lineas: lineas.map((l) => ({ idProducto: l.producto.id, cantidad: l.cantidad, precioUnitario: l.precioUnitario })),
+        detalles: lineas.map((l) => ({ idProducto: l.producto.id, cantidad: l.cantidad, precioUnitario: l.precioUnitario })),
       });
       setExito("Compra registrada correctamente. Stock y costos actualizados.");
     } catch (err) {
