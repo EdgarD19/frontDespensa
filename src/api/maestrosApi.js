@@ -5,18 +5,7 @@ const PATHS = {
   unidades: ["/api/unidades-medida"],
   proveedores: ["/api/proveedores"],
   rubros: ["/api/v1/rubros"],
-  paises: ["/api/v1/paises"],
-};
-
-// TODO temporal: lista local fija de países/ciudades mientras el endpoint
-// /api/v1/paises no esté disponible en el backend. Eliminar una vez que
-// el endpoint funcione correctamente.
-const LOCAL_PAISES = [
-  { id: 1, nombre: "Paraguay" },
-];
-
-const LOCAL_CIUDADES = {
-  1: [{ id: 1, nombre: "Capiata" }],
+  paises: ["/api/paises/activos"],
 };
 
 function parseMaestrosEnv() {
@@ -48,11 +37,15 @@ function normalizeMaestroRow(row) {
     row.id_proveedor ??
     row.idProveedor ??
     row.id_subcategoria ??
-    row.idSubcategoria;
+    row.idSubcategoria ??
+    row.id_ciudad ??
+    row.idCiudad ??
+    row.id_pais ??
+    row.idPais;
   if (id == null) return null;
   const nombre = row.nombre ?? row.name ?? "";
   if (!String(nombre).trim()) return null;
-  return { id: Number(id) || id, nombre: String(nombre) };
+  return { id: Number(id) || id, nombre: String(nombre), activo: row.activo !== false };
 }
 
 function normalizeUnidadRow(row) {
@@ -135,13 +128,7 @@ export async function getRubros() {
 async function loadPaises() {
   const env = parseMaestrosEnv();
   if (env?.paises?.length) return normalizeList(env.paises);
-  try {
-    const lista = await fetchFirst(PATHS.paises);
-    if (lista.length) return lista;
-  } catch {
-    /* fallback local */
-  }
-  return LOCAL_PAISES;
+  return fetchFirst(PATHS.paises);
 }
 
 export async function getPaises() {
@@ -150,15 +137,8 @@ export async function getPaises() {
 
 export async function getCiudades(idPais) {
   if (!idPais) return [];
-  const key = Number(idPais);
-  try {
-    const { data } = await api.get(`/api/v1/paises/${idPais}/ciudades`);
-    const lista = normalizeList(data);
-    if (lista.length) return lista;
-  } catch {
-    /* fallback local */
-  }
-  return LOCAL_CIUDADES[key] ?? [];
+  const { data } = await api.get(`/api/ciudades/pais/${idPais}`);
+  return normalizeList(data).filter((c) => c.activo !== false);
 }
 
 const SUBCATEGORIA_PATH_TEMPLATES = [

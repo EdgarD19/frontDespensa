@@ -122,7 +122,11 @@ export default function ProductForm({
                 name="idCategoria"
                 value={formData.idCategoria ?? ""}
                 onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, idCategoria: e.target.value }))
+                  setFormData((prev) => ({
+                    ...prev,
+                    idCategoria: e.target.value,
+                    idSubcategoria: "",
+                  }))
                 }
                 disabled={loading}
                 className={selectClass}
@@ -139,10 +143,16 @@ export default function ProductForm({
               <select
                 name="idSubcategoria"
                 value={formData.idSubcategoria ?? ""}
-                disabled
-                className={`${selectClass} text-[#4a4a5a] cursor-not-allowed opacity-50`}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, idSubcategoria: e.target.value }))
+                }
+                disabled={loading || !formData.idCategoria}
+                className={selectClass}
               >
-                <option value="">Proximamente...</option>
+                <option value="">Seleccionar...</option>
+                {subcategorias.map((s) => (
+                  <option key={s.id} value={s.id}>{s.nombre}</option>
+                ))}
               </select>
             </label>
           </div>

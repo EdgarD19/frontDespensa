@@ -15,7 +15,7 @@ const FORM_INICIAL = {
   nombre: "",
   tipoPersona: "FISICA",
   apellido: "",
-  tipoDocumento: "",
+  tipoDocumento: "CI",
   numeroDocumento: "",
   descripcionNegocio: "",
   personaContacto: "",
@@ -25,6 +25,7 @@ const FORM_INICIAL = {
   fechaNacimiento: "",
   telefono: "",
   celular: "",
+  email: "",
 };
 
 export default function ProveedoresModal({
@@ -59,6 +60,7 @@ export default function ProveedoresModal({
           : "",
         telefono: proveedorEdit.telefono ?? "",
         celular: proveedorEdit.celular ?? "",
+        email: proveedorEdit.email ?? "",
       });
       onPaisChange?.(proveedorEdit.idPais);
     } else {
@@ -77,7 +79,7 @@ export default function ProveedoresModal({
     setForm((prev) => ({
       ...prev,
       tipoPersona: value,
-      tipoDocumento: value === "JURIDICA" ? "RUC" : "",
+      tipoDocumento: value === "JURIDICA" ? "RUC" : "CI",
     }));
   };
 
@@ -93,8 +95,10 @@ export default function ProveedoresModal({
     if (!form.tipoDocumento) errs.tipoDocumento = "Requerido";
     if (!form.numeroDocumento.trim()) {
       errs.numeroDocumento = "Requerido";
-    } else if (form.numeroDocumento.trim().length < 8) {
-      errs.numeroDocumento = "Mínimo 8 caracteres";
+    } else if (form.tipoDocumento === "CI" && !/^\d{7}$/.test(form.numeroDocumento.trim())) {
+      errs.numeroDocumento = "CI debe tener 7 dígitos";
+    } else if (form.tipoDocumento === "RUC" && !/^\d{8}-\d{2}$/.test(form.numeroDocumento.trim())) {
+      errs.numeroDocumento = "RUC formato XXXXXXXX-XX";
     }
     if (
       form.telefono &&
@@ -105,9 +109,10 @@ export default function ProveedoresModal({
     if (form.celular && !/^\+5959\d{8}$/.test(form.celular.trim())) {
       errs.celular = "Formato +5959XXXXXXXX";
     }
-    if (!form.descripcionNegocio.trim()) errs.descripcionNegocio = "Requerido";
-    if (!form.personaContacto.trim()) errs.personaContacto = "Requerido";
-    if (!form.direccion.trim()) errs.direccion = "Requerido";
+    const email = form.email?.trim() ?? "";
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errs.email = "Email inválido";
+    }
     if (!form.tipoPersona || form.tipoPersona === "FISICA") {
       if (!form.apellido.trim()) errs.apellido = "Requerido";
       if (!form.fechaNacimiento) errs.fechaNacimiento = "Requerido";
@@ -249,9 +254,8 @@ export default function ProveedoresModal({
                   <option value="RUC">RUC</option>
                 ) : (
                   <>
-                    <option value="">Seleccionar...</option>
-                    <option value="RUC">RUC</option>
                     <option value="CI">CI</option>
+                    <option value="RUC">RUC</option>
                   </>
                 )}
               </select>
@@ -279,14 +283,13 @@ export default function ProveedoresModal({
 
             <label className={labelClass}>
               <span className={labelText}>
-                Persona de contacto <span className="text-rose-400">*</span>
+                Persona de contacto
               </span>
               <input
                 type="text"
                 name="personaContacto"
                 value={form.personaContacto}
                 onChange={handleChange}
-                required
                 placeholder="Persona de contacto"
                 className={inputClass}
               />
@@ -298,14 +301,13 @@ export default function ProveedoresModal({
           <div className="grid grid-cols-2 gap-3">
             <label className={labelClass}>
               <span className={labelText}>
-                Descripción del negocio <span className="text-rose-400">*</span>
+                Descripción del negocio
               </span>
               <input
                 type="text"
                 name="descripcionNegocio"
                 value={form.descripcionNegocio}
                 onChange={handleChange}
-                required
                 placeholder="Descripción del negocio"
                 className={inputClass}
               />
@@ -314,14 +316,13 @@ export default function ProveedoresModal({
 
             <label className={labelClass}>
               <span className={labelText}>
-                Dirección <span className="text-rose-400">*</span>
+                Dirección
               </span>
               <input
                 type="text"
                 name="direccion"
                 value={form.direccion}
                 onChange={handleChange}
-                required
                 placeholder="Calle, número y barrio"
                 className={inputClass}
               />
@@ -366,8 +367,8 @@ export default function ProveedoresModal({
             </label>
           </div>
 
-          {/* Telefono + Celular */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Telefono + Celular + Email */}
+          <div className="grid grid-cols-3 gap-3">
             <label className={labelClass}>
               <span className={labelText}>Teléfono</span>
               <input
@@ -375,7 +376,7 @@ export default function ProveedoresModal({
                 name="telefono"
                 value={form.telefono}
                 onChange={handleChange}
-                placeholder="Teléfono"
+                placeholder="021 XXXXXX"
                 className={inputClass}
               />
               {errores.telefono && <span className="text-[11px] text-rose-400">{errores.telefono}</span>}
@@ -388,10 +389,23 @@ export default function ProveedoresModal({
                 name="celular"
                 value={form.celular}
                 onChange={handleChange}
-                placeholder="Celular"
+                placeholder="+5959XXXXXXXX"
                 className={inputClass}
               />
               {errores.celular && <span className="text-[11px] text-rose-400">{errores.celular}</span>}
+            </label>
+
+            <label className={labelClass}>
+              <span className={labelText}>Email</span>
+              <input
+                type="email"
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                placeholder="correo@dominio.com"
+                className={inputClass}
+              />
+              {errores.email && <span className="text-[11px] text-rose-400">{errores.email}</span>}
             </label>
           </div>
 

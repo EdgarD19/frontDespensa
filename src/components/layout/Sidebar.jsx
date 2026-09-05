@@ -8,6 +8,7 @@ import {
   PanelLeftOpen,
   Store,
   TrendingUp,
+  Settings,
 } from "lucide-react";
 
 const links = [
@@ -15,6 +16,7 @@ const links = [
   { to: "/inventario", label: "Inventario", icon: Package },
   { to: "/compras", label: "Compras", icon: TrendingUp },
   { to: "/caja", label: "Caja", icon: Wallet },
+  { to: "/configuracion", label: "Configuración", icon: Settings },
 ];
 
 export default function Sidebar() {
@@ -56,13 +58,15 @@ export default function Sidebar() {
           const Icon = link.icon;
           const isActiveInventario =
             link.to === "/inventario" && location.pathname.startsWith("/inventario");
+          const isActiveConfiguracion =
+            link.to === "/configuracion" && location.pathname.startsWith("/configuracion");
           return (
             <NavLink
               key={link.to}
               to={link.to}
               title={collapsed ? link.label : undefined}
               className={({ isActive }) => {
-                const active = isActive || isActiveInventario;
+                const active = isActive || isActiveInventario || isActiveConfiguracion;
                 return [
                   "relative flex items-center rounded-lg transition-all duration-200 overflow-hidden group",
                   collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5",
@@ -73,7 +77,7 @@ export default function Sidebar() {
               }}
             >
               {({ isActive }) => {
-                const active = isActive || isActiveInventario;
+                const active = isActive || isActiveInventario || isActiveConfiguracion;
                 return (
                   <>
                     {active && (

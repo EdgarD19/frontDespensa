@@ -73,6 +73,7 @@ function toCreateBody(frontend, idUnidad) {
     descripcion: descripcion.length > 0 ? descripcion : null,
     stockActual: 0,
     idCategoria: Number(frontend.idCategoria) || undefined,
+    idSubcategoria: Number(frontend.idSubcategoria) || undefined,
     idUnidad: idUnidad ? Number(idUnidad) : undefined,
     activo: true,
   };
@@ -90,6 +91,7 @@ function toPatchBody(producto) {
     codigoBarra: String(producto.codigoBarras || "").replace(/\D/g, "") || undefined,
     descripcion: (producto.descripcion || "").trim() || undefined,
     idCategoria: Number(producto.idCategoria) || undefined,
+    idSubcategoria: Number(producto.idSubcategoria) || undefined,
     idUnidad: Number(producto.idUnidad) || undefined,
     activo: producto.activo !== false,
   };

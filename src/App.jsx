@@ -24,6 +24,9 @@ import ProveedoresABM from './pages/compras/proveedores/abm/ProveedoresABM'
 
 import Caja from './pages/caja/Caja'
 
+import ConfiguracionHub from './pages/configuracion/ConfiguracionHub'
+import CategoriasABM from './pages/configuracion/CategoriasABM'
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -53,6 +56,11 @@ export default function App() {
           </Route>
 
           <Route path="caja"       element={<Caja />} />
+
+          <Route path="configuracion">
+            <Route index element={<ConfiguracionHub />} />
+            <Route path="categorias" element={<CategoriasABM />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

@@ -1,59 +1,37 @@
 import { api } from "./client";
 
-const BASE = "/api/v1/admin/maestros";
+// Endpoints reales del contrato (04-09-26).
+// El backend NO implementa DELETE: para categorías/subcategorías el
+// "eliminar" del frontend desactiva con activo:false (PUT).
+const CATEGORIAS = "/api/categorias";
+const SUBCATEGORIAS = "/api/subcategorias";
 
 export async function crearCategoria(nombre) {
-  const { data } = await api.post(`${BASE}/categorias`, { nombre });
+  const { data } = await api.post(CATEGORIAS, { nombre });
   return data;
 }
 
 export async function actualizarCategoria(id, nombre) {
-  const { data } = await api.put(`${BASE}/categorias/${id}`, { nombre });
+  const { data } = await api.put(`${CATEGORIAS}/${id}`, { nombre });
   return data;
 }
 
-export async function eliminarCategoria(id) {
-  await api.delete(`${BASE}/categorias/${id}`);
+export async function eliminarCategoria(id, nombre) {
+  const { data } = await api.put(`${CATEGORIAS}/${id}`, { nombre, activo: false });
+  return data;
 }
 
 export async function crearSubcategoria(idCategoria, nombre) {
-  const { data } = await api.post(`${BASE}/categorias/${idCategoria}/subcategorias`, { nombre });
+  const { data } = await api.post(SUBCATEGORIAS, { nombre, idCategoria });
   return data;
 }
 
-export async function actualizarSubcategoria(id, nombre) {
-  const { data } = await api.put(`${BASE}/subcategorias/${id}`, { nombre });
+export async function actualizarSubcategoria(id, nombre, idCategoria) {
+  const { data } = await api.put(`${SUBCATEGORIAS}/${id}`, { nombre, idCategoria });
   return data;
 }
 
-export async function eliminarSubcategoria(id) {
-  await api.delete(`${BASE}/subcategorias/${id}`);
-}
-
-export async function crearPais(nombre) {
-  const { data } = await api.post(`${BASE}/paises`, { nombre });
+export async function eliminarSubcategoria(id, nombre, idCategoria) {
+  const { data } = await api.put(`${SUBCATEGORIAS}/${id}`, { nombre, idCategoria, activo: false });
   return data;
-}
-
-export async function actualizarPais(id, nombre) {
-  const { data } = await api.put(`${BASE}/paises/${id}`, { nombre });
-  return data;
-}
-
-export async function eliminarPais(id) {
-  await api.delete(`${BASE}/paises/${id}`);
-}
-
-export async function crearCiudad(idPais, nombre) {
-  const { data } = await api.post(`${BASE}/paises/${idPais}/ciudades`, { nombre });
-  return data;
-}
-
-export async function actualizarCiudad(id, nombre) {
-  const { data } = await api.put(`${BASE}/ciudades/${id}`, { nombre });
-  return data;
-}
-
-export async function eliminarCiudad(id) {
-  await api.delete(`${BASE}/ciudades/${id}`);
 }

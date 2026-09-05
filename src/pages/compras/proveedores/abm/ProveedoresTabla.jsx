@@ -53,7 +53,7 @@ export default function ProveedoresTabla({
               const esJuridica = p.tipoPersona === "JURIDICA";
               const nombre = esJuridica ? (p.nombre || "—") : [p.nombre, p.apellido].filter(Boolean).join(" ") || "—";
               return (
-                <tr key={p.id} onClick={() => onSeleccionar(p)}
+                <tr key={p.id ?? p.idProveedor} onClick={() => onSeleccionar(p)}
                   className={`border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors ${!activo ? "opacity-60" : ""}`}>
                   <td className="px-4 py-3 text-white">{nombre}</td>
                   <td className="px-4 py-3 text-white/70">{p.numeroDocumento || "—"}</td>
