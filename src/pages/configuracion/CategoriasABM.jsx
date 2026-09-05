@@ -1,4 +1,20 @@
-import { SeccionCategorias } from "../inventario/maestros/MaestrosABM";
+import { useState } from "react";
+import { ChevronDown } from "lucide-react";
+import { SeccionCategorias, SeccionSubcategorias } from "../inventario/maestros/MaestrosABM";
+
+function AccordionSection({ titulo, defaultOpen = false, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border border-white/10 rounded-xl overflow-hidden">
+      <button onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-5 py-3.5 bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-left">
+        <h3 className="text-white font-medium text-sm">{titulo}</h3>
+        <ChevronDown className={`w-4 h-4 text-white/40 transition-transform ${open ? "" : "-rotate-90"}`} />
+      </button>
+      {open && <div className="p-4">{children}</div>}
+    </div>
+  );
+}
 
 export default function CategoriasABM() {
   return (
@@ -11,8 +27,13 @@ export default function CategoriasABM() {
           Gestión de categorías y subcategorías de productos
         </p>
       </div>
-      <div className="rounded-2xl border border-white/10 bg-[#111114] p-4 sm:p-5">
-        <SeccionCategorias />
+      <div className="space-y-5">
+        <AccordionSection titulo="Categorías" defaultOpen={true}>
+          <SeccionCategorias />
+        </AccordionSection>
+        <AccordionSection titulo="Subcategorías">
+          <SeccionSubcategorias />
+        </AccordionSection>
       </div>
     </div>
   );

@@ -1,30 +1,31 @@
 import { useState, useEffect } from "react";
 import {
-  Plus, Pencil, Trash2, ChevronDown, ChevronRight, X, Check
+  Plus, Pencil, Check, X, ChevronDown, ToggleLeft, ToggleRight,
 } from "lucide-react";
 import { getCategorias, getSubcategorias } from "../../../api/maestrosApi";
 import {
-  crearCategoria, actualizarCategoria, eliminarCategoria,
-  crearSubcategoria, actualizarSubcategoria, eliminarSubcategoria,
+  crearCategoria, actualizarCategoria, toggleActivoCategoria,
+  crearSubcategoria, actualizarSubcategoria, toggleActivoSubcategoria,
 } from "../../../api/maestrosABMApi";
+
+const inputClass =
+  "flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent-green)]";
 
 export function SeccionCategorias() {
   const [cats, setCats] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
   const [newName, setNewName] = useState("");
   const [editId, setEditId] = useState(null);
   const [editName, setEditName] = useState("");
-  const [expandedCat, setExpandedCat] = useState(null);
-  const [subs, setSubs] = useState([]);
-  const [subNewName, setSubNewName] = useState("");
-  const [subEditId, setSubEditId] = useState(null);
-  const [subEditName, setSubEditName] = useState("");
 
   const load = async () => {
     setLoading(true);
     try {
-      const d = await getCategorias();
-      setCats(Array.isArray(d) ? d : []);
+      setCats(await getCategorias());
+    } catch {
+      setError("No se pudieron cargar las categorías.");
     } finally {
       setLoading(false);
     }
@@ -32,65 +33,43 @@ export function SeccionCategorias() {
 
   useEffect(() => { load(); }, []);
 
-  const loadSubs = async (id) => {
-    if (!id) { setSubs([]); return; }
+  const handleAdd = async () => {
+    setError("");
+    const nombre = newName.trim();
+    if (!nombre) { setError("El nombre es obligatorio."); return; }
     try {
-      const d = await getSubcategorias(id);
-      setSubs(Array.isArray(d) ? d : []);
-    } catch { setSubs([]); }
-  };
-
-  const handleExpand = (id) => {
-    if (expandedCat === id) {
-      setExpandedCat(null);
-      setSubs([]);
-    } else {
-      setExpandedCat(id);
-      loadSubs(id);
+      await crearCategoria(nombre);
+      setNewName("");
+      await load();
+    } catch {
+      setError("No se pudo crear la categoría (¿nombre duplicado?).");
     }
   };
 
-  const handleAdd = async () => {
-    if (!newName.trim()) return;
-    await crearCategoria(newName.trim());
-    setNewName("");
-    await load();
+  const handleEdit = async () => {
+    if (editId == null) return;
+    setError("");
+    const nombre = editName.trim();
+    if (!nombre) { setError("El nombre es obligatorio."); return; }
+    try {
+      await actualizarCategoria(editId, nombre);
+      setEditId(null);
+      await load();
+    } catch {
+      setError("No se pudo actualizar la categoría (¿nombre duplicado?).");
+    }
   };
 
-  const handleEdit = async (id) => {
-    if (!editName.trim()) return;
-    await actualizarCategoria(id, editName.trim());
-    setEditId(null);
-    setEditName("");
-    await load();
-  };
-
-  const handleDelete = async (id, nombre) => {
-    if (!window.confirm("¿Desactivar esta categoría?")) return;
-    await eliminarCategoria(id, nombre);
-    if (expandedCat === id) { setExpandedCat(null); setSubs([]); }
-    await load();
-  };
-
-  const handleSubAdd = async () => {
-    if (!subNewName.trim() || !expandedCat) return;
-    await crearSubcategoria(expandedCat, subNewName.trim());
-    setSubNewName("");
-    await loadSubs(expandedCat);
-  };
-
-  const handleSubEdit = async (id) => {
-    if (!subEditName.trim() || !expandedCat) return;
-    await actualizarSubcategoria(id, subEditName.trim(), expandedCat);
-    setSubEditId(null);
-    setSubEditName("");
-    await loadSubs(expandedCat);
-  };
-
-  const handleSubDelete = async (id, nombre) => {
-    if (!window.confirm("¿Desactivar esta subcategoría?")) return;
-    await eliminarSubcategoria(id, nombre, expandedCat);
-    await loadSubs(expandedCat);
+  const handleToggle = async (c) => {
+    setError("");
+    const accion = c.activo === false ? "activar" : "desactivar";
+    if (!window.confirm(`¿${accion} a ${c.nombre}?`)) return;
+    try {
+      await toggleActivoCategoria(c.id, c.activo);
+      await load();
+    } catch {
+      setError("No se pudo cambiar el estado de la categoría.");
+    }
   };
 
   return (
@@ -99,76 +78,190 @@ export function SeccionCategorias() {
         <input value={newName} onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           placeholder="Nueva categoría..."
-          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent-green)]" />
+          className={inputClass} />
         <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent-green)]/90 hover:bg-[var(--accent-green)] text-black text-sm font-medium rounded-lg transition-colors">
           <Plus className="w-4 h-4" /> Agregar
         </button>
       </div>
+
+      {error && <div className="mb-3 px-3 py-2 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-lg">{error}</div>}
+
       {loading ? (
         <div className="text-white/40 text-sm py-4 text-center">Cargando...</div>
       ) : cats.length === 0 ? (
         <div className="text-white/30 text-sm py-4 text-center">Sin categorías</div>
       ) : (
         <div className="space-y-1">
-          {cats.map((cat) => (
-            <div key={cat.id}>
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 group">
-                <button onClick={() => handleExpand(cat.id)} className="text-white/30 hover:text-white transition-colors p-0.5">
-                  {expandedCat === cat.id ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                </button>
-                {editId === cat.id ? (
-                  <>
-                    <input value={editName} onChange={(e) => setEditName(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleEdit(cat.id)}
-                      className="flex-1 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm text-white focus:outline-none" autoFocus />
-                    <button onClick={() => handleEdit(cat.id)} className="p-1 text-green-400 hover:text-green-300"><Check className="w-4 h-4" /></button>
-                    <button onClick={() => { setEditId(null); setEditName(""); }} className="p-1 text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
-                  </>
-                ) : (
-                  <>
-                    <span className="flex-1 text-sm text-white">{cat.nombre}</span>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => { setEditId(cat.id); setEditName(cat.nombre); }} className="p-1 text-white/40 hover:text-[var(--accent-green)]"><Pencil className="w-3.5 h-3.5" /></button>
-                      <button onClick={() => handleDelete(cat.id, cat.nombre)} className="p-1 text-white/40 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
-                    </div>
-                  </>
-                )}
-              </div>
-              {expandedCat === cat.id && (
-                <div className="ml-8 mt-1 mb-2 pl-3 border-l border-white/10 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <input value={subNewName} onChange={(e) => setSubNewName(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleSubAdd()}
-                      placeholder="Nueva subcategoría..."
-                      className="flex-1 bg-white/5 border border-white/10 rounded px-2 py-1.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent-green)]" />
-                    <button onClick={handleSubAdd} className="p-1.5 text-[var(--accent-green)] hover:text-green-300"><Plus className="w-4 h-4" /></button>
+          {cats.map((c) => (
+            <div key={c.id} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 group">
+              {editId === c.id ? (
+                <>
+                  <input value={editName} onChange={(e) => setEditName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleEdit()}
+                    className="flex-1 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm text-white focus:outline-none" autoFocus />
+                  <button onClick={handleEdit} className="p-1 text-green-400 hover:text-green-300"><Check className="w-4 h-4" /></button>
+                  <button onClick={() => { setEditId(null); }} className="p-1 text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
+                </>
+              ) : (
+                <>
+                  <span className="flex-1 text-sm text-white">{c.nombre}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${c.activo === false ? "bg-red-500/10 text-red-400" : "bg-green-500/10 text-green-400"}`}>
+                    {c.activo === false ? "Inactivo" : "Activo"}
+                  </span>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => { setEditId(c.id); setEditName(c.nombre); }} className="p-1 text-white/40 hover:text-[var(--accent-green)]"><Pencil className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => handleToggle(c)} className="p-1 text-white/40 hover:text-[var(--accent-green)]">
+                      {c.activo === false ? <ToggleLeft className="w-3.5 h-3.5" /> : <ToggleRight className="w-3.5 h-3.5" />}
+                    </button>
                   </div>
-                  {subs.length === 0 ? (
-                    <div className="text-white/30 text-xs py-2">Sin subcategorías</div>
-                  ) : (
-                    subs.map((s) => (
-                      <div key={s.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white/5 group">
-                        {subEditId === s.id ? (
-                          <>
-                            <input value={subEditName} onChange={(e) => setSubEditName(e.target.value)}
-                              onKeyDown={(e) => e.key === "Enter" && handleSubEdit(s.id)}
-                              className="flex-1 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm text-white focus:outline-none" autoFocus />
-                            <button onClick={() => handleSubEdit(s.id)} className="p-1 text-green-400"><Check className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => { setSubEditId(null); setSubEditName(""); }} className="p-1 text-white/40"><X className="w-3.5 h-3.5" /></button>
-                          </>
-                        ) : (
-                          <>
-                            <span className="flex-1 text-xs text-white/70">{s.nombre}</span>
-                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => { setSubEditId(s.id); setSubEditName(s.nombre); }} className="p-1 text-white/40 hover:text-[var(--accent-green)]"><Pencil className="w-3 h-3" /></button>
-                              <button onClick={() => handleSubDelete(s.id, s.nombre)} className="p-1 text-white/40 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function SeccionSubcategorias() {
+  const [cats, setCats] = useState([]);
+  const [idCategoria, setIdCategoria] = useState("");
+  const [subs, setSubs] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const [newName, setNewName] = useState("");
+  const [editId, setEditId] = useState(null);
+  const [editName, setEditName] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const c = await getCategorias();
+        setCats(c);
+        if (c.length) setIdCategoria(String(c[0].id));
+      } catch {
+        setError("No se pudieron cargar las categorías.");
+      }
+    })();
+  }, []);
+
+  const loadSubs = async (catId) => {
+    if (!catId) { setSubs([]); return; }
+    setLoading(true);
+    try {
+      setSubs(await getSubcategorias(catId));
+    } catch {
+      setError("No se pudieron cargar las subcategorías.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (idCategoria) {
+      setError("");
+      loadSubs(idCategoria);
+      setEditId(null);
+    }
+  }, [idCategoria]);
+
+  const handleAdd = async () => {
+    setError("");
+    const nombre = newName.trim();
+    if (!idCategoria) { setError("Seleccioná una categoría."); return; }
+    if (!nombre) { setError("El nombre es obligatorio."); return; }
+    try {
+      await crearSubcategoria(Number(idCategoria), nombre);
+      setNewName("");
+      await loadSubs(idCategoria);
+    } catch {
+      setError("No se pudo crear la subcategoría.");
+    }
+  };
+
+  const handleEdit = async () => {
+    if (editId == null) return;
+    setError("");
+    const nombre = editName.trim();
+    if (!nombre) { setError("El nombre es obligatorio."); return; }
+    try {
+      await actualizarSubcategoria(editId, nombre, Number(idCategoria));
+      setEditId(null);
+      await loadSubs(idCategoria);
+    } catch {
+      setError("No se pudo actualizar la subcategoría.");
+    }
+  };
+
+  const handleToggle = async (s) => {
+    setError("");
+    const accion = s.activo === false ? "activar" : "desactivar";
+    if (!window.confirm(`¿${accion} a ${s.nombre}?`)) return;
+    try {
+      await toggleActivoSubcategoria(s.id, s.activo);
+      await loadSubs(idCategoria);
+    } catch {
+      setError("No se pudo cambiar el estado de la subcategoría.");
+    }
+  };
+
+  const selectClass =
+    "bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[var(--accent-green)] cursor-pointer";
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-xs text-white/50">Categoría</span>
+        <select value={idCategoria} onChange={(e) => setIdCategoria(e.target.value)} className={selectClass}>
+          {cats.map((c) => (
+            <option key={c.id} value={c.id}>{c.nombre}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex items-center gap-2 mb-4">
+        <input value={newName} onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+          placeholder="Nueva subcategoría..."
+          className={inputClass} />
+        <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent-green)]/90 hover:bg-[var(--accent-green)] text-black text-sm font-medium rounded-lg transition-colors">
+          <Plus className="w-4 h-4" /> Agregar
+        </button>
+      </div>
+
+      {error && <div className="mb-3 px-3 py-2 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-lg">{error}</div>}
+
+      {loading ? (
+        <div className="text-white/40 text-sm py-4 text-center">Cargando...</div>
+      ) : subs.length === 0 ? (
+        <div className="text-white/30 text-sm py-4 text-center">Sin subcategorías para esta categoría</div>
+      ) : (
+        <div className="space-y-1">
+          {subs.map((s) => (
+            <div key={s.id} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 group">
+              {editId === s.id ? (
+                <>
+                  <input value={editName} onChange={(e) => setEditName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleEdit()}
+                    className="flex-1 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm text-white focus:outline-none" autoFocus />
+                  <button onClick={handleEdit} className="p-1 text-green-400 hover:text-green-300"><Check className="w-4 h-4" /></button>
+                  <button onClick={() => { setEditId(null); }} className="p-1 text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
+                </>
+              ) : (
+                <>
+                  <span className="flex-1 text-sm text-white">{s.nombre}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${s.activo === false ? "bg-red-500/10 text-red-400" : "bg-green-500/10 text-green-400"}`}>
+                    {s.activo === false ? "Inactivo" : "Activo"}
+                  </span>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => { setEditId(s.id); setEditName(s.nombre); }} className="p-1 text-white/40 hover:text-[var(--accent-green)]"><Pencil className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => handleToggle(s)} className="p-1 text-white/40 hover:text-[var(--accent-green)]">
+                      {s.activo === false ? <ToggleLeft className="w-3.5 h-3.5" /> : <ToggleRight className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           ))}
@@ -199,8 +292,11 @@ export default function MaestrosABM() {
         <h1 className="text-2xl font-semibold text-white mb-1">Administrar Maestros</h1>
         <p className="text-sm text-white/40">Gestiona categorías y subcategorías</p>
       </div>
-      <AccordionSection titulo="Categorías + Subcategorías" defaultOpen={true}>
+      <AccordionSection titulo="Categorías" defaultOpen={true}>
         <SeccionCategorias />
+      </AccordionSection>
+      <AccordionSection titulo="Subcategorías">
+        <SeccionSubcategorias />
       </AccordionSection>
     </div>
   );

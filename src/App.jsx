@@ -26,6 +26,7 @@ import Caja from './pages/caja/Caja'
 
 import ConfiguracionHub from './pages/configuracion/ConfiguracionHub'
 import CategoriasABM from './pages/configuracion/CategoriasABM'
+import PaisesCiudadesABM from './pages/configuracion/PaisesCiudadesABM'
 
 export default function App() {
   return (
@@ -60,6 +61,7 @@ export default function App() {
           <Route path="configuracion">
             <Route index element={<ConfiguracionHub />} />
             <Route path="categorias" element={<CategoriasABM />} />
+            <Route path="paises" element={<PaisesCiudadesABM />} />
           </Route>
         </Route>
       </Routes>

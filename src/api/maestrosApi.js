@@ -30,16 +30,16 @@ function normalizeMaestroRow(row) {
   if (!row || typeof row !== "object") return null;
   const id =
     row.id ??
+    row.id_subcategoria ??
+    row.idSubcategoria ??
+    row.id_ciudad ??
+    row.idCiudad ??
     row.id_categoria ??
     row.idCategoria ??
     row.id_unidad ??
     row.idUnidad ??
     row.id_proveedor ??
     row.idProveedor ??
-    row.id_subcategoria ??
-    row.idSubcategoria ??
-    row.id_ciudad ??
-    row.idCiudad ??
     row.id_pais ??
     row.idPais;
   if (id == null) return null;

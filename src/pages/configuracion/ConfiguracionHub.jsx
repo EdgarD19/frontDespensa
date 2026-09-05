@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Tags } from "lucide-react";
+import { Tags, Globe } from "lucide-react";
 
 const MODULOS = [
   {
@@ -7,6 +7,12 @@ const MODULOS = [
     label: "Categorías y Subcategorías",
     descripcion: "Alta, baja y modificación de categorías y subcategorías de productos.",
     icon: Tags,
+  },
+  {
+    to: "/configuracion/paises",
+    label: "Países y Ciudades",
+    descripcion: "Alta, baja y modificación de países y ciudades.",
+    icon: Globe,
   },
 ];
 
