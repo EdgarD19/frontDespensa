@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import {
   Plus, Pencil, Trash2, ChevronDown, Check, X, ToggleLeft, ToggleRight,
 } from "lucide-react";
+import ConfirmModal from "../../components/ui/ConfirmModal";
 import {
   getPaisesABM, getCiudadesABM, crearPais, actualizarPais, toggleActivoPais,
   crearCiudad, actualizarCiudad, toggleActivoCiudad,
@@ -25,6 +26,8 @@ export function SeccionPaises() {
   const [editId, setEditId] = useState(null);
   const [editNombre, setEditNombre] = useState("");
   const [editCodigo, setEditCodigo] = useState("");
+  const [confirmarPais, setConfirmarPais] = useState(null);
+  const [cambiando, setCambiando] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -69,15 +72,21 @@ export function SeccionPaises() {
     }
   };
 
-  const handleToggle = async (p) => {
+  const handleToggle = (p) => setConfirmarPais({ id: p.id, nombre: p.nombre, activar: p.activo === false });
+
+  const confirmarCambioEstado = async () => {
+    if (!confirmarPais) return;
+    setCambiando(true);
     setError("");
-    const accion = p.activo === false ? "activar" : "desactivar";
-    if (!window.confirm(`¿${accion} a ${p.nombre}?`)) return;
     try {
-      await toggleActivoPais(p.id, p.activo);
+      await toggleActivoPais(confirmarPais.id, !confirmarPais.activar);
+      setConfirmarPais(null);
       await load();
     } catch {
       setError("No se pudo cambiar el estado del país.");
+      setConfirmarPais(null);
+    } finally {
+      setCambiando(false);
     }
   };
 
@@ -139,6 +148,22 @@ export function SeccionPaises() {
           ))}
         </div>
       )}
+      {confirmarPais && (
+        <ConfirmModal
+          abierto
+          titulo={confirmarPais.activar ? "Activar país" : "Inactivar país"}
+          mensaje={`¿${confirmarPais.activar ? "Activar" : "Inactivar"} "${confirmarPais.nombre}"?`}
+          confirmarLabel={confirmarPais.activar ? "Activar" : "Inactivar"}
+          confirmarClass={
+            confirmarPais.activar
+              ? "bg-[#22c55e] text-[#0d0d0f] hover:bg-[#16a34a]"
+              : "bg-[#ef4444] text-[#0d0d0f] hover:bg-[#dc2626]"
+          }
+          cargando={cambiando}
+          onConfirmar={confirmarCambioEstado}
+          onCerrar={() => setConfirmarPais(null)}
+        />
+      )}
     </div>
   );
 }
@@ -156,6 +181,8 @@ export function SeccionCiudades() {
   const [editId, setEditId] = useState(null);
   const [editNombre, setEditNombre] = useState("");
   const [editCodigoPostal, setEditCodigoPostal] = useState("");
+  const [confirmarCiudad, setConfirmarCiudad] = useState(null);
+  const [cambiando, setCambiando] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -228,15 +255,21 @@ export function SeccionCiudades() {
     }
   };
 
-  const handleToggle = async (c) => {
+  const handleToggle = (c) => setConfirmarCiudad({ id: c.id, nombre: c.nombre, activar: c.activo === false });
+
+  const confirmarCambioEstado = async () => {
+    if (!confirmarCiudad) return;
+    setCambiando(true);
     setError("");
-    const accion = c.activo === false ? "activar" : "desactivar";
-    if (!window.confirm(`¿${accion} a ${c.nombre}?`)) return;
     try {
-      await toggleActivoCiudad(c.id, c.activo);
+      await toggleActivoCiudad(confirmarCiudad.id, !confirmarCiudad.activar);
+      setConfirmarCiudad(null);
       await loadCiudades(idPais);
     } catch {
       setError("No se pudo cambiar el estado de la ciudad.");
+      setConfirmarCiudad(null);
+    } finally {
+      setCambiando(false);
     }
   };
 
@@ -307,6 +340,22 @@ export function SeccionCiudades() {
             </div>
           ))}
         </div>
+      )}
+      {confirmarCiudad && (
+        <ConfirmModal
+          abierto
+          titulo={confirmarCiudad.activar ? "Activar ciudad" : "Inactivar ciudad"}
+          mensaje={`¿${confirmarCiudad.activar ? "Activar" : "Inactivar"} "${confirmarCiudad.nombre}"?`}
+          confirmarLabel={confirmarCiudad.activar ? "Activar" : "Inactivar"}
+          confirmarClass={
+            confirmarCiudad.activar
+              ? "bg-[#22c55e] text-[#0d0d0f] hover:bg-[#16a34a]"
+              : "bg-[#ef4444] text-[#0d0d0f] hover:bg-[#dc2626]"
+          }
+          cargando={cambiando}
+          onConfirmar={confirmarCambioEstado}
+          onCerrar={() => setConfirmarCiudad(null)}
+        />
       )}
     </div>
   );

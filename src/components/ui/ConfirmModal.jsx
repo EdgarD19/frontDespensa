@@ -31,8 +31,8 @@ export default function ConfirmModal({
         </div>
 
         <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-[#1e1e24]">
-          <button type="button" onClick={onCerrar}
-            className="rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-4 py-1.5 text-sm text-[#9a9aac] hover:text-[#e1e1eb] transition-colors">
+          <button type="button" onClick={onCerrar} disabled={cargando}
+            className="rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-4 py-1.5 text-sm text-[#9a9aac] hover:text-[#e1e1eb] disabled:opacity-40 transition-colors">
             Cancelar
           </button>
           <button type="button" onClick={onConfirmar} disabled={cargando}

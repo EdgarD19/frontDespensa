@@ -7,7 +7,6 @@ const selectClass = "w-full bg-transparent border-none outline-none text-white f
 const stockOptions = [
   { value: "todos",  label: "Todos los estados" },
   { value: "normal", label: "Stock normal" },
-  { value: "bajo",   label: "Stock bajo" },
   { value: "sin",    label: "Sin stock" },
 ];
 
@@ -42,7 +41,7 @@ export default function ConsultaInventarioFilters({
           disabled={disabled}
           className={selectClass}
         >
-          <option value="">Categoría</option>
+          <option value="">Todas las categorías</option>
           {categoriasOptions.map((c) => (
             <option key={c} value={c}>{c}</option>
           ))}

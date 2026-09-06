@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import ProveedoresTabla from "./ProveedoresTabla";
 import ProveedoresModal from "./ProveedoresModal";
+import ConfirmModal from "../../../../components/ui/ConfirmModal";
 import {
   getProveedores,
   createProveedor,
@@ -24,6 +25,8 @@ export default function ProveedoresABM() {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [proveedorEdit, setProveedorEdit] = useState(null);
   const [guardando, setGuardando] = useState(false);
+  const [confirmarProveedor, setConfirmarProveedor] = useState(null);
+  const [cambiando, setCambiando] = useState(false);
 
   const [paises, setPaises] = useState([]);
   const [ciudades, setCiudades] = useState([]);
@@ -120,18 +123,26 @@ export default function ProveedoresABM() {
     }
   }
 
-  async function handleToggleActivo(proveedor) {
+  function handleToggleActivo(proveedor) {
     const id = getProveedorId(proveedor);
     if (id == null) return;
     const nombre = proveedor.nombre || `proveedor #${id}`;
-    const nuevoEstado = proveedor.activo === false ? "activar" : "inactivar";
-    if (!window.confirm(`¿${nuevoEstado} a ${nombre}?`)) return;
+    setConfirmarProveedor({ id, nombre, activar: proveedor.activo === false });
+  }
+
+  async function confirmarCambioEstado() {
+    if (!confirmarProveedor) return;
+    setCambiando(true);
     setError(null);
     try {
-      await toggleActivoProveedor(id, proveedor.activo);
+      await toggleActivoProveedor(confirmarProveedor.id, !confirmarProveedor.activar);
+      setConfirmarProveedor(null);
       await cargarProveedores();
     } catch {
       setError("No se pudo cambiar el estado del proveedor.");
+      setConfirmarProveedor(null);
+    } finally {
+      setCambiando(false);
     }
   }
 
@@ -165,6 +176,23 @@ export default function ProveedoresABM() {
         onCerrar={handleCerrarModal}
         onPaisChange={handlePaisChange}
       />
+
+      {confirmarProveedor && (
+        <ConfirmModal
+          abierto
+          titulo={confirmarProveedor.activar ? "Activar proveedor" : "Inactivar proveedor"}
+          mensaje={`¿${confirmarProveedor.activar ? "Activar" : "Inactivar"} "${confirmarProveedor.nombre}"?`}
+          confirmarLabel={confirmarProveedor.activar ? "Activar" : "Inactivar"}
+          confirmarClass={
+            confirmarProveedor.activar
+              ? "bg-[#22c55e] text-[#0d0d0f] hover:bg-[#16a34a]"
+              : "bg-[#ef4444] text-[#0d0d0f] hover:bg-[#dc2626]"
+          }
+          cargando={cambiando}
+          onConfirmar={confirmarCambioEstado}
+          onCerrar={() => setConfirmarProveedor(null)}
+        />
+      )}
     </div>
   );
 }

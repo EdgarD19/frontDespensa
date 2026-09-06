@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from "react";
 import ProductForm from "./ProductForm";
 import ProductList from "./ProductList";
 import PrecioProductoModal from "./PrecioProductoModal";
-import ConfirmModal from "./ConfirmModal";
+import ConfirmModal from "../../../components/ui/ConfirmModal";
 import {
   getProductos,
   createProducto,

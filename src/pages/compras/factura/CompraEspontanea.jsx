@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Truck, Search, Barcode, Trash2, ShoppingCart, Check, Calendar, FileText } from "lucide-react";
-import { getProductos, getProductoByCodigo } from "../../../api/productosApi";
+import { getProductos, getProductoByCodigo, getPrecioCompraVigente } from "../../../api/productosApi";
 import { getProveedores, getProveedorId } from "../../../api/proveedoresApi";
 import { crearCompra, compraTimbradoExiste, compraFacturaExiste } from "../../../api/comprasApi";
 import { apiErrorMessage } from "../../../api/errors";
 
-const money = (n) => n.toLocaleString("es-PY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const money = (n) => Math.round(n).toLocaleString("es-PY", { maximumFractionDigits: 0 });
 
 function formatoFactura(val) {
   const nums = val.replace(/\D/g, "").slice(0, 13);
@@ -93,13 +93,21 @@ export default function CompraEspontanea({ onVolver }) {
     const t = setTimeout(async () => {
       try {
         const res = await getProductos({ search: prodSearch || undefined, pageSize: 20 });
-        setProductos(res.content || []);
+        const content = (res?.content || []).map((p) => ({ ...p, precioCompra: Number(p.precioCompra) }));
+        const conCosto = await Promise.all(
+          content.map(async (p) => {
+            if (p.precioCompra > 0) return p;
+            const costo = await getPrecioCompraVigente(p.id);
+            return { ...p, precioCompra: costo };
+          })
+        );
+        setProductos(conCosto);
       } catch { setProductos([]); }
     }, prodSearch.length > 0 ? 300 : 0);
     return () => clearTimeout(t);
   }, [prodSearch, showProductos]);
 
-  const agregarLinea = useCallback((prod) => {
+  const agregarLinea = useCallback(async (prod) => {
     const existente = lineas.find((l) => l.producto.id === prod.id);
     if (existente) {
       setLineas((prev) =>
@@ -108,11 +116,12 @@ export default function CompraEspontanea({ onVolver }) {
         )
       );
     } else {
-      const precio = parseFloat(String(prod.precioCompra || prod.precioVenta || "0").replace(",", "."));
+      let costo = Number(prod.precioCompra);
+      if (!(costo > 0)) costo = await getPrecioCompraVigente(prod.id);
       setLineas((prev) => [...prev, {
         producto: prod,
         cantidad: esKG(prod) ? 1.0 : 1,
-        precioUnitario: precio > 0 ? precio : 0,
+        precioUnitario: costo > 0 ? costo : 0,
       }]);
     }
     setProdSearch("");
@@ -136,13 +145,13 @@ export default function CompraEspontanea({ onVolver }) {
   };
 
   const actualizarPrecio = (id, val) => {
-    const n = parseFloat(val.replace(",", "."));
+    const n = Math.round(parseFloat(val.replace(",", ".")));
     setLineas((prev) => prev.map((l) => (l.producto.id === id ? { ...l, precioUnitario: Number.isFinite(n) && n >= 0 ? n : 0 } : l)));
   };
 
-  const subtotalLinea = (l) => l.cantidad * l.precioUnitario;
+  const subtotalLinea = (l) => Math.round(l.cantidad * l.precioUnitario);
   const total = lineas.reduce((sum, l) => sum + subtotalLinea(l), 0);
-  const iva10 = total / 11;
+  const iva10 = Math.round(total / 11);
 
   const handleSubmit = async () => {
     if (!proveedorSel) { setError("Seleccioná un proveedor"); return; }
@@ -388,7 +397,9 @@ export default function CompraEspontanea({ onVolver }) {
                   >
                     <span>{p.nombre}</span>
                     <span className="text-xs text-[#5a5a6e]">
-                      ${p.precioCompra || p.precioVenta || "—"}
+                      {Number(p.precioCompra) > 0
+                        ? `₲ ${money(p.precioCompra)}`
+                        : "Sin costo registrado"}
                       {p.unidadMedida ? ` (${p.unitAbbreviation || p.unidadMedida})` : ""}
                     </span>
                   </button>
@@ -456,7 +467,7 @@ export default function CompraEspontanea({ onVolver }) {
                   <input
                     type="number"
                     min="0"
-                    step="any"
+                    step="1"
                     value={l.precioUnitario}
                     onChange={(e) => actualizarPrecio(l.producto.id, e.target.value)}
                     className="w-28 bg-white/5 border border-white/10 rounded px-2 py-1 text-right text-sm font-mono text-white outline-none transition-colors focus:border-[#22c55e]/50"

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import {
   Plus, Pencil, Check, X, ChevronDown, ToggleLeft, ToggleRight,
 } from "lucide-react";
+import ConfirmModal from "../../../components/ui/ConfirmModal";
 import { getCategorias, getSubcategorias } from "../../../api/maestrosApi";
 import {
   crearCategoria, actualizarCategoria, toggleActivoCategoria,
@@ -19,6 +20,8 @@ export function SeccionCategorias() {
   const [newName, setNewName] = useState("");
   const [editId, setEditId] = useState(null);
   const [editName, setEditName] = useState("");
+  const [confirmarCat, setConfirmarCat] = useState(null);
+  const [cambiando, setCambiando] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -60,15 +63,21 @@ export function SeccionCategorias() {
     }
   };
 
-  const handleToggle = async (c) => {
+  const handleToggle = (c) => setConfirmarCat({ id: c.id, nombre: c.nombre, activar: c.activo === false });
+
+  const confirmarCambioEstado = async () => {
+    if (!confirmarCat) return;
+    setCambiando(true);
     setError("");
-    const accion = c.activo === false ? "activar" : "desactivar";
-    if (!window.confirm(`¿${accion} a ${c.nombre}?`)) return;
     try {
-      await toggleActivoCategoria(c.id, c.activo);
+      await toggleActivoCategoria(confirmarCat.id, !confirmarCat.activar);
+      setConfirmarCat(null);
       await load();
     } catch {
       setError("No se pudo cambiar el estado de la categoría.");
+      setConfirmarCat(null);
+    } finally {
+      setCambiando(false);
     }
   };
 
@@ -120,6 +129,22 @@ export function SeccionCategorias() {
           ))}
         </div>
       )}
+      {confirmarCat && (
+        <ConfirmModal
+          abierto
+          titulo={confirmarCat.activar ? "Activar categoría" : "Inactivar categoría"}
+          mensaje={`¿${confirmarCat.activar ? "Activar" : "Inactivar"} "${confirmarCat.nombre}"?`}
+          confirmarLabel={confirmarCat.activar ? "Activar" : "Inactivar"}
+          confirmarClass={
+            confirmarCat.activar
+              ? "bg-[#22c55e] text-[#0d0d0f] hover:bg-[#16a34a]"
+              : "bg-[#ef4444] text-[#0d0d0f] hover:bg-[#dc2626]"
+          }
+          cargando={cambiando}
+          onConfirmar={confirmarCambioEstado}
+          onCerrar={() => setConfirmarCat(null)}
+        />
+      )}
     </div>
   );
 }
@@ -134,6 +159,8 @@ export function SeccionSubcategorias() {
   const [newName, setNewName] = useState("");
   const [editId, setEditId] = useState(null);
   const [editName, setEditName] = useState("");
+  const [confirmarSub, setConfirmarSub] = useState(null);
+  const [cambiando, setCambiando] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -195,15 +222,21 @@ export function SeccionSubcategorias() {
     }
   };
 
-  const handleToggle = async (s) => {
+  const handleToggle = (s) => setConfirmarSub({ id: s.id, nombre: s.nombre, activar: s.activo === false });
+
+  const confirmarCambioEstado = async () => {
+    if (!confirmarSub) return;
+    setCambiando(true);
     setError("");
-    const accion = s.activo === false ? "activar" : "desactivar";
-    if (!window.confirm(`¿${accion} a ${s.nombre}?`)) return;
     try {
-      await toggleActivoSubcategoria(s.id, s.activo);
+      await toggleActivoSubcategoria(confirmarSub.id, !confirmarSub.activar);
+      setConfirmarSub(null);
       await loadSubs(idCategoria);
     } catch {
       setError("No se pudo cambiar el estado de la subcategoría.");
+      setConfirmarSub(null);
+    } finally {
+      setCambiando(false);
     }
   };
 
@@ -266,6 +299,22 @@ export function SeccionSubcategorias() {
             </div>
           ))}
         </div>
+      )}
+      {confirmarSub && (
+        <ConfirmModal
+          abierto
+          titulo={confirmarSub.activar ? "Activar subcategoría" : "Inactivar subcategoría"}
+          mensaje={`¿${confirmarSub.activar ? "Activar" : "Inactivar"} "${confirmarSub.nombre}"?`}
+          confirmarLabel={confirmarSub.activar ? "Activar" : "Inactivar"}
+          confirmarClass={
+            confirmarSub.activar
+              ? "bg-[#22c55e] text-[#0d0d0f] hover:bg-[#16a34a]"
+              : "bg-[#ef4444] text-[#0d0d0f] hover:bg-[#dc2626]"
+          }
+          cargando={cambiando}
+          onConfirmar={confirmarCambioEstado}
+          onCerrar={() => setConfirmarSub(null)}
+        />
       )}
     </div>
   );

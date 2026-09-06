@@ -164,6 +164,20 @@ export async function getProductoByCodigo(codigo) {
 }
 
 /**
+ * GET /api/precios-compra/vigente/{productoId}
+ * Devuelve el último precio de costo registrado (entero) o 0 si no existe.
+ */
+export async function getPrecioCompraVigente(productoId) {
+  try {
+    const { data } = await api.get(`/api/precios-compra/vigente/${productoId}`);
+    const precio = Number(data?.data?.precio ?? data?.precio);
+    return Number.isFinite(precio) && precio > 0 ? Math.round(precio) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
  * POST /api/productos
  * El backend responde 201 con el producto creado.
  */

@@ -57,7 +57,6 @@ export default function ConsultaInventario() {
         const matchStock =
           filterStock === "todos" ||
           (filterStock === "normal" && estado === "normal") ||
-          (filterStock === "bajo"   && estado === "bajo")   ||
           (filterStock === "sin"    && estado === "sin");
         return matchSearch && matchCat && matchStock;
       })
