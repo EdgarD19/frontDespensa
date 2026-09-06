@@ -47,6 +47,8 @@ function toFrontendProduct(backend) {
 
     precioCompra: "",
 
+    iva: backend.tasaIva != null ? String(backend.tasaIva) : "10",
+
     idProveedor: "",
     proveedor: "",
 
@@ -75,7 +77,8 @@ function toCreateBody(frontend, idUnidad) {
     idCategoria: Number(frontend.idCategoria) || undefined,
     idSubcategoria: Number(frontend.idSubcategoria) || undefined,
     idUnidad: idUnidad ? Number(idUnidad) : undefined,
-    activo: true,
+    tasaiva: frontend.iva != null ? Number(frontend.iva) : undefined,
+    activo: frontend.activo === true,
   };
 }
 
@@ -93,6 +96,7 @@ function toPatchBody(producto) {
     idCategoria: Number(producto.idCategoria) || undefined,
     idSubcategoria: Number(producto.idSubcategoria) || undefined,
     idUnidad: Number(producto.idUnidad) || undefined,
+    tasaiva: producto.iva != null ? Number(producto.iva) : undefined,
     activo: producto.activo !== false,
   };
 }

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Truck, ShoppingCart, ClipboardList } from "lucide-react";
+import { Truck, ShoppingCart, ClipboardList, History } from "lucide-react";
 
 const MODULOS = [
   {
@@ -19,6 +19,12 @@ const MODULOS = [
     label: "Gestión de Proveedores",
     descripcion: "Registro de distribuidores, rubros de productos y datos de contacto.",
     icon: Truck,
+  },
+  {
+    to: "/compras/consultas",
+    label: "Consultas e Historial",
+    descripcion: "Consultar facturas registradas y generar reportes de compras.",
+    icon: History,
   },
 ];
 

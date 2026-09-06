@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Truck, Search, Barcode, Trash2, ShoppingCart, Check, Calendar, FileText } from "lucide-react";
+import { Truck, Search, Barcode, Trash2, ShoppingCart, Check, Calendar, FileText, Plus, Settings2 } from "lucide-react";
 import { getProductos, getProductoByCodigo, getPrecioCompraVigente } from "../../../api/productosApi";
 import { getProveedores, getProveedorId } from "../../../api/proveedoresApi";
-import { crearCompra, compraTimbradoExiste, compraFacturaExiste } from "../../../api/comprasApi";
+import { crearFacturaCompra, facturaCompraNumeroExiste, getTimbradosProveedor } from "../../../api/facturasCompraApi";
 import { apiErrorMessage } from "../../../api/errors";
+import TimbradosModal from "./TimbradosModal";
 
 const money = (n) => Math.round(n).toLocaleString("es-PY", { maximumFractionDigits: 0 });
 
@@ -35,6 +36,32 @@ function parseCant(val, prod) {
   return esKG(prod) ? Math.round(n * 1000) / 1000 : Math.floor(n);
 }
 
+function estadoTimbrado(t, fecha) {
+  if (!t) return null;
+  if (t.activo === false) {
+    return { tipo: "inactivo", msg: "El timbrado está inactivo. No se puede registrar la compra con este timbrado." };
+  }
+  const fe = String(fecha || "");
+  const inicio = String(t.fechaInicio || "");
+  const venc = String(t.fechaVencimiento || "");
+  if (venc && fe && fe > venc) {
+    return { tipo: "vencido", msg: `El timbrado venció el ${venc}. No se puede registrar la compra con este timbrado.` };
+  }
+  if (inicio && fe && fe < inicio) {
+    return { tipo: "noIniciado", msg: `El timbrado aún no está vigente (inicia el ${inicio}).` };
+  }
+  return { tipo: "vigente", msg: null };
+}
+
+function etiquetaTimbrado(tipo) {
+  switch (tipo) {
+    case "vencido": return "vencido";
+    case "inactivo": return "inactivo";
+    case "noIniciado": return "no vigente";
+    default: return "vigente";
+  }
+}
+
 const S = {
   field:
     "w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-sm text-white " +
@@ -54,7 +81,11 @@ export default function CompraEspontanea({ onVolver }) {
   const [proveedorSel, setProveedorSel] = useState(null);
   const [showProveedores, setShowProveedores] = useState(false);
 
-  const [timbrado, setTimbrado] = useState("");
+  const [timbrados, setTimbrados] = useState([]);
+  const [timbradoId, setTimbradoId] = useState("");
+  const [cargandoTimbrados, setCargandoTimbrados] = useState(false);
+  const [showTimbradosModal, setShowTimbradosModal] = useState(false);
+  const [refrescoTimbrados, setRefrescoTimbrados] = useState(0);
   const [numeroComprobante, setNumeroComprobante] = useState("");
   const [formaPago, setFormaPago] = useState("CONTADO");
   const [fechaEmision, setFechaEmision] = useState(() => hoyAsuncion());
@@ -90,6 +121,20 @@ export default function CompraEspontanea({ onVolver }) {
     }, proveedorSearch.length > 0 ? 300 : 0);
     return () => clearTimeout(t);
   }, [proveedorSearch, showProveedores]);
+
+  useEffect(() => {
+    const id = proveedorSel ? getProveedorId(proveedorSel) : null;
+    setTimbrados([]);
+    setTimbradoId("");
+    if (id == null) return;
+    let activo = true;
+    setCargandoTimbrados(true);
+    getTimbradosProveedor(id)
+      .then((res) => { if (activo) setTimbrados(res?.content || []); })
+      .catch(() => { if (activo) setTimbrados([]); })
+      .finally(() => { if (activo) setCargandoTimbrados(false); });
+    return () => { activo = false; };
+  }, [proveedorSel, refrescoTimbrados]);
 
   useEffect(() => {
     if (!showProductos) return;
@@ -154,11 +199,15 @@ export default function CompraEspontanea({ onVolver }) {
 
   const subtotalLinea = (l) => Math.round(l.cantidad * l.precioUnitario);
   const total = lineas.reduce((sum, l) => sum + subtotalLinea(l), 0);
-  const iva10 = Math.round(total / 11);
+
+  const timbradoSel = timbrados.find((t) => String(t.idTimbrado) === String(timbradoId)) || null;
+  const estadoTimbradoSel = timbradoSel ? estadoTimbrado(timbradoSel, fechaEmision) : null;
+  const timbradoBloqueado = estadoTimbradoSel && estadoTimbradoSel.tipo !== "vigente";
 
   const handleSubmit = async () => {
     if (!proveedorSel) { setError("Seleccioná un proveedor"); return; }
-    if (!timbrado.trim()) { setError("El timbrado es obligatorio"); return; }
+    if (!timbradoId) { setError("Seleccioná el timbrado del proveedor"); return; }
+    if (timbradoBloqueado) { setError(estadoTimbradoSel.msg); return; }
     if (!numeroComprobante.match(/^\d{3}-\d{3}-\d{7}$/)) {
       setError("El número de factura debe tener el formato 000-000-0000000"); return;
     }
@@ -169,17 +218,8 @@ export default function CompraEspontanea({ onVolver }) {
     }
     setGuardando(true);
     try {
-      const [timbradoUsado, facturaUsada] = await Promise.all([
-        compraTimbradoExiste(timbrado.trim()),
-        compraFacturaExiste(numeroComprobante.trim()),
-      ]);
-      if (timbradoUsado) {
-        setError(`El timbrado ${timbrado.trim()} ya está registrado en otra compra.`);
-        setGuardando(false);
-        return;
-      }
-      if (facturaUsada) {
-        setError(`El número de factura ${numeroComprobante.trim()} ya está registrado en otra compra.`);
+      if (await facturaCompraNumeroExiste(numeroComprobante.trim())) {
+        setError(`El número de factura ${numeroComprobante.trim()} ya está registrado en otra factura.`);
         setGuardando(false);
         return;
       }
@@ -188,34 +228,80 @@ export default function CompraEspontanea({ onVolver }) {
     }
     setError(null);
     try {
-      await crearCompra({
+      const res = await crearFacturaCompra({
         idProveedor: getProveedorId(proveedorSel),
+        idTimbrado: Number(timbradoId),
         numeroFactura: numeroComprobante.trim(),
-        timbrado: timbrado.trim(),
         condicionPago: formaPago,
         fechaEmision,
         detalles: lineas.map((l) => ({ idProducto: l.producto.id, cantidad: l.cantidad, precioUnitario: l.precioUnitario })),
       });
-      setExito("Compra registrada correctamente. Stock y costos actualizados.");
+      setExito(res);
     } catch (err) {
-      setError(apiErrorMessage(err) || "Error al registrar compra");
+      setError(apiErrorMessage(err) || "Error al registrar factura");
     } finally {
       setGuardando(false);
     }
   };
 
   if (exito) {
+    const f = exito;
+    const detalle = (tasa) => (f.detalles || []).filter((d) => Number(d.tasaIva) === tasa);
+    const mostrarDesglose =
+      (detalle(0).length > 0) || (detalle(5).length > 0) || (detalle(10).length > 0);
     return (
       <div className="rounded-2xl border border-[#22c55e]/30 bg-[#22c55e]/5 p-8 text-center space-y-4">
         <div className="w-14 h-14 mx-auto rounded-full bg-[#22c55e]/10 flex items-center justify-center">
           <Check className="w-7 h-7 text-[#22c55e]" />
         </div>
-        <p className="text-lg font-medium text-white">{exito}</p>
+        <p className="text-lg font-medium text-white">Factura registrada correctamente</p>
+        <p className="text-sm text-[#5a5a6e]">
+          N° {f.numeroFactura} · Timbrado {f.numeroTimbrado || "—"} · {f.nombreProveedor}
+        </p>
+
+        {mostrarDesglose && (
+          <div className="mx-auto max-w-md grid grid-cols-3 gap-3 text-sm">
+            {detalle(10).length > 0 && (
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <p className={S.eyebrow}>IVA 10%</p>
+                <p className="font-mono text-lg font-bold text-white">₲ {money(f.iva10 ?? 0)}</p>
+                <p className="text-xs text-[#5a5a6e]">Subtotal ₲ {money(f.subtotal10 ?? 0)}</p>
+              </div>
+            )}
+            {detalle(5).length > 0 && (
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <p className={S.eyebrow}>IVA 5%</p>
+                <p className="font-mono text-lg font-bold text-white">₲ {money(f.iva5 ?? 0)}</p>
+                <p className="text-xs text-[#5a5a6e]">Subtotal ₲ {money(f.subtotal5 ?? 0)}</p>
+              </div>
+            )}
+            {detalle(0).length > 0 && (
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <p className={S.eyebrow}>Exento</p>
+                <p className="font-mono text-lg font-bold text-white">₲ {money(f.subtotalExento ?? 0)}</p>
+                <p className="text-xs text-[#5a5a6e]">Sin IVA</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex items-center justify-center gap-6">
+          <div className="text-right">
+            <p className="text-xs text-[#5a5a6e]">IVA total</p>
+            <p className="font-mono text-lg font-bold text-white">₲ {money(f.ivaTotal ?? 0)}</p>
+          </div>
+          <div className="h-8 w-px bg-white/10" />
+          <div className="text-right">
+            <p className="text-xs text-[#5a5a6e]">Total</p>
+            <p className="font-mono text-2xl font-bold tracking-tight text-[#22c55e]">₲ {money(f.totalGeneral ?? 0)}</p>
+          </div>
+        </div>
+
         <div className="flex gap-3 justify-center">
           <button
             onClick={() => {
               setExito(null); setLineas([]); setProveedorSel(null); setProveedorSearch("");
-              setTimbrado(""); setNumeroComprobante(""); setFormaPago("CONTADO");
+              setTimbrados([]); setTimbradoId(""); setNumeroComprobante(""); setFormaPago("CONTADO");
               setFechaEmision(hoyAsuncion());
             }}
             className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold rounded-lg transition-colors"
@@ -307,13 +393,60 @@ export default function CompraEspontanea({ onVolver }) {
           {/* Timbrado */}
           <div>
             <label className={S.eyebrow} htmlFor="timbrado">Timbrado *</label>
-            <input
-              id="timbrado"
-              value={timbrado}
-              onChange={(e) => setTimbrado(e.target.value)}
-              placeholder="N° timbrado"
-              className={`${S.fieldMono} mt-1`}
-            />
+            <div className="relative mt-1">
+              <select
+                id="timbrado"
+                value={timbradoId}
+                onChange={(e) => setTimbradoId(e.target.value)}
+                disabled={!proveedorSel || cargandoTimbrados}
+                className={`${S.field} appearance-none pr-8`}
+              >
+                {cargandoTimbrados ? (
+                  <option value="">Cargando timbrados...</option>
+                ) : !proveedorSel ? (
+                  <option value="">Seleccioná un proveedor</option>
+                ) : timbrados.length === 0 ? (
+                  <option value="">Sin timbrados registrados</option>
+                ) : (
+                  <>
+                    <option value="">Seleccionar timbrado</option>
+                    {timbrados.map((t) => {
+                      const st = estadoTimbrado(t, fechaEmision);
+                      return (
+                        <option key={t.idTimbrado} value={t.idTimbrado}>
+                          {t.numeroTimbrado} — {etiquetaTimbrado(st.tipo)}
+                        </option>
+                      );
+                    })}
+                  </>
+                )}
+              </select>
+
+              {/* Aviso visual de timbrado no vigente */}
+              {timbradoSel && estadoTimbradoSel && estadoTimbradoSel.tipo !== "vigente" && (
+                <p className="mt-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-xs text-red-300">
+                  {estadoTimbradoSel.msg}
+                </p>
+              )}
+              {proveedorSel && timbrados.length === 0 && !cargandoTimbrados && (
+                <button
+                  onClick={() => setShowTimbradosModal(true)}
+                  className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-[#22c55e] hover:text-green-400 transition-colors"
+                  type="button"
+                >
+                  <Plus size={13} /> Registrar timbrado
+                </button>
+              )}
+            </div>
+            {proveedorSel && timbrados.length > 0 && (
+              <button
+                onClick={() => setShowTimbradosModal(true)}
+                className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-[#5a5a6e] hover:text-white transition-colors"
+                type="button"
+              >
+                <Settings2 size={13} /> Gestionar timbrados
+              </button>
+            )}
           </div>
 
           {/* N° Factura */}
@@ -344,7 +477,7 @@ export default function CompraEspontanea({ onVolver }) {
               className={`${S.field} mt-1 appearance-none`}
             >
               <option value="CONTADO">Contado</option>
-              <option value="TRANSFERENCIA">Transferencia</option>
+              <option value="CREDITO">Crédito</option>
             </select>
           </div>
 
@@ -414,18 +547,19 @@ export default function CompraEspontanea({ onVolver }) {
 
         {/* Tabla */}
         <div className="mt-3 max-h-[26vh] overflow-y-auto rounded-xl">
-          <div className="w-full grid grid-cols-[1fr_80px_90px_120px_120px_36px] gap-x-2 gap-y-1 items-center">
+          <div className="w-full grid grid-cols-[1fr_80px_90px_64px_120px_120px_36px] gap-x-2 gap-y-1 items-center">
             {/* Headers */}
             <div className="pb-1 pl-3 text-left text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Producto</div>
             <div className="pb-1 text-center text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">U.M.</div>
-            <div className="pb-1 text-right text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Cantidad</div>
+            <div className="pb-1 text-center text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Cantidad</div>
+            <div className="pb-1 text-center text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">IVA %</div>
             <div className="pb-1 text-right text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Precio costo</div>
             <div className="pb-1 pr-3 text-right text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Subtotal</div>
             <div className="pb-1"></div>
 
             {/* Filas */}
             {lineas.length === 0 ? (
-              <div className="col-span-6 text-center py-6 text-sm text-[#5a5a6e] border border-dashed border-white/10 rounded-xl">
+              <div className="col-span-7 text-center py-6 text-sm text-[#5a5a6e] border border-dashed border-white/10 rounded-xl">
                 Todavía no agregaste productos a esta factura.
               </div>
             ) : lineas.map((l) => (
@@ -465,6 +599,12 @@ export default function CompraEspontanea({ onVolver }) {
                     className="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-right text-sm font-mono text-white outline-none transition-colors focus:border-[#22c55e]/50"
                   />
                 </div>
+                {/* IVA % */}
+                <div className="py-1.5 text-center text-sm text-white bg-white/[0.03]">
+                  <span className="rounded px-1.5 py-0.5 text-xs bg-white/10 text-[#5a5a6e]">
+                    {l.producto.iva != null ? `${l.producto.iva}%` : "10%"}
+                  </span>
+                </div>
                 {/* Precio costo */}
                 <div className="py-1.5 text-right bg-white/[0.03]">
                   <input
@@ -503,10 +643,7 @@ export default function CompraEspontanea({ onVolver }) {
 
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-xs text-[#5a5a6e]">
-                IVA 10% (incluido):{" "}
-                <span className="font-mono text-white">₲ {money(iva10)}</span>
-              </p>
+              <p className="text-xs text-[#5a5a6e]">Total factura (IVA calculado por el sistema)</p>
               <p className="font-mono text-2xl font-bold tracking-tight text-[#22c55e]">
                 ₲ {money(total)}
               </p>
@@ -523,7 +660,7 @@ export default function CompraEspontanea({ onVolver }) {
               )}
               <button
                 onClick={handleSubmit}
-                disabled={guardando}
+                disabled={guardando || timbradoBloqueado}
                 className="inline-flex items-center justify-center gap-2 px-5 py-2 bg-[#22c55e] hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-lg transition-colors"
               >
                 <ShoppingCart size={16} />
@@ -533,6 +670,14 @@ export default function CompraEspontanea({ onVolver }) {
           </div>
         </div>
       </section>
+
+      {showTimbradosModal && proveedorSel && (
+        <TimbradosModal
+          proveedor={proveedorSel}
+          onClose={() => setShowTimbradosModal(false)}
+          onCambio={() => setRefrescoTimbrados((n) => n + 1)}
+        />
+      )}
     </div>
   );
 }

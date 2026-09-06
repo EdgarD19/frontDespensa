@@ -47,7 +47,8 @@ const INITIAL_FORM = {
   idProveedor: "",
   proveedor: "",
   precio: "",
-  activo: true,
+  iva: "10",
+  activo: false,
 };
 
 // FUNCIÓN AUXILIAR: mergeProductoLista
@@ -217,6 +218,7 @@ export default function Inventario() {
       idProveedor:   producto.idProveedor   ?? "",
       idMarca:       producto.idMarca       ?? "",
       productoPesable: producto.productoPesable || "no",
+      iva: producto.iva != null ? String(producto.iva) : "10",
       activo:        producto.activo !== false,
     });
     setEditingId(producto.id);

@@ -190,15 +190,17 @@ export default function ProductForm({
             </div>
 
             <div>
-              <span className={labelText}>IVA (%)</span>
-              <input
-                type="text"
+              <span className={labelText}>IVA</span>
+              <select
                 name="iva"
-                value="10"
-                disabled
-                readOnly
-                className={`${inputClass} opacity-60 cursor-not-allowed`}
-              />
+                value={formData.iva ?? "10"}
+                onChange={handleChange}
+                className={selectClass}
+              >
+                <option value="0">Exento</option>
+                <option value="5">5%</option>
+                <option value="10">10%</option>
+              </select>
             </div>
 
             <label className={labelClass}>
