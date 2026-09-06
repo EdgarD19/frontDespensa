@@ -23,6 +23,7 @@ import PedidosHub from './pages/compras/pedidos/PedidosHub'
 import GenerarPedido from './pages/compras/pedidos/generar/GenerarPedido'
 import ProveedoresABM from './pages/compras/proveedores/abm/ProveedoresABM'
 import ConsultasHub from './pages/compras/consultas/ConsultasHub'
+import ListaFacturas from './pages/compras/consultas/ListaFacturas'
 
 import Caja from './pages/caja/Caja'
 
@@ -58,6 +59,7 @@ export default function App() {
             <Route path="pedidos/generar" element={<GenerarPedido />} />
             <Route path="proveedores" element={<ProveedoresABM />} />
             <Route path="consultas" element={<ConsultasHub />} />
+            <Route path="consultas/facturas" element={<ListaFacturas />} />
           </Route>
 
           <Route path="caja"       element={<Caja />} />

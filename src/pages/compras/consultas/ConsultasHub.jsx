@@ -3,6 +3,7 @@ import { FileText, BarChart3 } from "lucide-react";
 
 const SUB_MODULOS = [
   {
+    to: "/compras/consultas/facturas",
     label: "Lista de Facturas",
     icon: FileText,
   },

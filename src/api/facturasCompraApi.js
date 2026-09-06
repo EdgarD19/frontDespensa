@@ -40,6 +40,28 @@ export async function crearFacturaCompra(payload) {
   return data;
 }
 
+/** Listar facturas de compra (paginado, todas). */
+export async function getFacturasCompra({ page = 0, pageSize = 10 } = {}) {
+  const { data } = await api.get(BASE, {
+    params: { page, size: pageSize, sortBy: "fechaEmision", sortDirection: "desc" },
+  });
+  return unwrap(data);
+}
+
+/** Listar facturas de compra de un proveedor (paginado, vigentes). */
+export async function getFacturasCompraPorProveedor(idProveedor, { page = 0, pageSize = 10 } = {}) {
+  const { data } = await api.get(`${BASE}/proveedor/${idProveedor}`, {
+    params: { page, size: pageSize, sortBy: "fechaEmision", sortDirection: "desc" },
+  });
+  return unwrap(data);
+}
+
+/** Obtener una factura de compra por ID (con detalles). */
+export async function getFacturaCompraById(id) {
+  const { data } = await api.get(`${BASE}/${id}`);
+  return data;
+}
+
 /** Devuelve true si ya existe una factura de compra con ese número (200 = existe). */
 export async function facturaCompraNumeroExiste(numeroFactura) {
   try {
