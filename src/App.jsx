@@ -20,6 +20,7 @@ import RegistroVenta from './pages/ventas/registro-venta/RegistroVenta'
 import ComprasHub from './pages/compras/ComprasHub'
 import RegistroFactura from './pages/compras/factura/RegistroFactura'
 import PedidosHub from './pages/compras/pedidos/PedidosHub'
+import GenerarPedido from './pages/compras/pedidos/generar/GenerarPedido'
 import ProveedoresABM from './pages/compras/proveedores/abm/ProveedoresABM'
 
 import Caja from './pages/caja/Caja'
@@ -53,6 +54,7 @@ export default function App() {
             <Route index element={<ComprasHub />} />
             <Route path="factura" element={<RegistroFactura />} />
             <Route path="pedidos" element={<PedidosHub />} />
+            <Route path="pedidos/generar" element={<GenerarPedido />} />
             <Route path="proveedores" element={<ProveedoresABM />} />
           </Route>
 

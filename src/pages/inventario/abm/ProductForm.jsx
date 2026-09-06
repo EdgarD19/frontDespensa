@@ -157,8 +157,8 @@ export default function ProductForm({
             </label>
           </div>
 
-          {/* Fila 4: Vende por peso + Unidad de medida */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Fila 4: Vende por peso + IVA + Unidad de medida */}
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <span className={labelText}>Vende por peso?</span>
               <div className="flex items-center gap-3">
@@ -187,6 +187,18 @@ export default function ProductForm({
                   <span className="text-xs text-[#9a9aac]">No</span>
                 </label>
               </div>
+            </div>
+
+            <div>
+              <span className={labelText}>IVA (%)</span>
+              <input
+                type="text"
+                name="iva"
+                value="10"
+                disabled
+                readOnly
+                className={`${inputClass} opacity-60 cursor-not-allowed`}
+              />
             </div>
 
             <label className={labelClass}>

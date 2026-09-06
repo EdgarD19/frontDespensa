@@ -7,6 +7,9 @@ import { apiErrorMessage } from "../../../api/errors";
 
 const money = (n) => Math.round(n).toLocaleString("es-PY", { maximumFractionDigits: 0 });
 
+const hoyAsuncion = () =>
+  new Date().toLocaleDateString("en-CA", { timeZone: "America/Asuncion", year: "numeric", month: "2-digit", day: "2-digit" });
+
 function formatoFactura(val) {
   const nums = val.replace(/\D/g, "").slice(0, 13);
   const p1 = nums.slice(0, 3);
@@ -54,7 +57,7 @@ export default function CompraEspontanea({ onVolver }) {
   const [timbrado, setTimbrado] = useState("");
   const [numeroComprobante, setNumeroComprobante] = useState("");
   const [formaPago, setFormaPago] = useState("CONTADO");
-  const [fechaEmision, setFechaEmision] = useState(() => new Date().toISOString().slice(0, 10));
+  const [fechaEmision, setFechaEmision] = useState(() => hoyAsuncion());
 
   const [productos, setProductos] = useState([]);
   const [prodSearch, setProdSearch] = useState("");
@@ -213,7 +216,7 @@ export default function CompraEspontanea({ onVolver }) {
             onClick={() => {
               setExito(null); setLineas([]); setProveedorSel(null); setProveedorSearch("");
               setTimbrado(""); setNumeroComprobante(""); setFormaPago("CONTADO");
-              setFechaEmision(new Date().toISOString().slice(0, 10));
+              setFechaEmision(hoyAsuncion());
             }}
             className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold rounded-lg transition-colors"
           >

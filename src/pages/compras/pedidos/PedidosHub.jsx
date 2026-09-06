@@ -1,7 +1,9 @@
+import { Link } from "react-router-dom";
 import { ClipboardList, PackageCheck } from "lucide-react";
 
 const SUB_MODULOS = [
   {
+    to: "/compras/pedidos/generar",
     label: "Generar Pedido",
     icon: ClipboardList,
   },
@@ -25,14 +27,19 @@ export default function PedidosHub() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {SUB_MODULOS.map((m) => {
           const { label, icon: Icon } = m;
-          return (
-            <div key={label} className={`${cardClass} cursor-default`} aria-disabled="true">
-              <div className="flex flex-col items-center justify-center gap-3 opacity-40">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#22c55e]/8 border border-[#22c55e]/15 text-[#22c55e]">
-                  <Icon className="w-8 h-8" aria-hidden />
-                </div>
-                <p className="text-base font-semibold text-white leading-tight">{label}</p>
+          const content = (
+            <div className="flex flex-col items-center justify-center gap-3">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#22c55e]/8 border border-[#22c55e]/15 text-[#22c55e]">
+                <Icon className="w-8 h-8" aria-hidden />
               </div>
+              <p className="text-base font-semibold text-white leading-tight">{label}</p>
+            </div>
+          );
+          return m.to ? (
+            <Link key={label} to={m.to} className={cardClass}>{content}</Link>
+          ) : (
+            <div key={label} className={`${cardClass} cursor-default`} aria-disabled="true">
+              <div className="opacity-40">{content}</div>
             </div>
           );
         })}

@@ -95,3 +95,26 @@ export function toggleActivoProveedor(id, activo) {
   const action = activo === false ? "activar" : "desactivar";
   return api.patch(`${BASE}/${id}/${action}`);
 }
+
+// GET /api/proveedores/{id}/precios-compra: historial de precios por proveedor.
+// Devuelve los productos del proveedor sin repetir (el primero es el más reciente).
+export async function getPreciosCompraProveedor(id, pageSize = 500) {
+  const { data } = await api.get(`${BASE}/${id}/precios-compra`, {
+    params: { page: 0, size: pageSize, sortBy: "fechaHora", sortDirection: "desc" },
+  });
+  const content = data?.data?.content ?? data?.content ?? [];
+  const vistos = new Set();
+  const productos = [];
+  for (const row of content) {
+    if (!row?.productoId) continue;
+    if (row.esRegalo) continue;
+    if (vistos.has(row.productoId)) continue;
+    vistos.add(row.productoId);
+    productos.push({
+      idProducto: row.productoId,
+      nombre: row.productoNombre || `Producto #${row.productoId}`,
+    });
+  }
+  productos.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  return productos;
+}
