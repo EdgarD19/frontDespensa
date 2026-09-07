@@ -8,6 +8,7 @@ const SUB_MODULOS = [
     icon: FileText,
   },
   {
+    to: "/compras/consultas/reportes",
     label: "Reportes de Compras",
     icon: BarChart3,
   },

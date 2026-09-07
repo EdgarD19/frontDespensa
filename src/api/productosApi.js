@@ -36,8 +36,8 @@ function toFrontendProduct(backend) {
     idMarca: "",
     marca: "",
 
-    idUnidad: backend.idUnidad ?? "",
-    unidadMedida: backend.unidadNombre ?? "",
+    idUnidad: backend.idUnidadMedida ?? backend.idUnidad ?? "",
+    unidadMedida: backend.nombreUnidadMedida ?? backend.unidadNombre ?? "",
     unitAbbreviation: "",
 
     precioVenta: precioStr,
@@ -77,7 +77,7 @@ function toCreateBody(frontend, idUnidad) {
     idCategoria: Number(frontend.idCategoria) || undefined,
     idSubcategoria: Number(frontend.idSubcategoria) || undefined,
     idUnidad: idUnidad ? Number(idUnidad) : undefined,
-    tasaiva: frontend.iva != null ? Number(frontend.iva) : undefined,
+    tasaIva: frontend.iva != null ? Number(frontend.iva) : 10,
     activo: frontend.activo === true,
   };
 }
@@ -96,7 +96,7 @@ function toPatchBody(producto) {
     idCategoria: Number(producto.idCategoria) || undefined,
     idSubcategoria: Number(producto.idSubcategoria) || undefined,
     idUnidad: Number(producto.idUnidad) || undefined,
-    tasaiva: producto.iva != null ? Number(producto.iva) : undefined,
+    tasaIva: producto.iva != null ? Number(producto.iva) : 10,
     activo: producto.activo !== false,
   };
 }
