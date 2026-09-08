@@ -116,7 +116,7 @@ export default function CompraEspontanea({ onVolver }) {
     const t = setTimeout(async () => {
       try {
         const res = await getProveedores({ search: proveedorSearch || undefined, pageSize: 20 });
-        setProveedores(res?.content || []);
+        setProveedores((res?.content || []).filter((p) => p.activo !== false));
       } catch { setProveedores([]); }
     }, proveedorSearch.length > 0 ? 300 : 0);
     return () => clearTimeout(t);
