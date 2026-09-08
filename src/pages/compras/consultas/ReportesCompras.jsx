@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, ChevronDown, CalendarRange } from "lucide-react";
+import { ArrowLeft, ChevronDown, Eye, X } from "lucide-react";
 import { getFacturasCompra, apiErrorMessage } from "../../../api/facturasCompraApi";
 import { getProveedores } from "../../../api/proveedoresApi";
 
@@ -9,8 +9,12 @@ const money = (n) => {
   return Number.isFinite(v) ? `₲ ${v.toLocaleString("es-PY", { maximumFractionDigits: 0 })}` : "—";
 };
 
-const hoyAsuncion = () =>
-  new Date().toLocaleDateString("en-CA", { timeZone: "America/Asuncion", year: "numeric", month: "2-digit", day: "2-digit" });
+const fmtFecha = (iso) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString("es-PY", { day: "2-digit", month: "2-digit", year: "numeric" });
+};
 
 function asuncionYMD(now = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -27,44 +31,12 @@ function mesActual() {
   return { desde: iso(y, m, 1), hasta: iso(y, m, d) };
 }
 
-function hoy() {
-  const { y, m, d } = asuncionYMD();
-  return { desde: iso(y, m, d), hasta: iso(y, m, d) };
-}
-
-function inicioSemana() {
-  const { y, m, d } = asuncionYMD();
-  const dow = (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7; // 0 = lunes
-  const sd = new Date(Date.UTC(y, m - 1, d - dow));
-  const { y: sy, m: sm, d: sd_ } = asuncionYMD(sd);
-  const hoyAs = asuncionYMD();
-  return { desde: iso(sy, sm, sd_), hasta: iso(hoyAs.y, hoyAs.m, hoyAs.d) };
-}
-
-function mesAnterior() {
-  const { y, m } = asuncionYMD();
-  const prev = m === 1 ? { y: y - 1, m: 12 } : { y, m: m - 1 };
-  const ultimo = new Date(Date.UTC(prev.y, prev.m, 0)).getUTCDate();
-  return { desde: iso(prev.y, prev.m, 1), hasta: iso(prev.y, prev.m, ultimo) };
-}
-
-const ATAJOS = [
-  { label: "Hoy", rango: hoy },
-  { label: "Esta semana", rango: inicioSemana },
-  { label: "Mes actual", rango: mesActual },
-  { label: "Mes anterior", rango: mesAnterior },
-];
-
-const pageBtn = "px-2 py-1 rounded text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm";
-
 const S = {
   field:
     "w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-sm text-white " +
     "placeholder:text-white/30 outline-none transition-colors duration-150 focus:border-[#22c55e]/50",
   eyebrow: "text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]",
 };
-
-const CHART_COLORS = ["#22c55e", "#38bdf8", "#f59e0b", "#a78bfa", "#f472b6", "#94a3b8"];
 
 export default function ReportesCompras() {
   const [facturas, setFacturas] = useState([]);
@@ -75,8 +47,8 @@ export default function ReportesCompras() {
   const [desde, setDesde] = useState(() => mesActual().desde);
   const [hasta, setHasta] = useState(() => mesActual().hasta);
   const [selProveedores, setSelProveedores] = useState(() => new Set());
-  const [condicion, setCondicion] = useState("TODOS");
   const [abiertoProveedores, setAbiertoProveedores] = useState(false);
+  const [detalle, setDetalle] = useState(null);
 
   useEffect(() => {
     let activo = true;
@@ -106,10 +78,11 @@ export default function ReportesCompras() {
     return () => { activo = false; };
   }, []);
 
-  const aplicarAtajo = (rango) => {
-    const r = rango();
+  const limpiarFiltros = () => {
+    const r = mesActual();
     setDesde(r.desde);
     setHasta(r.hasta);
+    setSelProveedores(new Set());
   };
 
   const toggleProveedor = (id) => {
@@ -129,63 +102,21 @@ export default function ReportesCompras() {
       if (fe && desde && String(fe) < String(desde)) return false;
       if (fe && hasta && String(fe) > String(hasta)) return false;
       if (selProveedores.size > 0 && !selProveedores.has(Number(f.idProveedor))) return false;
-      if (condicion !== "TODOS" && f.condicionPago !== condicion) return false;
       return true;
     });
-  }, [vigentes, desde, hasta, selProveedores, condicion]);
+  }, [vigentes, desde, hasta, selProveedores]);
 
   const kpis = useMemo(() => {
     const montoTotal = filtradas.reduce((s, f) => s + Number(f.totalGeneral || 0), 0);
-    const creditoFiscal = filtradas.reduce((s, f) => s + Number(f.ivaTotal || 0), 0);
     const volumen = filtradas.length;
-    const promedio = volumen > 0 ? montoTotal / volumen : 0;
-    return { montoTotal, creditoFiscal, volumen, promedio };
+    return { montoTotal, volumen };
   }, [filtradas]);
 
-  const resumenIva = useMemo(() => {
-    const suma = (campo) => filtradas.reduce((s, f) => s + Number(f[campo] || 0), 0);
-    const base10 = suma("subtotal10");
-    const base5 = suma("subtotal5");
-    const exenta = suma("subtotalExento");
-    const iva10 = suma("iva10");
-    const iva5 = suma("iva5");
-    const filas = [
-      { tasa: "IVA 10%", base: base10, iva: iva10, total: base10 + iva10 },
-      { tasa: "IVA 5%", base: base5, iva: iva5, total: base5 + iva5 },
-      { tasa: "Exenta (0%)", base: exenta, iva: 0, total: exenta },
-    ];
-    const totales = filas.reduce(
-      (t, f) => ({ base: t.base + f.base, iva: t.iva + f.iva, total: t.total + f.total }),
-      { base: 0, iva: 0, total: 0 }
-    );
-    return { filas, totales };
-  }, [filtradas]);
-
-  const evolucion = useMemo(() => {
-    const porFecha = new Map();
-    for (const f of filtradas) {
-      const clave = String(f.fechaEmision || "").slice(0, 10);
-      if (!clave) continue;
-      porFecha.set(clave, (porFecha.get(clave) || 0) + Number(f.totalGeneral || 0));
-    }
-    return [...porFecha.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([fecha, valor]) => ({ fecha, valor }));
-  }, [filtradas]);
-
-  const topProveedores = useMemo(() => {
-    const porProv = new Map();
-    for (const f of filtradas) {
-      const nombre = f.nombreProveedor || "Sin proveedor";
-      porProv.set(nombre, (porProv.get(nombre) || 0) + Number(f.totalGeneral || 0));
-    }
-    const ordenados = [...porProv.entries()].sort((a, b) => b[1] - a[1]);
-    const top5 = ordenados.slice(0, 5);
-    const resto = ordenados.slice(5).reduce((s, [, v]) => s + v, 0);
-    const segmentos = top5.map(([nombre, valor]) => ({ nombre, valor }));
-    if (resto > 0) segmentos.push({ nombre: "Otros", valor: resto, esOtros: true });
-    const total = segmentos.reduce((s, x) => s + x.valor, 0);
-    return segmentos.map((s) => ({ ...s, pct: total > 0 ? (s.valor / total) * 100 : 0 }));
+  const totalUnidades = useMemo(() => {
+    return filtradas.reduce((s, f) => {
+      const ds = Array.isArray(f.detalles) ? f.detalles : [];
+      return s + ds.reduce((a, d) => a + Number(d.cantidad || 0), 0);
+    }, 0);
   }, [filtradas]);
 
   useEffect(() => {
@@ -201,8 +132,8 @@ export default function ReportesCompras() {
           <ArrowLeft size={18} />
         </Link>
         <div>
-          <h1 className="text-2xl font-semibold text-[#f1f1f3] tracking-tight">Reportes de Compras</h1>
-          <p className="text-sm text-[#5a5a6e]">Resumen de compras, IVA y análisis por proveedor</p>
+          <h1 className="text-2xl font-semibold text-[#f1f1f3] tracking-tight">Reporte de Compras</h1>
+          <p className="text-sm text-[#5a5a6e]">Consulta de compras por período, proveedor y producto</p>
         </div>
       </div>
 
@@ -217,17 +148,8 @@ export default function ReportesCompras() {
             <label className={S.eyebrow} htmlFor="hasta">Hasta</label>
             <input id="hasta" type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className={`${S.field} mt-1`} />
           </div>
-          <div>
-            <label className={S.eyebrow} htmlFor="condicion">Condición de Pago</label>
-            <select id="condicion" value={condicion} onChange={(e) => setCondicion(e.target.value)} className={`${S.field} mt-1 appearance-none`}>
-              <option value="TODOS">Todos</option>
-              <option value="CONTADO">Contado</option>
-              <option value="TRANSFERENCIA">Transferencia</option>
-              <option value="CREDITO">Crédito</option>
-            </select>
-          </div>
           <div className="relative" onClick={(e) => e.stopPropagation()}>
-            <label className={S.eyebrow} htmlFor="proveedores">Proveedores</label>
+            <label className={S.eyebrow} htmlFor="proveedores">Proveedor</label>
             <button
               type="button"
               id="proveedores"
@@ -260,26 +182,26 @@ export default function ReportesCompras() {
             )}
           </div>
           <div>
-            <label className={S.eyebrow} htmlFor="categoria">Categoría de Producto</label>
-            <select
-              id="categoria"
-              value=""
+            <label className={S.eyebrow} htmlFor="producto">Producto</label>
+            <input
+              id="producto"
+              type="text"
               disabled
-              className={`${S.field} mt-1 appearance-none opacity-50 cursor-not-allowed`}
-            >
-              <option value="">Próximamente</option>
-            </select>
+              placeholder="Filtrar por producto (no disponible)"
+              className={`${S.field} mt-1 opacity-50 cursor-not-allowed`}
+            />
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <CalendarRange size={14} className="text-white/40" />
-          {ATAJOS.map(({ label, rango }) => (
-            <button key={label} type="button" onClick={() => aplicarAtajo(rango)}
-              className="px-2.5 py-1 rounded-lg border border-white/10 bg-white/5 text-xs text-white/70 hover:bg-white/10 hover:text-white transition-colors">
-              {label}
-            </button>
-          ))}
+        <div className="flex items-center justify-end">
+          <button
+            type="button"
+            onClick={limpiarFiltros}
+            title="Limpiar los filtros y realizar una nueva consulta"
+            className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-xs text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+          >
+            Limpiar filtros
+          </button>
         </div>
       </div>
 
@@ -288,64 +210,167 @@ export default function ReportesCompras() {
       )}
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label="Monto Total Comprado" value={money(kpis.montoTotal)} accent="#22c55e" />
-        <KpiCard label="Crédito Fiscal Total (IVA)" value={money(kpis.creditoFiscal)} accent="#38bdf8" />
-        <KpiCard label="Volumen de Facturas" value={String(kpis.volumen)} accent="#f59e0b" />
-        <KpiCard label="Gasto Promedio por Compra" value={money(kpis.promedio)} accent="#a78bfa" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <KpiCard label="Total de Compras" value={String(kpis.volumen)} accent="#22c55e" />
+        <KpiCard label="Importe Total Comprado" value={money(kpis.montoTotal)} accent="#38bdf8" />
+        <KpiCard label="Cantidad Total de Productos" value={String(totalUnidades)} accent="#f59e0b" />
       </div>
 
-      {/* Desglose de IVA */}
-      <div className="bg-[var(--bg-card)] border border-white/5 rounded-xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-white/10">
-          <h2 className="text-sm font-semibold text-white">Desglose Fiscal de IVA</h2>
-          <p className="text-xs text-[#5a5a6e]">Liquidación del período {desde} → {hasta}</p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-white/10 text-white/40 text-right">
-                <th className="px-4 py-2.5 font-medium text-left">Tasa</th>
-                <th className="px-4 py-2.5 font-medium">Base Imponible</th>
-                <th className="px-4 py-2.5 font-medium">Liquidación IVA</th>
-                <th className="px-4 py-2.5 font-medium">Total con IVA</th>
-              </tr>
-            </thead>
-            <tbody>
-              {resumenIva.filas.map((f) => (
-                <tr key={f.tasa} className="border-b border-white/5">
-                  <td className="px-4 py-2.5 text-white text-left">{f.tasa}</td>
-                  <td className="px-4 py-2.5 text-white/70">{money(f.base)}</td>
-                  <td className="px-4 py-2.5 text-white/70">{money(f.iva)}</td>
-                  <td className="px-4 py-2.5 text-white">{money(f.total)}</td>
-                </tr>
-              ))}
-              <tr className="bg-white/5">
-                <td className="px-4 py-3 text-white font-semibold text-left">TOTALES</td>
-                <td className="px-4 py-3 text-white font-semibold">{money(resumenIva.totales.base)}</td>
-                <td className="px-4 py-3 text-[#22c55e] font-semibold">{money(resumenIva.totales.iva)}</td>
-                <td className="px-4 py-3 text-white font-semibold">{money(resumenIva.totales.total)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
+      {/* Listado de compras */}
       {cargando ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="h-64 bg-white/5 border border-white/5 rounded-xl animate-pulse" />
-          <div className="h-64 bg-white/5 border border-white/5 rounded-xl animate-pulse" />
+        <div className="bg-[var(--bg-card)] border border-white/5 rounded-xl p-4 space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-8 bg-white/10 rounded animate-pulse w-full" />
+          ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <GraficoEvolucion datos={evolucion} />
-          <GraficoProveedores segmentos={topProveedores} />
+        <div className="bg-[var(--bg-card)] border border-white/5 rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-white/10">
+            <h2 className="text-sm font-semibold text-white">Listado de Compras</h2>
+            <p className="text-xs text-[#5a5a6e]">
+              {filtradas.length} compra{filtradas.length !== 1 ? "s" : ""} según los filtros seleccionados
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/10 text-white/40 text-left whitespace-nowrap">
+                  <th className="px-4 py-2.5 font-medium">Fecha</th>
+                  <th className="px-4 py-2.5 font-medium">N° Factura</th>
+                  <th className="px-4 py-2.5 font-medium">Proveedor</th>
+                  <th className="px-4 py-2.5 font-medium text-right">Cant. Productos</th>
+                  <th className="px-4 py-2.5 font-medium text-right">Importe Total</th>
+                  <th className="px-4 py-2.5 font-medium w-12" aria-label="Acciones" />
+                </tr>
+              </thead>
+              <tbody>
+                {filtradas.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-white/30">
+                      No se encontraron compras que coincidan con los filtros seleccionados.
+                    </td>
+                  </tr>
+                )}
+                {filtradas.map((f) => (
+                  <tr key={f.idFactura} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                    <td className="px-4 py-2.5 text-white whitespace-nowrap">{fmtFecha(f.fechaEmision)}</td>
+                    <td className="px-4 py-2.5 text-white/70 whitespace-nowrap">{f.numeroFactura || "—"}</td>
+                    <td className="px-4 py-2.5 text-white">{f.nombreProveedor || "—"}</td>
+                    <td className="px-4 py-2.5 text-white/70 text-right whitespace-nowrap">
+                      {Number.isFinite(Number(f.cantidadProductos)) ? Number(f.cantidadProductos) : "—"}
+                    </td>
+                    <td className="px-4 py-2.5 text-white font-medium text-right whitespace-nowrap">{money(f.totalGeneral)}</td>
+                    <td className="px-4 py-2.5 text-right">
+                      <button
+                        type="button"
+                        onClick={() => setDetalle(f)}
+                        title="Ver detalle de la compra"
+                        aria-label="Ver detalle de la compra"
+                        className="p-1.5 rounded text-white/40 hover:text-[var(--accent-green)] hover:bg-[var(--accent-green)]/10 transition-colors"
+                      >
+                        <Eye size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
-      {!cargando && filtradas.length === 0 && (
-        <div className="text-center text-white/30 py-10">Sin facturas para los filtros seleccionados.</div>
+      {detalle && (
+        <DetalleCompra factura={detalle} onClose={() => setDetalle(null)} />
       )}
+    </div>
+  );
+}
+
+function DetalleCompra({ factura, onClose }) {
+  const detalles = Array.isArray(factura.detalles) ? factura.detalles : [];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-3xl my-4 bg-[#17171b] border border-white/10 rounded-2xl p-6 space-y-5 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold text-white">Factura {factura.numeroFactura || "—"}</h2>
+            <p className="text-sm text-[#5a5a6e]">{factura.nombreProveedor || "Proveedor desconocido"}</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 text-white/50 transition-colors" aria-label="Cerrar">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+          <div className="space-y-0.5">
+            <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Fecha emisión</p>
+            <p className="text-white">{fmtFecha(factura.fechaEmision)}</p>
+          </div>
+          <div className="space-y-0.5">
+            <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">N° Timbrado</p>
+            <p className="text-white">{factura.numeroTimbrado || "—"}</p>
+          </div>
+          <div className="space-y-0.5">
+            <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Condición</p>
+            <p className="text-white">{factura.condicionPago || "—"}</p>
+          </div>
+          <div className="space-y-0.5">
+            <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Proveedor</p>
+            <p className="text-white">{factura.nombreProveedor || "—"}</p>
+          </div>
+        </div>
+
+        <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/10 text-white/40 text-left">
+                  <th className="px-4 py-2.5 font-medium">Producto</th>
+                  <th className="px-4 py-2.5 font-medium text-right">Cantidad</th>
+                  <th className="px-4 py-2.5 font-medium text-right">Precio Costo Unit.</th>
+                  <th className="px-4 py-2.5 font-medium text-right">Subtotal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {detalles.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-6 text-center text-white/30">Sin productos.</td>
+                  </tr>
+                )}
+                {detalles.map((d) => (
+                  <tr key={d.idDetalle ?? `${d.idProducto}-${d.nombreProducto}`} className="border-b border-white/5">
+                    <td className="px-4 py-2.5 text-white">{d.nombreProducto || `Producto #${d.idProducto}`}</td>
+                    <td className="px-4 py-2.5 text-white/70 text-right whitespace-nowrap">{Number(d.cantidad)}</td>
+                    <td className="px-4 py-2.5 text-white/70 text-right whitespace-nowrap">{money(d.precioUnitario)}</td>
+                    <td className="px-4 py-2.5 text-white text-right whitespace-nowrap">{money(d.subtotal)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="pt-3 border-t border-white/10 flex items-end justify-between gap-3 flex-wrap">
+          <div className="max-w-xs w-full space-y-1 font-mono text-sm">
+            <div className="flex items-center justify-between text-white/70">
+              <span className="text-[#5a5a6e]">Cant. Productos</span>
+              <span>{Number(detalles.length)}</span>
+            </div>
+            <div className="flex items-center justify-between text-white/70">
+              <span className="text-[#5a5a6e]">Total IVA</span>
+              <span>{money(factura.ivaTotal)}</span>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-[#5a5a6e] uppercase tracking-[0.12em]">Importe total de la compra</p>
+            <p className="font-mono text-3xl font-bold tracking-tight text-[#22c55e]">{money(factura.totalGeneral)}</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -355,110 +380,6 @@ function KpiCard({ label, value, accent }) {
     <div className="bg-[var(--bg-card)] border border-white/5 rounded-xl p-4 space-y-2">
       <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">{label}</p>
       <p className="text-xl font-semibold text-white truncate" style={{ color: accent }}>{value}</p>
-    </div>
-  );
-}
-
-function GraficoEvolucion({ datos }) {
-  if (datos.length === 0) {
-    return <PanelVacio titulo="Evolución del Gasto" />;
-  }
-  const max = Math.max(...datos.map((d) => d.valor), 1);
-  const W = Math.max(300, datos.length * 42);
-  const H = 200;
-  const pad = 36;
-  const bw = 26;
-  const step = Math.ceil(datos.length / 12);
-
-  return (
-    <div className="bg-[var(--bg-card)] border border-white/5 rounded-xl p-4">
-      <h2 className="text-sm font-semibold text-white mb-1">Evolución del Gasto</h2>
-      <p className="text-xs text-[#5a5a6e] mb-3">Total comprado por día</p>
-      <div className="overflow-x-auto">
-        <svg width={W} height={H} className="min-w-full">
-          {datos.map((d, i) => {
-            const h = (d.valor / max) * (H - pad - 12);
-            const x = i * 42 + 1;
-            const y = H - pad - h;
-            return (
-              <g key={d.fecha}>
-                <title>{`${d.fecha}: ${money(d.valor)}`}</title>
-                <rect x={x} y={y} width={bw} height={h} rx="3" fill="#22c55e" opacity="0.85">
-                  <animate attributeName="height" from="0" to={h} dur="0.35s" fill="freeze" />
-                  <animate attributeName="y" from={H - pad} to={y} dur="0.35s" fill="freeze" />
-                </rect>
-                {i % step === 0 && (
-                  <text x={x + bw / 2} y={H - 12} fontSize="9" fill="#8b8b9e" textAnchor="middle">
-                    {d.fecha.slice(5)}
-                  </text>
-                )}
-              </g>
-            );
-          })}
-        </svg>
-      </div>
-    </div>
-  );
-}
-
-function GraficoProveedores({ segmentos }) {
-  const total = segmentos.reduce((s, x) => s + x.valor, 0);
-  if (total === 0) {
-    return <PanelVacio titulo="Top 5 Proveedores" />;
-  }
-  const r = 70;
-  const c = 2 * Math.PI * r;
-  let acum = 0;
-
-  return (
-    <div className="bg-[var(--bg-card)] border border-white/5 rounded-xl p-4">
-      <h2 className="text-sm font-semibold text-white mb-1">Top 5 Proveedores</h2>
-      <p className="text-xs text-[#5a5a6e] mb-3">% de compras acumulado por distribuidor</p>
-      <div className="flex flex-col sm:flex-row items-center gap-6">
-        <svg width="180" height="180" viewBox="0 0 180 180" className="shrink-0">
-          <g transform="rotate(-90 90 90)">
-            <circle cx="90" cy="90" r={r} fill="none" stroke="#ffffff10" strokeWidth="26" />
-            {segmentos.map((s, i) => {
-              const frac = total > 0 ? s.valor / total : 0;
-              const dash = frac * c;
-              const el = (
-                <circle
-                  key={s.nombre}
-                  cx="90" cy="90" r={r} fill="none"
-                  stroke={CHART_COLORS[i % CHART_COLORS.length]}
-                  strokeWidth="26"
-                  strokeDasharray={`${dash} ${c - dash}`}
-                  strokeDashoffset={-acum}
-                />
-              );
-              acum += dash;
-              return el;
-            })}
-          </g>
-          <text x="90" y="86" fontSize="22" fontWeight="600" fill="#f1f1f3" textAnchor="middle">{total.toLocaleString("es-PY")}</text>
-          <text x="90" y="104" fontSize="10" fill="#8b8b9e" textAnchor="middle">Total</text>
-        </svg>
-        <ul className="w-full space-y-1.5 text-sm min-w-0">
-          {segmentos.map((s, i) => (
-            <li key={s.nombre} className="flex items-center justify-between gap-3">
-              <span className="flex items-center gap-2 min-w-0">
-                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
-                <span className="text-white truncate">{s.nombre}</span>
-              </span>
-              <span className="text-white/60 whitespace-nowrap">{s.pct.toFixed(1)}% · {money(s.valor)}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
-}
-
-function PanelVacio({ titulo }) {
-  return (
-    <div className="bg-[var(--bg-card)] border border-white/5 rounded-xl p-4">
-      <h2 className="text-sm font-semibold text-white mb-3">{titulo}</h2>
-      <div className="h-36 flex items-center justify-center text-white/30 text-sm">Sin datos para el período</div>
     </div>
   );
 }
