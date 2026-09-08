@@ -259,13 +259,6 @@ export default function ListaFacturas() {
 
 function DetalleFactura({ factura, onClose }) {
   const detalles = Array.isArray(factura.detalles) ? factura.detalles : [];
-  const porTasa = (t) => detalles.filter((d) => Number(d.tasaIva) === t);
-
-  const resumenIva = [
-    { etiqueta: "IVA 10%", subtotal: factura.subtotal10, iva: factura.iva10 },
-    { etiqueta: "IVA 5%", subtotal: factura.subtotal5, iva: factura.iva5 },
-    { etiqueta: "Exenta", subtotal: factura.subtotalExento, iva: null },
-  ].filter((r) => Number(r.subtotal) > 0);
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4" onClick={onClose}>
@@ -331,27 +324,51 @@ function DetalleFactura({ factura, onClose }) {
           </div>
         </div>
 
-        {/* Discriminación de IVA */}
-        {resumenIva.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Discriminación de IVA</p>
-            <div className="divide-y divide-white/5">
-              {resumenIva.map((r) => (
-                <div key={r.etiqueta} className="flex items-center justify-between py-2 text-sm">
-                  <span className="text-white/70">{r.etiqueta}</span>
-                  <span className="text-white">
-                    Subtotal: {money(r.subtotal)}
-                    {r.iva != null && <span className="text-white/50"> · IVA: {money(r.iva)}</span>}
-                  </span>
-                </div>
-              ))}
-              <div className="flex items-center justify-between py-2 text-sm font-semibold">
-                <span className="text-white">IVA Total</span>
-                <span className="text-[#22c55e]">{money(factura.ivaTotal)}</span>
+        {/* Totales + Desglose de IVA */}
+        <div className="pt-3 border-t border-white/10 grid gap-4 sm:grid-cols-3 items-end">
+          <div className="space-y-1.5">
+            <p className="text-sm text-[#5a5a6e]">
+              {detalles.length} ítem{detalles.length === 1 ? "" : "s"} en el
+              comprobante
+            </p>
+            <div className="space-y-1 font-mono text-sm">
+              <div className="flex items-center justify-between text-white/70">
+                <span className="text-[#5a5a6e]">Exentas:</span>
+                <span>₲ 0</span>
+              </div>
+              <div className="flex items-center justify-between text-white/70">
+                <span className="text-[#5a5a6e]">IVA 5%:</span>
+                <span>{money(factura.iva5)}</span>
+              </div>
+              <div className="flex items-center justify-between text-white/70">
+                <span className="text-[#5a5a6e]">IVA 10%:</span>
+                <span>{money(factura.iva10)}</span>
               </div>
             </div>
           </div>
-        )}
+
+          <div className="space-y-1.5 font-mono text-sm">
+            <div className="flex items-center justify-between text-white/90">
+              <span className="text-[#5a5a6e]">Total IVA:</span>
+              <span className="font-semibold">{money(factura.ivaTotal)}</span>
+            </div>
+            <div className="flex items-center justify-between text-white/90 border-t border-white/10 pt-1.5">
+              <span className="text-[#5a5a6e]">Subtotal:</span>
+              <span>{money(Number(factura.totalGeneral) - Number(factura.ivaTotal))}</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-end justify-end gap-3">
+            <div className="text-right">
+              <p className="text-xs text-[#5a5a6e] uppercase tracking-[0.12em]">
+                Total factura
+              </p>
+              <p className="font-mono text-3xl font-bold tracking-tight text-[#22c55e]">
+                {money(factura.totalGeneral)}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

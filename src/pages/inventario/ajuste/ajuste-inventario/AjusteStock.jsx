@@ -1,4 +1,4 @@
-import { Check, Trash2, Plus, PackageOpen, Coins } from "lucide-react";
+import { Check, Trash2, PackageOpen } from "lucide-react";
 import {
   TIPOS_MOVIMIENTO,
   motivosDeTipo,
@@ -72,23 +72,6 @@ export default function AjusteStock({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label className="block space-y-1.5">
             <span className="text-xs font-medium text-[#9a9aac]">
-              Fecha / hora{" "}
-              <span className="text-[#5a5a6e] font-normal">(automática)</span>
-            </span>
-            <input
-              type="text"
-              value="Automática (servidor)"
-              disabled
-              readOnly
-              className={inputClass}
-            />
-            <span className="text-[11px] text-[#5a5a6e] block">
-              La captura el servidor al registrar el movimiento.
-            </span>
-          </label>
-
-          <label className="block space-y-1.5">
-            <span className="text-xs font-medium text-[#9a9aac]">
               Tipo de movimiento
             </span>
             <select
@@ -116,11 +99,6 @@ export default function AjusteStock({
                 </option>
               ))}
             </select>
-            {tipo === "INICIAL" ? (
-              <span className="text-[11px] text-[#5a5a6e] block">
-                Requiere backend (tipo de movimiento + precio de costo inicial).
-              </span>
-            ) : null}
           </label>
         </div>
 
@@ -179,24 +157,6 @@ export default function AjusteStock({
             />
           </label>
         </div>
-
-        <label className="block space-y-1.5">
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#9a9aac]">
-            <Coins className="w-3.5 h-3.5 text-[#5a5a6e]" aria-hidden />
-            Precio de costo inicial{" "}
-            <span className="text-[#5a5a6e] font-normal">(opcional)</span>
-            <span className="text-[11px] text-[#5a5a6e]">• solo Inventario Inicial</span>
-          </span>
-          <input
-            type="number"
-            inputMode="numeric"
-            disabled
-            readOnly
-            title="Requiere backend: campo de precio de costo inicial en la carga de inventario"
-            placeholder="G. 0 — requiere backend"
-            className={inputClass}
-          />
-        </label>
       </div>
 
       {/* ==================== DETALLE DE ÍTEMS ==================== */}
@@ -314,13 +274,6 @@ export default function AjusteStock({
           Limpiar
         </button>
       </div>
-
-      <p className="text-[11px] leading-relaxed text-[#5a5a6e]">
-        <Plus className="inline w-3 h-3 mr-1 align-[-2px]" aria-hidden />
-        El registro <span className="text-[#9a9aac]">no mueve el stock</span> en
-        el backend todavía; el stock resultante se refleja solo en esta
-        pantalla hasta que se implemente el ajuste automático (requiere backend).
-      </p>
     </form>
   );
 }

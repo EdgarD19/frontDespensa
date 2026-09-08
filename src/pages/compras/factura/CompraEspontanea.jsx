@@ -204,6 +204,20 @@ export default function CompraEspontanea({ onVolver }) {
   const estadoTimbradoSel = timbradoSel ? estadoTimbrado(timbradoSel, fechaEmision) : null;
   const timbradoBloqueado = estadoTimbradoSel && estadoTimbradoSel.tipo !== "vigente";
 
+  // Desglose de IVA (misma fórmula que el backend: precio CON IVA -> base + IVA)
+  const ivaLinea = (l) => {
+    const t = Number(l.producto.iva ?? 10);
+    const bruto = l.cantidad * l.precioUnitario;
+    if (t === 0) return 0;
+    return Math.round(bruto - bruto / (1 + t / 100));
+  };
+  const tasasLineas = (tasa) => lineas.filter((l) => Number(l.producto.iva ?? 10) === tasa);
+  const ivaExento = tasasLineas(0).reduce((s, l) => s + ivaLinea(l), 0);
+  const iva5 = tasasLineas(5).reduce((s, l) => s + ivaLinea(l), 0);
+  const iva10 = tasasLineas(10).reduce((s, l) => s + ivaLinea(l), 0);
+  const totalIva = ivaExento + iva5 + iva10;
+  const subtotalSinIva = total - totalIva;
+
   const handleSubmit = async () => {
     if (!proveedorSel) { setError("Seleccioná un proveedor"); return; }
     if (!timbradoId) { setError("Seleccioná el timbrado del proveedor"); return; }
@@ -636,15 +650,45 @@ export default function CompraEspontanea({ onVolver }) {
         </div>
 
         {/* Totales + Acciones */}
-        <div className="mt-3 pt-3 border-t border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <p className="text-sm text-[#5a5a6e]">
-            {lineas.length} ítem{lineas.length === 1 ? "" : "s"} en el comprobante
-          </p>
+        <div className="mt-3 pt-3 border-t border-white/10 grid gap-4 sm:grid-cols-3 items-end">
+          {/* Desglose IVA */}
+          <div className="space-y-1.5">
+            <p className="text-sm text-[#5a5a6e]">
+              {lineas.length} ítem{lineas.length === 1 ? "" : "s"} en el comprobante
+            </p>
+            <div className="space-y-1 font-mono text-sm">
+              <div className="flex items-center justify-between text-white/70">
+                <span className="text-[#5a5a6e]">Exentas:</span>
+                <span>₲ {money(ivaExento)}</span>
+              </div>
+              <div className="flex items-center justify-between text-white/70">
+                <span className="text-[#5a5a6e]">IVA 5%:</span>
+                <span>₲ {money(iva5)}</span>
+              </div>
+              <div className="flex items-center justify-between text-white/70">
+                <span className="text-[#5a5a6e]">IVA 10%:</span>
+                <span>₲ {money(iva10)}</span>
+              </div>
+            </div>
+          </div>
 
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="text-xs text-[#5a5a6e]">Total factura (IVA calculado por el sistema)</p>
-              <p className="font-mono text-2xl font-bold tracking-tight text-[#22c55e]">
+          {/* Total IVA + Subtotal */}
+          <div className="space-y-1.5 font-mono text-sm">
+            <div className="flex items-center justify-between text-white/90">
+              <span className="text-[#5a5a6e]">Total IVA:</span>
+              <span className="font-semibold">₲ {money(totalIva)}</span>
+            </div>
+            <div className="flex items-center justify-between text-white/90 border-t border-white/10 pt-1.5">
+              <span className="text-[#5a5a6e]">Subtotal:</span>
+              <span>₲ {money(subtotalSinIva)}</span>
+            </div>
+          </div>
+
+          {/* Total + Registrar */}
+          <div className="flex flex-col items-end justify-end gap-3">
+            <div className="w-full sm:w-auto text-right">
+              <p className="text-xs text-[#5a5a6e] uppercase tracking-[0.12em]">Total factura</p>
+              <p className="font-mono text-3xl font-bold tracking-tight text-[#22c55e]">
                 ₲ {money(total)}
               </p>
             </div>
