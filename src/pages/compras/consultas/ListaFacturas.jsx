@@ -1,9 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Search, X, Eye, ArrowLeft } from "lucide-react";
 import {
   getFacturasCompra,
-  getFacturasCompraPorProveedor,
   apiErrorMessage,
 } from "../../../api/facturasCompraApi";
 import { getProveedores } from "../../../api/proveedoresApi";
@@ -45,7 +44,7 @@ const condicionPago = (c) => {
 };
 
 export default function ListaFacturas() {
-  const [facturas, setFacturas] = useState([]);
+  const [todas, setTodas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(0);
@@ -53,39 +52,64 @@ export default function ListaFacturas() {
 
   const [proveedores, setProveedores] = useState([]);
   const [idProveedor, setIdProveedor] = useState("");
-
+  const [texto, setTexto] = useState("");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
+  const [condicion, setCondicion] = useState("");
   const [seleccionada, setSeleccionada] = useState(null);
 
-  const cargarProveedores = useCallback(async () => {
-    try {
-      const res = await getProveedores({ pageSize: 300, sortBy: "nombre", sortDir: "ASC" });
-      setProveedores(Array.isArray(res.content) ? res.content : []);
-    } catch {
-      setProveedores([]);
-    }
+  useEffect(() => {
+    let activo = true;
+    (async () => {
+      try {
+        const res = await getProveedores({ pageSize: 500, sortBy: "nombre", sortDir: "ASC" });
+        if (activo) setProveedores(Array.isArray(res.content) ? res.content : []);
+      } catch { /* sin proveedores */ }
+    })();
+    return () => { activo = false; };
   }, []);
 
-  const cargar = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = idProveedor
-        ? await getFacturasCompraPorProveedor(Number(idProveedor), { page, pageSize: 10 })
-        : await getFacturasCompra({ page, pageSize: 10 });
-      setFacturas(Array.isArray(res.content) ? res.content : []);
-      setTotalPages(typeof res.totalPages === "number" ? res.totalPages : 0);
-    } catch (err) {
-      setError(apiErrorMessage(err) || "Error al cargar facturas");
-      setFacturas([]);
-      setTotalPages(0);
-    } finally {
-      setLoading(false);
-    }
-  }, [idProveedor, page]);
+  useEffect(() => {
+    let activo = true;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await getFacturasCompra({ page: 0, pageSize: 1000 });
+        if (activo) setTodas(Array.isArray(res.content) ? res.content : []);
+      } catch (err) {
+        if (activo) setError(apiErrorMessage(err) || "Error al cargar facturas");
+      } finally {
+        if (activo) setLoading(false);
+      }
+    })();
+    return () => { activo = false; };
+  }, []);
 
-  useEffect(() => { cargarProveedores(); }, [cargarProveedores]);
-  useEffect(() => { setPage(0); }, [idProveedor]);
-  useEffect(() => { cargar(); }, [cargar]);
+  const filtradas = useMemo(() => {
+    const q = texto.trim().toLowerCase();
+    const d = (desde || "").trim();
+    const h = (hasta || "").trim();
+    return todas.filter((f) => {
+      if (idProveedor && Number(f.idProveedor) !== Number(idProveedor)) return false;
+      if (q) {
+        const hito = String(f.numeroFactura || "").toLowerCase();
+        if (!hito.includes(q)) return false;
+      }
+      if (condicion && String(f.condicionPago || "") !== condicion) return false;
+      if (d || h) {
+        const fecha = String(f.fechaEmision || "").slice(0, 10);
+        if (d && fecha < d) return false;
+        if (h && fecha > h) return false;
+      }
+      return true;
+    });
+  }, [todas, idProveedor, texto, condicion, desde, hasta]);
+
+  const paginadas = useMemo(() => filtradas.slice(page * 10, page * 10 + 10), [filtradas, page]);
+
+  useEffect(() => { setPage(0); }, [idProveedor, texto, condicion, desde, hasta]);
+  useEffect(() => { setTotalPages(Math.max(1, Math.ceil(filtradas.length / 10))); }, [filtradas]);
 
   const columns = 8;
 
@@ -96,62 +120,71 @@ export default function ListaFacturas() {
           <ArrowLeft size={18} />
         </Link>
         <div>
-          <h1 className="text-2xl font-semibold text-[#f1f1f3] tracking-tight">Lista de Facturas</h1>
-          <p className="text-sm text-[#5a5a6e]">Facturas de compra registradas en el sistema</p>
+          <h1 className="text-2xl font-semibold text-[#f1f1f3] tracking-tight">Lista de Facturas Registradas</h1>
         </div>
       </div>
 
       {/* Filtros */}
-      <div className="flex flex-col md:flex-row md:items-end gap-3">
-        <div className="relative flex-1">
+      <div className="flex flex-col md:flex-row md:flex-wrap md:items-end gap-3">
+        <div className="relative flex-1 min-w-[200px]">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
           <input
             type="text"
-            value={""}
-            readOnly
-            placeholder="Buscador global por proveedor, RUC o N° factura (próximamente)"
-            className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-white/50 placeholder:text-white/30 focus:outline-none cursor-not-allowed"
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            placeholder="Buscar por N° factura"
+            aria-label="Buscar por número de factura"
+            className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-10 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#22c55e]/50 transition-colors"
           />
+          {texto && (
+            <button
+              type="button"
+              onClick={() => setTexto("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+              title="Limpiar búsqueda"
+              aria-label="Limpiar búsqueda"
+            >
+              <X size={15} />
+            </button>
+          )}
         </div>
-        <div className="w-full sm:w-48">
+        <div className="w-full sm:w-44">
           <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]" htmlFor="filtro-desde">
             Desde
           </label>
           <input
             id="filtro-desde"
             type="date"
-            value={""}
-            readOnly
-            disabled
-            className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/50 outline-none cursor-not-allowed opacity-60"
+            value={desde}
+            onChange={(e) => setDesde(e.target.value)}
+            className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#22c55e]/50 transition-colors"
           />
         </div>
-        <div className="w-full sm:w-48">
+        <div className="w-full sm:w-44">
           <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]" htmlFor="filtro-hasta">
             Hasta
           </label>
           <input
             id="filtro-hasta"
             type="date"
-            value={""}
-            readOnly
-            disabled
-            className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/50 outline-none cursor-not-allowed opacity-60"
+            value={hasta}
+            onChange={(e) => setHasta(e.target.value)}
+            className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#22c55e]/50 transition-colors"
           />
         </div>
-        <div className="w-full sm:w-48">
+        <div className="w-full sm:w-44">
           <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]" htmlFor="filtro-condicion">
             Condición de Pago
           </label>
           <select
             id="filtro-condicion"
-            value={""}
-            disabled
-            className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/50 outline-none cursor-not-allowed opacity-60"
+            value={condicion}
+            onChange={(e) => setCondicion(e.target.value)}
+            className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#22c55e]/50 transition-colors"
           >
-            <option value="">Todos</option>
-            <option value="CONTADO" disabled>Contado</option>
-            <option value="TRANSFERENCIA" disabled>Transferencia</option>
+            <option value="">Todas</option>
+            <option value="CONTADO">Contado</option>
+            <option value="TRANSFERENCIA">Transferencia</option>
           </select>
         </div>
         <div className="w-full sm:w-64">
@@ -200,10 +233,14 @@ export default function ListaFacturas() {
                   ))}
                 </tr>
               ))}
-              {!loading && facturas.length === 0 && (
-                <tr><td colSpan={columns} className="px-4 py-8 text-center text-white/30">No se encontraron facturas.</td></tr>
+              {!loading && paginadas.length === 0 && (
+                <tr><td colSpan={columns} className="px-4 py-8 text-center text-white/30">
+                  {texto.trim()
+                    ? `No se encontraron facturas para "${texto.trim()}".`
+                    : "No se encontraron facturas."}
+                </td></tr>
               )}
-              {!loading && facturas.map((f) => {
+              {!loading && paginadas.map((f) => {
                 const cancelada = f.estado === "CANCELADA" || f.activo === false;
                 return (
                   <tr key={f.idFactura} className={`border-b border-white/5 hover:bg-white/5 transition-colors ${cancelada ? "opacity-60" : ""}`}>
@@ -232,7 +269,7 @@ export default function ListaFacturas() {
         </div>
       </div>
 
-      {!loading && facturas.length > 0 && (
+      {!loading && paginadas.length > 0 && (
         <div className="flex items-center justify-center gap-1 text-sm select-none">
           <button disabled={page <= 0} onClick={() => setPage(0)} className={pageBtn} title="Primera página">
             &laquo;

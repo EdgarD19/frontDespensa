@@ -16,8 +16,7 @@ const MODULOS = [
   },
   {
     to: "/inventario/ajuste",
-    label: "Movimientos de stock",
-    descripcion: "Registra entradas, salidas y ajuste de stock.",
+    label: "Ajuste de stock",
     icon: ClipboardList,
   },
 ];
@@ -44,7 +43,9 @@ export default function InventarioHub() {
               <p className="text-base font-semibold text-[#e1e1eb] group-hover:text-white transition-colors leading-tight">
                 {label}
               </p>
-              <p className="text-xs text-[#5a5a6e] leading-relaxed line-clamp-2">{descripcion}</p>
+              {descripcion && (
+                <p className="text-xs text-[#5a5a6e] leading-relaxed line-clamp-2">{descripcion}</p>
+              )}
             </div>
           </Link>
         ))}

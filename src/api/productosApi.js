@@ -88,11 +88,12 @@ function toCreateBody(frontend, idUnidad) {
  * ProductoRequest (Spring): nombre, codigoBarra, descripcion, stockActual,
  * idCategoria, idUnidad, activo. Los campos null NO se actualizan.
  */
-function toPatchBody(producto) {
+function toPatchBody(producto, stockActual) {
   return {
     nombre: producto.nombre?.trim() ?? undefined,
     codigoBarra: String(producto.codigoBarras || "").replace(/\D/g, "") || undefined,
     descripcion: (producto.descripcion || "").trim() || undefined,
+    stockActual: stockActual != null ? Number(stockActual) : undefined,
     idCategoria: Number(producto.idCategoria) || undefined,
     idSubcategoria: Number(producto.idSubcategoria) || undefined,
     idUnidad: Number(producto.idUnidad) || undefined,
@@ -193,10 +194,11 @@ export async function createProducto(producto, idUnidad, idProveedor) {
 
 /**
  * PUT /api/productos/{id}
- * Actualiza el producto. Devuelve el producto actualizado.
+ * Actualiza el producto. Si se pasa `stockActual`, sobreescribe el stock.
+ * Devuelve el producto actualizado.
  */
-export async function updateProducto(id, producto) {
-  const body = toPatchBody(producto);
+export async function updateProducto(id, producto, stockActual) {
+  const body = toPatchBody(producto, stockActual);
   const { data } = await api.put(`/api/productos/${id}`, body);
   return toFrontendProduct(data?.data ?? data);
 }

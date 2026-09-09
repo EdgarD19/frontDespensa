@@ -62,6 +62,12 @@ export async function getFacturaCompraById(id) {
   return data;
 }
 
+/** Obtener una factura de compra por número exacto (200) o error si no existe. */
+export async function getFacturaCompraPorNumero(numeroFactura) {
+  const { data } = await api.get(`${BASE}/numero/${encodeURIComponent(numeroFactura)}`);
+  return data;
+}
+
 /** Devuelve true si ya existe una factura de compra con ese número (200 = existe). */
 export async function facturaCompraNumeroExiste(numeroFactura) {
   try {
