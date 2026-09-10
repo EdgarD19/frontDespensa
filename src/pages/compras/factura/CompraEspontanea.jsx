@@ -5,75 +5,7 @@ import { getProveedores, getProveedorId } from "../../../api/proveedoresApi";
 import { crearFacturaCompra, facturaCompraNumeroExiste, getTimbradosProveedor } from "../../../api/facturasCompraApi";
 import { apiErrorMessage } from "../../../api/errors";
 import TimbradosModal from "./TimbradosModal";
-
-const money = (n) => Math.round(n).toLocaleString("es-PY", { maximumFractionDigits: 0 });
-
-const hoyAsuncion = () =>
-  new Date().toLocaleDateString("en-CA", { timeZone: "America/Asuncion", year: "numeric", month: "2-digit", day: "2-digit" });
-
-function formatoFactura(val) {
-  const nums = val.replace(/\D/g, "").slice(0, 13);
-  const p1 = nums.slice(0, 3);
-  const p2 = nums.slice(3, 6);
-  const p3 = nums.slice(6, 13);
-  if (nums.length <= 3) return p1;
-  if (nums.length <= 6) return `${p1}-${p2}`;
-  return `${p1}-${p2}-${p3}`;
-}
-
-function esKG(prod) {
-  const u = (prod.unidadMedida || prod.unitAbbreviation || "").toUpperCase();
-  return u === "KG" || u === "KILOGRAMO" || u === "KILOGRAMOS";
-}
-
-function stepCant(prod) {
-  return esKG(prod) ? "0.001" : "1";
-}
-
-function parseCant(val, prod) {
-  const n = parseFloat(String(val).replace(",", "."));
-  if (!Number.isFinite(n) || n <= 0) return esKG(prod) ? 0.001 : 1;
-  return esKG(prod) ? Math.round(n * 1000) / 1000 : Math.floor(n);
-}
-
-function estadoTimbrado(t, fecha) {
-  if (!t) return null;
-  if (t.activo === false) {
-    return { tipo: "inactivo", msg: "El timbrado está inactivo. No se puede registrar la compra con este timbrado." };
-  }
-  const fe = String(fecha || "");
-  const inicio = String(t.fechaInicio || "");
-  const venc = String(t.fechaVencimiento || "");
-  if (venc && fe && fe > venc) {
-    return { tipo: "vencido", msg: `El timbrado venció el ${venc}. No se puede registrar la compra con este timbrado.` };
-  }
-  if (inicio && fe && fe < inicio) {
-    return { tipo: "noIniciado", msg: `El timbrado aún no está vigente (inicia el ${inicio}).` };
-  }
-  return { tipo: "vigente", msg: null };
-}
-
-function etiquetaTimbrado(tipo) {
-  switch (tipo) {
-    case "vencido": return "vencido";
-    case "inactivo": return "inactivo";
-    case "noIniciado": return "no vigente";
-    default: return "vigente";
-  }
-}
-
-const S = {
-  field:
-    "w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-sm text-white " +
-    "placeholder:text-white/30 outline-none transition-colors duration-150 focus:border-[#22c55e]/50",
-  fieldMono:
-    "w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-sm font-mono text-white " +
-    "placeholder:text-white/30 outline-none transition-colors duration-150 focus:border-[#22c55e]/50",
-  eyebrow: "text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]",
-  dropdown:
-    "absolute z-20 mt-0.5 w-full bg-[#17171c] border border-white/10 rounded-lg max-h-40 overflow-y-auto shadow-lg",
-  dropdownItem: "w-full text-left px-2.5 py-1.5 text-sm text-white transition-colors duration-150 hover:bg-white/5",
-};
+import { money, hoyAsuncion, formatoFactura, esKG, stepCant, parseCant, estadoTimbrado, etiquetaTimbrado, S } from "../utils";
 
 export default function CompraEspontanea({ onVolver }) {
   const [proveedores, setProveedores] = useState([]);
@@ -580,21 +512,7 @@ export default function CompraEspontanea({ onVolver }) {
               <React.Fragment key={l.producto.id}>
                 {/* Producto */}
                 <div className="py-1.5 pl-3 text-sm font-medium text-white bg-white/[0.03] rounded-l-xl">
-                  {l.nuevo ? (
-                    <div className="flex flex-col gap-0.5">
-                      <input value={l.producto.nombre}
-                        onChange={(e) => setLineas((prev) => prev.map((x) => x.producto.id === l.producto.id ? { ...x, producto: { ...x.producto, nombre: e.target.value } } : x))}
-                        placeholder="Nombre del producto"
-                        className={`${S.field} !py-0.5 !px-1.5 !text-sm border-[#22c55e]/30`}
-                      />
-                      <input value={l.producto.codigo}
-                        onChange={(e) => setLineas((prev) => prev.map((x) => x.producto.id === l.producto.id ? { ...x, producto: { ...x.producto, codigo: e.target.value } } : x))}
-                        placeholder="Código de barras"
-                        className={`${S.field} !py-0.5 !px-1.5 !text-xs`}
-                      />
-                      <span className="text-[0.625rem] font-medium uppercase tracking-[0.1em] text-[#22c55e]">Producto nuevo</span>
-                    </div>
-                  ) : l.producto.nombre}
+                  {l.producto.nombre}
                 </div>
                 {/* U.M. */}
                 <div className="py-1.5 text-center text-sm text-white bg-white/[0.03]">

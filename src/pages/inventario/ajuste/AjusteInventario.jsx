@@ -84,13 +84,14 @@ export default function AjusteInventario() {
     };
   }, []);
 
-  function generarSesion({ productos: seleccion, descripcion }) {
+  function generarSesion({ productos: seleccion, descripcion, motivo }) {
     const id =
       sesiones.reduce((m, s) => Math.max(m, Number(s.id) || 0), 0) + 1;
     const sesion = {
       id,
       fechaHora: new Date().toISOString(),
       descripcion,
+      motivo: (motivo || "").trim(),
       estado: "EN_PROCESO",
       items: seleccion.map((p) => ({
         idProducto: p.id,
@@ -170,7 +171,7 @@ export default function AjusteInventario() {
               tipo_movimiento_id: tipoId,
               cantidad: Math.abs(diff),
               clasificacion: "DIFERENCIA_CONTEO",
-              referencia: `Conteo N° ${sesion.id}: ${sistema} → ${p.fisico}`,
+              referencia: `Conteo N° ${sesion.id}: ${sistema} → ${p.fisico}${sesion.motivo ? ` — ${sesion.motivo}` : ""}`,
               requiere_auditoria: false,
             });
           } catch {

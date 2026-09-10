@@ -184,7 +184,7 @@ export default function ListaFacturas() {
           >
             <option value="">Todas</option>
             <option value="CONTADO">Contado</option>
-            <option value="TRANSFERENCIA">Transferencia</option>
+            <option value="CREDITO">Crédito</option>
           </select>
         </div>
         <div className="w-full sm:w-64">
@@ -371,7 +371,7 @@ function DetalleFactura({ factura, onClose }) {
             <div className="space-y-1 font-mono text-sm">
               <div className="flex items-center justify-between text-white/70">
                 <span className="text-[#5a5a6e]">Exentas:</span>
-                <span>₲ 0</span>
+                <span>{money(f.subtotalExento ?? 0)}</span>
               </div>
               <div className="flex items-center justify-between text-white/70">
                 <span className="text-[#5a5a6e]">IVA 5%:</span>

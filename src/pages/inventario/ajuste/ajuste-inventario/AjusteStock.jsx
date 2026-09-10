@@ -1,12 +1,16 @@
 import { useState } from "react";
-import { Check, Search, PackageOpen, X } from "lucide-react";
+import { Check, Search, PackageOpen, X, Barcode } from "lucide-react";
 import { stockEntero } from "./utils";
+import { getProductoByCodigo } from "../../../../api/productosApi";
 
 export default function AjusteStock({ productos, categorias, disabled, onGenerar }) {
   const [categoria, setCategoria] = useState("");
   const [seleccion, setSeleccion] = useState([]);
   const [search, setSearch] = useState("");
+  const [motivoTipo, setMotivoTipo] = useState("");
+  const [motivoCustom, setMotivoCustom] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
+  const [codigoNoEncontrado, setCodigoNoEncontrado] = useState("");
 
   const q = search.trim().toLowerCase();
   const idsSeleccion = new Set(seleccion.map((p) => p.id));
@@ -24,12 +28,39 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
           (p.nombre?.toLowerCase().includes(q) ||
             (p.codigoBarras && String(p.codigoBarras).includes(search.trim())))
       )
-    : [];
+    : productos.filter((p) => !idsSeleccion.has(p.id)).slice(0, 20);
 
   function toggleProducto(p) {
     setSeleccion((prev) =>
       idsSeleccion.has(p.id) ? prev.filter((x) => x.id !== p.id) : [...prev, p]
     );
+  }
+
+  async function buscarPorCodigo(codigo) {
+    const c = String(codigo ?? "").trim();
+    if (!c) return;
+    const local = productos.find(
+      (p) => p.codigoBarras && String(p.codigoBarras).trim().toLowerCase() === c.toLowerCase()
+    );
+    if (local) {
+      toggleProducto(local);
+      setSearch("");
+      setShowDropdown(false);
+      return;
+    }
+    try {
+      const prod = await getProductoByCodigo(c);
+      if (prod) {
+        toggleProducto(prod);
+        setSearch("");
+        setShowDropdown(false);
+        return;
+      }
+    } catch {
+      /* sin match */
+    }
+    setCodigoNoEncontrado(c);
+    setTimeout(() => setCodigoNoEncontrado(""), 2500);
   }
 
   function seleccionarTodos() {
@@ -44,6 +75,8 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
     setSeleccion([]);
     setCategoria("");
     setSearch("");
+    setMotivoTipo("");
+    setMotivoCustom("");
   }
 
   function generar() {
@@ -52,6 +85,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
     onGenerar({
       productos: seleccion,
       descripcion: cat?.nombre || (categoria ? String(categoria) : "Manual"),
+      motivo: motivoTipo === "Motivo" ? motivoCustom.trim() : motivoTipo,
     });
     limpiar();
   }
@@ -98,16 +132,35 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
                 setShowDropdown(true);
               }}
               onFocus={() => setShowDropdown(true)}
-              onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  buscarPorCodigo(search);
+                }
+              }}
               disabled={disabled}
-              placeholder="Buscar por nombre o código…"
-              className="w-full rounded-lg border border-[#2a2a32] bg-[#111114] pl-10 pr-3 py-2.5 text-sm text-[#f1f1f3] placeholder:text-[#4a4a5a] focus:border-[#22c55e]/50 focus:ring-1 focus:ring-[#22c55e]/20 outline-none disabled:opacity-50"
+              placeholder="Escanear código de barras o buscar por nombre…"
+              className="w-full rounded-lg border border-[#2a2a32] bg-[#111114] pl-10 pr-12 py-2.5 text-sm text-[#f1f1f3] placeholder:text-[#4a4a5a] focus:border-[#22c55e]/50 focus:ring-1 focus:ring-[#22c55e]/20 outline-none disabled:opacity-50"
             />
+            <button
+              type="button"
+              onClick={() => buscarPorCodigo(search)}
+              disabled={disabled}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5a5a6e] hover:text-white transition-colors disabled:opacity-50"
+              title="Buscar por código de barras"
+            >
+              <Barcode size={16} />
+            </button>
+            {codigoNoEncontrado ? (
+              <p className="mt-1.5 text-xs text-rose-400">
+                No se encontró el código "{codigoNoEncontrado}".
+              </p>
+            ) : null}
             {showDropdown && (
               <div className="absolute z-30 left-0 right-0 mt-1 rounded-lg border border-[#1e1e24] bg-[#111114] shadow-xl overflow-hidden max-h-60 overflow-y-auto">
                 {resultados.length === 0 ? (
                   <p className="p-3 text-sm text-[#5a5a6e]">
-                    {search.trim() ? "No hay coincidencias." : "Escribí para buscar."}
+                    No hay coincidencias.
                   </p>
                 ) : (
                   <ul className="divide-y divide-[#1e1e24]">
@@ -118,16 +171,14 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
                           onMouseDown={() => toggleProducto(p)}
                           className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-[#1a1a22] transition-colors"
                         >
-                          <div className="flex-1 min-w-0">
-                            <span className="font-medium text-[#f1f1f3] text-sm block truncate">
-                              {p.nombre}
+                          <span className="flex-1 min-w-0 font-medium text-[#f1f1f3] text-sm truncate">
+                            {p.nombre}
+                          </span>
+                          {p.unitAbbreviation || p.unidadMedida ? (
+                            <span className="text-xs text-[#5a5a6e] whitespace-nowrap">
+                              {p.unitAbbreviation || p.unidadMedida}
                             </span>
-                            {p.codigoBarras ? (
-                              <span className="text-xs text-[#5a5a6e] block truncate">
-                                {p.codigoBarras}
-                              </span>
-                            ) : null}
-                          </div>
+                          ) : null}
                           <span className="text-xs font-semibold text-[#22c55e] tabular-nums whitespace-nowrap">
                             {stockEntero(p)}
                           </span>
@@ -140,6 +191,34 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
             )}
           </div>
         </div>
+
+        <label className="block space-y-1.5">
+          <span className="text-xs font-medium text-[#9a9aac]">
+            Motivo
+          </span>
+          <select
+            value={motivoTipo}
+            onChange={(e) => setMotivoTipo(e.target.value)}
+            disabled={disabled}
+            className="w-full rounded-lg border border-[#2a2a32] bg-[#111114] px-3 py-2.5 text-sm text-[#f1f1f3] focus:border-[#22c55e]/50 focus:ring-1 focus:ring-[#22c55e]/20 outline-none disabled:opacity-50"
+          >
+            <option value="">Seleccionar motivo…</option>
+            <option value="Robo">Robo</option>
+            <option value="Merma">Merma</option>
+            <option value="Regalo">Regalo</option>
+            <option value="Error">Error</option>
+            <option value="Motivo">Motivo</option>
+          </select>
+          {motivoTipo === "Motivo" ? (
+            <input
+              type="text"
+              value={motivoCustom}
+              onChange={(e) => setMotivoCustom(e.target.value)}
+              disabled={disabled}
+              className="w-full rounded-lg border border-[#2a2a32] bg-[#111114] px-3 py-2.5 text-sm text-[#f1f1f3] placeholder:text-[#4a4a5a] focus:border-[#22c55e]/50 focus:ring-1 focus:ring-[#22c55e]/20 outline-none disabled:opacity-50"
+            />
+          ) : null}
+        </label>
 
         <label className="block space-y-1.5">
           <span className="text-xs font-medium text-[#9a9aac]">

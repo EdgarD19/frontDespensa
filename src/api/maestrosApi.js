@@ -51,7 +51,7 @@ function normalizeMaestroRow(row) {
 function normalizeUnidadRow(row) {
   const base = normalizeMaestroRow(row);
   if (!base) return null;
-  const abreviatura = row.abreviatura ?? row.abreviatura_unidad ?? row.abreviaturaUnidad ?? "";
+  const abreviatura = row.simbolo ?? row.abreviatura ?? row.abreviaturaUnidad ?? row.abreviatura_unidad ?? "";
   return { ...base, abreviatura: abreviatura ? String(abreviatura) : "" };
 }
 

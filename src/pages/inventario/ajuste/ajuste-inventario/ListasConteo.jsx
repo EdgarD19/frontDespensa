@@ -91,7 +91,14 @@ export default function ListasConteo({
                 <td className="px-3 py-3 text-[#9a9aac] whitespace-nowrap">
                   {fmtFechaHora(s.fechaHora)}
                 </td>
-                <td className="px-3 py-3 text-[#e1e1eb]">{s.descripcion}</td>
+                <td className="px-3 py-3 text-[#e1e1eb]">
+                  {s.descripcion}
+                  {s.motivo ? (
+                    <span className="block text-xs text-[#5a5a6e] mt-0.5">
+                      {s.motivo}
+                    </span>
+                  ) : null}
+                </td>
                 <td className="px-3 py-3">
                   <EstadoBadge estado={s.estado} />
                 </td>
@@ -127,7 +134,8 @@ export default function ListasConteo({
                   Lista #{abierta.id}
                 </h2>
                 <p className="text-xs text-[#7a7a8c] mt-0.5">
-                  {abierta.descripcion} • {fmtFechaHora(abierta.fechaHora)}
+                  {abierta.descripcion}
+                  {abierta.motivo ? ` • ${abierta.motivo}` : ""} • {fmtFechaHora(abierta.fechaHora)}
                 </p>
               </div>
               <button

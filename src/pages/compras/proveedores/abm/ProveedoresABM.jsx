@@ -111,7 +111,7 @@ export default function ProveedoresABM() {
       await cargarProveedores();
     } catch (err) {
       const detalle = apiErrorMessage(err);
-      if (detalle && detalle.toLowerCase().includes("ruc") || detalle?.toLowerCase().includes("ya existe")) {
+      if (detalle && (detalle.toLowerCase().includes("ruc") || detalle.toLowerCase().includes("ya existe"))) {
         setError("Ya existe un proveedor con ese RUC/documento");
       } else {
         setError(detalle && detalle !== "Error de red"
