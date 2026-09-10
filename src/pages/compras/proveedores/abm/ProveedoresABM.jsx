@@ -12,7 +12,7 @@ import {
 } from "../../../../api/proveedoresApi";
 import { getPaises, getCiudades } from "../../../../api/maestrosApi";
 
-const DEBOUNCE_MS = 400;
+const DEBOUNCE_MS = 150;
 
 export default function ProveedoresABM() {
   const [proveedores, setProveedores] = useState([]);

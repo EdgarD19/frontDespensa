@@ -26,7 +26,7 @@ function EstadoBadge({ estado }) {
           : "bg-yellow-500/10 text-yellow-400"
       }`}
     >
-      {aplicado ? "Aplicado" : "En Proceso"}
+      {aplicado ? "Aplicado" : "Pendiente"}
     </span>
   );
 }
@@ -87,6 +87,11 @@ export default function ListasConteo({
               <tr key={s.id} className="hover:bg-[#13131a]/80 transition-colors">
                 <td className="px-5 py-3 font-semibold text-[#f1f1f3] tabular-nums">
                   #{s.id}
+                  {s.numeroInforme ? (
+                    <span className="block text-xs font-normal text-[#22c55e] mt-0.5">
+                      {s.numeroInforme}
+                    </span>
+                  ) : null}
                 </td>
                 <td className="px-3 py-3 text-[#9a9aac] whitespace-nowrap">
                   {fmtFechaHora(s.fechaHora)}
@@ -114,7 +119,7 @@ export default function ListasConteo({
                       </>
                     ) : (
                       <>
-                        <PenLine className="w-4 h-4" /> Contar
+                        <PenLine className="w-4 h-4" /> Conteo
                       </>
                     )}
                   </button>
@@ -135,7 +140,8 @@ export default function ListasConteo({
                 </h2>
                 <p className="text-xs text-[#7a7a8c] mt-0.5">
                   {abierta.descripcion}
-                  {abierta.motivo ? ` • ${abierta.motivo}` : ""} • {fmtFechaHora(abierta.fechaHora)}
+                  {abierta.motivo ? ` • ${abierta.motivo}` : ""}
+                  {abierta.numeroInforme ? ` • ${abierta.numeroInforme}` : ""}• {fmtFechaHora(abierta.fechaHora)}
                 </p>
               </div>
               <button

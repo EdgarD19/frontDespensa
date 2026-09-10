@@ -41,7 +41,7 @@ export default function ProductList({
             type="text"
             value={search}
             onChange={(e) => onSearch(e.target.value)}
-            placeholder="Buscar por nombre, código de barras..."
+            placeholder="Buscar por nombre..."
             className="w-full bg-white/5 border border-white/10 rounded-lg
               pl-9 pr-4 py-2 text-sm text-white placeholder:text-white/30
               focus:outline-none focus:border-[var(--accent-green)] transition-colors"
@@ -194,53 +194,51 @@ export default function ProductList({
       </div>
 
       {/* Paginación << < > >> */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-end gap-1 text-sm text-white/50">
-          <button
-            type="button"
-            onClick={() => onPageChange(0)}
-            disabled={page === 0}
-            className="p-1.5 rounded hover:bg-white/10 disabled:opacity-30
-              disabled:cursor-not-allowed transition-colors"
-            title="Primera página"
-          >
-            <ChevronsLeft size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={() => onPageChange(page - 1)}
-            disabled={page === 0}
-            className="p-1.5 rounded hover:bg-white/10 disabled:opacity-30
-              disabled:cursor-not-allowed transition-colors"
-            title="Página anterior"
-          >
-            <ChevronLeft size={16} />
-          </button>
+      {totalPages > 0 && (
+        <div className="flex justify-end">
+          <div className="inline-flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] px-2 py-1.5 text-sm text-white/60 shadow-sm">
+            <button
+              type="button"
+              onClick={() => onPageChange(0)}
+              disabled={page === 0}
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 text-white/50 hover:border-white/30 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Primera página"
+            >
+              <ChevronsLeft size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => onPageChange(page - 1)}
+              disabled={page === 0}
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 text-white/50 hover:border-white/30 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Página anterior"
+            >
+              <ChevronLeft size={16} />
+            </button>
 
-          <span className="px-2">
-            Página {page + 1} de {totalPages}
-          </span>
+            <span className="px-2 font-medium tabular-nums">
+              Página {page + 1} de {totalPages}
+            </span>
 
-          <button
-            type="button"
-            onClick={() => onPageChange(page + 1)}
-            disabled={page >= totalPages - 1}
-            className="p-1.5 rounded hover:bg-white/10 disabled:opacity-30
-              disabled:cursor-not-allowed transition-colors"
-            title="Página siguiente"
-          >
-            <ChevronRight size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={() => onPageChange(totalPages - 1)}
-            disabled={page >= totalPages - 1}
-            className="p-1.5 rounded hover:bg-white/10 disabled:opacity-30
-              disabled:cursor-not-allowed transition-colors"
-            title="Última página"
-          >
-            <ChevronsRight size={16} />
-          </button>
+            <button
+              type="button"
+              onClick={() => onPageChange(page + 1)}
+              disabled={page >= totalPages - 1}
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 text-white/50 hover:border-white/30 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Página siguiente"
+            >
+              <ChevronRight size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => onPageChange(totalPages - 1)}
+              disabled={page >= totalPages - 1}
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 text-white/50 hover:border-white/30 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Última página"
+            >
+              <ChevronsRight size={16} />
+            </button>
+          </div>
         </div>
       )}
     </div>

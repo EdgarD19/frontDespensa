@@ -84,17 +84,19 @@ export default function ProveedoresTabla({
         </table>
       </div>
 
-      {paginacion.totalPages > 1 && (
-        <div className="flex items-center justify-end gap-2 text-sm text-white/50">
-          <button onClick={() => onPageChange(paginacion.page - 1)} disabled={paginacion.page === 0}
-            className="p-1.5 rounded hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
-            <ChevronLeft size={16} />
-          </button>
-          <span>Página {paginacion.page + 1} de {paginacion.totalPages}</span>
-          <button onClick={() => onPageChange(paginacion.page + 1)} disabled={paginacion.page >= paginacion.totalPages - 1}
-            className="p-1.5 rounded hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
-            <ChevronRight size={16} />
-          </button>
+      {paginacion.totalPages > 0 && (
+        <div className="flex justify-end">
+          <div className="inline-flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] px-2 py-1.5 text-sm text-white/60 shadow-sm">
+            <button onClick={() => onPageChange(paginacion.page - 1)} disabled={paginacion.page === 0}
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 text-white/50 hover:border-white/30 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+              <ChevronLeft size={16} />
+            </button>
+            <span className="px-2 font-medium tabular-nums">Página {paginacion.page + 1} de {paginacion.totalPages}</span>
+            <button onClick={() => onPageChange(paginacion.page + 1)} disabled={paginacion.page >= paginacion.totalPages - 1}
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 text-white/50 hover:border-white/30 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
       )}
     </div>

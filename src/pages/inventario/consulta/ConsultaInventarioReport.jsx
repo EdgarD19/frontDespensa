@@ -7,7 +7,7 @@ const estadoStockConfig = {
   desconocido: { label: "Desconocido", cls: "bg-white/10 text-white/40" },
 };
 
-const pageBtn = "px-2 py-1 rounded text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm";
+const pageBtn = "flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-white/60 hover:border-white/30 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm";
 
 export default function ConsultaInventarioReport({
   productos,
@@ -105,44 +105,46 @@ export default function ConsultaInventarioReport({
       </div>
 
       {!loading && totalItems > 0 && (
-        <div className="flex items-center justify-center gap-1 text-sm select-none">
-          <button
-            disabled={currentPage <= 0}
-            onClick={() => setCurrentPage(0)}
-            className={pageBtn}
-            title="Primera página"
-          >
-            &laquo;
-          </button>
-          <button
-            disabled={currentPage <= 0}
-            onClick={() => setCurrentPage(currentPage - 1)}
-            className={pageBtn}
-            title="Página anterior"
-          >
-            &lsaquo;
-          </button>
+        <div className="flex justify-center">
+          <div className="inline-flex items-center gap-0.5 rounded-xl border border-white/10 bg-white/[0.04] px-1.5 py-1.5 text-sm select-none shadow-sm">
+            <button
+              disabled={currentPage <= 0}
+              onClick={() => setCurrentPage(0)}
+              className={pageBtn}
+              title="Primera página"
+            >
+              &laquo;
+            </button>
+            <button
+              disabled={currentPage <= 0}
+              onClick={() => setCurrentPage(currentPage - 1)}
+              className={pageBtn}
+              title="Página anterior"
+            >
+              &lsaquo;
+            </button>
 
-          <span className="px-3 text-white/50">
-            Página {currentPage + 1} de {totalPages}
-          </span>
+            <span className="px-2 font-medium text-white/75 tabular-nums">
+              Página {currentPage + 1} de {totalPages}
+            </span>
 
-          <button
-            disabled={currentPage >= totalPages - 1}
-            onClick={() => setCurrentPage(currentPage + 1)}
-            className={pageBtn}
-            title="Página siguiente"
-          >
-            &rsaquo;
-          </button>
-          <button
-            disabled={currentPage >= totalPages - 1}
-            onClick={() => setCurrentPage(totalPages - 1)}
-            className={pageBtn}
-            title="Última página"
-          >
-            &raquo;
-          </button>
+            <button
+              disabled={currentPage >= totalPages - 1}
+              onClick={() => setCurrentPage(currentPage + 1)}
+              className={pageBtn}
+              title="Página siguiente"
+            >
+              &rsaquo;
+            </button>
+            <button
+              disabled={currentPage >= totalPages - 1}
+              onClick={() => setCurrentPage(totalPages - 1)}
+              className={pageBtn}
+              title="Última página"
+            >
+              &raquo;
+            </button>
+          </div>
         </div>
       )}
     </div>

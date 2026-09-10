@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import {
   ClipboardList,
   ArrowLeftRight,
@@ -6,8 +6,8 @@ import {
 import { getProductos } from "../../../api/productosApi";
 import { apiErrorMessage } from "../../../api/errors";
 import {
-  registrarMovimiento,
-  getTiposMovimiento,
+  crearAjuste,
+  completarAjuste,
 } from "../../../api/ajustesApi";
 import { getCategorias } from "../../../api/maestrosApi";
 import { canGestionarAjustesInventario } from "../../../auth/inventoryAccess";
@@ -34,7 +34,6 @@ export default function AjusteInventario() {
 
   const [productos, setProductos] = useState([]);
   const [categorias, setCategorias] = useState([]);
-  const [tiposMovimiento, setTiposMovimiento] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [aviso, setAviso] = useState(null);
@@ -50,25 +49,19 @@ export default function AjusteInventario() {
     }
   }, [sesiones]);
 
-  const tipoPorNombre = useMemo(() => {
-    return Object.fromEntries(tiposMovimiento.map((t) => [t.nombre, t.id]));
-  }, [tiposMovimiento]);
-
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         setError(null);
         setLoading(true);
-        const [prodRes, cats, tipos] = await Promise.all([
+        const [prodRes, cats] = await Promise.all([
           getProductos({ pageSize: 500 }),
           getCategorias(),
-          getTiposMovimiento(),
         ]);
         if (!cancelled) {
           setProductos(prodRes.content || []);
           setCategorias(cats || []);
-          setTiposMovimiento(tipos || []);
         }
       } catch (err) {
         if (!cancelled) {
@@ -147,64 +140,55 @@ export default function AjusteInventario() {
     }
 
     setAplicandoId(id);
-    const warnings = [];
-    let hayFallo = false;
 
-    for (const p of pendientes) {
-      const sistema = Number(p.item.stockSistema ?? 0);
-      const diff = p.fisico - sistema;
-      if (diff === 0) continue;
-      const prod = productos.find((x) => x.id === p.item.idProducto);
-      try {
-        if (!prod) throw new Error("Producto no encontrado");
-        await updateProducto(prod.id, prod, p.fisico);
-        setProductos((prev) =>
-          prev.map((x) =>
-            x.id === prod.id ? { ...x, stockActual: p.fisico } : x
-          )
-        );
-        const tipoId = tipoPorNombre.AJUSTE;
-        if (tipoId != null) {
-          try {
-            await registrarMovimiento({
-              producto_id: p.item.idProducto,
-              tipo_movimiento_id: tipoId,
-              cantidad: Math.abs(diff),
-              clasificacion: "DIFERENCIA_CONTEO",
-              referencia: `Conteo N° ${sesion.id}: ${sistema} → ${p.fisico}${sesion.motivo ? ` — ${sesion.motivo}` : ""}`,
-              requiere_auditoria: false,
-            });
-          } catch {
-            warnings.push(
-              `"${p.item.nombre}": stock aplicado, pero el movimiento no se pudo registrar en el backend.`
-            );
-          }
-        } else {
-          warnings.push(
-            `"${p.item.nombre}": stock aplicado, pero el tipo AJUSTE no está cargado en el backend.`
-          );
-        }
-      } catch {
-        hayFallo = true;
-        warnings.push(`"${p.item.nombre}": no se pudo actualizar el stock.`);
+    try {
+      const ajuste = await crearAjuste({
+        idProductos: sesion.items.map((it) => it.idProducto),
+        observaciones: sesion.descripcion,
+      });
+      const idAjuste = ajuste?.idAjuste;
+      if (idAjuste == null) {
+        throw new Error("El backend no devolvió un idAjuste.");
       }
-    }
 
-    if (hayFallo) {
-      setAplicandoId(null);
-      setError(warnings.join(" "));
-      return;
-    }
+      const resultado = await completarAjuste(idAjuste, {
+        motivo: sesion.motivo,
+        observaciones: sesion.descripcion,
+        detalles: sesion.items.map((it) => ({
+          idProducto: it.idProducto,
+          stockFisico: Number(it.stockFisico),
+        })),
+      });
 
-    setSesiones((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, estado: "APLICADO" } : s))
-    );
-    setAplicandoId(null);
-    if (warnings.length) setAviso(warnings.join(" "));
-    else
-      setAviso(
-        `Lista N° ${sesion.id} aplicada. El stock se sobreescribió con el conteo físico.`
+      setSesiones((prev) =>
+        prev.map((s) =>
+          s.id === id
+            ? {
+                ...s,
+                estado: "APLICADO",
+                idAjuste,
+                numeroInforme: resultado?.numeroInforme || "",
+              }
+            : s
+        )
       );
+
+      const re = await getProductos({ pageSize: 500 });
+      if (re?.content) setProductos(re.content);
+
+      setAplicandoId(null);
+      setAviso(
+        resultado?.numeroInforme
+          ? `Ajuste ${resultado.numeroInforme} aplicado. El stock se actualizó al conteo físico.`
+          : `Lista N° ${sesion.id} aplicada. El stock se actualizó al conteo físico.`
+      );
+    } catch (err) {
+      setAplicandoId(null);
+      setError(
+        apiErrorMessage(err) ||
+          "No se pudo aplicar el ajuste. Verificá la conexión con el backend y reintentá."
+      );
+    }
   }
 
   if (!puedeRegistrar) {

@@ -1,34 +1,53 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Check, Search, PackageOpen, X, Barcode } from "lucide-react";
 import { stockEntero } from "./utils";
-import { getProductoByCodigo } from "../../../../api/productosApi";
+import { getProductos, getProductoByCodigo } from "../../../../api/productosApi";
 
 export default function AjusteStock({ productos, categorias, disabled, onGenerar }) {
   const [categoria, setCategoria] = useState("");
   const [seleccion, setSeleccion] = useState([]);
   const [search, setSearch] = useState("");
-  const [motivoTipo, setMotivoTipo] = useState("");
-  const [motivoCustom, setMotivoCustom] = useState("");
+  const [motivo, setMotivo] = useState("");
+  const [motivoError, setMotivoError] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [codigoNoEncontrado, setCodigoNoEncontrado] = useState("");
+  const [resultados, setResultados] = useState([]);
+  const rootRef = useRef(null);
 
-  const q = search.trim().toLowerCase();
   const idsSeleccion = new Set(seleccion.map((p) => p.id));
+  const visibles = resultados.filter((p) => !idsSeleccion.has(p.id));
+
+  useEffect(() => {
+    function cerrar(e) {
+      if (rootRef.current && !rootRef.current.contains(e.target)) setShowDropdown(false);
+    }
+    document.addEventListener("mousedown", cerrar);
+    return () => document.removeEventListener("mousedown", cerrar);
+  }, []);
+
+  useEffect(() => {
+    if (!showDropdown) return;
+    let activo = true;
+    const qry = search.trim();
+    const t = setTimeout(async () => {
+      try {
+        const res = await getProductos({ search: qry || undefined, pageSize: 20 });
+        if (activo) setResultados(res?.content || []);
+      } catch {
+        if (activo) setResultados([]);
+      }
+    }, qry.length > 0 ? 300 : 0);
+    return () => {
+      activo = false;
+      clearTimeout(t);
+    };
+  }, [search, showDropdown]);
 
   const candidatos = categoria
     ? productos.filter(
         (p) => Number(p.idCategoria) === Number(categoria) && !idsSeleccion.has(p.id)
       )
     : [];
-
-  const resultados = search.trim()
-    ? productos.filter(
-        (p) =>
-          !idsSeleccion.has(p.id) &&
-          (p.nombre?.toLowerCase().includes(q) ||
-            (p.codigoBarras && String(p.codigoBarras).includes(search.trim())))
-      )
-    : productos.filter((p) => !idsSeleccion.has(p.id)).slice(0, 20);
 
   function toggleProducto(p) {
     setSeleccion((prev) =>
@@ -39,25 +58,17 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
   async function buscarPorCodigo(codigo) {
     const c = String(codigo ?? "").trim();
     if (!c) return;
-    const local = productos.find(
-      (p) => p.codigoBarras && String(p.codigoBarras).trim().toLowerCase() === c.toLowerCase()
-    );
-    if (local) {
-      toggleProducto(local);
+    let prod = null;
+    try {
+      prod = await getProductoByCodigo(c);
+    } catch {
+      prod = null;
+    }
+    if (prod) {
+      toggleProducto(prod);
       setSearch("");
       setShowDropdown(false);
       return;
-    }
-    try {
-      const prod = await getProductoByCodigo(c);
-      if (prod) {
-        toggleProducto(prod);
-        setSearch("");
-        setShowDropdown(false);
-        return;
-      }
-    } catch {
-      /* sin match */
     }
     setCodigoNoEncontrado(c);
     setTimeout(() => setCodigoNoEncontrado(""), 2500);
@@ -75,17 +86,21 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
     setSeleccion([]);
     setCategoria("");
     setSearch("");
-    setMotivoTipo("");
-    setMotivoCustom("");
+    setMotivo("");
+    setMotivoError(false);
   }
 
   function generar() {
     if (seleccion.length === 0) return;
+    if (!motivo) {
+      setMotivoError(true);
+      return;
+    }
     const cat = categorias.find((c) => Number(c.id) === Number(categoria));
     onGenerar({
       productos: seleccion,
       descripcion: cat?.nombre || (categoria ? String(categoria) : "Manual"),
-      motivo: motivoTipo === "Motivo" ? motivoCustom.trim() : motivoTipo,
+      motivo,
     });
     limpiar();
   }
@@ -122,7 +137,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
           <span className="text-xs font-medium text-[#9a9aac]">
             Buscar producto para agregar
           </span>
-          <div className="relative">
+          <div className="relative" ref={rootRef}>
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5a5a6e]" />
             <input
               type="search"
@@ -139,8 +154,8 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
                 }
               }}
               disabled={disabled}
-              placeholder="Escanear código de barras o buscar por nombre…"
-              className="w-full rounded-lg border border-[#2a2a32] bg-[#111114] pl-10 pr-12 py-2.5 text-sm text-[#f1f1f3] placeholder:text-[#4a4a5a] focus:border-[#22c55e]/50 focus:ring-1 focus:ring-[#22c55e]/20 outline-none disabled:opacity-50"
+placeholder="Escanear código de barras o buscar por nombre…"
+                className="w-full rounded-lg border border-[#2a2a32] bg-[#111114] pl-10 pr-12 py-2.5 text-sm text-[#f1f1f3] placeholder:text-[#4a4a5a] focus:border-[#22c55e]/50 focus:ring-1 focus:ring-[#22c55e]/20 outline-none disabled:opacity-50"
             />
             <button
               type="button"
@@ -158,13 +173,15 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
             ) : null}
             {showDropdown && (
               <div className="absolute z-30 left-0 right-0 mt-1 rounded-lg border border-[#1e1e24] bg-[#111114] shadow-xl overflow-hidden max-h-60 overflow-y-auto">
-                {resultados.length === 0 ? (
+                {visibles.length === 0 ? (
                   <p className="p-3 text-sm text-[#5a5a6e]">
-                    No hay coincidencias.
+                    {resultados.length === 0
+                      ? "Sin resultados."
+                      : "Todos los resultados ya están en la lista."}
                   </p>
                 ) : (
                   <ul className="divide-y divide-[#1e1e24]">
-                    {resultados.map((p) => (
+                    {visibles.map((p) => (
                       <li key={p.id}>
                         <button
                           type="button"
@@ -197,27 +214,26 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
             Motivo
           </span>
           <select
-            value={motivoTipo}
-            onChange={(e) => setMotivoTipo(e.target.value)}
+            value={motivo}
+            onChange={(e) => {
+              setMotivo(e.target.value);
+              setMotivoError(false);
+            }}
             disabled={disabled}
             className="w-full rounded-lg border border-[#2a2a32] bg-[#111114] px-3 py-2.5 text-sm text-[#f1f1f3] focus:border-[#22c55e]/50 focus:ring-1 focus:ring-[#22c55e]/20 outline-none disabled:opacity-50"
           >
             <option value="">Seleccionar motivo…</option>
-            <option value="Robo">Robo</option>
-            <option value="Merma">Merma</option>
-            <option value="Regalo">Regalo</option>
-            <option value="Error">Error</option>
-            <option value="Motivo">Motivo</option>
+            <option value="ROBO">Robo</option>
+            <option value="MERMA">Merma</option>
+            <option value="REGALO">Regalo</option>
+            <option value="ERROR">Error</option>
+            <option value="OTROS">Otros</option>
           </select>
-          {motivoTipo === "Motivo" ? (
-            <input
-              type="text"
-              value={motivoCustom}
-              onChange={(e) => setMotivoCustom(e.target.value)}
-              disabled={disabled}
-              className="w-full rounded-lg border border-[#2a2a32] bg-[#111114] px-3 py-2.5 text-sm text-[#f1f1f3] placeholder:text-[#4a4a5a] focus:border-[#22c55e]/50 focus:ring-1 focus:ring-[#22c55e]/20 outline-none disabled:opacity-50"
-            />
-          ) : null}
+          {motivoError && (
+            <span className="mt-1 block text-xs text-rose-400">
+              Seleccioná un motivo para la lista.
+            </span>
+          )}
         </label>
 
         <label className="block space-y-1.5">

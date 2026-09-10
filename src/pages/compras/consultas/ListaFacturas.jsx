@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Search, X, Eye, ArrowLeft } from "lucide-react";
 import {
   getFacturasCompra,
+  getFacturaCompraById,
   apiErrorMessage,
 } from "../../../api/facturasCompraApi";
 import { getProveedores } from "../../../api/proveedoresApi";
@@ -12,7 +13,7 @@ const money = (n) => {
   return Number.isFinite(v) ? `₲ ${v.toLocaleString("es-PY", { maximumFractionDigits: 0 })}` : "—";
 };
 
-const pageBtn = "px-2 py-1 rounded text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm";
+const pageBtn = "flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-white/60 hover:border-white/30 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm";
 
 const fmtFecha = (iso) => {
   if (!iso) return "—";
@@ -57,6 +58,7 @@ export default function ListaFacturas() {
   const [hasta, setHasta] = useState("");
   const [condicion, setCondicion] = useState("");
   const [seleccionada, setSeleccionada] = useState(null);
+  const [cargandoDetalle, setCargandoDetalle] = useState(false);
 
   useEffect(() => {
     let activo = true;
@@ -110,6 +112,20 @@ export default function ListaFacturas() {
 
   useEffect(() => { setPage(0); }, [idProveedor, texto, condicion, desde, hasta]);
   useEffect(() => { setTotalPages(Math.max(1, Math.ceil(filtradas.length / 10))); }, [filtradas]);
+
+  async function verDetalle(f) {
+    setSeleccionada(f);
+    setCargandoDetalle(true);
+    try {
+      const res = await getFacturaCompraById(f.idFactura);
+      const detalle = res?.data ?? res;
+      if (detalle?.idFactura) setSeleccionada(detalle);
+    } catch {
+      /* si falla, se mantiene la fila del listado */
+    } finally {
+      setCargandoDetalle(false);
+    }
+  }
 
   const columns = 8;
 
@@ -254,7 +270,7 @@ export default function ListaFacturas() {
                     <td className="px-4 py-3 text-right">
                       <button
                         type="button"
-                        onClick={() => setSeleccionada(f)}
+                        onClick={() => verDetalle(f)}
                         className="p-1.5 rounded text-white/40 hover:text-[var(--accent-green)] hover:bg-[var(--accent-green)]/10 transition-colors"
                         title="Ver detalle" aria-label="Ver detalle"
                       >
@@ -270,31 +286,33 @@ export default function ListaFacturas() {
       </div>
 
       {!loading && paginadas.length > 0 && (
-        <div className="flex items-center justify-center gap-1 text-sm select-none">
-          <button disabled={page <= 0} onClick={() => setPage(0)} className={pageBtn} title="Primera página">
-            &laquo;
-          </button>
-          <button disabled={page <= 0} onClick={() => setPage(page - 1)} className={pageBtn} title="Página anterior">
-            &lsaquo;
-          </button>
-          <span className="px-3 text-white/50">Página {page + 1} de {totalPages}</span>
-          <button disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)} className={pageBtn} title="Página siguiente">
-            &rsaquo;
-          </button>
-          <button disabled={page >= totalPages - 1} onClick={() => setPage(totalPages - 1)} className={pageBtn} title="Última página">
-            &raquo;
-          </button>
+        <div className="flex justify-center">
+          <div className="inline-flex items-center gap-0.5 rounded-xl border border-white/10 bg-white/[0.04] px-1.5 py-1.5 text-sm select-none shadow-sm">
+            <button disabled={page <= 0} onClick={() => setPage(0)} className={pageBtn} title="Primera página">
+              &laquo;
+            </button>
+            <button disabled={page <= 0} onClick={() => setPage(page - 1)} className={pageBtn} title="Página anterior">
+              &lsaquo;
+            </button>
+            <span className="px-2 font-medium text-white/75 tabular-nums">Página {page + 1} de {totalPages}</span>
+            <button disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)} className={pageBtn} title="Página siguiente">
+              &rsaquo;
+            </button>
+            <button disabled={page >= totalPages - 1} onClick={() => setPage(totalPages - 1)} className={pageBtn} title="Última página">
+              &raquo;
+            </button>
+          </div>
         </div>
       )}
 
       {seleccionada && (
-        <DetalleFactura factura={seleccionada} onClose={() => setSeleccionada(null)} />
+        <DetalleFactura factura={seleccionada} cargando={cargandoDetalle} onClose={() => setSeleccionada(null)} />
       )}
     </div>
   );
 }
 
-function DetalleFactura({ factura, onClose }) {
+function DetalleFactura({ factura, cargando = false, onClose }) {
   const detalles = Array.isArray(factura.detalles) ? factura.detalles : [];
 
   return (
@@ -345,7 +363,15 @@ function DetalleFactura({ factura, onClose }) {
                 </tr>
               </thead>
               <tbody>
-                {detalles.length === 0 && (
+                {cargando && detalles.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-6 text-center text-white/30">
+                      <span className="inline-block h-4 w-16 bg-white/10 rounded animate-pulse align-middle mr-2" />
+                      Cargando productos…
+                    </td>
+                  </tr>
+                )}
+                {!cargando && detalles.length === 0 && (
                   <tr><td colSpan={4} className="px-4 py-6 text-center text-white/30">Sin productos.</td></tr>
                 )}
                 {detalles.map((d) => (
@@ -371,7 +397,7 @@ function DetalleFactura({ factura, onClose }) {
             <div className="space-y-1 font-mono text-sm">
               <div className="flex items-center justify-between text-white/70">
                 <span className="text-[#5a5a6e]">Exentas:</span>
-                <span>{money(f.subtotalExento ?? 0)}</span>
+                <span>{money(factura.subtotalExento ?? 0)}</span>
               </div>
               <div className="flex items-center justify-between text-white/70">
                 <span className="text-[#5a5a6e]">IVA 5%:</span>

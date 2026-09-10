@@ -16,7 +16,7 @@ import RecepcionPedidoModal from "../recepcion/RecepcionPedidoModal";
 const ESTADOS = ["solicitado", "recibido", "cancelado"];
 
 const pageBtn =
-  "px-2 py-1 rounded text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm";
+  "flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-white/60 hover:border-white/30 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm";
 
 const fmtFecha = (iso) => {
   if (!iso) return "—";
@@ -252,16 +252,18 @@ export default function PedidosABM() {
       </div>
 
       {!sinBackend && pedidos.length > 0 && (
-        <div className="flex items-center justify-center gap-1 text-sm select-none">
-          <button type="button" disabled={page <= 0} onClick={() => setPage(0)}
-            className={pageBtn} title="Primera página">&laquo;</button>
-          <button type="button" disabled={page <= 0} onClick={() => setPage((p) => p - 1)}
-            className={pageBtn} title="Página anterior">&lsaquo;</button>
-          <span className="px-3 text-[#5a5a6e]">Página {page + 1} de {totalPages}</span>
-          <button type="button" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}
-            className={pageBtn} title="Página siguiente">&rsaquo;</button>
-          <button type="button" disabled={page >= totalPages - 1} onClick={() => setPage(totalPages - 1)}
-            className={pageBtn} title="Última página">&raquo;</button>
+        <div className="flex justify-center">
+          <div className="inline-flex items-center gap-0.5 rounded-xl border border-white/10 bg-white/[0.04] px-1.5 py-1.5 text-sm select-none shadow-sm">
+            <button type="button" disabled={page <= 0} onClick={() => setPage(0)}
+              className={pageBtn} title="Primera página">&laquo;</button>
+            <button type="button" disabled={page <= 0} onClick={() => setPage((p) => p - 1)}
+              className={pageBtn} title="Página anterior">&lsaquo;</button>
+            <span className="px-2 font-medium text-white/75 tabular-nums">Página {page + 1} de {totalPages}</span>
+            <button type="button" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}
+              className={pageBtn} title="Página siguiente">&rsaquo;</button>
+            <button type="button" disabled={page >= totalPages - 1} onClick={() => setPage(totalPages - 1)}
+              className={pageBtn} title="Última página">&raquo;</button>
+          </div>
         </div>
       )}
 

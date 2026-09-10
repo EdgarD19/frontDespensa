@@ -67,3 +67,48 @@ export async function getTiposMovimiento() {
     return [];
   }
 }
+
+/** Normaliza una respuesta de ajuste de inventario (crear/completar/listado). */
+export function normalizeAjuste(a) {
+  if (!a) return null;
+  return {
+    idAjuste: a.idAjuste ?? a.id ?? null,
+    numeroInforme: a.numeroInforme ?? "",
+    estado: a.estado ?? "",
+    motivo: a.motivo ?? "",
+    motivoDescripcion: a.motivoDescripcion ?? "",
+    observaciones: a.observaciones ?? "",
+    cantidadItems: a.cantidadItems ?? 0,
+    fechaCreacion: a.fechaCreacion ?? "",
+    fechaConfirmacion: a.fechaConfirmacion ?? "",
+    detalles: Array.isArray(a.detalles) ? a.detalles : [],
+  };
+}
+
+/**
+ * POST crear ajuste de inventario (borrador con la lista de productos).
+ * AjusteCrearRequest: { idProductos: number[], observaciones?: string }
+ */
+export async function crearAjuste({ idProductos, observaciones } = {}) {
+  const { data } = await api.post("/api/ajuste-inventario", {
+    idProductos,
+    observaciones: observaciones || undefined,
+  });
+  return normalizeAjuste(data);
+}
+
+/**
+ * POST completar ajuste con conteo físico y motivo.
+ * AjusteCompletarRequest: { motivo, observaciones?, detalles: [{ idProducto, stockFisico }] }
+ */
+export async function completarAjuste(
+  idAjuste,
+  { motivo, observaciones, detalles } = {}
+) {
+  const { data } = await api.post(`/api/ajuste-inventario/${idAjuste}/completar`, {
+    motivo,
+    observaciones: observaciones || undefined,
+    detalles,
+  });
+  return normalizeAjuste(data);
+}

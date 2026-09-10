@@ -109,7 +109,7 @@ export default function ProductForm({
               value={formData.descripcion || ""}
               onChange={handleChange}
               
-              placeholder="Descripcion del producto (opcional)"
+              placeholder="Descripcion del producto"
               className={inputClass}
             />
           </label>
