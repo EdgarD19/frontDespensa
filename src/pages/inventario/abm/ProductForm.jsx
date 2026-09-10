@@ -204,7 +204,9 @@ export default function ProductForm({
             </div>
 
             <label className={labelClass}>
-              <span className={labelText}>Unidad de medida</span>
+              <span className={labelText}>
+                Unidad de medida <span className="text-rose-400">*</span>
+              </span>
               <select
                 name="idUnidad"
                 value={formData.idUnidad ?? ""}
@@ -212,9 +214,10 @@ export default function ProductForm({
                   setFormData((prev) => ({ ...prev, idUnidad: e.target.value }))
                 }
                 disabled={loading}
+                required
                 className={selectClass}
               >
-                <option value="">Seleccionar...</option>
+                <option value="" disabled>Seleccionar...</option>
                 {unidadOptions.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.nombre}{u.abreviatura ? ` (${u.abreviatura})` : ""}

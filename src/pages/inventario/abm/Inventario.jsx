@@ -176,6 +176,11 @@ export default function Inventario() {
       return;
     }
 
+    if (!data.idUnidad) {
+      setError("La unidad de medida es obligatoria.");
+      return;
+    }
+
     if (!editingId) {
       const cb = String(data.codigoBarras || "").replace(/\D/g, "");
       if (cb && !/^\d{8,13}$/.test(cb)) {

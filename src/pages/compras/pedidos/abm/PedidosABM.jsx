@@ -57,6 +57,8 @@ export default function PedidosABM() {
   const [modal, setModal] = useState(false);     // false | "crear" | "editar"
   const [pedidoSel, setPedidoSel] = useState(null);
   const [recibirSel, setRecibirSel] = useState(null);
+  const [cancelarSel, setCancelarSel] = useState(null);
+  const [cancelando, setCancelando] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
   const [proveedores, setProveedores] = useState([]);
@@ -128,15 +130,18 @@ export default function PedidosABM() {
     }
   }
 
-  async function handleCancelar(p) {
-    const nombre = p.nombreProveedor || `Pedido #${p.idPedido}`;
-    if (!window.confirm(`¿Cancelar el pedido a ${nombre}? No se modificará el stock.`)) return;
+  async function confirmarCancelar() {
+    if (!cancelarSel) return;
+    setCancelando(true);
     setError(null);
     try {
-      await cancelarPedido(p.idPedido);
+      await cancelarPedido(cancelarSel.idPedido);
+      setCancelarSel(null);
       await cargar();
     } catch (err) {
       setError(apiErrorMessage(err) || "No se pudo cancelar el pedido");
+    } finally {
+      setCancelando(false);
     }
   }
 
@@ -225,7 +230,7 @@ export default function PedidosABM() {
                                 <PenLine className="w-4 h-4" />
                               </button>
                               {cancelable && (
-                                <button onClick={() => handleCancelar(p)} title="Cancelar pedido"
+                                <button onClick={() => setCancelarSel(p)} title="Cancelar pedido"
                                   className="p-1.5 text-white/40 hover:text-red-400 transition-colors">
                                   <XCircle className="w-4 h-4" />
                                 </button>
@@ -310,6 +315,38 @@ export default function PedidosABM() {
           onClose={() => setRecibirSel(null)}
           onCambio={() => cargar()}
         />
+      )}
+
+      {cancelarSel && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#1a1a20] border border-white/10 rounded-xl w-full max-w-sm shadow-2xl p-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-red-500/10 text-red-400">
+                <XCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-white">Cancelar pedido</h3>
+                <p className="text-sm text-[#7a7a8c]">
+                  {cancelarSel.nombreProveedor || `Pedido #${cancelarSel.idPedido}`}
+                </p>
+              </div>
+            </div>
+            <p className="text-sm text-white/70">
+              ¿Cancelar el pedido a {cancelarSel.nombreProveedor || `#${cancelarSel.idPedido}`}?
+              No se modificará el stock.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setCancelarSel(null)} disabled={cancelando}
+                className="rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-4 py-2 text-sm text-[#9a9aac] hover:text-white disabled:opacity-40 transition-colors">
+                No
+              </button>
+              <button type="button" onClick={confirmarCancelar} disabled={cancelando}
+                className="rounded-lg bg-red-500 hover:bg-red-400 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40 transition-colors">
+                {cancelando ? "Cancelando…" : "Sí, cancelar"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
