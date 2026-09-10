@@ -36,6 +36,7 @@ export function apiErrorMessage(err) {
   const msg =
     d.detail ??
     d.message ??
+    d.mensaje ??
     d.details ??
     d.error ??
     d.title ??

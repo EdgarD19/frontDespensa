@@ -62,9 +62,7 @@ export default function ConsultaInventarioReport({
                   rawStock === "" || rawStock === undefined || rawStock === null;
                 const stock = Number(rawStock ?? 0);
                 const stockText =
-                  stockUnknown || !Number.isFinite(stock)
-                    ? "—"
-                    : `${stock}${p.unidadMedida ? ` ${p.unidadMedida}` : ""}`;
+                  stockUnknown || !Number.isFinite(stock) ? "—" : `${stock}`;
                 const estado = getEstadoStock(p);
                 const estadoCfg = estadoStockConfig[estado] || estadoStockConfig.desconocido;
 

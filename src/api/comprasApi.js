@@ -58,27 +58,35 @@ export async function cancelarPedido(id) {
   return data;
 }
 
-/** Listar pedidos (paginado, filtro por estado). */
-export async function getPedidos(params = {}) {
-  const { data } = await api.get("/api/pedidos", {
-    params: {
-      estado: params.estado || undefined,
-      page: params.page ?? 0,
-      pageSize: params.pageSize ?? 20,
-    },
+/** Listar pedidos (paginado, filtro por estado → /api/pedidos/estado/{estado}). */
+export async function getPedidos({ estado, page = 0, pageSize = 20 } = {}) {
+  const path = estado
+    ? `/api/pedidos/estado/${encodeURIComponent(String(estado).toUpperCase())}`
+    : "/api/pedidos";
+  const { data } = await api.get(path, {
+    params: { page, size: pageSize, sortBy: "fechaCreacion", sortDirection: "desc" },
   });
+  const pageData = data?.data ?? data ?? {};
+  const content = Array.isArray(pageData.content) ? pageData.content : [];
   return {
-    content: data?.content || [],
-    totalPages: data?.totalPages ?? 0,
-    totalElements: data?.totalElements ?? 0,
-    page: data?.page ?? 0,
+    content,
+    totalElements: pageData.totalElements ?? content.length,
+    totalPages: pageData.totalPages ?? 0,
+    page: pageData.page ?? 0,
+    size: pageData.size ?? 0,
   };
 }
 
 /** Obtener un pedido con sus detalles. */
 export async function getPedido(id) {
   const { data } = await api.get(`/api/pedidos/${id}`);
-  return data;
+  return data?.data ?? data;
+}
+
+/** Obtener pedido precargado para recibir y generar la factura de compra. */
+export async function getPedidoParaRecibir(id) {
+  const { data } = await api.get(`/api/pedidos/${id}/para-recibir`);
+  return data?.data ?? data;
 }
 
 /** Listar empleados (selector). */

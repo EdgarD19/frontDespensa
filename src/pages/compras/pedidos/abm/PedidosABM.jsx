@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Plus, XCircle, PenLine, Trash2, ChevronLeft, ChevronRight, X, Search } from "lucide-react";
+import { Plus, XCircle, PenLine, Trash2, X, Search, PackageCheck } from "lucide-react";
 import {
   getPedidos,
   getPedido,
+  getPedidoParaRecibir,
   crearPedido,
   modificarPedido,
   cancelarPedido,
@@ -10,8 +11,12 @@ import {
 } from "../../../../api/comprasApi";
 import { getProveedores } from "../../../../api/proveedoresApi";
 import { getProductos } from "../../../../api/productosApi";
+import RecepcionPedidoModal from "../recepcion/RecepcionPedidoModal";
 
 const ESTADOS = ["solicitado", "recibido", "cancelado"];
+
+const pageBtn =
+  "px-2 py-1 rounded text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm";
 
 const fmtFecha = (iso) => {
   if (!iso) return "—";
@@ -51,6 +56,7 @@ export default function PedidosABM() {
 
   const [modal, setModal] = useState(false);     // false | "crear" | "editar"
   const [pedidoSel, setPedidoSel] = useState(null);
+  const [recibirSel, setRecibirSel] = useState(null);
   const [guardando, setGuardando] = useState(false);
 
   const [proveedores, setProveedores] = useState([]);
@@ -84,7 +90,8 @@ export default function PedidosABM() {
     (async () => {
       try {
         const p = await getProveedores({ pageSize: 100 });
-        setProveedores(p?.content || p?.data?.content || p || []);
+        const list = p?.content || p?.data?.content || p || [];
+        setProveedores(list.filter((x) => x.activo !== false));
       } catch {
         setProveedores([]);
       }
@@ -122,14 +129,24 @@ export default function PedidosABM() {
   }
 
   async function handleCancelar(p) {
-    const nombre = p.proveedor || `Pedido #${p.id}`;
+    const nombre = p.nombreProveedor || `Pedido #${p.idPedido}`;
     if (!window.confirm(`¿Cancelar el pedido a ${nombre}? No se modificará el stock.`)) return;
     setError(null);
     try {
-      await cancelarPedido(p.id);
+      await cancelarPedido(p.idPedido);
       await cargar();
     } catch (err) {
       setError(apiErrorMessage(err) || "No se pudo cancelar el pedido");
+    }
+  }
+
+  async function abrirRecepcion(p) {
+    setError(null);
+    try {
+      const data = await getPedidoParaRecibir(p.idPedido);
+      setRecibirSel(data);
+    } catch (err) {
+      setError(apiErrorMessage(err) || "No se pudo cargar el pedido para recepcionar");
     }
   }
 
@@ -179,31 +196,46 @@ export default function PedidosABM() {
           <tbody>
             {pedidos.map((p) => {
               const e = normEstado(p.estado);
-              const editable = e === "solicitado";
+              const editable = p.puedeEditarse ?? (e === "solicitado");
+              const cancelable = p.puedeCancelarse ?? (e === "solicitado");
+              const recibible = p.puedeRecibirse ?? (e === "solicitado");
               return (
-                <tr key={p.id} className="border-b border-white/5 hover:bg-white/[0.02]">
-                  <td className="py-2.5 pr-2 text-white font-medium">#{p.id}</td>
-                  <td className="py-2.5 px-2 text-white/90">{p.proveedor || "—"}</td>
-                  <td className="py-2.5 px-2 text-white/60 whitespace-nowrap">{fmtFecha(p.fechaEmision)}</td>
+                <tr key={p.idPedido} className="border-b border-white/5 hover:bg-white/[0.02]">
+                  <td className="py-2.5 pr-2 text-white font-medium">#{p.idPedido}</td>
+                  <td className="py-2.5 px-2 text-white/90">{p.nombreProveedor || "—"}</td>
+                  <td className="py-2.5 px-2 text-white/60 whitespace-nowrap">{fmtFecha(p.fechaCreacion)}</td>
                   <td className="py-2.5 px-2">
                     <EstadoBadge estado={p.estado} />
                   </td>
                   <td className="py-2.5 px-2 text-white/50 text-xs max-w-[220px] truncate">{p.observaciones || "—"}</td>
                   <td className="py-2.5 pl-2 text-right">
                     <div className="flex items-center justify-end gap-1.5">
-                      {editable && (
-                        <>
-                          <button onClick={() => abrirEditar(p.id)} title="Editar"
-                            className="p-1.5 text-white/40 hover:text-yellow-400 transition-colors">
-                            <PenLine className="w-4 h-4" />
-                          </button>
-                          <button onClick={() => handleCancelar(p)} title="Cancelar pedido"
-                            className="p-1.5 text-white/40 hover:text-red-400 transition-colors">
-                            <XCircle className="w-4 h-4" />
-                          </button>
-                        </>
+                      {recibible && (
+                        <button onClick={() => abrirRecepcion(p)} title="Recepcionar pedido"
+                          className="p-1.5 text-white/40 hover:text-[#22c55e] transition-colors">
+                          <PackageCheck className="w-4 h-4" />
+                        </button>
                       )}
-                      {!editable && <span className="text-[#5a5a6e] text-xs">—</span>}
+                      {(editable || recibible) ? (
+                        <>
+                          {editable && (
+                            <>
+                              <button onClick={() => abrirEditar(p.idPedido)} title="Editar"
+                                className="p-1.5 text-white/40 hover:text-yellow-400 transition-colors">
+                                <PenLine className="w-4 h-4" />
+                              </button>
+                              {cancelable && (
+                                <button onClick={() => handleCancelar(p)} title="Cancelar pedido"
+                                  className="p-1.5 text-white/40 hover:text-red-400 transition-colors">
+                                  <XCircle className="w-4 h-4" />
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-[#5a5a6e] text-xs">—</span>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -220,18 +252,16 @@ export default function PedidosABM() {
       </div>
 
       {!sinBackend && pedidos.length > 0 && (
-        <div className="flex items-center justify-between text-xs text-[#5a5a6e]">
-          <span>Página {page + 1} de {totalPages}</span>
-          <div className="flex gap-2">
-            <button onClick={() => setPage((p) => Math.max(p - 1, 0))} disabled={page === 0}
-              className="px-3 py-1 rounded bg-white/5 hover:bg-white/10 disabled:opacity-40 transition-colors">
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button onClick={() => setPage((p) => Math.min(p + 1, totalPages - 1))} disabled={page >= totalPages - 1}
-              className="px-3 py-1 rounded bg-white/5 hover:bg-white/10 disabled:opacity-40 transition-colors">
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+        <div className="flex items-center justify-center gap-1 text-sm select-none">
+          <button type="button" disabled={page <= 0} onClick={() => setPage(0)}
+            className={pageBtn} title="Primera página">&laquo;</button>
+          <button type="button" disabled={page <= 0} onClick={() => setPage((p) => p - 1)}
+            className={pageBtn} title="Página anterior">&lsaquo;</button>
+          <span className="px-3 text-[#5a5a6e]">Página {page + 1} de {totalPages}</span>
+          <button type="button" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}
+            className={pageBtn} title="Página siguiente">&rsaquo;</button>
+          <button type="button" disabled={page >= totalPages - 1} onClick={() => setPage(totalPages - 1)}
+            className={pageBtn} title="Última página">&raquo;</button>
         </div>
       )}
 
@@ -256,7 +286,7 @@ export default function PedidosABM() {
             setError(null);
             try {
               if (modal === "editar") {
-                await modificarPedido(pedidoSel.id, body);
+                await modificarPedido(pedidoSel.idPedido, body);
               } else {
                 await crearPedido(body);
               }
@@ -269,6 +299,14 @@ export default function PedidosABM() {
             }
           }}
           onCerrar={() => setModal(false)}
+        />
+      )}
+
+      {recibirSel && (
+        <RecepcionPedidoModal
+          pedido={recibirSel}
+          onClose={() => setRecibirSel(null)}
+          onCambio={() => cargar()}
         />
       )}
     </div>
@@ -296,11 +334,11 @@ function PedidoModal({
   });
 
   const [lineas, setLineas] = useState(() => {
-    if (pedido?.items?.length) {
-      return pedido.items.map((it) => ({
+    if (pedido?.detalles?.length) {
+      return pedido.detalles.map((it) => ({
         idProducto: it.idProducto,
-        nombre: it.nombre || "",
-        unidadMedida: it.unidadMedida || "",
+        nombre: it.nombreProducto || "",
+        unidadMedida: it.nombreUnidadMedida || "",
         cantidad: Number(it.cantidad) || 1,
       }));
     }
@@ -324,7 +362,7 @@ function PedidoModal({
   };
 
   const actualizarCantidad = (id, val) => {
-    const n = Math.floor(parseFloat(String(val).replace(",", ".")));
+    const n = parseFloat(String(val).replace(",", "."));
     setLineas((prev) => prev.map((l) => l.idProducto === id ? { ...l, cantidad: Number.isFinite(n) && n > 0 ? n : 1 } : l));
   };
 
@@ -339,7 +377,7 @@ function PedidoModal({
     onGuardar({
       idProveedor: Number(form.idProveedor),
       observaciones: form.observaciones.trim() || null,
-      lineas: lineas.map((l) => ({ idProducto: l.idProducto, cantidad: l.cantidad })),
+      detalles: lineas.map((l) => ({ idProducto: l.idProducto, cantidad: l.cantidad })),
     });
   };
 
@@ -348,7 +386,7 @@ function PedidoModal({
       <div className="bg-[#1a1a20] border border-white/10 rounded-2xl w-full max-w-3xl max-h-[85vh] overflow-y-auto shadow-2xl">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
           <h2 className="text-lg font-semibold text-white">
-            {esEditar ? `Editar Pedido #${pedido?.id}` : "Generar Pedido"}
+            {esEditar ? `Editar Pedido #${pedido?.idPedido}` : "Generar Pedido"}
           </h2>
           <button onClick={onCerrar} className="p-1 text-white/40 hover:text-white transition-colors"><X className="w-5 h-5" /></button>
         </div>
@@ -362,6 +400,11 @@ function PedidoModal({
               <select value={form.idProveedor} onChange={(e) => setForm({ ...form, idProveedor: e.target.value })}
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#22c55e]/50">
                 <option value="" className="bg-[#111114]">Seleccionar proveedor</option>
+                {(esEditar && pedido?.idProveedor && !proveedores.some((x) => String(x.id ?? x.idProveedor) === String(pedido.idProveedor))) && (
+                  <option value={pedido.idProveedor} className="bg-[#111114]">
+                    {pedido.nombreProveedor || `Proveedor #${pedido.idProveedor}`} (inactivo)
+                  </option>
+                )}
                 {proveedores.map((p) => (
                   <option key={p.id ?? p.idProveedor} value={p.id ?? p.idProveedor} className="bg-[#111114]">{p.nombre}</option>
                 ))}
@@ -435,8 +478,8 @@ function PedidoModal({
                     <tr key={l.idProducto} className="border-b border-white/5 hover:bg-white/[0.02]">
                       <td className="py-2 pr-2 text-white">{l.nombre || `Producto #${l.idProducto}`}</td>
                       <td className="py-2 px-2 text-center text-white/50">{l.unidadMedida || "—"}</td>
-                      <td className="py-2 px-2">
-                        <input type="number" min="1" step="1" value={l.cantidad}
+<td className="py-2 px-2">
+  <input type="number" min="0.01" step="any" value={l.cantidad}
                           onChange={(e) => actualizarCantidad(l.idProducto, e.target.value)}
                           className="w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-sm text-white text-right focus:outline-none focus:border-[#22c55e]/50" />
                       </td>
