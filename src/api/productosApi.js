@@ -3,116 +3,103 @@ import { apiErrorMessage } from "./errors";
 
 export { apiErrorMessage };
 
-// ---------------------------------------------------------------------------
 // Helpers internos
-// ---------------------------------------------------------------------------
-
-function parseStockActual(raw) {
-  if (raw === "" || raw === undefined || raw === null || raw === "—") return 0;
-  const n = parseFloat(String(raw).replace(",", "."));
-  return Number.isFinite(n) ? n : 0;
-}
 
 /**
- * Convierte el ProductResponse del backend al shape que usa el frontend.
+ * Convierte el ProductoResponse del backend al shape que usa el frontend.
  *
- * El backend (ProductMapper) devuelve ÚNICAMENTE:
- *   { id, name, price, description, code }
- *
- * Campos como category_name, unit_name, stock_actual, id_categoria, etc.
- * NO vienen en la respuesta — quedan vacíos hasta que el backend los exponga.
+ * El backend (ProductoController -> ProductoResponse) devuelve:
+ *   { idProducto, nombre, codigoBarra, descripcion, stockActual,
+ *     idCategoria, categoriaNombre, idUnidad, unidadNombre, activo,
+ *     fechaCreacion, precioVentaVigente, fechaPrecioVentaVigente,
+ *     habilitadoParaVenta }
  */
 function toFrontendProduct(backend) {
   if (!backend) return null;
 
-  // "price" es el único campo numérico confirmado en ProductResponse
-  const precioStr = backend.price != null ? String(backend.price) : "";
+  const precioStr =
+    backend.precioVentaVigente != null ? String(backend.precioVentaVigente) : "";
 
   return {
-    id: backend.id,
-    nombre: backend.name ?? "",
+    id: backend.idProducto,
+    nombre: backend.nombre ?? "",
+    descripcion: backend.descripcion ?? "",
+    codigoBarras: backend.codigoBarra ?? "",
 
-    // "code" del backend = código de barras / codigo_producto
-    codigoBarras: backend.code ?? "",
-
-    // El backend no devuelve estos campos aún → vacíos por defecto
-    idCategoria: "",
-    categoria: "",
+    idCategoria: backend.idCategoria ?? "",
+    categoria: backend.categoriaNombre ?? "",
     idSubcategoria: "",
     subcategoria: "",
 
-    // El backend no devuelve producto_pesable → default "no"
     productoPesable: "no",
 
-    idUnidad: "",
-    unidadMedida: "",
+    idMarca: "",
+    marca: "",
 
-    // El backend no devuelve precio_compra ni precios por kg
+    idUnidad: backend.idUnidadMedida ?? backend.idUnidad ?? "",
+    unidadMedida: backend.nombreUnidadMedida ?? backend.unidadNombre ?? "",
+    unitAbbreviation: "",
+
+    precioVenta: precioStr,
+    precio: precioStr,
+
+    stockActual: backend.stockActual ?? "",
+
     precioCompra: "",
-    precioVenta: precioStr,   // "price" = precio de venta
-    precioCompraKg: "",
-    precioVentaKg: "",
 
-    // El backend no devuelve stock_minimo ni stock_actual en la respuesta
-    stockMinimo: "",
-    stockActual: "",
+    iva: backend.tasaIva != null ? String(backend.tasaIva) : "10",
 
     idProveedor: "",
     proveedor: "",
 
-    // "description" en ProductResponse
-    observaciones: backend.description ?? "",
+    activo: backend.activo !== false,
+
+    precioFuturo: backend.precioFuturo ?? null,
+    fechaVigencia: backend.fechaVigencia ?? null,
   };
 }
 
 /**
- * Arma el body para POST /api/products.
+ * Arma el body para POST /api/productos.
  *
- * ProductRequest (Spring) espera:
- *   name, descripcion, precio, id_categoria, id_unidad, id_proveedor,
- *   stock_actual, codigo_producto
+ * ProductoRequest (Spring) espera:
+ *   nombre, codigoBarra, descripcion, stockActual, idCategoria, idUnidad, activo
  */
-function toCreateBody(frontend, idCategoria, idUnidad, idProveedor) {
-  const isPesable = frontend.productoPesable === "si";
-  const precioStr = isPesable ? frontend.precioVentaKg : frontend.precioVenta;
-  const precio = parseFloat(String(precioStr || "").replace(",", "."));
-  if (!Number.isFinite(precio) || precio <= 0) {
-    throw new Error("El precio de venta debe ser mayor que 0.");
-  }
-
+function toCreateBody(frontend, idUnidad) {
   const codigoBarras = String(frontend.codigoBarras || "").replace(/\D/g, "");
-  if (!/^\d{9,13}$/.test(codigoBarras)) {
-    throw new Error("El código de barras debe tener entre 9 y 13 dígitos numéricos.");
-  }
-  const codigoProducto = codigoBarras;
-
-  const descripcion = (frontend.observaciones || "").trim();
+  const descripcion = (frontend.descripcion || "").trim();
 
   return {
-    name: frontend.nombre?.trim(),
+    nombre: frontend.nombre?.trim(),
+    codigoBarra: codigoBarras || null,
     descripcion: descripcion.length > 0 ? descripcion : null,
-    precio,
-    id_categoria: Number(idCategoria),
-    id_unidad: Number(idUnidad),
-    id_proveedor: Number(idProveedor),
-    stock_actual: parseStockActual(frontend.stockActual),
-    codigo_producto: codigoProducto,
+    stockActual: 0,
+    idCategoria: Number(frontend.idCategoria) || undefined,
+    idSubcategoria: Number(frontend.idSubcategoria) || undefined,
+    idUnidad: idUnidad ? Number(idUnidad) : undefined,
+    tasaIva: frontend.iva != null ? Number(frontend.iva) : 10,
+    activo: frontend.activo === true,
   };
 }
 
 /**
- * Arma el body para PATCH /api/products/{id}.
+ * Arma el body para PUT /api/productos/{id}.
  *
- * PatchRequest (Spring) solo acepta: { precio }
+ * ProductoRequest (Spring): nombre, codigoBarra, descripcion, stockActual,
+ * idCategoria, idUnidad, activo. Los campos null NO se actualizan.
  */
-function toPatchPrecioBody(producto) {
-  const isPesable = producto.productoPesable === "si";
-  const precioStr = isPesable ? producto.precioVentaKg : producto.precioVenta;
-  const precio = parseFloat(String(precioStr || "").replace(",", "."));
-  if (!Number.isFinite(precio) || precio <= 0) {
-    throw new Error("El precio de venta debe ser mayor que 0.");
-  }
-  return { precio };
+function toPatchBody(producto, stockActual) {
+  return {
+    nombre: producto.nombre?.trim() ?? undefined,
+    codigoBarra: String(producto.codigoBarras || "").replace(/\D/g, "") || undefined,
+    descripcion: (producto.descripcion || "").trim() || undefined,
+    stockActual: stockActual != null ? Number(stockActual) : undefined,
+    idCategoria: Number(producto.idCategoria) || undefined,
+    idSubcategoria: Number(producto.idSubcategoria) || undefined,
+    idUnidad: Number(producto.idUnidad) || undefined,
+    tasaIva: producto.iva != null ? Number(producto.iva) : 10,
+    activo: producto.activo !== false,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -120,45 +107,61 @@ function toPatchPrecioBody(producto) {
 // ---------------------------------------------------------------------------
 
 /**
- * GET /api/products
- * Params: search?, page, pageSize, sortBy?, sortDir (ASC|DESC)
+ * GET /api/productos
+ * Params: page, size, sortBy, sortDirection
+ * Respuesta: { data: { content, page, size, totalElements, totalPages }, mensaje }
  */
 export async function getProductos(params = {}) {
   const searchTrim = params.search != null ? String(params.search).trim() : "";
-  const { data } = await api.get("/api/products", {
-    params: {
-      page: params.page ?? 0,
-      pageSize: params.pageSize ?? 20,      // default del backend: 20
-      search: searchTrim || undefined,
-      sortBy: params.sortBy || undefined,
-      sortDir: params.sortDir || "ASC",     // el Controller lo recibe como "sortDir"
-    },
+  const { data } = await api.get(searchTrim ? "/api/productos/buscar" : "/api/productos", {
+    params: searchTrim
+      ? {
+          nombre: searchTrim,
+          page: params.page ?? 0,
+          size: params.pageSize ?? 20,
+          sortBy: params.sortBy || params.sortField || undefined,
+          sortDirection: params.sortDir || "asc",
+        }
+      : {
+          page: params.page ?? 0,
+          size: params.pageSize ?? 20,
+          sortBy: params.sortBy || params.sortField || undefined,
+          sortDirection: params.sortDir || "asc",
+        },
   });
+
+  const pageData = data?.data ?? data ?? {};
+  const content = Array.isArray(pageData.content)
+    ? pageData.content
+    : Array.isArray(pageData)
+    ? pageData
+    : [];
+
   return {
-    content: (data?.content || []).map(toFrontendProduct).filter(Boolean),
-    totalElements: data?.totalElements ?? 0,
-    totalPages: data?.totalPages ?? 0,
-    page: data?.page ?? 0,
-    size: data?.size ?? 0,
+    content: content.map(toFrontendProduct).filter(Boolean),
+    totalElements: pageData.totalElements ?? content.length,
+    totalPages: pageData.totalPages ?? 0,
+    page: pageData.page ?? 0,
+    size: pageData.size ?? content.length,
   };
 }
 
 /**
- * GET /api/products/{id}
+ * GET /api/productos/{id}
  */
 export async function getProductoById(id) {
-  const { data } = await api.get(`/api/products/${id}`);
-  return toFrontendProduct(data);
+  const { data } = await api.get(`/api/productos/${id}`);
+  return toFrontendProduct(data?.data ?? data);
 }
 
 /**
- * GET /api/products/barcode/{codigo}
+ * GET /api/productos/codigo/{codigoBarra}
  * Devuelve null si el backend responde 404.
  */
 export async function getProductoByCodigo(codigo) {
   try {
-    const { data } = await api.get(`/api/products/barcode/${encodeURIComponent(codigo.trim())}`);
-    return toFrontendProduct(data);
+    const { data } = await api.get(`/api/productos/codigo/${encodeURIComponent(codigo.trim())}`);
+    return toFrontendProduct(data?.data ?? data);
   } catch (err) {
     if (err?.response?.status === 404) return null;
     throw err;
@@ -166,36 +169,106 @@ export async function getProductoByCodigo(codigo) {
 }
 
 /**
- * POST /api/products
- * El backend responde 201 sin cuerpo → no retorna nada.
+ * GET /api/precios-compra/vigente/{productoId}
+ * Devuelve el último precio de costo registrado (entero) o 0 si no existe.
  */
-export async function createProducto(producto, idCategoria, idUnidad, idProveedor) {
-  const body = toCreateBody(producto, idCategoria, idUnidad, idProveedor);
-  await api.post("/api/products", body);
+export async function getPrecioCompraVigente(productoId) {
+  try {
+    const { data } = await api.get(`/api/precios-compra/vigente/${productoId}`);
+    const precio = Number(data?.data?.precio ?? data?.precio);
+    return Number.isFinite(precio) && precio > 0 ? Math.round(precio) : 0;
+  } catch {
+    return 0;
+  }
 }
 
 /**
- * PATCH /api/products/{id}
- * Solo actualiza el precio. Devuelve el producto actualizado.
+ * POST /api/productos
+ * El backend responde 201 con el producto creado.
  */
-export async function updateProducto(id, producto) {
-  const body = toPatchPrecioBody(producto);
-  const { data } = await api.patch(`/api/products/${id}`, body);
-  return toFrontendProduct(data);
+export async function createProducto(producto, idUnidad, idProveedor) {
+  const body = toCreateBody(producto, idUnidad, idProveedor);
+  const { data } = await api.post("/api/productos", body);
+  return toFrontendProduct(data?.data ?? data);
 }
 
 /**
- * PATCH /api/products/{id} — variante directa con valor numérico.
+ * PUT /api/productos/{id}
+ * Actualiza el producto. Si se pasa `stockActual`, sobreescribe el stock.
+ * Devuelve el producto actualizado.
  */
-export async function updateProductoPrecio(id, precio) {
-  const { data } = await api.patch(`/api/products/${id}`, { precio });
-  return toFrontendProduct(data);
+export async function updateProducto(id, producto, stockActual) {
+  const body = toPatchBody(producto, stockActual);
+  const { data } = await api.put(`/api/productos/${id}`, body);
+  return toFrontendProduct(data?.data ?? data);
 }
 
 /**
- * DELETE /api/products/{id}
- * El backend responde 204 sin cuerpo.
+ * POST /api/precios-venta
+ * Crea/actualiza el precio de venta vigente de un producto (APPEND-ONLY).
+ * fechaVigencia (ISO local) intenta programarlo a futuro; el contrato actual
+ * no lo soporta, por lo que se envía de todas formas (puede fallar).
+ */
+export async function updateProductoPrecio(id, precio, fechaVigencia = null) {
+  const precioNum = Number(precio);
+  const body = {
+    productoId: Number(id),
+    precio: Number.isFinite(precioNum) ? precioNum : 0,
+  };
+  if (fechaVigencia) body.fecha_vigencia = fechaVigencia;
+  const { data } = await api.post("/api/precios-venta", body);
+  return toFrontendProduct(data?.data ?? data);
+}
+
+/**
+ * DELETE /api/productos/{id}/programacion
+ * Cancela el precio de venta programado a futuro.
+ * El contrato actual no lo expone: puede fallar hasta que el duo lo implemente.
+ */
+export async function cancelarProgramacionPrecio(id) {
+  const { data } = await api.delete(`/api/productos/${id}/programacion`);
+  return toFrontendProduct(data?.data ?? data);
+}
+
+/**
+ * GET /api/precios-venta/producto/{productoId}
+ * Historial de precios de venta de un producto.
+ * Mapea al shape que espera el modal (incluye estado / variación).
+ */
+export async function getHistorialPrecios(productoId) {
+  const { data } = await api.get(`/api/precios-venta/producto/${productoId}`, {
+    params: { page: 0, size: 100, sortBy: "fechaHora", sortDirection: "desc" },
+  });
+  const rows = Array.isArray(data) ? data : (data?.content || data?.data?.content || []);
+  return rows
+    .map((r, idx) => {
+      const venta = Number(r.precio ?? 0);
+      return {
+        id: r.idPrecioVenta ?? r.id ?? (idx + 1),
+        codigoBarra: "",
+        precioCompra: "",
+        precioVenta: r.precio ?? "",
+        margen: "",
+        margenPorcentaje: "",
+        estado: idx === 0 ? "VIGENTE" : "HISTORICO",
+        precioVentaAnterior: null,
+        variacionPorcentaje: null,
+        vigencia: "",
+        fecha: r.fechaHora ? String(r.fechaHora).slice(0, 10) : (r.fecha ?? ""),
+        hora: r.fechaHora ? String(r.fechaHora).slice(11, 19) : (r.hora ?? ""),
+      };
+    })
+    .sort((a, b) => {
+      if (!a.fecha || !b.fecha) return 0;
+      return String(b.fecha).localeCompare(String(a.fecha)) || String(b.hora || "").localeCompare(String(a.hora || ""));
+    });
+}
+
+/**
+ * PATCH /api/productos/{id}/desactivar
+ * Soft delete del producto.
  */
 export async function deleteProducto(id) {
-  await api.delete(`/api/products/${id}`);
+  const { data } = await api.patch(`/api/productos/${id}/desactivar`);
+  return toFrontendProduct(data?.data ?? data);
 }

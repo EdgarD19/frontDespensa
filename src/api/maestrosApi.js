@@ -1,9 +1,11 @@
 import { api } from "./client";
 
 const PATHS = {
-  categorias: ["/api/maestros/categorias", "/api/categorias", "/api/catalogo/categorias"],
-  unidades: ["/api/maestros/unidades", "/api/unidades-medida", "/api/unidad-medida"],
-  proveedores: ["/api/maestros/proveedores", "/api/proveedores"],
+  categorias: ["/api/categorias"],
+  unidades: ["/api/unidades-medida"],
+  proveedores: ["/api/proveedores"],
+  rubros: ["/api/v1/rubros"],
+  paises: ["/api/paises/activos"],
 };
 
 function parseMaestrosEnv() {
@@ -19,6 +21,7 @@ function parseMaestrosEnv() {
 function unwrapList(data) {
   if (Array.isArray(data)) return data;
   if (Array.isArray(data?.content)) return data.content;
+  if (Array.isArray(data?.data?.content)) return data.data.content;
   if (Array.isArray(data?.data)) return data.data;
   return [];
 }
@@ -27,24 +30,28 @@ function normalizeMaestroRow(row) {
   if (!row || typeof row !== "object") return null;
   const id =
     row.id ??
+    row.id_subcategoria ??
+    row.idSubcategoria ??
+    row.id_ciudad ??
+    row.idCiudad ??
     row.id_categoria ??
     row.idCategoria ??
     row.id_unidad ??
     row.idUnidad ??
     row.id_proveedor ??
     row.idProveedor ??
-    row.id_subcategoria ??
-    row.idSubcategoria;
+    row.id_pais ??
+    row.idPais;
   if (id == null) return null;
   const nombre = row.nombre ?? row.name ?? "";
   if (!String(nombre).trim()) return null;
-  return { id: Number(id) || id, nombre: String(nombre) };
+  return { id: Number(id) || id, nombre: String(nombre), activo: row.activo !== false };
 }
 
 function normalizeUnidadRow(row) {
   const base = normalizeMaestroRow(row);
   if (!base) return null;
-  const abreviatura = row.abreviatura ?? row.abreviatura_unidad ?? row.abreviaturaUnidad ?? "";
+  const abreviatura = row.simbolo ?? row.abreviatura ?? row.abreviaturaUnidad ?? row.abreviatura_unidad ?? "";
   return { ...base, abreviatura: abreviatura ? String(abreviatura) : "" };
 }
 
@@ -108,11 +115,34 @@ export async function getProveedores() {
   return loadProveedores();
 }
 
+async function loadRubros() {
+  const env = parseMaestrosEnv();
+  if (env?.rubros?.length) return normalizeList(env.rubros);
+  return fetchFirst(PATHS.rubros);
+}
+
+export async function getRubros() {
+  return loadRubros();
+}
+
+async function loadPaises() {
+  const env = parseMaestrosEnv();
+  if (env?.paises?.length) return normalizeList(env.paises);
+  return fetchFirst(PATHS.paises);
+}
+
+export async function getPaises() {
+  return loadPaises();
+}
+
+export async function getCiudades(idPais) {
+  if (!idPais) return [];
+  const { data } = await api.get(`/api/ciudades/pais/${idPais}`);
+  return normalizeList(data).filter((c) => c.activo !== false);
+}
+
 const SUBCATEGORIA_PATH_TEMPLATES = [
-  (id) => `/api/maestros/categorias/${id}/subcategorias`,
-  (id) => `/api/categorias/${id}/subcategorias`,
-  (id) => `/api/subcategorias?categoriaId=${id}`,
-  (id) => `/api/subcategorias?categoria=${id}`,
+  (id) => `/api/subcategorias/categoria/${id}`,
 ];
 
 export async function getSubcategorias(idCategoria) {
