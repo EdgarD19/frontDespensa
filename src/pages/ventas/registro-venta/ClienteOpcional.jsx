@@ -111,9 +111,29 @@ export default function ClienteOpcional({ cliente, onSeleccionar, onQuitar, abie
         payload.ruc = form.ruc?.trim() || null;
         payload.documentNumber = form.ruc?.trim() || null;
       }
-      const res = await createCliente(payload);
-      const nuevo = res.data;
-      onSeleccionar(nuevo);
+      await createCliente(payload);
+      const esJur = form.tipoCliente === "JURIDICA";
+      const doc = form.documentNumber?.trim() || (esJur ? form.ruc?.trim() : "") || null;
+      const busqueda = doc || (esJur
+        ? form.razonSocial.trim()
+        : `${form.firstName.trim()} ${form.lastName.trim()}`.trim());
+      let creado = null;
+      try {
+        const lista = await getClientes({ search: busqueda, page: 0, pageSize: 20, sortBy: "idCliente", sortDir: "ASC" });
+        const content = lista.data?.content;
+        if (Array.isArray(content) && content.length > 0) {
+          creado = content.find((c) => !!doc && String(c.documentNumber ?? c.document_number ?? "") === doc) ?? content[0];
+        }
+      } catch { /* si falla la lista, se selecciona el objeto local */ }
+      onSeleccionar(creado || {
+        idCliente: null,
+        tipoCliente: form.tipoCliente,
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        razonSocial: esJur ? form.razonSocial.trim() : undefined,
+        documentNumber: doc,
+      });
+      cargar();
       onCerrar();
     } catch (err) {
       setErrorForm(apiErrorMessage(err) || "Error al crear cliente");

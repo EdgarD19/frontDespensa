@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Check, Search, PackageOpen, X, Barcode } from "lucide-react";
+import { Check, Search, PackageOpen, Trash2, Barcode } from "lucide-react";
 import { stockEntero } from "./utils";
 import { getProductos, getProductoByCodigo } from "../../../../api/productosApi";
 
@@ -107,31 +107,6 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
 
   return (
     <div className="space-y-5">
-      <ul className="flex flex-wrap gap-2">
-        {seleccion.map((p) => (
-          <li
-            key={p.id}
-            className="inline-flex items-center gap-1.5 rounded-full border border-[#2a2a32] bg-[#1a1a22] px-3 py-1.5 text-xs text-[#f1f1f3]"
-          >
-            {p.nombre}
-            {Number.isFinite(Number(p.stockActual)) && (
-              <span className="text-[#22c55e] font-semibold tabular-nums">
-                {stockEntero(p)}
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={() => toggleProducto(p)}
-              disabled={disabled}
-              className="text-[#5a5a6e] hover:text-rose-400 transition-colors disabled:opacity-50"
-              title="Quitar"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </li>
-        ))}
-      </ul>
-
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="block space-y-1.5">
           <span className="text-xs font-medium text-[#9a9aac]">
@@ -308,24 +283,79 @@ placeholder="Escanear código de barras o buscar por nombre…"
         </div>
       )}
 
-      <div className="flex gap-3 items-center">
-        <button
-          type="button"
-          onClick={generar}
-          disabled={disabled || seleccion.length === 0}
-          className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-[#22c55e] hover:bg-[#1aad4e] text-[#0d0d0f] text-sm font-semibold px-5 py-2.5 disabled:opacity-40 disabled:pointer-events-none transition-colors"
-        >
-          <Check className="w-4 h-4" aria-hidden />
-          Generar
-        </button>
-        <button
-          type="button"
-          disabled={disabled || (seleccion.length === 0 && !categoria)}
-          onClick={limpiar}
-          className="rounded-lg border border-[#2a2a32] bg-[#111114] px-4 py-2.5 text-sm font-medium text-[#b0b0c0] hover:bg-[#1a1a22] hover:text-[#e1e1eb] disabled:opacity-40 transition-colors"
-        >
-          Limpiar
-        </button>
+      <div>
+        <label className="block text-xs font-medium text-[#9a9aac] mb-1.5 uppercase tracking-wider">
+          Productos seleccionados
+        </label>
+        {seleccion.length > 0 ? (
+          <div className="overflow-x-auto rounded-lg border border-[#1e1e24] bg-[#111114]">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-[#5a5a6e] uppercase tracking-wider border-b border-white/10">
+                  <th className="text-left py-2 pr-2 pl-3 font-medium">Producto</th>
+                  <th className="text-center py-2 px-2 w-16 font-medium">U.M.</th>
+                  <th className="text-right py-2 px-2 w-24 font-medium">Stock</th>
+                  <th className="py-2 pl-2 pr-3 w-10"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {seleccion.map((p) => (
+                  <tr key={p.id} className="border-b border-white/5 last:border-b-0 hover:bg-white/[0.02]">
+                    <td className="py-2 pr-2 pl-3 text-white">{p.nombre || `Producto #${p.id}`}</td>
+                    <td className="py-2 px-2 text-center text-white/50">
+                      {p.unitAbbreviation || p.unidadMedida || "—"}
+                    </td>
+                    <td className="py-2 px-2 text-right text-[#22c55e] font-semibold tabular-nums">
+                      {Number.isFinite(Number(p.stockActual)) ? stockEntero(p) : "—"}
+                    </td>
+                    <td className="py-2 pl-2 pr-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => toggleProducto(p)}
+                        disabled={disabled}
+                        className="p-1 text-[#5a5a6e] hover:text-red-400 transition-colors disabled:opacity-50"
+                        title="Quitar"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed border-white/10 px-4 py-6 text-center text-sm text-[#5a5a6e]">
+            Todavía no agregaste productos a esta lista.
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between gap-3 pt-1">
+        <span className="text-sm text-[#5a5a6e]">
+          {seleccion.length > 0
+            ? `${seleccion.length} producto${seleccion.length !== 1 ? "s" : ""}`
+            : "Ningún producto seleccionado"}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={disabled || (seleccion.length === 0 && !categoria)}
+            onClick={limpiar}
+            className="rounded-lg border border-[#2a2a32] bg-[#111114] px-4 py-2.5 text-sm font-medium text-[#b0b0c0] hover:bg-[#1a1a22] hover:text-[#e1e1eb] disabled:opacity-40 transition-colors"
+          >
+            Limpiar
+          </button>
+          <button
+            type="button"
+            onClick={generar}
+            disabled={disabled || seleccion.length === 0}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#22c55e] hover:bg-[#1aad4e] text-[#0d0d0f] text-sm font-semibold px-6 py-2.5 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+          >
+            <Check className="w-4 h-4" aria-hidden />
+            Generar
+          </button>
+        </div>
       </div>
     </div>
   );

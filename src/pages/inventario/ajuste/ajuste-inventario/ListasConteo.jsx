@@ -55,8 +55,8 @@ export default function ListasConteo({
   if (sesiones.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-[#2a2a32] bg-[#111114]/50 p-10 text-center text-sm text-[#5a5a6e]">
-        Aún no generaste listas de conteo. Seleccioná productos arriba y confirmá
-        para crear la primera.
+        Aún no generaste listas de conteo. Usá el botón "Nueva lista" para
+        crear la primera.
       </div>
     );
   }

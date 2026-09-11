@@ -261,7 +261,13 @@ export default function RegistroVenta() {
       });
       focusSearch();
     } catch (err) {
-      setErrorGlobal(apiErrorMessage(err) || "No se pudo registrar la venta.");
+      const status = err?.response?.status;
+      const base = apiErrorMessage(err) || "No se pudo registrar la venta.";
+      if (status === 404 || (status === 500 && base.includes("error_NO_ESPERADO"))) {
+        setErrorGlobal(`${base} — El backend aún no expone el endpoint de ventas (/api/ventas/facturas).`);
+      } else {
+        setErrorGlobal(base);
+      }
     } finally { setConfirmando(false); }
   }, [puedeConfirmar, cliente, carrito, subtotal, montoNum, cambio, formaPago, totalConIva, cargarProductos, numeroPreview, focusSearch]);
 

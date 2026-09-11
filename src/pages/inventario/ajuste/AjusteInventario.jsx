@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import {
   ClipboardList,
   ArrowLeftRight,
+  Plus,
 } from "lucide-react";
 import { getProductos } from "../../../api/productosApi";
 import { apiErrorMessage } from "../../../api/errors";
@@ -12,8 +13,8 @@ import {
 import { getCategorias } from "../../../api/maestrosApi";
 import { canGestionarAjustesInventario } from "../../../auth/inventoryAccess";
 import { stockEntero } from "./ajuste-inventario/utils";
-import AjusteStock from "./ajuste-inventario/AjusteStock";
 import ListasConteo from "./ajuste-inventario/ListasConteo";
+import NuevaListaModal from "./ajuste-inventario/NuevaListaModal";
 import { updateProducto } from "../../../api/productosApi";
 
 const STORAGE_KEY = "ajuste.listas.conteo.v1";
@@ -40,6 +41,7 @@ export default function AjusteInventario() {
 
   const [sesiones, setSesiones] = useState(cargarSesiones);
   const [aplicandoId, setAplicandoId] = useState(null);
+  const [modalAbierto, setModalAbierto] = useState(false);
 
   useEffect(() => {
     try {
@@ -212,16 +214,25 @@ export default function AjusteInventario() {
   return (
     <div className="max-w-5xl mx-auto pb-10">
       <div className="rounded-2xl border border-[#1e1e24] bg-[#111114] overflow-hidden">
-        <header className="px-5 sm:px-6 pt-5 pb-4">
+        <header className="px-5 sm:px-6 pt-5 pb-4 flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-[#f1f1f3] tracking-tight flex items-center gap-2">
               <ArrowLeftRight className="w-5 h-5 text-[#22c55e]" />
               Ajuste de Stock
             </h1>
           </div>
+          <button
+            type="button"
+            onClick={() => setModalAbierto(true)}
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#22c55e] hover:bg-[#1aad4e] text-[#0d0d0f] text-sm font-semibold px-4 py-2.5 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+          >
+            <Plus className="w-4 h-4" aria-hidden />
+            Nueva lista
+          </button>
         </header>
 
-        <div className="px-5 sm:px-6 pb-5 space-y-5">
+        <div className="px-5 sm:px-6 pb-5 space-y-4">
           {error ? (
             <div
               role="alert"
@@ -240,19 +251,6 @@ export default function AjusteInventario() {
             </div>
           ) : null}
 
-          <div className="rounded-xl border border-[#1e1e24] bg-[#0d0d0f] p-5 space-y-5">
-            {loading ? (
-              <p className="text-sm text-[#5a5a6e]">Cargando productos…</p>
-            ) : (
-              <AjusteStock
-                productos={productos}
-                categorias={categorias}
-                disabled={loading}
-                onGenerar={generarSesion}
-              />
-            )}
-          </div>
-
           <ListasConteo
             sesiones={sesiones}
             aplicandoId={aplicandoId}
@@ -262,6 +260,18 @@ export default function AjusteInventario() {
           />
         </div>
       </div>
+
+      <NuevaListaModal
+        abierto={modalAbierto}
+        productos={productos}
+        categorias={categorias}
+        disabled={loading}
+        onGenerar={(datos) => {
+          generarSesion(datos);
+          setModalAbierto(false);
+        }}
+        onCerrar={() => setModalAbierto(false)}
+      />
     </div>
   );
 }
