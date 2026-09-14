@@ -259,6 +259,12 @@ export async function getHistorialPrecios(productoId) {
   return ordenados.map((r, idx) => {
     const ts = parseTs(r);
     const esProgramado = ts != null && ts > ahora;
+    const precioAnterior = idx < ordenados.length - 1 ? Number(ordenados[idx + 1]?.precio) : null;
+    const precioActual = Number(r.precio);
+    let variacion = null;
+    if (precioAnterior != null && Number.isFinite(precioAnterior) && precioAnterior !== 0 && Number.isFinite(precioActual)) {
+      variacion = Math.round(((precioActual - precioAnterior) / precioAnterior) * 10000) / 100;
+    }
     let estado = "HISTORICO";
     if (esProgramado) {
       estado = "PROGRAMADO";
@@ -273,8 +279,8 @@ export async function getHistorialPrecios(productoId) {
       margen: "",
       margenPorcentaje: "",
       estado,
-      precioVentaAnterior: null,
-      variacionPorcentaje: null,
+      precioVentaAnterior: precioAnterior,
+      variacionPorcentaje: variacion,
       vigencia: "",
       fecha: r.fechaHora ? String(r.fechaHora).slice(0, 10) : (r.fecha ?? ""),
       hora: r.fechaHora ? String(r.fechaHora).slice(11, 19) : (r.hora ?? ""),
