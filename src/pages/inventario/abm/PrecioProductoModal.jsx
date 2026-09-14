@@ -101,15 +101,28 @@ export default function PrecioProductoModal({ producto, onClose, onPrecioActuali
       } catch {
         updated = null;
       }
-      const precioData = {
-        ...(updated?.id ? updated : productoActual),
-        id: productoActual.id,
-        precioVenta: String(precio),
-        precio: String(precio),
-      };
-      setProductoActual(precioData);
-      onPrecioActualizado?.(precioData);
-      onClose?.();
+      const base = updated?.id ? updated : productoActual;
+      if (vigencia) {
+        // Precio programado a futuro: NO reemplaza el precio vigente actual
+        const precioData = { ...base, id: productoActual.id };
+        setProductoActual(precioData);
+        onPrecioActualizado?.(precioData);
+        setAviso(`Precio programado: se aplicará el ${String(vigencia).replace("T", " ")}.`);
+        setNuevoPrecio("");
+        setFechaVigencia("");
+        await cargarHistorial();
+        setGuardando(false);
+      } else {
+        const precioData = {
+          ...base,
+          id: productoActual.id,
+          precioVenta: String(precio),
+          precio: String(precio),
+        };
+        setProductoActual(precioData);
+        onPrecioActualizado?.(precioData);
+        onClose?.();
+      }
     } catch (err) {
       setError(apiErrorMessage(err) || "No se pudo actualizar el precio.");
       setGuardando(false);

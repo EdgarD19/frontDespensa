@@ -95,10 +95,10 @@ export default function ProveedoresModal({
     if (!form.tipoDocumento) errs.tipoDocumento = "Requerido";
     if (!form.numeroDocumento.trim()) {
       errs.numeroDocumento = "Requerido";
-    } else if (form.tipoDocumento === "CI" && !/^\d{7}$/.test(form.numeroDocumento.trim())) {
-      errs.numeroDocumento = "CI debe tener 7 dígitos";
-    } else if (form.tipoDocumento === "RUC" && !/^\d{8}-\d{2}$/.test(form.numeroDocumento.trim())) {
-      errs.numeroDocumento = "RUC formato XXXXXXXX-XX";
+    } else if (form.tipoDocumento === "CI" && !/^\d{6,8}-\d$/.test(form.numeroDocumento.trim())) {
+      errs.numeroDocumento = "CI debe tener entre 6 y 8 dígitos más dígito verificador (formato: 1234567-X)";
+    } else if (form.tipoDocumento === "RUC" && !/^80\d{6}-\d$/.test(form.numeroDocumento.trim())) {
+      errs.numeroDocumento = "RUC debe iniciar con 80 seguido de 6 dígitos más dígito verificador (formato: 800XXXXX-X)";
     }
     if (
       form.telefono &&
@@ -275,7 +275,7 @@ export default function ProveedoresModal({
                 value={form.numeroDocumento}
                 onChange={handleChange}
                 required
-                placeholder="Número de documento"
+                placeholder={form.tipoDocumento === "CI" ? "1234567-X" : "80012345-1"}
                 className={inputClass}
               />
               {errores.numeroDocumento && <span className="text-[11px] text-rose-400">{errores.numeroDocumento}</span>}

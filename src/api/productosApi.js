@@ -206,16 +206,15 @@ export async function updateProducto(id, producto, stockActual) {
 /**
  * POST /api/precios-venta
  * Crea/actualiza el precio de venta vigente de un producto (APPEND-ONLY).
- * fechaVigencia (ISO local) intenta programarlo a futuro; el contrato actual
- * no lo soporta, por lo que se envía de todas formas (puede fallar).
+ * fechaHora (ISO local) programa el precio a futuro: no se aplica hasta esa fecha.
  */
-export async function updateProductoPrecio(id, precio, fechaVigencia = null) {
+export async function updateProductoPrecio(id, precio, fechaHora = null) {
   const precioNum = Number(precio);
   const body = {
     productoId: Number(id),
     precio: Number.isFinite(precioNum) ? precioNum : 0,
   };
-  if (fechaVigencia) body.fecha_vigencia = fechaVigencia;
+  if (fechaHora) body.fechaHora = fechaHora;
   const { data } = await api.post("/api/precios-venta", body);
   return toFrontendProduct(data?.data ?? data);
 }
@@ -240,28 +239,47 @@ export async function getHistorialPrecios(productoId) {
     params: { page: 0, size: 100, sortBy: "fechaHora", sortDirection: "desc" },
   });
   const rows = Array.isArray(data) ? data : (data?.content || data?.data?.content || []);
-  return rows
-    .map((r, idx) => {
-      const venta = Number(r.precio ?? 0);
-      return {
-        id: r.idPrecioVenta ?? r.id ?? (idx + 1),
-        codigoBarra: "",
-        precioCompra: "",
-        precioVenta: r.precio ?? "",
-        margen: "",
-        margenPorcentaje: "",
-        estado: idx === 0 ? "VIGENTE" : "HISTORICO",
-        precioVentaAnterior: null,
-        variacionPorcentaje: null,
-        vigencia: "",
-        fecha: r.fechaHora ? String(r.fechaHora).slice(0, 10) : (r.fecha ?? ""),
-        hora: r.fechaHora ? String(r.fechaHora).slice(11, 19) : (r.hora ?? ""),
-      };
-    })
-    .sort((a, b) => {
-      if (!a.fecha || !b.fecha) return 0;
-      return String(b.fecha).localeCompare(String(a.fecha)) || String(b.hora || "").localeCompare(String(a.hora || ""));
-    });
+  const ahora = Date.now();
+  const parseTs = (r) => {
+    const raw = r.fechaHora ?? r.fecha;
+    if (!raw) return null;
+    const norm = String(raw).slice(0, 19).replace(" ", "T");
+    const ts = new Date(norm).getTime();
+    return Number.isNaN(ts) ? null : ts;
+  };
+  const ordenados = [...rows].sort((a, b) => (parseTs(b) ?? 0) - (parseTs(a) ?? 0));
+  let vigenteId = null;
+  for (const r of ordenados) {
+    const ts = parseTs(r);
+    if (ts != null && ts <= ahora) {
+      vigenteId = r.idPrecioVenta ?? r.id ?? null;
+      break;
+    }
+  }
+  return ordenados.map((r, idx) => {
+    const ts = parseTs(r);
+    const esProgramado = ts != null && ts > ahora;
+    let estado = "HISTORICO";
+    if (esProgramado) {
+      estado = "PROGRAMADO";
+    } else if (vigenteId != null && (r.idPrecioVenta ?? r.id) === vigenteId) {
+      estado = "VIGENTE";
+    }
+    return {
+      id: r.idPrecioVenta ?? r.id ?? (idx + 1),
+      codigoBarra: "",
+      precioCompra: "",
+      precioVenta: r.precio ?? "",
+      margen: "",
+      margenPorcentaje: "",
+      estado,
+      precioVentaAnterior: null,
+      variacionPorcentaje: null,
+      vigencia: "",
+      fecha: r.fechaHora ? String(r.fechaHora).slice(0, 10) : (r.fecha ?? ""),
+      hora: r.fechaHora ? String(r.fechaHora).slice(11, 19) : (r.hora ?? ""),
+    };
+  });
 }
 
 /**
