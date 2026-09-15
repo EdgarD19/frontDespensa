@@ -42,23 +42,26 @@ export default function AjusteInventario() {
   const [sesiones, setSesiones] = useState(cargarSesiones);
   const [aplicandoId, setAplicandoId] = useState(null);
   const [modalAbierto, setModalAbierto] = useState(false);
-  const [busqueda, setBusqueda] = useState("");
+  const [filtroEstado, setFiltroEstado] = useState("");
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
+  const [filtroMotivo, setFiltroMotivo] = useState("");
 
-  const termBusqueda = busqueda.trim().toLowerCase();
-  const sesionesVisibles = termBusqueda
-    ? sesiones.filter((s) => {
-        const etiquetaEstado = s.estado === "APLICADO" ? "aplicado" : "pendiente";
-        const coincideProducto = (s.items || []).some((it) =>
-          String(it.nombre || "").toLowerCase().includes(termBusqueda)
-        );
-        return (
-          coincideProducto ||
-          [String(s.id || ""), s.numeroInforme, s.descripcion, s.motivo, etiquetaEstado]
-            .filter(Boolean)
-            .some((v) => String(v).toLowerCase().includes(termBusqueda))
-        );
-      })
-    : sesiones;
+  const sesionesVisibles = sesiones.filter((s) => {
+    if (filtroEstado === "PENDIENTE" && s.estado === "APLICADO") return false;
+    if (filtroEstado === "APLICADO" && s.estado !== "APLICADO") return false;
+    if (filtroMotivo && (s.motivo || "") !== filtroMotivo) return false;
+    const fecha = new Date(s.fechaHora);
+    if (fechaDesde) {
+      const ini = new Date(`${fechaDesde}T00:00:00`);
+      if (fecha < ini) return false;
+    }
+    if (fechaHasta) {
+      const fin = new Date(`${fechaHasta}T23:59:59`);
+      if (fecha > fin) return false;
+    }
+    return true;
+  });
 
   useEffect(() => {
     try {
@@ -270,9 +273,16 @@ export default function AjusteInventario() {
 
           <ListasConteo
             sesiones={sesionesVisibles}
+            total={sesiones.length}
             aplicandoId={aplicandoId}
-            onBusquedaChange={setBusqueda}
-            busqueda={busqueda}
+            filtroEstado={filtroEstado}
+            onFiltroEstadoChange={setFiltroEstado}
+            fechaDesde={fechaDesde}
+            onFechaDesdeChange={setFechaDesde}
+            fechaHasta={fechaHasta}
+            onFechaHastaChange={setFechaHasta}
+            filtroMotivo={filtroMotivo}
+            onFiltroMotivoChange={setFiltroMotivo}
             onChangeFisico={cambiarFisico}
             onAplicar={aplicarSesion}
             error={error}

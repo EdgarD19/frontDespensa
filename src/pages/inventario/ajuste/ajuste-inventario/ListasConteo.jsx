@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { ClipboardList, Eye, PenLine, X, Save, Search } from "lucide-react";
+import { ClipboardList, Eye, PenLine, X, Save } from "lucide-react";
+import Pagination from "../../../../components/ui/Pagination";
+
+const ITEMS_PER_PAGE = 10;
+
+const MOTIVO_LABELS = { ROBO: "Robo", MERMA: "Merma", REGALO: "Regalo", ERROR: "Error", OTROS: "Otros" };
+function nombreMotivo(m) { return MOTIVO_LABELS[m] || m || "—"; }
 
 function fmtFechaHora(iso) {
   if (!iso) return "—";
@@ -42,19 +48,37 @@ function calcDiff(it) {
 
 export default function ListasConteo({
   sesiones,
+  total = 0,
   aplicandoId,
-  busqueda = "",
-  onBusquedaChange,
+  filtroEstado = "",
+  onFiltroEstadoChange,
+  fechaDesde = "",
+  onFechaDesdeChange,
+  fechaHasta = "",
+  onFechaHastaChange,
+  filtroMotivo = "",
+  onFiltroMotivoChange,
   onChangeFisico,
   onAplicar,
   error,
 }) {
   const [abiertaId, setAbiertaId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(0);
   const abierta = sesiones.find((s) => s.id === abiertaId) || null;
   const esAplicado = abierta?.estado === "APLICADO";
   const aplicando = aplicandoId === abierta?.id;
+  const filtrosActivos =
+    filtroEstado !== "" || filtroMotivo !== "" || fechaDesde !== "" || fechaHasta !== "";
 
-  if (sesiones.length === 0) {
+  const totalItems = sesiones.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages - 1);
+  const pageSesiones = sesiones.slice(
+    safePage * ITEMS_PER_PAGE,
+    (safePage + 1) * ITEMS_PER_PAGE
+  );
+
+  if (total === 0) {
     return (
       <div className="rounded-xl border border-dashed border-[#2a2a32] bg-[#111114]/50 p-10 text-center text-sm text-[#5a5a6e]">
         Aún no generaste listas de conteo. Usá el botón "Nueva lista" para
@@ -65,24 +89,101 @@ export default function ListasConteo({
 
   return (
     <div className="rounded-xl border border-[#1e1e24] bg-[#111114] overflow-hidden">
-      <div className="px-5 py-4 border-b border-[#1e1e24] flex items-center gap-3 flex-wrap">
-        <ClipboardList className="w-5 h-5 text-[#22c55e] shrink-0" aria-hidden />
-        <h2 className="text-base font-semibold text-[#e1e1eb]">Listas Generadas</h2>
-        <div className="ml-auto flex items-center gap-3">
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5a5a6e]" />
-            <input
-              type="search"
-              value={busqueda}
-              onChange={(e) => onBusquedaChange?.(e.target.value)}
-              placeholder="Buscar por nº, informe, producto…"
-              className="w-full rounded-lg border border-[#2a2a32] bg-[#0d0d0f] pl-9 pr-3 py-1.5 text-xs text-[#f1f1f3] placeholder:text-[#4a4a5a] focus:border-[#22c55e]/50 outline-none transition-colors"
-            />
-          </div>
-          <span className="text-xs text-[#5a5a6e] tabular-nums whitespace-nowrap">
-            {sesiones.length} lista{sesiones.length !== 1 ? "s" : ""}
+      <div className="px-5 py-4 border-b border-[#1e1e24]">
+        <div className="flex items-center gap-3 flex-wrap">
+          <ClipboardList className="w-5 h-5 text-[#22c55e] shrink-0" aria-hidden />
+          <h2 className="text-base font-semibold text-[#e1e1eb]">Listas Generadas</h2>
+          <span className="ml-auto text-xs text-[#5a5a6e] tabular-nums whitespace-nowrap">
+            {total} lista{total !== 1 ? "s" : ""}
           </span>
         </div>
+
+        <div className="mt-3 grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <label className="block space-y-1">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-[#5a5a6e]">
+              Estado
+            </span>
+            <select
+              value={filtroEstado}
+              onChange={(e) => {
+                onFiltroEstadoChange?.(e.target.value);
+                setCurrentPage(0);
+              }}
+              className="w-full rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-3 py-1.5 text-xs text-[#f1f1f3] focus:border-[#22c55e]/50 outline-none transition-colors"
+            >
+              <option value="">Todos</option>
+              <option value="PENDIENTE">Pendientes</option>
+              <option value="APLICADO">Aplicadas</option>
+            </select>
+          </label>
+
+          <label className="block space-y-1">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-[#5a5a6e]">
+              Motivo
+            </span>
+            <select
+              value={filtroMotivo}
+              onChange={(e) => {
+                onFiltroMotivoChange?.(e.target.value);
+                setCurrentPage(0);
+              }}
+              className="w-full rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-3 py-1.5 text-xs text-[#f1f1f3] focus:border-[#22c55e]/50 outline-none transition-colors"
+            >
+              <option value="">Todos</option>
+              {Object.entries(MOTIVO_LABELS).map(([code, label]) => (
+                <option key={code} value={code}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block space-y-1">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-[#5a5a6e]">
+              Desde
+            </span>
+            <input
+              type="date"
+              value={fechaDesde}
+              onChange={(e) => {
+                onFechaDesdeChange?.(e.target.value);
+                setCurrentPage(0);
+              }}
+              className="w-full rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-3 py-1.5 text-xs text-[#f1f1f3] focus:border-[#22c55e]/50 outline-none transition-colors"
+            />
+          </label>
+
+          <label className="block space-y-1">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-[#5a5a6e]">
+              Hasta
+            </span>
+            <input
+              type="date"
+              value={fechaHasta}
+              onChange={(e) => {
+                onFechaHastaChange?.(e.target.value);
+                setCurrentPage(0);
+              }}
+              className="w-full rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-3 py-1.5 text-xs text-[#f1f1f3] focus:border-[#22c55e]/50 outline-none transition-colors"
+            />
+          </label>
+        </div>
+
+        {filtrosActivos ? (
+          <button
+            type="button"
+            onClick={() => {
+              onFiltroEstadoChange?.("");
+              onFiltroMotivoChange?.("");
+              onFechaDesdeChange?.("");
+              onFechaHastaChange?.("");
+              setCurrentPage(0);
+            }}
+            className="mt-3 text-xs font-medium text-[#22c55e] hover:text-green-400 transition-colors"
+          >
+            Limpiar filtros
+          </button>
+        ) : null}
       </div>
 
       <div className="overflow-x-auto">
@@ -91,22 +192,22 @@ export default function ListasConteo({
             <tr className="text-left text-[11px] uppercase tracking-wide text-[#5a5a6e] border-b border-[#1e1e24]">
               <th className="px-5 py-2 font-medium">N° Registro</th>
               <th className="px-3 py-2 font-medium">Fecha/Hora</th>
-              <th className="px-3 py-2 font-medium">Categoría/Filtro</th>
+              <th className="px-3 py-2 font-medium">Motivo</th>
               <th className="px-3 py-2 font-medium">Estado</th>
               <th className="px-2 py-2 text-right font-medium">Acción</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#1e1e24]">
-            {sesiones.length === 0 ? (
+            {totalItems === 0 ? (
               <tr>
                 <td colSpan={5} className="px-5 py-8 text-center text-sm text-[#5a5a6e]">
-                  {busqueda.trim()
-                    ? "No se encontraron listas con ese criterio."
+                  {filtrosActivos
+                    ? "No se encontraron listas con esos filtros."
                     : "Aún no generaste listas de conteo."}
                 </td>
               </tr>
             ) : (
-            sesiones.map((s) => (
+            pageSesiones.map((s) => (
               <tr key={s.id} className="hover:bg-[#13131a]/80 transition-colors">
                 <td className="px-5 py-3 font-semibold text-[#f1f1f3] tabular-nums">
                   #{s.id}
@@ -120,12 +221,7 @@ export default function ListasConteo({
                   {fmtFechaHora(s.fechaHora)}
                 </td>
                 <td className="px-3 py-3 text-[#e1e1eb]">
-                  {s.descripcion}
-                  {s.motivo ? (
-                    <span className="block text-xs text-[#5a5a6e] mt-0.5">
-                      {s.motivo}
-                    </span>
-                  ) : null}
+                  {nombreMotivo(s.motivo)}
                 </td>
                 <td className="px-3 py-3">
                   <EstadoBadge estado={s.estado} />
@@ -153,6 +249,17 @@ export default function ListasConteo({
           </tbody>
         </table>
       </div>
+
+      {totalItems > 0 && (
+        <Pagination
+          page={safePage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          pageSize={ITEMS_PER_PAGE}
+          totalItems={totalItems}
+          className="px-5 py-4 border-t border-[#1e1e24]"
+        />
+      )}
 
       {abierta && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">

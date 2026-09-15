@@ -22,6 +22,7 @@ export default function ProveedoresABM() {
   const [searchDebounced, setSearchDebounced] = useState("");
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [proveedorEdit, setProveedorEdit] = useState(null);
   const [guardando, setGuardando] = useState(false);
@@ -58,6 +59,7 @@ export default function ProveedoresABM() {
       const res = await getProveedores({ search: searchDebounced, page, pageSize: 10, sortBy: "nombre", sortDir: "ASC" });
       setProveedores(res.content || []);
       setTotalPages(typeof res.totalPages === "number" ? res.totalPages : 0);
+      setTotalItems(typeof res.totalElements === "number" ? res.totalElements : 0);
     } catch (err) {
       const detalle = apiErrorMessage(err);
       setError(detalle && detalle !== "Error de red"
@@ -164,6 +166,8 @@ export default function ProveedoresABM() {
         onNuevo={handleNuevo}
         paginacion={{ page, totalPages }}
         onPageChange={setPage}
+        totalItems={totalItems}
+        pageSize={10}
       />
 
       <ProveedoresModal

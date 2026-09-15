@@ -2,14 +2,11 @@ import {
   Search,
   Pencil,
   Plus,
-  ChevronsLeft,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsRight,
   Check,
   X,
   CircleDollarSign,
 } from "lucide-react";
+import Pagination from "../../../components/ui/Pagination";
 
 function formatPrecioVenta(p) {
   const n = Number(p.precioVenta ?? p.price ?? 0);
@@ -27,6 +24,8 @@ export default function ProductList({
   onNuevo,
   paginacion = { page: 0, totalPages: 0 },
   onPageChange,
+  totalItems = 0,
+  pageSize = 10,
 }) {
   const { page = 0, totalPages = 0 } = paginacion;
 
@@ -195,51 +194,13 @@ export default function ProductList({
 
       {/* Paginación << < > >> */}
       {totalPages > 0 && (
-        <div className="flex justify-end">
-          <div className="inline-flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] px-2 py-1.5 text-sm text-white/60 shadow-sm">
-            <button
-              type="button"
-              onClick={() => onPageChange(0)}
-              disabled={page === 0}
-              className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 text-white/50 hover:border-white/30 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="Primera página"
-            >
-              <ChevronsLeft size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={() => onPageChange(page - 1)}
-              disabled={page === 0}
-              className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 text-white/50 hover:border-white/30 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="Página anterior"
-            >
-              <ChevronLeft size={16} />
-            </button>
-
-            <span className="px-2 font-medium tabular-nums">
-              Página {page + 1} de {totalPages}
-            </span>
-
-            <button
-              type="button"
-              onClick={() => onPageChange(page + 1)}
-              disabled={page >= totalPages - 1}
-              className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 text-white/50 hover:border-white/30 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="Página siguiente"
-            >
-              <ChevronRight size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={() => onPageChange(totalPages - 1)}
-              disabled={page >= totalPages - 1}
-              className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 text-white/50 hover:border-white/30 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="Última página"
-            >
-              <ChevronsRight size={16} />
-            </button>
-          </div>
-        </div>
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={onPageChange}
+          pageSize={pageSize}
+          totalItems={totalItems || undefined}
+        />
       )}
     </div>
   );

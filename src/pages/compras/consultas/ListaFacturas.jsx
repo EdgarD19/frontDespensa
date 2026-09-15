@@ -7,13 +7,12 @@ import {
   apiErrorMessage,
 } from "../../../api/facturasCompraApi";
 import { getProveedores } from "../../../api/proveedoresApi";
+import Pagination from "../../../components/ui/Pagination";
 
 const money = (n) => {
   const v = Number(n);
   return Number.isFinite(v) ? `₲ ${v.toLocaleString("es-PY", { maximumFractionDigits: 0 })}` : "—";
 };
-
-const pageBtn = "flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-white/60 hover:border-white/30 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm";
 
 const fmtFecha = (iso) => {
   if (!iso) return "—";
@@ -286,23 +285,13 @@ export default function ListaFacturas() {
       </div>
 
       {!loading && paginadas.length > 0 && (
-        <div className="flex justify-center">
-          <div className="inline-flex items-center gap-0.5 rounded-xl border border-white/10 bg-white/[0.04] px-1.5 py-1.5 text-sm select-none shadow-sm">
-            <button disabled={page <= 0} onClick={() => setPage(0)} className={pageBtn} title="Primera página">
-              &laquo;
-            </button>
-            <button disabled={page <= 0} onClick={() => setPage(page - 1)} className={pageBtn} title="Página anterior">
-              &lsaquo;
-            </button>
-            <span className="px-2 font-medium text-white/75 tabular-nums">Página {page + 1} de {totalPages}</span>
-            <button disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)} className={pageBtn} title="Página siguiente">
-              &rsaquo;
-            </button>
-            <button disabled={page >= totalPages - 1} onClick={() => setPage(totalPages - 1)} className={pageBtn} title="Última página">
-              &raquo;
-            </button>
-          </div>
-        </div>
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          pageSize={10}
+          totalItems={filtradas.length}
+        />
       )}
 
       {seleccionada && (

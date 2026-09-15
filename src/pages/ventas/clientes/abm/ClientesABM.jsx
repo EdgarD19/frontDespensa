@@ -20,6 +20,7 @@ export default function ClientesABM() {
     const [searchDebounced, setSearchDebounced] = useState("");
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
+    const [totalItems, setTotalItems] = useState(0);
     const [modalAbierto, setModalAbierto] = useState(false);
     const [clienteEdit, setClienteEdit] = useState(null);
     const [guardando, setGuardando] = useState(false);
@@ -49,6 +50,9 @@ export default function ClientesABM() {
             setClientes(Array.isArray(body.content) ? body.content : []);
             setTotalPages(
                 typeof body.totalPages === "number" ? body.totalPages : 0,
+            );
+            setTotalItems(
+                typeof body.totalElements === "number" ? body.totalElements : 0,
             );
         } catch (err) {
             console.error("Error al cargar clientes:", err);
@@ -150,6 +154,8 @@ export default function ClientesABM() {
                 onNuevo={handleNuevo}
                 paginacion={{ page, totalPages }}
                 onPageChange={setPage}
+                totalItems={totalItems}
+                pageSize={10}
             />
 
             <ClientesModal

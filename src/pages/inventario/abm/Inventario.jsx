@@ -91,6 +91,7 @@ export default function Inventario() {
   const [searchDebounced, setSearchDebounced] = useState("");
   const [page, setPage]                 = useState(0);
   const [totalPages, setTotalPages]     = useState(0);
+  const [totalItems, setTotalItems]     = useState(0);
   const [modalOpen, setModalOpen]       = useState(false);
   const [precioProducto, setPrecioProducto] = useState(null);
   const [confirmarProducto, setConfirmarProducto] = useState(null);
@@ -132,9 +133,11 @@ export default function Inventario() {
       const res = await getProductos({ search: searchDebounced, page, pageSize: 10, sortBy: "nombre", sortDir: "ASC" });
       setProductos(Array.isArray(res.content) ? res.content : []);
       setTotalPages(typeof res.totalPages === "number" ? res.totalPages : 0);
+      setTotalItems(typeof res.totalElements === "number" ? res.totalElements : 0);
     } catch (err) {
       setError(apiErrorMessage(err) || "Error al cargar productos");
       setProductos([]);
+      setTotalItems(0);
     } finally {
       setLoading(false);
     }
@@ -205,12 +208,6 @@ export default function Inventario() {
     } catch (err) {
       setError(apiErrorMessage(err) || "Error al guardar");
     }
-  };
-
-  const handleClear = () => {
-    setFormData(INITIAL_FORM);
-    setEditingId(null);
-    setError(null);
   };
 
   const handleEdit = (producto) => {
@@ -298,6 +295,8 @@ export default function Inventario() {
         onNuevo={openModalForAdd}
         paginacion={{ page, totalPages }}
         onPageChange={setPage}
+        totalItems={totalItems}
+        pageSize={10}
       />
 
       {modalOpen && (

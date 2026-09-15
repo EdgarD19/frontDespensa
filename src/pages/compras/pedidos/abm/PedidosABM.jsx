@@ -12,11 +12,9 @@ import {
 import { getProveedores } from "../../../../api/proveedoresApi";
 import { getProductos } from "../../../../api/productosApi";
 import RecepcionPedidoModal from "../recepcion/RecepcionPedidoModal";
+import Pagination from "../../../../components/ui/Pagination";
 
 const ESTADOS = ["solicitado", "recibido", "cancelado"];
-
-const pageBtn =
-  "flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-white/60 hover:border-white/30 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm";
 
 const fmtFecha = (iso) => {
   if (!iso) return "—";
@@ -53,6 +51,7 @@ export default function PedidosABM() {
   const [filtroEstado, setFiltroEstado] = useState("");
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [totalPedidos, setTotalPedidos] = useState(0);
 
   const [modal, setModal] = useState(false);     // false | "crear" | "editar"
   const [pedidoSel, setPedidoSel] = useState(null);
@@ -66,6 +65,7 @@ export default function PedidosABM() {
   const [prodResults, setProdResults] = useState([]);
   const [prodPage, setProdPage] = useState(0);
   const [prodTotalPages, setProdTotalPages] = useState(0);
+  const [prodTotalItems, setProdTotalItems] = useState(0);
   const [showProd, setShowProd] = useState(false);
 
   const cargar = useCallback(async () => {
@@ -75,11 +75,13 @@ export default function PedidosABM() {
       const res = await getPedidos({ estado: filtroEstado || undefined, page, pageSize: 15 });
       setPedidos(res.content);
       setTotalPages(res.totalPages);
+      setTotalPedidos(typeof res.totalElements === "number" ? res.totalElements : 0);
       setSinBackend(false);
     } catch (err) {
       setError(apiErrorMessage(err) || "No se pudieron cargar los pedidos");
       setPedidos([]);
       setTotalPages(0);
+      setTotalPedidos(0);
       setSinBackend(true);
     } finally {
       setLoading(false);
@@ -103,11 +105,13 @@ export default function PedidosABM() {
   useEffect(() => {
     if (!showProd) { setProdResults([]); return; }
     setProdTotalPages(0);
+    setProdTotalItems(0);
     const t = setTimeout(async () => {
       try {
         const res = await getProductos({ search: prodSearch || undefined, page: prodPage, pageSize: 8 });
         setProdResults(res.content || []);
         setProdTotalPages(res.totalPages ?? 0);
+        setProdTotalItems(typeof res.totalElements === "number" ? res.totalElements : 0);
       } catch { setProdResults([]); }
     }, prodSearch.length > 0 ? 350 : 0);
     return () => clearTimeout(t);
@@ -257,19 +261,13 @@ export default function PedidosABM() {
       </div>
 
       {!sinBackend && pedidos.length > 0 && (
-        <div className="flex justify-center">
-          <div className="inline-flex items-center gap-0.5 rounded-xl border border-white/10 bg-white/[0.04] px-1.5 py-1.5 text-sm select-none shadow-sm">
-            <button type="button" disabled={page <= 0} onClick={() => setPage(0)}
-              className={pageBtn} title="Primera página">&laquo;</button>
-            <button type="button" disabled={page <= 0} onClick={() => setPage((p) => p - 1)}
-              className={pageBtn} title="Página anterior">&lsaquo;</button>
-            <span className="px-2 font-medium text-white/75 tabular-nums">Página {page + 1} de {totalPages}</span>
-            <button type="button" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}
-              className={pageBtn} title="Página siguiente">&rsaquo;</button>
-            <button type="button" disabled={page >= totalPages - 1} onClick={() => setPage(totalPages - 1)}
-              className={pageBtn} title="Última página">&raquo;</button>
-          </div>
-        </div>
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          pageSize={15}
+          totalItems={totalPedidos}
+        />
       )}
 
       {modal && (
@@ -283,6 +281,7 @@ export default function PedidosABM() {
           prodPage={prodPage}
           setProdPage={setProdPage}
           prodTotalPages={prodTotalPages}
+          prodTotalItems={prodTotalItems}
           showProd={showProd}
           setShowProd={setShowProd}
           guardando={guardando}
@@ -354,7 +353,7 @@ export default function PedidosABM() {
 
 function PedidoModal({
   modo, pedido, proveedores, prodSearch, setProdSearch, prodResults, prodPage, setProdPage, prodTotalPages,
-  showProd, setShowProd, guardando, error, sinBackend, onGuardar, onCerrar,
+  prodTotalItems, showProd, setShowProd, guardando, error, sinBackend, onGuardar, onCerrar,
 }) {
   const esEditar = modo === "editar";
   const prodRef = useRef(null);
@@ -480,21 +479,14 @@ function PedidoModal({
                   ))}
 
                   {prodTotalPages > 1 && (
-                    <div className="flex items-center justify-center gap-1 px-3 py-1.5 border-t border-white/5 text-sm select-none">
-                      <button type="button" disabled={prodPage <= 0} onClick={() => setProdPage(0)}
-                        className="px-2 py-1 rounded text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm"
-                        title="Primera página">&laquo;</button>
-                      <button type="button" disabled={prodPage <= 0} onClick={() => setProdPage((p) => p - 1)}
-                        className="px-2 py-1 rounded text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm"
-                        title="Página anterior">&lsaquo;</button>
-                      <span className="px-3 text-[#5a5a6e]">Página {prodPage + 1} de {prodTotalPages}</span>
-                      <button type="button" disabled={prodPage >= prodTotalPages - 1} onClick={() => setProdPage((p) => p + 1)}
-                        className="px-2 py-1 rounded text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm"
-                        title="Página siguiente">&rsaquo;</button>
-                      <button type="button" disabled={prodPage >= prodTotalPages - 1} onClick={() => setProdPage(prodTotalPages - 1)}
-                        className="px-2 py-1 rounded text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm"
-                        title="Última página">&raquo;</button>
-                    </div>
+                    <Pagination
+                      page={prodPage}
+                      totalPages={prodTotalPages}
+                      onPageChange={setProdPage}
+                      pageSize={8}
+                      totalItems={prodTotalItems}
+                      className="px-3 py-1.5 border-t border-white/5"
+                    />
                   )}
                 </div>
               )}
