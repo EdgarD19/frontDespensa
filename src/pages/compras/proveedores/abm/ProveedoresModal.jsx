@@ -22,7 +22,6 @@ const FORM_INICIAL = {
   idPais: "",
   idCiudad: "",
   direccion: "",
-  fechaNacimiento: "",
   telefono: "",
   celular: "",
   email: "",
@@ -55,9 +54,6 @@ export default function ProveedoresModal({
         idPais: proveedorEdit.idPais ?? "",
         idCiudad: proveedorEdit.idCiudad ?? "",
         direccion: proveedorEdit.direccion ?? "",
-        fechaNacimiento: proveedorEdit.fechaNacimiento
-          ? new Date(proveedorEdit.fechaNacimiento).toISOString().split("T")[0]
-          : "",
         telefono: proveedorEdit.telefono ?? "",
         celular: proveedorEdit.celular ?? "",
         email: proveedorEdit.email ?? "",
@@ -115,7 +111,6 @@ export default function ProveedoresModal({
     }
     if (!form.tipoPersona || form.tipoPersona === "FISICA") {
       if (!form.apellido.trim()) errs.apellido = "Requerido";
-      if (!form.fechaNacimiento) errs.fechaNacimiento = "Requerido";
     }
     if (!form.idPais) errs.idPais = "Requerido";
     if (!form.idCiudad) errs.idCiudad = "Requerido";
@@ -222,23 +217,8 @@ export default function ProveedoresModal({
             )}
           </div>
 
-          {/* Fecha nacimiento + Tipo documento */}
+          {/* Tipo documento */}
           <div className="grid grid-cols-2 gap-3">
-            {!esJuridica && (
-              <label className={labelClass}>
-                <span className={labelText}>Fecha de nacimiento <span className="text-rose-400">*</span></span>
-                <input
-                  type="date"
-                  name="fechaNacimiento"
-                  value={form.fechaNacimiento}
-                  onChange={handleChange}
-                  required
-                  className={inputClass}
-                />
-                {errores.fechaNacimiento && <span className="text-[11px] text-rose-400">{errores.fechaNacimiento}</span>}
-              </label>
-            )}
-
             <label className={labelClass}>
               <span className={labelText}>
                 Tipo de documento <span className="text-rose-400">*</span>

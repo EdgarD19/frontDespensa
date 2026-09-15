@@ -42,6 +42,23 @@ export default function AjusteInventario() {
   const [sesiones, setSesiones] = useState(cargarSesiones);
   const [aplicandoId, setAplicandoId] = useState(null);
   const [modalAbierto, setModalAbierto] = useState(false);
+  const [busqueda, setBusqueda] = useState("");
+
+  const termBusqueda = busqueda.trim().toLowerCase();
+  const sesionesVisibles = termBusqueda
+    ? sesiones.filter((s) => {
+        const etiquetaEstado = s.estado === "APLICADO" ? "aplicado" : "pendiente";
+        const coincideProducto = (s.items || []).some((it) =>
+          String(it.nombre || "").toLowerCase().includes(termBusqueda)
+        );
+        return (
+          coincideProducto ||
+          [String(s.id || ""), s.numeroInforme, s.descripcion, s.motivo, etiquetaEstado]
+            .filter(Boolean)
+            .some((v) => String(v).toLowerCase().includes(termBusqueda))
+        );
+      })
+    : sesiones;
 
   useEffect(() => {
     try {
@@ -252,8 +269,10 @@ export default function AjusteInventario() {
           ) : null}
 
           <ListasConteo
-            sesiones={sesiones}
+            sesiones={sesionesVisibles}
             aplicandoId={aplicandoId}
+            onBusquedaChange={setBusqueda}
+            busqueda={busqueda}
             onChangeFisico={cambiarFisico}
             onAplicar={aplicarSesion}
             error={error}

@@ -71,12 +71,8 @@ function buildProveedorBody(data) {
 
   if (data.tipoPersona === "FISICA") {
     body.apellido = data.apellido?.trim() || null;
-    if (data.fechaNacimiento) {
-      body.fechaNacimiento = data.fechaNacimiento;
-    }
   } else {
     body.apellido = null;
-    body.fechaNacimiento = null;
   }
 
   return body;

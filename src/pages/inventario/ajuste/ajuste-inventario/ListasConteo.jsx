@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ClipboardList, Eye, PenLine, X, Save } from "lucide-react";
+import { ClipboardList, Eye, PenLine, X, Save, Search } from "lucide-react";
 
 function fmtFechaHora(iso) {
   if (!iso) return "—";
@@ -43,6 +43,8 @@ function calcDiff(it) {
 export default function ListasConteo({
   sesiones,
   aplicandoId,
+  busqueda = "",
+  onBusquedaChange,
   onChangeFisico,
   onAplicar,
   error,
@@ -63,12 +65,24 @@ export default function ListasConteo({
 
   return (
     <div className="rounded-xl border border-[#1e1e24] bg-[#111114] overflow-hidden">
-      <div className="px-5 py-4 border-b border-[#1e1e24] flex items-center gap-2">
+      <div className="px-5 py-4 border-b border-[#1e1e24] flex items-center gap-3 flex-wrap">
         <ClipboardList className="w-5 h-5 text-[#22c55e] shrink-0" aria-hidden />
         <h2 className="text-base font-semibold text-[#e1e1eb]">Listas Generadas</h2>
-        <span className="ml-auto text-xs text-[#5a5a6e] tabular-nums">
-          {sesiones.length} lista{sesiones.length !== 1 ? "s" : ""}
-        </span>
+        <div className="ml-auto flex items-center gap-3">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5a5a6e]" />
+            <input
+              type="search"
+              value={busqueda}
+              onChange={(e) => onBusquedaChange?.(e.target.value)}
+              placeholder="Buscar por nº, informe, producto…"
+              className="w-full rounded-lg border border-[#2a2a32] bg-[#0d0d0f] pl-9 pr-3 py-1.5 text-xs text-[#f1f1f3] placeholder:text-[#4a4a5a] focus:border-[#22c55e]/50 outline-none transition-colors"
+            />
+          </div>
+          <span className="text-xs text-[#5a5a6e] tabular-nums whitespace-nowrap">
+            {sesiones.length} lista{sesiones.length !== 1 ? "s" : ""}
+          </span>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
@@ -83,7 +97,16 @@ export default function ListasConteo({
             </tr>
           </thead>
           <tbody className="divide-y divide-[#1e1e24]">
-            {sesiones.map((s) => (
+            {sesiones.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-5 py-8 text-center text-sm text-[#5a5a6e]">
+                  {busqueda.trim()
+                    ? "No se encontraron listas con ese criterio."
+                    : "Aún no generaste listas de conteo."}
+                </td>
+              </tr>
+            ) : (
+            sesiones.map((s) => (
               <tr key={s.id} className="hover:bg-[#13131a]/80 transition-colors">
                 <td className="px-5 py-3 font-semibold text-[#f1f1f3] tabular-nums">
                   #{s.id}
@@ -125,7 +148,8 @@ export default function ListasConteo({
                   </button>
                 </td>
               </tr>
-            ))}
+            ))
+            )}
           </tbody>
         </table>
       </div>
