@@ -9,13 +9,13 @@ import { apiErrorMessage } from "../../../api/errors";
 import {
   crearAjuste,
   completarAjuste,
+  desactivarAjuste,
 } from "../../../api/ajustesApi";
 import { getCategorias } from "../../../api/maestrosApi";
 import { canGestionarAjustesInventario } from "../../../auth/inventoryAccess";
 import { stockEntero } from "./ajuste-inventario/utils";
 import ListasConteo from "./ajuste-inventario/ListasConteo";
 import NuevaListaModal from "./ajuste-inventario/NuevaListaModal";
-import { updateProducto } from "../../../api/productosApi";
 
 const STORAGE_KEY = "ajuste.listas.conteo.v1";
 
@@ -41,6 +41,8 @@ export default function AjusteInventario() {
 
   const [sesiones, setSesiones] = useState(cargarSesiones);
   const [aplicandoId, setAplicandoId] = useState(null);
+  const [desactivandoId, setDesactivandoId] = useState(null);
+  const [generando, setGenerando] = useState(false);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [filtroEstado, setFiltroEstado] = useState("");
   const [fechaDesde, setFechaDesde] = useState("");
@@ -48,8 +50,9 @@ export default function AjusteInventario() {
   const [filtroMotivo, setFiltroMotivo] = useState("");
 
   const sesionesVisibles = sesiones.filter((s) => {
-    if (filtroEstado === "PENDIENTE" && s.estado === "APLICADO") return false;
+    if (filtroEstado === "PENDIENTE" && s.estado !== "EN_PROCESO") return false;
     if (filtroEstado === "APLICADO" && s.estado !== "APLICADO") return false;
+    if (filtroEstado === "DESACTIVADO" && s.estado !== "DESACTIVADO") return false;
     if (filtroMotivo && (s.motivo || "") !== filtroMotivo) return false;
     const fecha = new Date(s.fechaHora);
     if (fechaDesde) {
@@ -99,26 +102,54 @@ export default function AjusteInventario() {
     };
   }, []);
 
-  function generarSesion({ productos: seleccion, descripcion, motivo }) {
-    const id =
-      sesiones.reduce((m, s) => Math.max(m, Number(s.id) || 0), 0) + 1;
-    const sesion = {
-      id,
-      fechaHora: new Date().toISOString(),
-      descripcion,
-      motivo: (motivo || "").trim(),
-      estado: "EN_PROCESO",
-      items: seleccion.map((p) => ({
-        idProducto: p.id,
-        nombre: p.nombre || `Producto #${p.id}`,
-        unidadMedida: p.unidadMedida || "",
-        stockSistema: stockEntero(p),
-        stockFisico: "",
-      })),
-    };
-    setSesiones((prev) => [sesion, ...prev]);
+  async function generarSesion({ productos: seleccion, descripcion, motivo }) {
     setError(null);
-    setAviso("Lista Generada");
+    setAviso(null);
+    setGenerando(true);
+    try {
+      const ajuste = await crearAjuste({
+        idProductos: seleccion.map((p) => p.id),
+        observaciones: descripcion,
+      });
+      const idAjuste = ajuste?.idAjuste;
+      if (idAjuste == null) {
+        throw new Error("El backend no devolvió un idAjuste.");
+      }
+      const id =
+        sesiones.reduce((m, s) => Math.max(m, Number(s.id) || 0), 0) + 1;
+      const sesion = {
+        id,
+        idAjuste,
+        numeroInforme: ajuste?.numeroInforme || "",
+        fechaHora: new Date().toISOString(),
+        descripcion,
+        motivo: (motivo || "").trim(),
+        estado: "EN_PROCESO",
+        items: seleccion.map((p) => ({
+          idProducto: p.id,
+          nombre: p.nombre || `Producto #${p.id}`,
+          codigo: p.codigoBarras || p.codigoBarra || "",
+          unidadMedida: p.unidadMedida || "",
+          stockSistema: stockEntero(p),
+          stockFisico: "",
+        })),
+      };
+      setSesiones((prev) => [sesion, ...prev]);
+      setAviso(
+        ajuste?.numeroInforme
+          ? `Borrador ${ajuste.numeroInforme} generado.`
+          : "Lista Generada"
+      );
+      return true;
+    } catch (err) {
+      setError(
+        apiErrorMessage(err) ||
+          "No se pudo generar la lista. Verificá la conexión con el backend e intentá de nuevo."
+      );
+      return false;
+    } finally {
+      setGenerando(false);
+    }
   }
 
   function cambiarFisico(idSesion, idProducto, valor) {
@@ -164,13 +195,16 @@ export default function AjusteInventario() {
     setAplicandoId(id);
 
     try {
-      const ajuste = await crearAjuste({
-        idProductos: sesion.items.map((it) => it.idProducto),
-        observaciones: sesion.descripcion,
-      });
-      const idAjuste = ajuste?.idAjuste;
+      let idAjuste = sesion.idAjuste ?? null;
       if (idAjuste == null) {
-        throw new Error("El backend no devolvió un idAjuste.");
+        const ajuste = await crearAjuste({
+          idProductos: sesion.items.map((it) => it.idProducto),
+          observaciones: sesion.descripcion,
+        });
+        idAjuste = ajuste?.idAjuste;
+        if (idAjuste == null) {
+          throw new Error("El backend no devolvió un idAjuste.");
+        }
       }
 
       const resultado = await completarAjuste(idAjuste, {
@@ -209,6 +243,33 @@ export default function AjusteInventario() {
       setError(
         apiErrorMessage(err) ||
           "No se pudo aplicar el ajuste. Verificá la conexión con el backend y reintentá."
+      );
+    }
+  }
+
+  async function desactivarSesion(id) {
+    setError(null);
+    setAviso(null);
+    const sesion = sesiones.find((s) => s.id === id);
+    if (!sesion || sesion.estado !== "EN_PROCESO") return;
+
+    setDesactivandoId(id);
+    try {
+      if (sesion.idAjuste != null) {
+        await desactivarAjuste(sesion.idAjuste);
+      }
+      setSesiones((prev) =>
+        prev.map((s) =>
+          s.id === id ? { ...s, estado: "DESACTIVADO" } : s
+        )
+      );
+      setDesactivandoId(null);
+      setAviso(`Lista #${sesion.id} desactivada.`);
+    } catch (err) {
+      setDesactivandoId(null);
+      setError(
+        apiErrorMessage(err) ||
+          "No se pudo desactivar la lista. Verificá la conexión con el backend e intentá de nuevo."
       );
     }
   }
@@ -275,6 +336,7 @@ export default function AjusteInventario() {
             sesiones={sesionesVisibles}
             total={sesiones.length}
             aplicandoId={aplicandoId}
+            desactivandoId={desactivandoId}
             filtroEstado={filtroEstado}
             onFiltroEstadoChange={setFiltroEstado}
             fechaDesde={fechaDesde}
@@ -285,6 +347,7 @@ export default function AjusteInventario() {
             onFiltroMotivoChange={setFiltroMotivo}
             onChangeFisico={cambiarFisico}
             onAplicar={aplicarSesion}
+            onDesactivar={desactivarSesion}
             error={error}
           />
         </div>
@@ -294,10 +357,10 @@ export default function AjusteInventario() {
         abierto={modalAbierto}
         productos={productos}
         categorias={categorias}
-        disabled={loading}
-        onGenerar={(datos) => {
-          generarSesion(datos);
-          setModalAbierto(false);
+        disabled={loading || generando}
+        onGenerar={async (datos) => {
+          const ok = await generarSesion(datos);
+          if (ok) setModalAbierto(false);
         }}
         onCerrar={() => setModalAbierto(false)}
       />

@@ -112,3 +112,11 @@ export async function completarAjuste(
   });
   return normalizeAjuste(data);
 }
+
+/**
+ * PATCH desactivar ajuste (solo en estado BORRADOR/pendiente; un CONFIRMADO es inmutable).
+ */
+export async function desactivarAjuste(idAjuste) {
+  const { data } = await api.patch(`/api/ajuste-inventario/${idAjuste}/desactivar`);
+  return normalizeAjuste(data);
+}
