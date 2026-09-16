@@ -56,7 +56,7 @@ function buildProveedorBody(data) {
   const body = {
     nombre: data.nombre?.trim() || "",
     tipoPersona: data.tipoPersona || "FISICA",
-    tipoDocumento: data.tipoDocumento || null,
+    tipoDocumento: data.tipoDocumento || (data.tipoPersona === "JURIDICA" ? "RUC" : "CI"),
     numeroDocumento: data.numeroDocumento?.trim() || null,
     descripcion: data.descripcionNegocio?.trim() || null,
     personaContacto: data.personaContacto?.trim() || null,

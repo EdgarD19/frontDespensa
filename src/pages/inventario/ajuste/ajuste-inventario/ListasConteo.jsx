@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ClipboardList, Eye, PenLine, X, Save } from "lucide-react";
+import { ClipboardList, FileText, PenLine, Check, X, Save } from "lucide-react";
 import Pagination from "../../../../components/ui/Pagination";
 
 const ITEMS_PER_PAGE = 10;
@@ -46,6 +46,64 @@ function calcDiff(it) {
   return f - s;
 }
 
+function completo(s) {
+  return s.items.every((it) => String(it.stockFisico ?? "").trim() !== "");
+}
+
+/** Planilla imprimible de conteo (estilos de impresión `.print-invoice`). */
+function PlanillaConteoImpresion({ sesion }) {
+  return (
+    <div className="print-invoice hidden print:block print:p-8 print:bg-white print:text-black">
+      <div className="max-w-2xl mx-auto font-sans text-sm text-black">
+        <h1 className="text-lg font-bold border-b border-black pb-2 mb-3">
+          Lista de Conteo de Stock
+        </h1>
+        <p className="mb-1">
+          <strong>Nº Registro:</strong> #{sesion.id}
+        </p>
+        {sesion.numeroInforme ? (
+          <p className="mb-1">
+            <strong>Informe:</strong> {sesion.numeroInforme}
+          </p>
+        ) : null}
+        <p className="mb-1">
+          <strong>Fecha:</strong> {fmtFechaHora(sesion.fechaHora)}
+        </p>
+        {sesion.motivo ? (
+          <p className="mb-1">
+            <strong>Motivo:</strong> {nombreMotivo(sesion.motivo)}
+          </p>
+        ) : null}
+        {sesion.descripcion ? (
+          <p className="mb-4">
+            <strong>Descripción:</strong> {sesion.descripcion}
+          </p>
+        ) : null}
+        <table className="w-full border-collapse mb-4">
+          <thead>
+            <tr className="border-b border-black">
+              <th className="text-left py-1 pr-2">Producto</th>
+              <th className="text-left py-1 pr-2">U.M.</th>
+              <th className="text-right py-1 pr-2">Stock en sistema</th>
+              <th className="text-right py-1">Stock físico</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sesion.items.map((it) => (
+              <tr key={it.idProducto} className="border-b border-gray-300">
+                <td className="py-1 pr-2">{it.nombre}</td>
+                <td className="py-1 pr-2">{it.unidadMedida || "—"}</td>
+                <td className="py-1 pr-2 text-right tabular-nums">{it.stockSistema}</td>
+                <td className="py-1 text-right tabular-nums">{it.stockFisico}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function ListasConteo({
   sesiones,
   total = 0,
@@ -62,11 +120,16 @@ export default function ListasConteo({
   onAplicar,
   error,
 }) {
-  const [abiertaId, setAbiertaId] = useState(null);
+  const [cargarId, setCargarId] = useState(null);
+  const [confirmarId, setConfirmarId] = useState(null);
+  const [imprimirId, setImprimirId] = useState(null);
   const [currentPage, setCurrentPage] = useState(0);
-  const abierta = sesiones.find((s) => s.id === abiertaId) || null;
-  const esAplicado = abierta?.estado === "APLICADO";
-  const aplicando = aplicandoId === abierta?.id;
+
+  const cargar = sesiones.find((s) => s.id === cargarId) || null;
+  const confirmar = sesiones.find((s) => s.id === confirmarId) || null;
+  const imprimir = sesiones.find((s) => s.id === imprimirId) || null;
+  const aplicandoConfirmar = aplicandoId === confirmar?.id;
+
   const filtrosActivos =
     filtroEstado !== "" || filtroMotivo !== "" || fechaDesde !== "" || fechaHasta !== "";
 
@@ -77,6 +140,14 @@ export default function ListasConteo({
     safePage * ITEMS_PER_PAGE,
     (safePage + 1) * ITEMS_PER_PAGE
   );
+
+  function imprimirPdf(id) {
+    setImprimirId(id);
+    setTimeout(() => {
+      window.print();
+      setImprimirId(null);
+    }, 100);
+  }
 
   if (total === 0) {
     return (
@@ -194,7 +265,7 @@ export default function ListasConteo({
               <th className="px-3 py-2 font-medium">Fecha/Hora</th>
               <th className="px-3 py-2 font-medium">Motivo</th>
               <th className="px-3 py-2 font-medium">Estado</th>
-              <th className="px-2 py-2 text-right font-medium">Acción</th>
+              <th className="px-2 py-2 text-right font-medium">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#1e1e24]">
@@ -207,7 +278,10 @@ export default function ListasConteo({
                 </td>
               </tr>
             ) : (
-            pageSesiones.map((s) => (
+            pageSesiones.map((s) => {
+              const listo = completo(s);
+              const aplicado = s.estado === "APLICADO";
+              return (
               <tr key={s.id} className="hover:bg-[#13131a]/80 transition-colors">
                 <td className="px-5 py-3 font-semibold text-[#f1f1f3] tabular-nums">
                   #{s.id}
@@ -227,24 +301,40 @@ export default function ListasConteo({
                   <EstadoBadge estado={s.estado} />
                 </td>
                 <td className="px-2 py-3 text-right">
-                  <button
-                    type="button"
-                    onClick={() => setAbiertaId(s.id)}
-                    className="inline-flex items-center gap-1.5 text-xs font-medium text-[#22c55e] hover:text-green-400 transition-colors"
-                  >
-                    {s.estado === "APLICADO" ? (
-                      <>
-                        <Eye className="w-4 h-4" /> Ver
-                      </>
-                    ) : (
-                      <>
-                        <PenLine className="w-4 h-4" /> Conteo
-                      </>
-                    )}
-                  </button>
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      type="button"
+                      onClick={() => imprimirPdf(s.id)}
+                      className="p-1.5 rounded text-white/40 hover:text-[#22c55e] hover:bg-[#22c55e]/10 transition-colors"
+                      title="Planilla / PDF"
+                      aria-label="Generar PDF de la lista"
+                    >
+                      <FileText size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCargarId(s.id)}
+                      className="p-1.5 rounded text-white/40 hover:text-[#22c55e] hover:bg-[#22c55e]/10 transition-colors"
+                      title={aplicado ? "Ver carga de stock" : "Cargar stock físico"}
+                      aria-label="Cargar stock físico"
+                    >
+                      <PenLine size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmarId(s.id)}
+                      disabled={aplicado || !listo}
+                      className="p-1.5 rounded text-white/40 hover:text-[#22c55e] hover:bg-[#22c55e]/10 transition-colors disabled:opacity-25 disabled:pointer-events-none"
+                      title={listo ? "Confirmar ajuste" : "Cargá el stock físico primero"}
+                      aria-label="Confirmar ajuste"
+                    >
+                      <Check size={16} />
+                    </button>
+                  </div>
                 </td>
               </tr>
-            ))
+              );
+            })
             )}
           </tbody>
         </table>
@@ -261,22 +351,104 @@ export default function ListasConteo({
         />
       )}
 
-      {abierta && (
+      {/* Modal: cargar stock físico (solo producto + stock a cargar) */}
+      {cargar && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#1a1a20] border border-white/10 rounded-2xl w-full max-w-4xl max-h-[85vh] overflow-y-auto shadow-2xl">
+          <div className="bg-[#1a1a20] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
               <div>
                 <h2 className="text-lg font-semibold text-white">
-                  Lista #{abierta.id}
+                  Cargar Stock Físico — Lista #{cargar.id}
                 </h2>
                 <p className="text-xs text-[#7a7a8c] mt-0.5">
-                  {abierta.descripcion}
-                  {abierta.motivo ? ` • ${abierta.motivo}` : ""}
-                  {abierta.numeroInforme ? ` • ${abierta.numeroInforme}` : ""}• {fmtFechaHora(abierta.fechaHora)}
+                  {cargar.descripcion}
+                  {cargar.motivo ? ` • ${cargar.motivo}` : ""}
+                  {cargar.numeroInforme ? ` • ${cargar.numeroInforme}` : ""}• {fmtFechaHora(cargar.fechaHora)}
                 </p>
               </div>
               <button
-                onClick={() => setAbiertaId(null)}
+                onClick={() => setCargarId(null)}
+                className="p-1 text-white/40 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-[11px] uppercase tracking-wide text-[#5a5a6e] border-b border-[#1e1e24]">
+                    <th className="px-4 py-2 font-medium">Producto</th>
+                    <th className="px-3 py-2 font-medium">Stock Físico a cargar</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1e1e24]">
+                  {cargar.items.map((it) => (
+                    <tr key={it.idProducto} className="hover:bg-[#13131a]/60">
+                      <td className="px-4 py-3 min-w-[12rem]">
+                        <span className="font-medium text-[#f1f1f3] block truncate">
+                          {it.nombre}
+                        </span>
+                        {it.unidadMedida ? (
+                          <span className="text-xs text-[#5a5a6e]">
+                            {it.unidadMedida}
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-3 w-32">
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          step={1}
+                          value={it.stockFisico}
+                          onChange={(e) =>
+                            onChangeFisico(cargar.id, it.idProducto, e.target.value)
+                          }
+                          disabled={cargar.estado === "APLICADO"}
+                          placeholder="contado"
+                          className="w-full rounded-md border border-[#2a2a32] bg-[#0d0d0f] px-2.5 py-2 text-sm text-[#f1f1f3] placeholder:text-[#4a4a5a] focus:border-[#22c55e]/50 outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-sm text-[#5a5a6e]">
+                  {cargar.items.filter((it) => String(it.stockFisico ?? "").trim() !== "").length} de {cargar.items.length} producto{cargar.items.length !== 1 ? "s" : ""} cargado{cargar.items.length !== 1 ? "s" : ""}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCargarId(null)}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#22c55e] hover:bg-green-400 text-black font-medium rounded-lg transition-colors"
+                >
+                  Listo
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: resumen y confirmación del ajuste */}
+      {confirmar && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#1a1a20] border border-white/10 rounded-2xl w-full max-w-3xl max-h-[85vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+              <div>
+                <h2 className="text-lg font-semibold text-white">
+                  Confirmar Ajuste — Lista #{confirmar.id}
+                </h2>
+                <p className="text-xs text-[#7a7a8c] mt-0.5">
+                  {confirmar.descripcion}
+                  {confirmar.motivo ? ` • ${confirmar.motivo}` : ""}
+                  {confirmar.numeroInforme ? ` • ${confirmar.numeroInforme}` : ""}• {fmtFechaHora(confirmar.fechaHora)}
+                </p>
+              </div>
+              <button
+                onClick={() => setConfirmarId(null)}
                 className="p-1 text-white/40 hover:text-white transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -299,17 +471,13 @@ export default function ListasConteo({
                     <thead>
                       <tr className="text-left text-[11px] uppercase tracking-wide text-[#5a5a6e] border-b border-[#1e1e24]">
                         <th className="px-4 py-2 font-medium">Producto</th>
-                        <th className="px-3 py-2 font-medium text-right">
-                          Stock en Sistema
-                        </th>
-                        <th className="px-3 py-2 font-medium">Stock Físico</th>
-                        <th className="px-3 py-2 font-medium text-right">
-                          Diferencia
-                        </th>
+                        <th className="px-3 py-2 font-medium text-right">Cant. en sistema</th>
+                        <th className="px-3 py-2 font-medium text-right">Stock físico cargado</th>
+                        <th className="px-3 py-2 font-medium text-right">Diferencia</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#1e1e24]">
-                      {abierta.items.map((it) => {
+                      {confirmar.items.map((it) => {
                         const diff = calcDiff(it);
                         const diffCls =
                           diff > 0
@@ -332,20 +500,8 @@ export default function ListasConteo({
                             <td className="px-3 py-3 text-right tabular-nums text-[#f1f1f3] whitespace-nowrap">
                               {it.stockSistema}
                             </td>
-                            <td className="px-3 py-3 w-28">
-                              <input
-                                type="number"
-                                inputMode="numeric"
-                                min={0}
-                                step={1}
-                                value={it.stockFisico}
-                                onChange={(e) =>
-                                  onChangeFisico(abierta.id, it.idProducto, e.target.value)
-                                }
-                                disabled={esAplicado || aplicando}
-                                placeholder="contado"
-                                className="w-full rounded-md border border-[#2a2a32] bg-[#0d0d0f] px-2.5 py-2 text-sm text-[#f1f1f3] placeholder:text-[#4a4a5a] focus:border-[#22c55e]/50 outline-none disabled:opacity-50 disabled:cursor-not-allowed"
-                              />
+                            <td className="px-3 py-3 text-right tabular-nums text-[#f1f1f3] whitespace-nowrap">
+                              {it.stockFisico}
                             </td>
                             <td
                               className={`px-3 py-3 text-right font-semibold tabular-nums whitespace-nowrap ${diffCls}`}
@@ -356,36 +512,47 @@ export default function ListasConteo({
                         );
                       })}
                     </tbody>
-                </table>
+                  </table>
+                </div>
               </div>
-            </div>
 
-              <div className="flex items-center justify-between pt-1">
-                {!esAplicado && (
-                  <span className="text-sm text-[#5a5a6e]">
-                    {abierta.items.length} producto{abierta.items.length !== 1 ? "s" : ""}
-                  </span>
-                )}
-                {esAplicado ? (
-                  <span className="inline-flex items-center gap-2 text-sm font-medium text-[#22c55e]">
-                    Lista aplicada.
-                  </span>
+              <div className="flex items-center justify-between gap-3 pt-1 flex-wrap">
+                {confirmar.estado === "APLICADO" ? (
+                  <>
+                    <span className="inline-flex items-center gap-2 text-sm font-medium text-[#22c55e]">
+                      Lista aplicada.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmarId(null)}
+                      className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#22c55e] hover:bg-green-400 text-black font-medium rounded-lg transition-colors"
+                    >
+                      Cerrar
+                    </button>
+                  </>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => onAplicar(abierta.id)}
-                    disabled={aplicando}
-                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#22c55e] hover:bg-green-400 disabled:opacity-40 disabled:pointer-events-none text-black font-medium rounded-lg transition-colors"
-                  >
-                    <Save className="w-4 h-4" />
-                    {aplicando ? "Aplicando…" : "Guardar / Aplicar Ajuste"}
-                  </button>
+                  <>
+                    <span className="text-sm text-[#5a5a6e]">
+                      Al confirmar, el stock se actualiza al conteo físico.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onAplicar(confirmar.id)}
+                      disabled={aplicandoConfirmar}
+                      className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#22c55e] hover:bg-green-400 disabled:opacity-40 disabled:pointer-events-none text-black font-medium rounded-lg transition-colors"
+                    >
+                      <Save className="w-4 h-4" />
+                      {aplicandoConfirmar ? "Aplicando…" : "Confirmar ajuste"}
+                    </button>
+                  </>
                 )}
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {imprimir && <PlanillaConteoImpresion sesion={imprimir} />}
     </div>
   );
 }

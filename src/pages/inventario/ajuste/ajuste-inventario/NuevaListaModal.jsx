@@ -23,7 +23,7 @@ export default function NuevaListaModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-[#1a1a20] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div className="bg-[#1a1a20] border border-white/10 rounded-2xl w-full max-w-4xl h-[85vh] max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 shrink-0">
           <div>
             <h2 className="text-lg font-semibold text-white">
@@ -43,7 +43,7 @@ export default function NuevaListaModal({
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="p-6 flex-1 min-h-0 overflow-hidden">
           <AjusteStock
             productos={productos}
             categorias={categorias}

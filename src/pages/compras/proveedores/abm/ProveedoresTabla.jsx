@@ -53,8 +53,9 @@ export default function ProveedoresTabla({
             )}
             {!loading && proveedores.map((p) => {
               const activo = p.activo !== false;
-              const esJuridica = p.tipoPersona === "JURIDICA";
-              const nombre = esJuridica ? (p.nombre || "—") : [p.nombre, p.apellido].filter(Boolean).join(" ") || "—";
+              const nombre = p.tipoPersona === "FISICA"
+                ? [p.nombre, p.apellido].filter(Boolean).join(" ") || "—"
+                : (p.nombre || "—");
               return (
                 <tr key={p.id ?? p.idProveedor} onClick={() => onSeleccionar(p)}
                   className={`border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors ${!activo ? "opacity-60" : ""}`}>

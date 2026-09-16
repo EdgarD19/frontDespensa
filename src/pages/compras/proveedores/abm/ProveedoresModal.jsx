@@ -15,7 +15,6 @@ const FORM_INICIAL = {
   nombre: "",
   tipoPersona: "FISICA",
   apellido: "",
-  tipoDocumento: "CI",
   numeroDocumento: "",
   descripcionNegocio: "",
   personaContacto: "",
@@ -47,7 +46,6 @@ export default function ProveedoresModal({
         nombre: proveedorEdit.nombre ?? "",
         tipoPersona: proveedorEdit.tipoPersona ?? "FISICA",
         apellido: proveedorEdit.apellido ?? "",
-        tipoDocumento: proveedorEdit.tipoDocumento ?? "",
         numeroDocumento: proveedorEdit.numeroDocumento ?? "",
         descripcionNegocio: proveedorEdit.descripcion ?? "",
         personaContacto: proveedorEdit.personaContacto ?? "",
@@ -75,8 +73,9 @@ export default function ProveedoresModal({
     setForm((prev) => ({
       ...prev,
       tipoPersona: value,
-      tipoDocumento: value === "JURIDICA" ? "RUC" : "CI",
+      apellido: value === "JURIDICA" ? "" : prev.apellido,
     }));
+    if (errores.apellido) setErrores((prev) => ({ ...prev, apellido: null }));
   };
 
   function handlePaisChange(e) {
@@ -87,14 +86,16 @@ export default function ProveedoresModal({
 
   function validar() {
     const errs = {};
+    const esJuridica = form.tipoPersona === "JURIDICA";
     if (!form.nombre.trim()) errs.nombre = "Requerido";
-    if (!form.tipoDocumento) errs.tipoDocumento = "Requerido";
     if (!form.numeroDocumento.trim()) {
       errs.numeroDocumento = "Requerido";
-    } else if (form.tipoDocumento === "CI" && !/^\d{6,8}-\d$/.test(form.numeroDocumento.trim())) {
-      errs.numeroDocumento = "CI debe tener entre 6 y 8 dígitos más dígito verificador (formato: 1234567-X)";
-    } else if (form.tipoDocumento === "RUC" && !/^80\d{6}-\d$/.test(form.numeroDocumento.trim())) {
-      errs.numeroDocumento = "RUC debe iniciar con 80 seguido de 6 dígitos más dígito verificador (formato: 800XXXXX-X)";
+    } else if (esJuridica) {
+      if (!/^80\d{6}-\d$/.test(form.numeroDocumento.trim())) {
+        errs.numeroDocumento = "RUC debe iniciar con 80 seguido de 6 dígitos más dígito verificador (formato: 800XXXXX-X)";
+      }
+    } else if (!/^\d{6,8}-\d$/.test(form.numeroDocumento.trim())) {
+      errs.numeroDocumento = "CI debe ser la cédula más el guion y dígito verificador (formato: 1234567-X)";
     }
     if (
       form.telefono &&
@@ -109,9 +110,7 @@ export default function ProveedoresModal({
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       errs.email = "Email inválido";
     }
-    if (!form.tipoPersona || form.tipoPersona === "FISICA") {
-      if (!form.apellido.trim()) errs.apellido = "Requerido";
-    }
+    if (!esJuridica && !form.apellido.trim()) errs.apellido = "Requerido";
     if (!form.idPais) errs.idPais = "Requerido";
     if (!form.idCiudad) errs.idCiudad = "Requerido";
     return errs;
@@ -128,6 +127,7 @@ export default function ProveedoresModal({
       ...form,
       nombre: form.nombre.trim(),
       numeroDocumento: form.numeroDocumento.trim(),
+      tipoDocumento: form.tipoPersona === "JURIDICA" ? "RUC" : "CI",
     });
   }
 
@@ -217,37 +217,11 @@ export default function ProveedoresModal({
             )}
           </div>
 
-          {/* Tipo documento */}
-          <div className="grid grid-cols-2 gap-3">
-            <label className={labelClass}>
-              <span className={labelText}>
-                Tipo de documento <span className="text-rose-400">*</span>
-              </span>
-              <select
-                name="tipoDocumento"
-                value={form.tipoDocumento}
-                onChange={handleChange}
-                required
-                className={selectClass}
-              >
-                {esJuridica ? (
-                  <option value="RUC">RUC</option>
-                ) : (
-                  <>
-                    <option value="CI">CI</option>
-                    <option value="RUC">RUC</option>
-                  </>
-                )}
-              </select>
-              {errores.tipoDocumento && <span className="text-[11px] text-rose-400">{errores.tipoDocumento}</span>}
-            </label>
-          </div>
-
           {/* Numero documento + Persona contacto */}
           <div className="grid grid-cols-2 gap-3">
             <label className={labelClass}>
               <span className={labelText}>
-                Número de documento <span className="text-rose-400">*</span>
+                {esJuridica ? "Nº de RUC" : "Nº de CI"} <span className="text-rose-400">*</span>
               </span>
               <input
                 type="text"
@@ -255,7 +229,7 @@ export default function ProveedoresModal({
                 value={form.numeroDocumento}
                 onChange={handleChange}
                 required
-                placeholder={form.tipoDocumento === "CI" ? "1234567-X" : "80012345-1"}
+                placeholder={esJuridica ? "80012345-1" : "1234567-X"}
                 className={inputClass}
               />
               {errores.numeroDocumento && <span className="text-[11px] text-rose-400">{errores.numeroDocumento}</span>}
