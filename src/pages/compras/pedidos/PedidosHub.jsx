@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ClipboardList, PackageCheck } from "lucide-react";
+import { hubCardClass as cardClass, hubIconClass } from "../../../components/ui/hubStyles";
 
 const SUB_MODULOS = [
   {
@@ -12,9 +13,6 @@ const SUB_MODULOS = [
     icon: PackageCheck,
   },
 ];
-
-const cardClass =
-  "group flex flex-col items-center justify-center gap-3 rounded-2xl border border-[#1e1e24] bg-[#111114] p-6 transition-all duration-200 hover:border-[#22c55e]/40 hover:bg-[#13131a] aspect-[4/3]";
 
 export default function PedidosHub() {
   return (
@@ -29,7 +27,7 @@ export default function PedidosHub() {
           const { label, icon: Icon } = m;
           const content = (
             <div className="flex flex-col items-center justify-center gap-3">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#22c55e]/8 border border-[#22c55e]/15 text-[#22c55e]">
+              <div className={hubIconClass}>
                 <Icon className="w-8 h-8" aria-hidden />
               </div>
               <p className="text-base font-semibold text-white leading-tight">{label}</p>
@@ -38,7 +36,7 @@ export default function PedidosHub() {
           return m.to ? (
             <Link key={label} to={m.to} className={cardClass}>{content}</Link>
           ) : (
-            <div key={label} className={`${cardClass} cursor-default`} aria-disabled="true">
+            <div key={label} className={`${cardClass} cursor-default pointer-events-none`} aria-disabled="true">
               <div className="opacity-40">{content}</div>
             </div>
           );

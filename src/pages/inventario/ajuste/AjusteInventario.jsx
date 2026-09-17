@@ -13,7 +13,7 @@ import {
 } from "../../../api/ajustesApi";
 import { getCategorias } from "../../../api/maestrosApi";
 import { canGestionarAjustesInventario } from "../../../auth/inventoryAccess";
-import { stockEntero } from "./ajuste-inventario/utils";
+import { stockEntero, unidadAdmiteDecimales, sanitizarConteo, parseConteo } from "./ajuste-inventario/utils";
 import ListasConteo from "./ajuste-inventario/ListasConteo";
 import NuevaListaModal from "./ajuste-inventario/NuevaListaModal";
 
@@ -135,11 +135,7 @@ export default function AjusteInventario() {
         })),
       };
       setSesiones((prev) => [sesion, ...prev]);
-      setAviso(
-        ajuste?.numeroInforme
-          ? `Borrador ${ajuste.numeroInforme} generado.`
-          : "Lista Generada"
-      );
+      setAviso(`Lista #${id} generada.`);
       return true;
     } catch (err) {
       setError(
@@ -160,7 +156,9 @@ export default function AjusteInventario() {
           : {
               ...s,
               items: s.items.map((it) =>
-                it.idProducto === idProducto ? { ...it, stockFisico: valor } : it
+                it.idProducto === idProducto
+                  ? { ...it, stockFisico: sanitizarConteo(it.unidadMedida, valor) }
+                  : it
               ),
             }
       )
@@ -175,19 +173,24 @@ export default function AjusteInventario() {
 
     const pendientes = sesion.items.map((it) => {
       const raw = String(it.stockFisico ?? "").trim();
-      return { item: it, raw, fisico: raw === "" ? NaN : Number(raw) };
+      return { item: it, raw, fisico: parseConteo(raw) };
     });
     const vacio = pendientes.find((p) => p.raw === "");
     if (vacio) {
       setError(`Cargá el conteo físico de "${vacio.item.nombre}".`);
       return;
     }
-    const invalido = pendientes.find(
-      (p) => !Number.isFinite(p.fisico) || p.fisico < 0 || !Number.isInteger(p.fisico)
-    );
+    const invalido = pendientes.find((p) => {
+      if (!Number.isFinite(p.fisico) || p.fisico < 0) return true;
+      return !unidadAdmiteDecimales(p.item.unidadMedida) && !Number.isInteger(p.fisico);
+    });
     if (invalido) {
       setError(
-        `Indicá un conteo físico válido (entero ≥ 0) para "${invalido.item.nombre}".`
+        `Indicá un conteo físico válido (${
+          unidadAdmiteDecimales(invalido.item.unidadMedida)
+            ? "decimal ≥ 0"
+            : "entero ≥ 0"
+        }) para "${invalido.item.nombre}".`
       );
       return;
     }
@@ -212,7 +215,7 @@ export default function AjusteInventario() {
         observaciones: sesion.descripcion,
         detalles: sesion.items.map((it) => ({
           idProducto: it.idProducto,
-          stockFisico: Number(it.stockFisico),
+          stockFisico: parseConteo(it.stockFisico),
         })),
       });
 
@@ -234,9 +237,7 @@ export default function AjusteInventario() {
 
       setAplicandoId(null);
       setAviso(
-        resultado?.numeroInforme
-          ? `Ajuste ${resultado.numeroInforme} aplicado. El stock se actualizó al conteo físico.`
-          : `Lista N° ${sesion.id} aplicada. El stock se actualizó al conteo físico.`
+        `Lista #${sesion.id} aplicada. El stock se actualizó al conteo físico.`
       );
     } catch (err) {
       setAplicandoId(null);

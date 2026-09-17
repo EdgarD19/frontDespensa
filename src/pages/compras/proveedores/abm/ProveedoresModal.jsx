@@ -221,7 +221,7 @@ export default function ProveedoresModal({
           <div className="grid grid-cols-2 gap-3">
             <label className={labelClass}>
               <span className={labelText}>
-                {esJuridica ? "Nº de RUC" : "Nº de CI"} <span className="text-rose-400">*</span>
+                {esJuridica ? "R.U.C." : "C.I. / R.U.C."} <span className="text-rose-400">*</span>
               </span>
               <input
                 type="text"

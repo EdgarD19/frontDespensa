@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ClipboardList, FileText, PenLine, Check, X, Save, Ban } from "lucide-react";
 import Pagination from "../../../../components/ui/Pagination";
 import PlanillaConteo from "./PlanillaConteo";
+import { unidadAdmiteDecimales } from "./utils";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -244,11 +245,6 @@ export default function ListasConteo({
                   <tr key={s.id} className="hover:bg-[#13131a]/80 transition-colors">
                     <td className="px-5 py-3 font-semibold text-[#f1f1f3] tabular-nums">
                       #{s.id}
-                      {s.numeroInforme ? (
-                        <span className="block text-xs font-normal text-[#22c55e] mt-0.5">
-                          {s.numeroInforme}
-                        </span>
-                      ) : null}
                     </td>
                     <td className="px-3 py-3 text-[#9a9aac] whitespace-nowrap">
                       {fmtFechaHora(s.fechaHora)}
@@ -353,7 +349,8 @@ export default function ListasConteo({
                 <p className="text-xs text-[#7a7a8c] mt-0.5">
                   {cargar.descripcion}
                   {cargar.motivo ? ` • ${cargar.motivo}` : ""}
-                  {cargar.numeroInforme ? ` • ${cargar.numeroInforme}` : ""}• {fmtFechaHora(cargar.fechaHora)}
+                  {" • "}
+                  {fmtFechaHora(cargar.fechaHora)}
                 </p>
               </div>
               <button
@@ -386,19 +383,24 @@ export default function ListasConteo({
                         ) : null}
                       </td>
                       <td className="px-3 py-3 w-32">
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          min={0}
-                          step={1}
-                          value={it.stockFisico}
-                          onChange={(e) =>
-                            onChangeFisico(cargar.id, it.idProducto, e.target.value)
-                          }
-                          disabled={cargar.estado === "APLICADO"}
-                          placeholder="contado"
-                          className="w-full rounded-md border border-[#2a2a32] bg-[#0d0d0f] px-2.5 py-2 text-sm text-[#f1f1f3] placeholder:text-[#4a4a5a] focus:border-[#22c55e]/50 outline-none disabled:opacity-50 disabled:cursor-not-allowed"
-                        />
+                        {(() => {
+                          const decimal = unidadAdmiteDecimales(it.unidadMedida);
+                          return (
+                            <input
+                              type="number"
+                              inputMode={decimal ? "decimal" : "numeric"}
+                              min={0}
+                              step={decimal ? "0.001" : 1}
+                              value={it.stockFisico}
+                              onChange={(e) =>
+                                onChangeFisico(cargar.id, it.idProducto, e.target.value)
+                              }
+                              disabled={cargar.estado === "APLICADO"}
+                              placeholder="contado"
+                              className="w-full rounded-md border border-[#2a2a32] bg-[#0d0d0f] px-2.5 py-2 text-right text-sm font-mono text-[#f1f1f3] placeholder:text-[#4a4a5a] focus:border-[#22c55e]/50 outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                            />
+                          );
+                        })()}
                       </td>
                     </tr>
                   ))}
@@ -434,7 +436,8 @@ export default function ListasConteo({
                 <p className="text-xs text-[#7a7a8c] mt-0.5">
                   {confirmar.descripcion}
                   {confirmar.motivo ? ` • ${confirmar.motivo}` : ""}
-                  {confirmar.numeroInforme ? ` • ${confirmar.numeroInforme}` : ""}• {fmtFechaHora(confirmar.fechaHora)}
+                  {" • "}
+                  {fmtFechaHora(confirmar.fechaHora)}
                 </p>
               </div>
               <button

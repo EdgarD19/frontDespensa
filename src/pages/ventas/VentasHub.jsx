@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Users, ScanLine, History } from "lucide-react";
+import { hubCardClass as cardClass, hubIconClass } from "../../components/ui/hubStyles";
 
 const MODULOS = [
   {
@@ -23,9 +24,6 @@ const MODULOS = [
   },
 ];
 
-const cardClass =
-  "group flex flex-col items-center justify-center gap-3 rounded-2xl border border-[#1e1e24] bg-[#111114] p-6 transition-all duration-200 hover:border-[#22c55e]/40 hover:bg-[#13131a] aspect-[4/3]";
-
 export default function Ventas() {
     return (
         <div className="max-w-5xl mx-auto py-8 px-4 space-y-6">
@@ -38,7 +36,7 @@ export default function Ventas() {
                     const {to, label, descripcion, icon: Icon, pronto} = m;
                     const contenido = (
                         <div className={`flex flex-col items-center justify-center gap-3 ${pronto ? "opacity-40" : ""}`}>
-                            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#22c55e]/8 border border-[#22c55e]/15 text-[#22c55e]">
+                            <div className={hubIconClass}>
                                 <Icon className="w-8 h-8" aria-hidden/>
                             </div>
                             <div className="text-center space-y-1">
@@ -50,7 +48,7 @@ export default function Ventas() {
                     return to ? (
                         <Link key={label} to={to} className={cardClass}>{contenido}</Link>
                     ) : (
-                        <div key={label} className={`${cardClass} cursor-default`}>{contenido}</div>
+                        <div key={label} className={`${cardClass} cursor-default pointer-events-none`}>{contenido}</div>
                     );
                 })}
             </div>

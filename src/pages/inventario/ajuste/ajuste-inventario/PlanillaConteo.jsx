@@ -48,7 +48,6 @@ export default function PlanillaConteo({ sesion, modo = "informe", onVolver }) {
   const esConteo = modo === "conteo";
   const detalles = useMemo(() => sesion?.items ?? [], [sesion]);
   const aplicado = sesion?.estado === "APLICADO";
-  const codigoInforme = sesion?.numeroInforme || `LISTA #${sesion?.id ?? ""}`;
 
   // Totales calculados una sola vez por render de datos.
   const totales = useMemo(() => {
@@ -68,7 +67,7 @@ export default function PlanillaConteo({ sesion, modo = "informe", onVolver }) {
 
   function imprimir() {
     const original = document.title;
-    document.title = `${codigoInforme} · ${esConteo ? "Planilla de conteo de stock" : "Informe de ajuste de inventario"}`;
+    document.title = `${esConteo ? "Planilla de conteo de stock" : "Informe de ajuste de inventario"} · Lista #${sesion?.id ?? ""}`;
     window.print();
     document.title = original;
   }
@@ -100,7 +99,6 @@ export default function PlanillaConteo({ sesion, modo = "informe", onVolver }) {
           </div>
 
           <div className="pc-identificacion">
-            <span className="pc-codigo">{codigoInforme}</span>
             <span className="pc-registro">Registro Nº {sesion.id}</span>
             <span
               className={`pc-estado ${
@@ -210,7 +208,7 @@ export default function PlanillaConteo({ sesion, modo = "informe", onVolver }) {
         </section>
 
         <footer className="pc-pie">
-          {COMERCIO} · {codigoInforme} · Emitido el {fmtFecha(new Date())}
+          {COMERCIO} · Emitido el {fmtFecha(new Date())}
         </footer>
       </article>
     </>
@@ -248,7 +246,6 @@ const css = `
 .pc-comercio { margin: 0; font-size: 10pt; letter-spacing: .02em; }
 .pc-titulo { margin: 2px 0 0; font-size: 15pt; font-weight: 700; }
 .pc-identificacion { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
-.pc-codigo { font-size: 13pt; font-weight: 700; font-variant-numeric: tabular-nums; }
 .pc-registro { font-size: 9.5pt; color: #444; }
 .pc-estado {
   margin-top: 2px; padding: 1px 9px; border-radius: 999px;

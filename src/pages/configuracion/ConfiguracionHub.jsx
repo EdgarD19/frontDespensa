@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Tags, Globe } from "lucide-react";
+import { hubCardClass as cardClass, hubIconClass } from "../../components/ui/hubStyles";
 
 const MODULOS = [
   {
@@ -16,9 +17,6 @@ const MODULOS = [
   },
 ];
 
-const cardClass =
-  "group flex flex-col items-center justify-center gap-3 rounded-2xl border border-[#1e1e24] bg-[#111114] p-6 transition-all duration-200 hover:border-[#22c55e]/40 hover:bg-[#13131a] aspect-[4/3]";
-
 export default function ConfiguracionHub() {
   return (
     <div className="max-w-5xl mx-auto py-8 px-4 space-y-6">
@@ -33,7 +31,7 @@ export default function ConfiguracionHub() {
           return (
             <Link key={label} to={to} className={cardClass}>
               <div className="flex flex-col items-center justify-center gap-3">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#22c55e]/8 border border-[#22c55e]/15 text-[#22c55e]">
+                <div className={hubIconClass}>
                   <Icon className="w-8 h-8" aria-hidden />
                 </div>
                 <div className="text-center space-y-1">

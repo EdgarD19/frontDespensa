@@ -406,7 +406,7 @@ export default function CompraEspontanea({ onVolver }) {
                 id="factura"
                 value={numeroComprobante}
                 onChange={(e) => setNumeroComprobante(formatoFactura(e.target.value))}
-                placeholder="000-000-0000000"
+                placeholder="XXX-XXX-XXXXXXX"
                 maxLength={15}
                 className={`${S.fieldMono} pl-[2.2rem]`}
               />

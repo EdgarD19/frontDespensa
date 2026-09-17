@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ClipboardList, Package, Search, Settings, ArrowRight } from "lucide-react";
+import { hubCardClass as cardClass, hubIconClass } from "../../components/ui/hubStyles";
 
 const MODULOS = [
   {
@@ -30,13 +31,15 @@ export default function InventarioHub() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        {MODULOS.map(({ to, label, descripcion, icon: Icon }) => (
+        {MODULOS.map((m) => {
+          const { to, label, descripcion, icon: Icon } = m;
+          return (
           <Link
             key={to}
             to={to}
-            className="group flex flex-col items-center justify-center gap-3 rounded-2xl border border-[#1e1e24] bg-[#111114] p-6 transition-all duration-200 hover:border-[#22c55e]/40 hover:bg-[#13131a] aspect-[4/3]"
+            className={cardClass}
           >
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#22c55e]/8 border border-[#22c55e]/15 text-[#22c55e] transition-colors group-hover:bg-[#22c55e]/15">
+            <div className={hubIconClass}>
               <Icon className="w-8 h-8" aria-hidden />
             </div>
             <div className="text-center space-y-1">
@@ -48,7 +51,8 @@ export default function InventarioHub() {
               )}
             </div>
           </Link>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
