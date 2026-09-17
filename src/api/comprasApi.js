@@ -110,3 +110,29 @@ export async function getCompras(params = {}) {
     page: data?.page ?? 0,
   };
 }
+
+export async function getFacturasCompra(params = {}) {
+  const { data } = await api.get("/api/facturas-compra", {
+    params: {
+      search: params.search || undefined,
+      page: params.page ?? 0,
+      size: params.pageSize ?? 50,
+      sortBy: params.sortBy ?? "fechaEmision",
+      sortDirection: params.sortDirection ?? "desc",
+    },
+  });
+  const pageData = data?.data ?? data ?? {};
+  const content = Array.isArray(pageData.content) ? pageData.content : [];
+  return {
+    content,
+    totalElements: pageData.totalElements ?? content.length,
+    totalPages: pageData.totalPages ?? 0,
+    page: pageData.page ?? 0,
+    size: pageData.size ?? 0,
+  };
+}
+
+export async function getFacturaCompraById(id) {
+  const { data } = await api.get(`/api/facturas-compra/${id}`);
+  return data?.data ?? data;
+}

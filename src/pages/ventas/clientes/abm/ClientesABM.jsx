@@ -1,3 +1,4 @@
+import { Search, ToggleLeft, ToggleRight, Ban, X } from "lucide-react";
 import { useState, useEffect, useCallback } from "react"
 import ClientesTabla from "./ClientesTabla"
 import ClientesModal from "./ClientesModal"
@@ -24,6 +25,7 @@ export default function ClientesABM() {
     const [modalAbierto, setModalAbierto] = useState(false);
     const [clienteEdit, setClienteEdit] = useState(null);
     const [guardando, setGuardando] = useState(false);
+    const [toggleModal, setToggleModal] = useState(null);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -120,9 +122,13 @@ export default function ClientesABM() {
         const nombre = cliente.razonSocial ||
             [cliente.name ?? cliente.firstName, cliente.lastName].filter(Boolean).join(" ").trim() ||
             `cliente #${id}`;
-        const nuevoEstado = cliente.activo === false ? "activar" : "inactivar";
 
-        if (!window.confirm(`¿${nuevoEstado} a ${nombre}?`)) return;
+        setToggleModal({ id, nombre, activo: cliente.activo !== false });
+    }
+
+    async function handleConfirmToggle() {
+        if (!toggleModal) return;
+        const { id } = toggleModal;
 
         setError(null);
         try {
@@ -131,6 +137,8 @@ export default function ClientesABM() {
         } catch (err) {
             console.error("Error al cambiar estado:", err);
             setError("No se pudo cambiar el estado del cliente.");
+        } finally {
+            setToggleModal(null);
         }
     }
 
@@ -165,6 +173,53 @@ export default function ClientesABM() {
                 onGuardar={handleGuardar}
                 onCerrar={handleCerrarModal}
             />
+
+            {/* Modal confirmar toggle activo/inactivo */}
+            {toggleModal && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-[#1a1a20] border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+                            <div>
+                                <h2 className="text-lg font-semibold text-white">
+                                    {toggleModal.activo ? "Inactivar Cliente" : "Activar Cliente"}
+                                </h2>
+                                <p className="text-xs text-[#7a7a8c] mt-0.5">
+                                    {toggleModal.nombre}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setToggleModal(null)}
+                                className="p-1 text-white/40 hover:text-white transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <p className="text-sm text-[#b0b0c0]">
+                                ¿{toggleModal.activo ? "Inactivar" : "Activar"} a <strong>{toggleModal.nombre}</strong>?
+                            </p>
+                            <div className="flex items-center justify-end gap-3 pt-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setToggleModal(null)}
+                                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#111114] hover:bg-[#1a1a22] text-[#b0b0c0] font-medium rounded-lg transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleConfirmToggle}
+                                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-medium rounded-lg transition-colors"
+                                >
+                                    <Ban className="w-4 h-4" />
+                                    {toggleModal.activo ? "Inactivar" : "Activar"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

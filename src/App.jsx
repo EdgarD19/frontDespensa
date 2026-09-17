@@ -24,6 +24,9 @@ import ProveedoresABM from './pages/compras/proveedores/abm/ProveedoresABM'
 import ConsultasHub from './pages/compras/consultas/ConsultasHub'
 import ListaFacturas from './pages/compras/consultas/ListaFacturas'
 import ReportesCompras from './pages/compras/consultas/ReportesCompras'
+import DevolucionesHub from './pages/compras/devoluciones/DevolucionesHub'
+import DevolucionesIntercambios from './pages/compras/devoluciones/DevolucionesIntercambios'
+import HistorialDevoluciones from './pages/compras/devoluciones/HistorialDevoluciones'
 
 import Caja from './pages/caja/Caja'
 
@@ -60,6 +63,9 @@ export default function App() {
             <Route path="consultas" element={<ConsultasHub />} />
             <Route path="consultas/facturas" element={<ListaFacturas />} />
             <Route path="consultas/reportes" element={<ReportesCompras />} />
+            <Route path="devoluciones" element={<DevolucionesHub />} />
+            <Route path="devoluciones/nueva" element={<DevolucionesIntercambios />} />
+            <Route path="devoluciones/historial" element={<HistorialDevoluciones />} />
           </Route>
 
           <Route path="caja"       element={<Caja />} />
