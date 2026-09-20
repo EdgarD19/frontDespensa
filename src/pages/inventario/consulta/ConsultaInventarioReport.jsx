@@ -20,10 +20,10 @@ export default function ConsultaInventarioReport({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="bg-[var(--bg-card)] border border-white/5 rounded-xl overflow-hidden">
+      <div className="bg-[var(--bg-card)] border border-white/10 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/10 text-white/40 text-left">
+            <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
               <th className="px-4 py-3 font-medium">Código</th>
               <th className="px-4 py-3 font-medium">Producto</th>
               <th className="px-4 py-3 font-medium">Categoría</th>
@@ -80,7 +80,7 @@ export default function ConsultaInventarioReport({
                     </td>
                     <td className="px-4 py-3">
                       {p.categoria ? (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400">
+                        <span className="inline-flex rounded-full bg-white/5 px-2.5 py-1 text-xs font-medium text-white/70 ring-1 ring-inset ring-white/10">
                           {p.categoria}
                         </span>
                       ) : (

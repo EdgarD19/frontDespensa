@@ -29,27 +29,27 @@ export default function ProveedoresTabla({
         </button>
       </div>
 
-      <div className="bg-[var(--bg-card)] border border-white/5 rounded-xl overflow-hidden">
+      <div className="overflow-hidden border border-[#1e1e24] bg-[#111114] shadow-lg shadow-black/20">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/10 text-white/40 text-left">
+            <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
               <th className="px-4 py-3 font-medium">Nombre / Razón Social</th>
               <th className="px-4 py-3 font-medium">Documento</th>
               <th className="px-4 py-3 font-medium">Contacto</th>
               <th className="px-4 py-3 font-medium">Estado</th>
-              <th className="px-4 py-3 font-medium w-24" aria-label="Acciones" />
+              <th className="w-24 px-4 py-3 text-right font-medium">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {loading && Array.from({ length: 5 }).map((_, i) => (
-              <tr key={i} className="border-b border-white/5">
+              <tr key={i} className="border-b border-[#1e1e24] last:border-0">
                 {Array.from({ length: 5 }).map((_, j) => (
-                  <td key={j} className="px-4 py-3"><div className="h-4 bg-white/10 rounded animate-pulse w-3/4" /></td>
+                  <td key={j} className="px-4 py-4"><div className="h-4 w-3/4 animate-pulse rounded bg-white/10" /></td>
                 ))}
               </tr>
             ))}
             {!loading && proveedores.length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-white/30">No se encontraron proveedores.</td></tr>
+              <tr><td colSpan={5} className="px-4 py-12 text-center text-white/30">No se encontraron proveedores.</td></tr>
             )}
             {!loading && proveedores.map((p) => {
               const activo = p.activo !== false;
@@ -58,16 +58,19 @@ export default function ProveedoresTabla({
                 : (p.nombre || "—");
               return (
                 <tr key={p.id ?? p.idProveedor} onClick={() => onSeleccionar(p)}
-                  className={`border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors ${!activo ? "opacity-60" : ""}`}>
-                  <td className="px-4 py-3 text-white">{nombre}</td>
-                  <td className="px-4 py-3 text-white/70">{p.numeroDocumento || "—"}</td>
-                  <td className="px-4 py-3 text-white/70">{p.personaContacto || "—"}</td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${activo ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
+                  className={`border-b border-[#1e1e24] cursor-pointer transition-colors hover:bg-white/[0.04] last:border-0 ${!activo ? "opacity-60" : ""}`}>
+                  <td className="px-4 py-4 text-white">{nombre}</td>
+                  <td className="px-4 py-4 text-white/70">{p.numeroDocumento || "—"}</td>
+                  <td className="px-4 py-4 text-white/70">{p.personaContacto || "—"}</td>
+                  <td className="px-4 py-4">
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+                      activo ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"
+                    }`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${activo ? "bg-emerald-400" : "bg-red-400"}`} />
                       {activo ? "Activo" : "Inactivo"}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <button type="button" onClick={(e) => { e.stopPropagation(); onSeleccionar(p); }}
                         className="p-1.5 rounded text-white/40 hover:text-[var(--accent-green)] hover:bg-[var(--accent-green)]/10 transition-colors"

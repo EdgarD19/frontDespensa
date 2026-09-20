@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowLeft, FileText } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import CompraEspontanea from "./CompraEspontanea";
 
 export default function RegistroFactura() {
@@ -11,7 +11,6 @@ export default function RegistroFactura() {
         </Link>
         <div className="space-y-1 flex-1">
           <h1 className="text-2xl font-semibold text-[#f1f1f3] tracking-tight">Registrar Factura</h1>
-          <p className="text-sm text-[#5a5a6e] flex items-center gap-1"><FileText className="w-4 h-4" /> Compra esporádica a proveedor</p>
         </div>
       </div>
       <CompraEspontanea />
