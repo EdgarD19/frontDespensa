@@ -155,7 +155,7 @@ export default function Intercambios() {
       {/* Tipo de operación */}
       <div className="flex gap-3 mb-4">
         <button
-          onClick={() => window.location.href = "/compras/devoluciones/nueva"}
+          onClick={() => window.location.href = "/compras/devoluciones-intercambios"}
           className="flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors bg-white/5 border border-white/10 text-white/70 hover:bg-white/10"
         >
           <RotateCcw className="inline w-4 h-4 mr-1" /> Devolución

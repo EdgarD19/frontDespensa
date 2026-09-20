@@ -28,7 +28,7 @@ const MODULOS = [
     icon: History,
   },
   {
-    to: "/compras/devoluciones",
+    to: "/compras/devoluciones-intercambios",
     label: "Devoluciones e Intercambios",
     descripcion: "Registrar devoluciones e intercambios con proveedores.",
     icon: RotateCcw,

@@ -1,4 +1,5 @@
-import { Search, ToggleLeft, ToggleRight, Ban, X } from "lucide-react";
+import { Search, ToggleLeft, ToggleRight, Ban, X, ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react"
 import ClientesTabla from "./ClientesTabla"
 import ClientesModal from "./ClientesModal"
@@ -144,7 +145,12 @@ export default function ClientesABM() {
 
     return (
         <div>
-            <h1 className="text-2xl font-semibold text-white mb-4">Gestión de Clientes</h1>
+            <div className="flex items-center gap-3 mb-4">
+                <Link to="/ventas" className="p-2 rounded-lg hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
+                    <ArrowLeft size={18} />
+                </Link>
+                <h1 className="text-2xl font-semibold text-white">Gestión de Clientes</h1>
+            </div>
 
             {error && (
                 <div className="mb-4 px-4 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg py-3">

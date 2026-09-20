@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { FileText, BarChart3 } from "lucide-react";
+import { FileText, BarChart3, ArrowLeft } from "lucide-react";
 import { hubCardClass as cardClass, hubIconClass } from "../../../components/ui/hubStyles";
 
 const SUB_MODULOS = [
@@ -18,9 +18,14 @@ const SUB_MODULOS = [
 export default function ConsultasHub() {
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold text-[#f1f1f3] tracking-tight">Consultas e Historial</h1>
-        <p className="text-sm text-[#5a5a6e]">Consultar facturas registradas y generar reportes de compras</p>
+      <div className="flex items-center gap-3">
+        <Link to="/compras" className="p-2 rounded-lg hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
+          <ArrowLeft size={18} />
+        </Link>
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold text-[#f1f1f3] tracking-tight">Consultas e Historial</h1>
+          <p className="text-sm text-[#5a5a6e]">Consultar facturas registradas y generar reportes de compras</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

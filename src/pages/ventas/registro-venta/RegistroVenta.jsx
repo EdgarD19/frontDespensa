@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { Link } from "react-router-dom";
 import {
   Search, ShoppingCart, User, Trash2, Scale,
   Banknote, Landmark, AlertTriangle, RotateCcw, Check,
-  Keyboard, UserPlus,
+  Keyboard, UserPlus, ArrowLeft,
 } from "lucide-react";
 import { getProductos, getProductoByCodigo } from "../../../api/productosApi";
 import { registrarVentaFactura } from "../../../api/ventasApi";
@@ -278,6 +279,9 @@ export default function RegistroVenta() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b shrink-0" style={{ borderColor: 'var(--border)' }}>
         <div className="flex items-center gap-3">
+          <Link to="/ventas" className="p-2 rounded-lg hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
+            <ArrowLeft size={18} />
+          </Link>
           <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: 'var(--accent-dim)', border: '1px solid var(--border-accent)' }}>
             <ShoppingCart className="w-4 h-4" style={{ color: 'var(--accent)' }} />
           </div>

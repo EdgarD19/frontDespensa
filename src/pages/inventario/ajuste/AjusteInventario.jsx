@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import {
   ClipboardList,
   ArrowLeftRight,
   Plus,
+  ArrowLeft,
 } from "lucide-react";
 import { getProductos } from "../../../api/productosApi";
 import { apiErrorMessage } from "../../../api/errors";
@@ -296,13 +298,15 @@ export default function AjusteInventario() {
   return (
     <div className="max-w-5xl mx-auto pb-10">
       <div className="rounded-2xl border border-[#1e1e24] bg-[#111114] overflow-hidden">
-        <header className="px-5 sm:px-6 pt-5 pb-4 flex items-center justify-between flex-wrap gap-3">
-          <div>
+        <header className="px-5 sm:px-6 pt-5 pb-4 flex items-center gap-3 flex-wrap">
+          <Link to="/inventario" className="p-2 rounded-lg hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
+            <ArrowLeft size={18} />
+          </Link>
+          <div className="flex-1 min-w-0 flex items-center justify-between flex-wrap gap-3">
             <h1 className="text-xl sm:text-2xl font-bold text-[#f1f1f3] tracking-tight flex items-center gap-2">
               <ArrowLeftRight className="w-5 h-5 text-[#22c55e]" />
               Ajuste de Stock
             </h1>
-          </div>
           <button
             type="button"
             onClick={() => setModalAbierto(true)}
@@ -312,6 +316,7 @@ export default function AjusteInventario() {
             <Plus className="w-4 h-4" aria-hidden />
             Nueva lista
           </button>
+          </div>
         </header>
 
         <div className="px-5 sm:px-6 pb-5 space-y-4">

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Plus, XCircle, PenLine, Trash2, X, Search, PackageCheck } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Plus, XCircle, PenLine, Trash2, X, Search, PackageCheck, ArrowLeft } from "lucide-react";
 import {
   getPedidos,
   getPedido,
@@ -162,9 +163,14 @@ export default function PedidosABM() {
   return (
     <div className="max-w-6xl mx-auto py-8 px-4 space-y-6">
       <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold text-[#f1f1f3] tracking-tight">Pedidos</h1>
-          <p className="text-sm text-[#5a5a6e]">Seguimiento de pedidos a proveedores</p>
+        <div className="flex items-center gap-3">
+          <Link to="/compras" className="p-2 rounded-lg hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
+            <ArrowLeft size={18} />
+          </Link>
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold text-[#f1f1f3] tracking-tight">Pedidos</h1>
+            <p className="text-sm text-[#5a5a6e]">Seguimiento de pedidos a proveedores</p>
+          </div>
         </div>
         <button onClick={abrirCrear}
           className="flex items-center gap-2 px-4 py-2 bg-[#22c55e] text-black text-sm font-medium rounded-lg hover:bg-green-400 transition-colors">
