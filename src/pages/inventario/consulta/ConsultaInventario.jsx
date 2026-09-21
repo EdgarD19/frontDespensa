@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import ConsultaInventarioFilters from "./ConsultaInventarioFilters";
 import ConsultaInventarioReport from "./ConsultaInventarioReport";
 import { getProductos } from "../../../api/productosApi";
+import { getCategorias } from "../../../api/maestrosApi";
 import { apiErrorMessage } from "../../../api/errors";
 import { getEstadoStock } from "../utils";
 
@@ -11,6 +12,7 @@ const ITEMS_PER_PAGE = 10;
 
 export default function ConsultaInventario() {
   const [productos, setProductos]           = useState([]);
+  const [categorias, setCategorias]         = useState([]);
   const [loading, setLoading]               = useState(true);
   const [error, setError]                   = useState(null);
 
@@ -25,8 +27,14 @@ export default function ConsultaInventario() {
       try {
         setError(null);
         setLoading(true);
-        const res = await getProductos({ pageSize: 500 });
-        if (!cancelled) setProductos(res.content || []);
+        const [es] = await Promise.all([getProductos({ pageSize: 500 })]);
+        if (!cancelled && es?.content) setProductos(es.content);
+        try {
+          const cats = await getCategorias();
+          if (!cancelled) setCategorias(cats.map((c) => ({ id: c.id, nombre: c.nombre })));
+        } catch {
+          /* el filtro sigue usando las categorías derivadas de los productos */
+        }
       } catch (err) {
         if (!cancelled) {
           setError(apiErrorMessage(err) || "Error al cargar productos");
@@ -40,11 +48,13 @@ export default function ConsultaInventario() {
   }, []);
 
   const { categoriasOptions } = useMemo(() => {
-    const cats = [...new Set(productos.map((p) => p.categoria).filter(Boolean))].sort((a, b) =>
+    const fromProductos = new Set(productos.map((p) => p.categoria).filter(Boolean));
+    const fromApi = categorias.map((c) => c.nombre).filter(Boolean);
+    const cats = [...new Set([...fromApi, ...fromProductos])].sort((a, b) =>
       a.localeCompare(b)
     );
     return { categoriasOptions: cats };
-  }, [productos]);
+  }, [productos, categorias]);
 
   const productosFiltrados = useMemo(() => {
     return productos

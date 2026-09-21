@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Users, ScanLine, History } from "lucide-react";
+import { Users, ScanLine, History, LineChart, Undo2 } from "lucide-react";
 import { hubCardClass as cardClass, hubIconClass } from "../../components/ui/hubStyles";
 
 const MODULOS = [
@@ -20,6 +20,20 @@ const MODULOS = [
     label: "Historial de Ventas",
     descripcion: "Consulta de ventas anteriores. Próximamente.",
     icon: History,
+    pronto: true,
+  },
+  {
+    to: null,
+    label: "Reporte de ventas",
+    descripcion: "Reportes y estadisticas de ventas. Próximamente.",
+    icon: LineChart,
+    pronto: true,
+  },
+  {
+    to: null,
+    label: "Devoluciones de ventas",
+    descripcion: "Gestión de devoluciones de ventas. Próximamente.",
+    icon: Undo2,
     pronto: true,
   },
 ];

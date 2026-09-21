@@ -1,6 +1,8 @@
 export function stockEntero(producto) {
   const n = Number(producto?.stockActual ?? 0);
-  return Number.isFinite(n) ? Math.trunc(n) : 0;
+  if (!Number.isFinite(n)) return 0;
+  if (unidadAdmiteDecimales(producto?.unidadMedida)) return n;
+  return Math.trunc(n);
 }
 
 export function unidadAdmiteDecimales(unidad) {

@@ -78,7 +78,10 @@ async function fetchFirst(paths) {
 async function loadCategorias() {
   const env = parseMaestrosEnv();
   if (env?.categorias?.length) return normalizeList(env.categorias);
-  return fetchFirst(PATHS.categorias);
+  const { data } = await api.get("/api/categorias", {
+    params: { page: 0, size: 500, sortBy: "nombre", sortDirection: "asc" },
+  });
+  return normalizeList(data);
 }
 
 async function loadUnidades() {
