@@ -43,7 +43,7 @@ export async function crearFacturaCompra(payload) {
 /** Listar facturas de compra (paginado, todas). */
 export async function getFacturasCompra({ page = 0, pageSize = 10 } = {}) {
   const { data } = await api.get(BASE, {
-    params: { page, size: pageSize, sortBy: "fechaEmision", sortDirection: "desc" },
+    params: { page, size: pageSize, sortBy: "fechaCreacion", sortDirection: "desc" },
   });
   return unwrap(data);
 }

@@ -14,6 +14,21 @@ const money = (n) => {
   return Number.isFinite(v) ? `₲ ${v.toLocaleString("es-PY", { maximumFractionDigits: 0 })}` : "—";
 };
 
+// Total real = bruto por línea (cantidad × precio). El totalGeneral del back arrastra un IVA
+// calculado por unidad, por eso se recalcula desde los detalles cuando están disponibles.
+const totalDesdeDetalles = (f) => {
+  if (!Array.isArray(f?.detalles) || f.detalles.length === 0) return Number(f?.totalGeneral) || 0;
+  return f.detalles.reduce((s, d) => s + Math.round((Number(d.cantidad) || 0) * (Number(d.precioUnitario) || 0)), 0);
+};
+
+// IVA de una línea = bruto − base (precio CON IVA → base + IVA), mismo criterio que el desglose.
+const ivaLineaDetalle = (d) => {
+  const t = Number(d.tasaIva);
+  if (!t) return 0;
+  const bruto = Math.round((Number(d.cantidad) || 0) * (Number(d.precioUnitario) || 0));
+  return Math.round(bruto - bruto / (1 + t / 100));
+};
+
 const fmtFecha = (iso) => {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -265,7 +280,7 @@ export default function ListaFacturas() {
                     <td className="px-4 py-3 text-white/70 whitespace-nowrap">{f.numeroFactura || "—"}</td>
                     <td className="px-4 py-3 text-white/70 whitespace-nowrap">{f.numeroTimbrado || "—"}</td>
                     <td className="px-4 py-3">{condicionPago(f.condicionPago)}</td>
-                    <td className="px-4 py-3 text-white font-medium text-right whitespace-nowrap">{money(f.totalGeneral)}</td>
+                    <td className="px-4 py-3 text-white font-medium text-right whitespace-nowrap">{money(totalDesdeDetalles(f))}</td>
                     <td className="px-4 py-3 text-right">
                       <button
                         type="button"
@@ -304,6 +319,21 @@ export default function ListaFacturas() {
 function DetalleFactura({ factura, cargando = false, onClose }) {
   const detalles = Array.isArray(factura.detalles) ? factura.detalles : [];
 
+  const desglose = detalles.reduce(
+    (acc, d) => {
+      const t = Number(d.tasaIva);
+      const bruto = Math.round(Number(d.cantidad || 0) * Number(d.precioUnitario || 0));
+      const ivaLinea = t > 0 ? Math.round(bruto - bruto / (1 + t / 100)) : 0;
+      (acc[t] || (acc[t] = { subtotal: 0, iva: 0 })).subtotal += bruto - ivaLinea;
+      if (t > 0) acc[t].iva += ivaLinea;
+      acc.totales.total += bruto;
+      acc.totales.iva += ivaLinea;
+      return acc;
+    },
+    { 0: { subtotal: 0, iva: 0 }, 5: { subtotal: 0, iva: 0 }, 10: { subtotal: 0, iva: 0 }, totales: { total: 0, iva: 0 } },
+  );
+  const subtotalGeneral = desglose.totales.total - desglose.totales.iva;
+
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4" onClick={onClose}>
       <div
@@ -335,7 +365,7 @@ function DetalleFactura({ factura, cargando = false, onClose }) {
           </div>
           <div className="space-y-0.5">
             <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Total</p>
-            <p className="text-white font-semibold">{money(factura.totalGeneral)}</p>
+            <p className="text-white font-semibold">{money(totalDesdeDetalles(factura))}</p>
           </div>
         </div>
 
@@ -348,26 +378,30 @@ function DetalleFactura({ factura, cargando = false, onClose }) {
                   <th className="px-4 py-2.5 font-medium">Producto</th>
                   <th className="px-4 py-2.5 font-medium text-right">Cantidad</th>
                   <th className="px-4 py-2.5 font-medium text-right">Precio Costo Unit.</th>
+                  <th className="px-4 py-2.5 font-medium text-right">IVA</th>
                   <th className="px-4 py-2.5 font-medium text-right">Subtotal</th>
                 </tr>
               </thead>
               <tbody>
                 {cargando && detalles.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-6 text-center text-white/30">
+                    <td colSpan={5} className="px-4 py-6 text-center text-white/30">
                       <span className="inline-block h-4 w-16 bg-white/10 rounded animate-pulse align-middle mr-2" />
                       Cargando productos…
                     </td>
                   </tr>
                 )}
                 {!cargando && detalles.length === 0 && (
-                  <tr><td colSpan={4} className="px-4 py-6 text-center text-white/30">Sin productos.</td></tr>
+                  <tr><td colSpan={5} className="px-4 py-6 text-center text-white/30">Sin productos.</td></tr>
                 )}
                 {detalles.map((d) => (
                   <tr key={d.idDetalle ?? `${d.idProducto}-${d.nombreProducto}`} className="border-b border-white/5">
                     <td className="px-4 py-2.5 text-white">{d.nombreProducto || `Producto #${d.idProducto}`}</td>
                     <td className="px-4 py-2.5 text-white/70 text-right whitespace-nowrap">{Number(d.cantidad)}</td>
                     <td className="px-4 py-2.5 text-white/70 text-right whitespace-nowrap">{money(d.precioUnitario)}</td>
+                    <td className="px-4 py-2.5 text-white/70 text-right whitespace-nowrap">
+                      {ivaLineaDetalle(d) > 0 ? money(ivaLineaDetalle(d)) : "—"}
+                    </td>
                     <td className="px-4 py-2.5 text-white text-right whitespace-nowrap">{money(d.subtotal)}</td>
                   </tr>
                 ))}
@@ -386,15 +420,15 @@ function DetalleFactura({ factura, cargando = false, onClose }) {
             <div className="space-y-1 font-mono text-sm">
               <div className="flex items-center justify-between text-white/70">
                 <span className="text-[#5a5a6e]">Exentas:</span>
-                <span>{money(factura.subtotalExento ?? 0)}</span>
+                <span>{money(desglose[0].subtotal)}</span>
               </div>
               <div className="flex items-center justify-between text-white/70">
                 <span className="text-[#5a5a6e]">IVA 5%:</span>
-                <span>{money(factura.iva5)}</span>
+                <span>{money(desglose[5].iva)}</span>
               </div>
               <div className="flex items-center justify-between text-white/70">
                 <span className="text-[#5a5a6e]">IVA 10%:</span>
-                <span>{money(factura.iva10)}</span>
+                <span>{money(desglose[10].iva)}</span>
               </div>
             </div>
           </div>
@@ -402,11 +436,11 @@ function DetalleFactura({ factura, cargando = false, onClose }) {
           <div className="space-y-1.5 font-mono text-sm">
             <div className="flex items-center justify-between text-white/90">
               <span className="text-[#5a5a6e]">Total IVA:</span>
-              <span className="font-semibold">{money(factura.ivaTotal)}</span>
+              <span className="font-semibold">{money(desglose.totales.iva)}</span>
             </div>
             <div className="flex items-center justify-between text-white/90 border-t border-white/10 pt-1.5">
               <span className="text-[#5a5a6e]">Subtotal:</span>
-              <span>{money(Number(factura.totalGeneral) - Number(factura.ivaTotal))}</span>
+              <span>{money(subtotalGeneral)}</span>
             </div>
           </div>
 
@@ -416,7 +450,7 @@ function DetalleFactura({ factura, cargando = false, onClose }) {
                 Total factura
               </p>
               <p className="font-mono text-3xl font-bold tracking-tight text-[#22c55e]">
-                {money(factura.totalGeneral)}
+                {money(totalDesdeDetalles(factura))}
               </p>
             </div>
           </div>

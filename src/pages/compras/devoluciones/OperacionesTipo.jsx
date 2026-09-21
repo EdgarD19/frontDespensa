@@ -315,7 +315,7 @@ export default function OperacionesTipo({ tipo }) {
                 <tr className="border-b border-white/10 text-white/40 text-left">
                   <th className="px-4 py-3 font-medium">Fecha</th>
                   <th className="px-4 py-3 font-medium">Estado</th>
-                  <th className="px-4 py-3 font-medium">{tipo === "INTERCAMBIO" ? "N° Orden" : "N° Factura"}</th>
+                  {tipo !== "INTERCAMBIO" && <th className="px-4 py-3 font-medium">N° Factura</th>}
                   {tipo === "DEVOLUCION" && <th className="px-4 py-3 font-medium">Factura anulada</th>}
                   <th className="px-4 py-3 font-medium">Proveedor</th>
                   <th className="px-4 py-3 font-medium text-right">Total</th>
@@ -329,7 +329,9 @@ export default function OperacionesTipo({ tipo }) {
                     <tr key={op.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                       <td className="px-4 py-3 text-white/70 whitespace-nowrap">{fmtFechaHora(op.fecha)}</td>
                       <td className="px-4 py-3"><EstadoBadge estado={op.estado} /></td>
-                      <td className="px-4 py-3 text-white font-mono">{op.facturaNueva || op.facturaNumero}</td>
+                      {tipo !== "INTERCAMBIO" && (
+                        <td className="px-4 py-3 text-white font-mono">{op.facturaNueva || op.facturaNumero}</td>
+                      )}
                       {tipo === "DEVOLUCION" && (
                         <td className="px-4 py-3 text-white/50 font-mono">{op.facturaNueva ? op.facturaOriginal : "—"}</td>
                       )}
