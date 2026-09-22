@@ -285,7 +285,7 @@ export default function OperacionesTipo({ tipo }) {
             motivoIntercambio: it.motivoIntercambio || "",
           })),
         });
-        setAviso(`Intercambio ${creada.numeroOrden || ""} registrado.`);
+        setAviso(`Intercambio registrado.`);
         if (creada.idOrdenIntercambio != null && op.idFactura != null) {
           guardarVinculo(creada.idOrdenIntercambio, {
             idFactura: op.idFactura,
@@ -296,7 +296,7 @@ export default function OperacionesTipo({ tipo }) {
         const anulada = await anularFactura({ idFactura: op.idFactura, motivo: op.motivo || "" });
         setAviso(`Factura ${anulada.numeroFactura || ""} anulada.`);
       } else if (op.tipo === "DEVOLUCION") {
-        const creada = await crearDevolucion({
+        await crearDevolucion({
           idFacturaOriginal: op.idFactura,
           motivo: op.motivo || "",
           observaciones: op.observaciones || "",
@@ -306,7 +306,7 @@ export default function OperacionesTipo({ tipo }) {
             motivoDevolucion: it.motivoDevolucion || "",
           })),
         });
-        setAviso(`Devolución ${creada.numeroDevolucion || ""} registrada. El stock fue descontado.`);
+        setAviso(`Devolución registrada. El stock fue descontado.`);
       }
       setShowModal(false);
       cargarOperaciones();
@@ -322,14 +322,14 @@ export default function OperacionesTipo({ tipo }) {
     try {
       const numero = String(datos.numero || "").trim();
       if (!numero || !datos.idTimbrado) return;
-      const completada = await completarDevolucion(op.idDevolucion, {
+      await completarDevolucion(op.idDevolucion, {
         idDevolucion: op.idDevolucion,
         idTimbrado: Number(datos.idTimbrado),
         numeroFacturaNueva: numero,
         fechaEmisionNueva: datos.fecha || hoyAsuncion(),
         observacionesFacturaNueva: "",
       });
-      setAviso(`Devolución ${completada.numeroDevolucion || ""} completada. La factura original quedó ANULADA.`);
+      setAviso(`Devolución completada. La factura original quedó ANULADA.`);
       setModalFacturaNueva(null);
       cargarOperaciones();
     } catch (err) {
@@ -624,7 +624,7 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar }) {
   const [timbrados, setTimbrados] = useState([]);
   const [cargandoTimbrados, setCargandoTimbrados] = useState(Boolean(op.proveedorId));
   const [timbradoId, setTimbradoId] = useState("");
-  const [fechaNueva, setFechaNueva] = useState(hoyAsuncion());
+  const [fechaNueva] = useState(hoyAsuncion());
 
   const formatoValido = /^\d{3}-\d{3}-\d{7}$/.test(numeroNueva);
   const yaExiste = useMemo(() => (
@@ -741,52 +741,38 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar }) {
             {errorMsg && <p className="mt-1 text-xs text-red-400">{errorMsg}</p>}
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label htmlFor="dev-fecha-emision" className={labelClass}>
-                Fecha de emisión <span className="text-rose-400">*</span>
-              </label>
-              <input
-                id="dev-fecha-emision"
-                type="date"
-                value={fechaNueva}
-                onChange={(e) => setFechaNueva(e.target.value)}
-                className={`${fieldClass} [color-scheme:dark]`}
-              />
-            </div>
-            <div>
-              <label htmlFor="dev-timbrado" className={labelClass}>
-                Timbrado <span className="text-rose-400">*</span>
-              </label>
-              <select
-                id="dev-timbrado"
-                value={timbradoId}
-                onChange={(e) => setTimbradoId(e.target.value)}
-                disabled={cargandoTimbrados}
-                className={`${fieldClass} cursor-pointer [color-scheme:dark] ${timbradoBloqueado ? "border-red-500/50" : ""}`}
-              >
-                {cargandoTimbrados ? (
-                  <option value="">Cargando timbrados...</option>
-                ) : timbrados.length === 0 ? (
-                  <option value="">Sin timbrados registrados</option>
-                ) : (
-                  <>
-                    <option value="">Seleccionar timbrado</option>
-                    {timbrados.map((t) => {
-                      const st = estadoTimbrado(t, fechaNueva);
-                      return (
-                        <option key={t.idTimbrado} value={t.idTimbrado}>
-                          {t.numeroTimbrado} — {etiquetaTimbrado(st.tipo)}
-                        </option>
-                      );
-                    })}
-                  </>
-                )}
-              </select>
-              {timbradoSel && estadoTimbradoSel && estadoTimbradoSel.tipo !== "vigente" && (
-                <p className="mt-1 text-xs text-red-400">{estadoTimbradoSel.msg}</p>
+          <div>
+            <label htmlFor="dev-timbrado" className={labelClass}>
+              Timbrado <span className="text-rose-400">*</span>
+            </label>
+            <select
+              id="dev-timbrado"
+              value={timbradoId}
+              onChange={(e) => setTimbradoId(e.target.value)}
+              disabled={cargandoTimbrados}
+              className={`${fieldClass} cursor-pointer [color-scheme:dark] ${timbradoBloqueado ? "border-red-500/50" : ""}`}
+            >
+              {cargandoTimbrados ? (
+                <option value="">Cargando timbrados...</option>
+              ) : timbrados.length === 0 ? (
+                <option value="">Sin timbrados registrados</option>
+              ) : (
+                <>
+                  <option value="">Seleccionar timbrado</option>
+                  {timbrados.map((t) => {
+                    const st = estadoTimbrado(t, fechaNueva);
+                    return (
+                      <option key={t.idTimbrado} value={t.idTimbrado}>
+                        {t.numeroTimbrado} — {etiquetaTimbrado(st.tipo)}
+                      </option>
+                    );
+                  })}
+                </>
               )}
-            </div>
+            </select>
+            {timbradoSel && estadoTimbradoSel && estadoTimbradoSel.tipo !== "vigente" && (
+              <p className="mt-1 text-xs text-red-400">{estadoTimbradoSel.msg}</p>
+            )}
           </div>
         </div>
 
