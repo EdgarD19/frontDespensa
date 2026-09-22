@@ -2,6 +2,7 @@ import { api } from "./client";
 
 const INTERCAMBIOS = "/api/intercambios";
 const ANULACIONES = "/api/anulaciones";
+const DEVOLUCIONES = "/api/devoluciones";
 
 // Desenvuelve la página de Spring (content/totalElements/...) que devuelven los endpoints paginados.
 function unwrap(body) {
@@ -14,6 +15,41 @@ function unwrap(body) {
     page: page.page ?? 0,
     size: page.size ?? 0,
   };
+}
+
+// ====================================================================
+// DEVOLUCIONES A PROVEEDOR
+// ====================================================================
+
+/** Listar devoluciones (paginado). */
+export async function getDevoluciones({ page = 0, pageSize = 1000 } = {}) {
+  const { data } = await api.get(DEVOLUCIONES, {
+    params: { page, size: pageSize, sortBy: "fechaCreacion", sortDirection: "desc" },
+  });
+  return unwrap(data);
+}
+
+/** Obtener una devolución por ID. */
+export async function getDevolucionById(id) {
+  const { data } = await api.get(`${DEVOLUCIONES}/${id}`);
+  return data;
+}
+
+/** Crear una devolución PENDIENTE (descuenta stock). */
+export async function crearDevolucion(payload) {
+  const { data } = await api.post(DEVOLUCIONES, payload);
+  return data;
+}
+
+/** Completar devolución: genera la factura nueva y anula la original. */
+export async function completarDevolucion(id, payload) {
+  const { data } = await api.put(`${DEVOLUCIONES}/${id}/completar`, payload);
+  return data;
+}
+
+/** Cancelar devolución PENDIENTE (revierte stock). */
+export async function cancelarDevolucion(id) {
+  await api.delete(`${DEVOLUCIONES}/${id}`);
 }
 
 // ====================================================================
@@ -60,7 +96,7 @@ export async function cerrarIntercambio(id) {
 
 /** Cancelar orden de intercambio (solo PENDIENTE, revierte stock). */
 export async function cancelarIntercambio(id) {
-  await api.delete(`${INTERCAMBIOS}/${id}`);
+  await api.patch(`${INTERCAMBIOS}/${id}/cancelar`);
 }
 
 // ====================================================================

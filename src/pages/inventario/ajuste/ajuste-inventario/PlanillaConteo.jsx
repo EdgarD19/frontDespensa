@@ -49,20 +49,6 @@ export default function PlanillaConteo({ sesion, modo = "informe", onVolver }) {
   const detalles = useMemo(() => sesion?.items ?? [], [sesion]);
   const aplicado = sesion?.estado === "APLICADO";
 
-  // Totales calculados una sola vez por render de datos.
-  const totales = useMemo(() => {
-    return detalles.reduce(
-      (acc, d) => {
-        const dif = (d.stockFisico ?? 0) - (d.stockSistema ?? 0);
-        if (dif > 0) acc.sobrantes += dif;
-        if (dif < 0) acc.faltantes += Math.abs(dif);
-        acc.conDiferencia += dif !== 0 ? 1 : 0;
-        return acc;
-      },
-      { sobrantes: 0, faltantes: 0, conDiferencia: 0 }
-    );
-  }, [detalles]);
-
   if (!sesion) return null;
 
   function imprimir() {
@@ -134,7 +120,6 @@ export default function PlanillaConteo({ sesion, modo = "informe", onVolver }) {
               <th className="pc-col-cod">Código</th>
               <th>Producto</th>
               <th className="pc-col-um">U.M.</th>
-              <th className="pc-num">Stock sistema</th>
               <th className="pc-num">Stock físico</th>
               <th className="pc-num">Diferencia</th>
               {esConteo && <th className="pc-col-obs">Observación</th>}
@@ -150,7 +135,6 @@ export default function PlanillaConteo({ sesion, modo = "informe", onVolver }) {
                   <td className="pc-col-cod">{d.codigo || "—"}</td>
                   <td>{d.nombre}</td>
                   <td className="pc-col-um">{d.unidadMedida}</td>
-                  <td className="pc-num">{fmt(d.stockSistema)}</td>
 
                   {/* En modo conteo estas celdas quedan en blanco, con altura
                       suficiente para escribir encima. */}
@@ -159,7 +143,11 @@ export default function PlanillaConteo({ sesion, modo = "informe", onVolver }) {
                   </td>
                   <td
                     className={`pc-num pc-escribible ${
-                      !esConteo && dif !== 0 ? "pc-dif" : ""
+                      !esConteo && dif !== 0
+                        ? dif > 0
+                          ? "pc-dif pc-dif--pos"
+                          : "pc-dif pc-dif--neg"
+                        : ""
                     }`}
                   >
                     {esConteo ? "" : fmtDif(dif)}
@@ -172,25 +160,12 @@ export default function PlanillaConteo({ sesion, modo = "informe", onVolver }) {
 
             {detalles.length === 0 && (
               <tr>
-                <td colSpan={esConteo ? 8 : 7} className="pc-vacio">
+                <td colSpan={esConteo ? 7 : 6} className="pc-vacio">
                   El ajuste no tiene productos cargados.
                 </td>
               </tr>
             )}
           </tbody>
-
-          {!esConteo && detalles.length > 0 && (
-            <tfoot>
-              <tr>
-                <td colSpan={4}>Totales</td>
-                <td className="pc-num">{detalles.length} ítems</td>
-                <td className="pc-num">{totales.conDiferencia} con diferencia</td>
-                <td className="pc-num">
-                  +{fmt(totales.sobrantes)} / −{fmt(totales.faltantes)}
-                </td>
-              </tr>
-            </tfoot>
-          )}
         </table>
 
         {/* ------------------------------- Firmas -------------------------- */}
@@ -277,9 +252,9 @@ const css = `
 .pc-col-um  { width: 80px; }
 .pc-col-obs { width: 130px; }
 .pc-escribible { height: 26px; }
-.pc-dif { font-weight: 700; }
+.pc-dif--pos { color: #166534; }
+.pc-dif--neg { color: #b91c1c; }
 .pc-vacio { text-align: center; color: #777; padding: 18px; }
-.pc-tabla tfoot td { background: #f7f7f7; font-weight: 700; font-size: 9.5pt; }
 
 /* Firmas */
 .pc-firmas {
@@ -314,11 +289,11 @@ const css = `
   }
 
   thead { display: table-header-group; }   /* encabezado repetido por página */
-  tfoot { display: table-footer-group; }
   tr    { break-inside: avoid; }
   .pc-firmas { break-inside: avoid; }
 
-  .pc-tabla thead th, .pc-tabla tfoot td {
+  .pc-tabla thead th,
+  .pc-tabla td.pc-dif--pos, .pc-tabla td.pc-dif--neg {
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
 }

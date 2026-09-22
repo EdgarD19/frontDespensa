@@ -3,9 +3,9 @@ import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
   Plus, X, Save, Search, FileText, AlertTriangle, CheckCircle, ArrowLeft,
-  ArrowLeftRight, Ban, ChevronLeft, ChevronRight, PackageCheck, XCircle, FilePlus2,
+  ArrowLeftRight, Ban, ChevronLeft, ChevronRight, PackageCheck, XCircle, FilePlus2, Eye,
 } from "lucide-react";
-import { getFacturasCompra, getFacturaCompraById } from "../../../api/facturasCompraApi";
+import { getFacturasCompra, getFacturaCompraById, getTimbradosProveedor } from "../../../api/facturasCompraApi";
 import {
   getIntercambios,
   crearIntercambio,
@@ -14,10 +14,13 @@ import {
   cancelarIntercambio,
   getAnulaciones,
   anularFactura,
+  getDevoluciones,
+  crearDevolucion,
+  completarDevolucion,
+  cancelarDevolucion,
 } from "../../../api/operacionesCompraApi";
 import { apiErrorMessage } from "../../../api/errors";
-import { getOperaciones, addOperacion, updateOperacion } from "./operacionesStore";
-import { formatoFactura, S } from "../utils";
+import { formatoFactura, hoyAsuncion, estadoTimbrado, etiquetaTimbrado, S } from "../utils";
 
 function fmtMoneda(n) {
   return new Intl.NumberFormat("es-PY", { style: "currency", currency: "PYG", minimumFractionDigits: 0 }).format(n ?? 0);
@@ -33,6 +36,26 @@ function fmtFechaHora(valor) {
   if (!valor) return "—";
   const d = new Date(valor);
   return Number.isNaN(d.getTime()) ? String(valor) : d.toLocaleString("es-PY", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+// ====================================================================
+// Vínculo factura ↔ intercambio (el back no guarda la factura original).
+// Se guarda localmente al registrar el intercambio.
+// ====================================================================
+const VINCULO_KEY = "intercambioFacturaLink";
+
+function leerVinculos() {
+  try {
+    return JSON.parse(localStorage.getItem(VINCULO_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function guardarVinculo(idOrden, vinculo) {
+  const m = leerVinculos();
+  m[idOrden] = vinculo;
+  localStorage.setItem(VINCULO_KEY, JSON.stringify(m));
 }
 
 const CONFIG = {
@@ -63,6 +86,7 @@ function EstadoBadge({ estado }) {
     PENDIENTE: "bg-yellow-500/10 text-yellow-400",
     RECIBIDO: "bg-green-500/10 text-green-400",
     PROCESADA: "bg-green-500/10 text-green-400",
+    COMPLETADA: "bg-green-500/10 text-green-400",
     ANULADA: "bg-red-500/10 text-red-400",
     CERRADO: "bg-sky-500/10 text-sky-400",
     CANCELADO: "bg-zinc-500/10 text-zinc-400",
@@ -75,6 +99,7 @@ function EstadoBadge({ estado }) {
 // Convierte una OrdenIntercambioResponse (backend) a la forma interna de la tabla.
 function formatearIntercambio(o) {
   const detalles = o.detalles || [];
+  const vinculo = leerVinculos()[o.idOrdenIntercambio] || null;
   return {
     id: `ic-${o.idOrdenIntercambio}`,
     tipo: "INTERCAMBIO",
@@ -85,8 +110,8 @@ function formatearIntercambio(o) {
     facturaNumero: o.numeroOrden,
     proveedor: o.proveedorNombre,
     proveedorId: o.idProveedor,
-    motivo: o.motivo,
-    observaciones: o.observaciones,
+    facturaId: vinculo?.idFactura ?? null,
+    facturaVinculada: vinculo?.numeroFactura ?? null,
     total: detalles.reduce((sum, d) => sum + (Number(d.subtotal) || Number(d.cantidad) * Number(d.precioUnitario) || 0), 0),
     items: detalles.map((d) => ({
       idProducto: d.idProducto,
@@ -96,6 +121,35 @@ function formatearIntercambio(o) {
       motivoIntercambio: d.motivoIntercambio,
     })),
     idOrdenIntercambio: o.idOrdenIntercambio,
+  };
+}
+
+// Convierte una DevolucionResponse (backend) a la forma interna de la tabla.
+function formatearDevolucion(d) {
+  const detalles = d.detalles || [];
+  return {
+    id: `dv-${d.idDevolucion}`,
+    tipo: "DEVOLUCION",
+    estado: d.estado,
+    fecha: d.fechaCreacion,
+    fechaCompletacion: d.fechaCompletacion,
+    facturaNumero: d.facturaOriginal?.numeroFactura,
+    facturaOriginal: d.facturaOriginal?.numeroFactura,
+    facturaNueva: d.facturaNueva?.numeroFactura ?? null,
+    idFactura: d.facturaOriginal?.idFactura,
+    proveedor: d.proveedor?.nombre,
+    proveedorId: d.proveedor?.idProveedor,
+    motivo: d.motivo,
+    observaciones: d.observaciones,
+    total: detalles.reduce((sum, x) => sum + (Number(x.cantidadDevuelta) * Number(x.precioUnitario) || 0), 0),
+    items: detalles.map((x) => ({
+      idProducto: x.producto?.idProducto,
+      producto: x.producto?.nombre,
+      cantidad: x.cantidadDevuelta,
+      precioUnitario: x.precioUnitario,
+      motivoDevolucion: x.motivoDevolucion,
+    })),
+    idDevolucion: d.idDevolucion,
   };
 }
 
@@ -127,6 +181,7 @@ export default function OperacionesTipo({ tipo }) {
   const [showModal, setShowModal] = useState(false);
   const [modalConfirmacion, setModalConfirmacion] = useState(null);
   const [modalFacturaNueva, setModalFacturaNueva] = useState(null);
+  const [modalVerFactura, setModalVerFactura] = useState(null);
 
   const cargarFacturas = useCallback(async () => {
     setLoadingFacturas(true);
@@ -151,10 +206,8 @@ export default function OperacionesTipo({ tipo }) {
     setErrorOperacion(null);
     try {
       if (tipo === "DEVOLUCION") {
-        const lista = [...getOperaciones()]
-          .filter((o) => o.tipo === tipo)
-          .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-        setOperaciones(lista);
+        const res = await getDevoluciones({ page: 0, pageSize: 1000 });
+        setOperaciones(Array.isArray(res.content) ? res.content.map(formatearDevolucion) : []);
       } else if (tipo === "INTERCAMBIO") {
         const res = await getIntercambios({ page: 0, pageSize: 1000 });
         setOperaciones(Array.isArray(res.content) ? res.content.map(formatearIntercambio) : []);
@@ -188,8 +241,6 @@ export default function OperacionesTipo({ tipo }) {
       if (op.tipo === "INTERCAMBIO") {
         const creada = await crearIntercambio({
           idProveedor: op.proveedorId,
-          motivo: op.motivo || "",
-          observaciones: op.observaciones || "",
           detalles: (op.items || []).map((it) => ({
             idProducto: it.idProducto,
             cantidad: it.cantidad,
@@ -197,12 +248,27 @@ export default function OperacionesTipo({ tipo }) {
           })),
         });
         setAviso(`Intercambio ${creada.numeroOrden || ""} registrado.`);
+        if (creada.idOrdenIntercambio != null && op.idFactura != null) {
+          guardarVinculo(creada.idOrdenIntercambio, {
+            idFactura: op.idFactura,
+            numeroFactura: op.facturaNumero,
+          });
+        }
       } else if (op.tipo === "ANULACION") {
         const anulada = await anularFactura({ idFactura: op.idFactura, motivo: op.motivo || "" });
         setAviso(`Factura ${anulada.numeroFactura || ""} anulada.`);
-      } else {
-        addOperacion(op);
-        setAviso("Devolución registrada. La factura original queda EN PROCESO.");
+      } else if (op.tipo === "DEVOLUCION") {
+        const creada = await crearDevolucion({
+          idFacturaOriginal: op.idFactura,
+          motivo: op.motivo || "",
+          observaciones: op.observaciones || "",
+          detalles: (op.items || []).map((it) => ({
+            idProducto: it.idProducto,
+            cantidadDevuelta: it.cantidad,
+            motivoDevolucion: it.motivoDevolucion || "",
+          })),
+        });
+        setAviso(`Devolución ${creada.numeroDevolucion || ""} registrada. El stock fue descontado.`);
       }
       setShowModal(false);
       cargarOperaciones();
@@ -212,19 +278,26 @@ export default function OperacionesTipo({ tipo }) {
     }
   };
 
-  const handleRegistrarFacturaNueva = (op, numeroNueva) => {
-    const numero = String(numeroNueva).trim();
-    if (!numero) return;
-    updateOperacion(op.id, {
-      estado: "PROCESADA",
-      facturaNumero: numero,
-      facturaNueva: numero,
-      estadoFactura: "ANULADA",
-      fechaNuevaFactura: new Date().toISOString(),
-    });
-    setAviso("Factura nueva registrada. La factura original quedó ANULADA.");
-    setModalFacturaNueva(null);
-    cargarOperaciones();
+  const handleRegistrarFacturaNueva = async (op, datos) => {
+    setErrorOperacion(null);
+    setAviso(null);
+    try {
+      const numero = String(datos.numero || "").trim();
+      if (!numero || !datos.idTimbrado) return;
+      const completada = await completarDevolucion(op.idDevolucion, {
+        idDevolucion: op.idDevolucion,
+        idTimbrado: Number(datos.idTimbrado),
+        numeroFacturaNueva: numero,
+        fechaEmisionNueva: datos.fecha || hoyAsuncion(),
+        observacionesFacturaNueva: "",
+      });
+      setAviso(`Devolución ${completada.numeroDevolucion || ""} completada. La factura original quedó ANULADA.`);
+      setModalFacturaNueva(null);
+      cargarOperaciones();
+    } catch (err) {
+      console.error("Error al completar devolución:", err);
+      setErrorOperacion(apiErrorMessage(err));
+    }
   };
 
   const handleConfirmarRecepcion = async (op) => {
@@ -261,6 +334,28 @@ export default function OperacionesTipo({ tipo }) {
       console.error("Error al cancelar intercambio:", err);
       setErrorOperacion(apiErrorMessage(err));
     }
+  };
+
+  const handleCancelarDevolucion = async (op) => {
+    setErrorOperacion(null);
+    try {
+      await cancelarDevolucion(op.idDevolucion);
+      setAviso("Devolución cancelada. El stock fue repuesto.");
+      cargarOperaciones();
+    } catch (err) {
+      console.error("Error al cancelar devolución:", err);
+      setErrorOperacion(apiErrorMessage(err));
+    }
+  };
+
+  const handleVerFactura = (op) => {
+    setErrorOperacion(null);
+    setAviso(null);
+    if (op.facturaId == null) {
+      setAviso("Este intercambio no tiene una factura vinculada.");
+      return;
+    }
+    setModalVerFactura({ idFactura: op.facturaId, numeroFactura: op.facturaVinculada, items: op.items || [] });
   };
 
   return (
@@ -341,43 +436,65 @@ export default function OperacionesTipo({ tipo }) {
                       </td>
                       {tipo !== "ANULACION" && (
                         <td className="px-4 py-3 text-center">
-                          {op.tipo === "INTERCAMBIO" && op.estado === "PENDIENTE" ? (
+                          {op.tipo === "INTERCAMBIO" ? (
                             <div className="flex items-center justify-center gap-1">
                               <button
-                                onClick={() => setModalConfirmacion({ tipo: "recepcion", op })}
-                                title="Confirmar recepción del reemplazo"
-                                aria-label="Confirmar recepción"
+                                onClick={() => handleVerFactura(op)}
+                                title={op.facturaId != null ? "Ver factura del intercambio" : "Este intercambio no tiene factura vinculada"}
+                                aria-label="Ver factura"
+                                className={`p-1.5 transition-colors ${op.facturaId != null ? "text-white/40 hover:text-[#38bdf8]" : "text-white/20 pointer-events-auto"}`}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              {op.estado === "PENDIENTE" ? (
+                                <>
+                                  <button
+                                    onClick={() => setModalConfirmacion({ tipo: "recepcion", op })}
+                                    title="Confirmar recepción del reemplazo"
+                                    aria-label="Confirmar recepción"
+                                    className="p-1.5 text-white/40 hover:text-[#22c55e] transition-colors"
+                                  >
+                                    <PackageCheck className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => setModalConfirmacion({ tipo: "cancelacion", op })}
+                                    title="Cancelar intercambio"
+                                    aria-label="Cancelar intercambio"
+                                    className="p-1.5 text-white/40 hover:text-red-400 transition-colors"
+                                  >
+                                    <XCircle className="w-4 h-4" />
+                                  </button>
+                                </>
+                              ) : op.estado === "RECIBIDO" ? (
+                                <button
+                                  onClick={() => setModalConfirmacion({ tipo: "cierre", op })}
+                                  title="Cerrar intercambio (el proveedor trajo el reemplazo)"
+                                  aria-label="Cerrar intercambio"
+                                  className="p-1.5 text-white/40 hover:text-[#22c55e] transition-colors"
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                </button>
+                              ) : null}
+                            </div>
+                          ) : op.tipo === "DEVOLUCION" && op.estado === "PENDIENTE" ? (
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => setModalFacturaNueva(op)}
+                                title="Registrar factura nueva (reemplazo)"
+                                aria-label="Registrar factura nueva"
                                 className="p-1.5 text-white/40 hover:text-[#22c55e] transition-colors"
                               >
-                                <PackageCheck className="w-4 h-4" />
+                                <FilePlus2 className="w-4 h-4" />
                               </button>
                               <button
-                                onClick={() => setModalConfirmacion({ tipo: "cancelacion", op })}
-                                title="Cancelar intercambio"
-                                aria-label="Cancelar intercambio"
+                                onClick={() => setModalConfirmacion({ tipo: "cancelacionDev", op })}
+                                title="Cancelar devolución"
+                                aria-label="Cancelar devolución"
                                 className="p-1.5 text-white/40 hover:text-red-400 transition-colors"
                               >
                                 <XCircle className="w-4 h-4" />
                               </button>
                             </div>
-                          ) : op.tipo === "INTERCAMBIO" && op.estado === "RECIBIDO" ? (
-                            <button
-                              onClick={() => setModalConfirmacion({ tipo: "cierre", op })}
-                              title="Cerrar intercambio (el proveedor trajo el reemplazo)"
-                              aria-label="Cerrar intercambio"
-                              className="p-1.5 text-white/40 hover:text-[#22c55e] transition-colors"
-                            >
-                              <CheckCircle className="w-4 h-4" />
-                            </button>
-                          ) : op.tipo === "DEVOLUCION" && op.estado === "PENDIENTE" ? (
-                            <button
-                              onClick={() => setModalFacturaNueva(op)}
-                              title="Registrar factura nueva (reemplazo)"
-                              aria-label="Registrar factura nueva"
-                              className="p-1.5 text-white/40 hover:text-[#22c55e] transition-colors"
-                            >
-                              <FilePlus2 className="w-4 h-4" />
-                            </button>
                           ) : (
                             <span className="text-white/20 text-xs">—</span>
                           )}
@@ -421,11 +538,21 @@ export default function OperacionesTipo({ tipo }) {
               handleConfirmarRecepcion(sig);
             } else if (modalConfirmacion.tipo === "cierre") {
               handleCerrarIntercambio(sig);
+            } else if (modalConfirmacion.tipo === "cancelacionDev") {
+              handleCancelarDevolucion(sig);
             } else {
               handleCancelarIntercambio(sig);
             }
             setModalConfirmacion(null);
           }}
+        />
+      )}
+
+      {modalVerFactura && (
+        <VerFacturaModal
+          facturaId={modalVerFactura.idFactura}
+          numeroFactura={modalVerFactura.numeroFactura}
+          onCerrar={() => setModalVerFactura(null)}
         />
       )}
     </div>
@@ -435,6 +562,10 @@ export default function OperacionesTipo({ tipo }) {
 function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar }) {
   const [numeroNueva, setNumeroNueva] = useState("");
   const [tocado, setTocado] = useState(false);
+  const [timbrados, setTimbrados] = useState([]);
+  const [cargandoTimbrados, setCargandoTimbrados] = useState(Boolean(op.proveedorId));
+  const [timbradoId, setTimbradoId] = useState("");
+  const [fechaNueva, setFechaNueva] = useState(hoyAsuncion());
 
   const formatoValido = /^\d{3}-\d{3}-\d{7}$/.test(numeroNueva);
   const yaExiste = useMemo(() => (
@@ -447,7 +578,18 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar }) {
           ? `El número de factura ${numeroNueva.trim()} ya está registrado.`
           : null)
     : null;
-  const puedeGuardar = formatoValido && !yaExiste;
+  const timbradoSel = timbrados.find((t) => String(t.idTimbrado) === String(timbradoId)) || null;
+  const estadoTimbradoSel = timbradoSel ? estadoTimbrado(timbradoSel, fechaNueva) : null;
+  const timbradoBloqueado = estadoTimbradoSel && estadoTimbradoSel.tipo !== "vigente";
+  const puedeGuardar = formatoValido && !yaExiste && Boolean(timbradoId) && !timbradoBloqueado;
+
+  useEffect(() => {
+    if (!op.proveedorId) return;
+    getTimbradosProveedor(op.proveedorId)
+      .then((res) => setTimbrados(res?.content || []))
+      .catch(() => setTimbrados([]))
+      .finally(() => setCargandoTimbrados(false));
+  }, [op.proveedorId]);
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onCerrar(); };
@@ -525,6 +667,50 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar }) {
             />
             {errorMsg && <p className="mt-1 text-xs text-red-400">{errorMsg}</p>}
           </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="dev-fecha-emision" className={S.eyebrow}>Fecha de emisión *</label>
+              <input
+                id="dev-fecha-emision"
+                type="date"
+                value={fechaNueva}
+                onChange={(e) => setFechaNueva(e.target.value)}
+                className={`${S.field} mt-1 [color-scheme:dark]`}
+              />
+            </div>
+            <div>
+              <label htmlFor="dev-timbrado" className={S.eyebrow}>Timbrado *</label>
+              <select
+                id="dev-timbrado"
+                value={timbradoId}
+                onChange={(e) => setTimbradoId(e.target.value)}
+                disabled={cargandoTimbrados}
+                className={`${S.field} mt-1 ${timbradoBloqueado ? "border-red-500/50" : ""}`}
+              >
+                {cargandoTimbrados ? (
+                  <option value="">Cargando timbrados...</option>
+                ) : timbrados.length === 0 ? (
+                  <option value="">Sin timbrados registrados</option>
+                ) : (
+                  <>
+                    <option value="">Seleccionar timbrado</option>
+                    {timbrados.map((t) => {
+                      const st = estadoTimbrado(t, fechaNueva);
+                      return (
+                        <option key={t.idTimbrado} value={t.idTimbrado}>
+                          {t.numeroTimbrado} — {etiquetaTimbrado(st.tipo)}
+                        </option>
+                      );
+                    })}
+                  </>
+                )}
+              </select>
+              {timbradoSel && estadoTimbradoSel && estadoTimbradoSel.tipo !== "vigente" && (
+                <p className="mt-1 text-xs text-red-400">{estadoTimbradoSel.msg}</p>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-white/5">
@@ -537,7 +723,7 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar }) {
           </button>
           <button
             type="button"
-            onClick={() => onConfirmar(op, numeroNueva)}
+            onClick={() => onConfirmar(op, { numero: numeroNueva, idTimbrado: timbradoId, fecha: fechaNueva })}
             disabled={!puedeGuardar}
             className="px-4 py-2.5 bg-[#22c55e] hover:bg-green-400 text-black font-medium rounded-lg transition-colors text-sm disabled:opacity-40 disabled:pointer-events-none flex items-center gap-2"
           >
@@ -550,9 +736,19 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar }) {
   );
 }
 
-function ConfirmarAccionModal({ tipo, op, onCerrar, onConfirmar }) {
-  const esRecepcion = tipo === "recepcion";
-  const esCierre = tipo === "cierre";
+function VerFacturaModal({ facturaId, numeroFactura, items = [], onCerrar }) {
+  const [factura, setFactura] = useState(null);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let activo = true;
+    getFacturaCompraById(facturaId)
+      .then((res) => { if (activo) setFactura(res); })
+      .catch(() => { if (activo) setError("No se pudo cargar la factura."); })
+      .finally(() => { if (activo) setCargando(false); });
+    return () => { activo = false; };
+  }, [facturaId]);
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onCerrar(); };
@@ -560,12 +756,138 @@ function ConfirmarAccionModal({ tipo, op, onCerrar, onConfirmar }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onCerrar]);
 
+  const detalles = factura?.detalles || [];
+  const total = detalles.reduce((sum, d) => sum + (Number(d.cantidad) * Number(d.precioUnitario) || 0), 0);
+  const cantDevuelta = useMemo(() => {
+    const m = {};
+    items.forEach((it) => { if (it.idProducto != null) m[String(it.idProducto)] = it.cantidad; });
+    return m;
+  }, [items]);
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={onCerrar}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Ver factura"
+        className="bg-[#1a1a20] border border-white/10 rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <FileText className="w-5 h-5 text-[#38bdf8]" /> Factura {numeroFactura || factura?.numeroFactura || ""}
+          </h2>
+          <button onClick={onCerrar} className="p-1 text-white/40 hover:text-white transition-colors" aria-label="Cerrar">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 p-6">
+          {cargando ? (
+            <p className="text-center text-white/40 py-8">Cargando factura...</p>
+          ) : error ? (
+            <p className="text-center text-red-400 py-8">{error}</p>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <p className="text-xs text-white/40">N° Factura</p>
+                  <p className="text-white font-mono">{factura.numeroFactura}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-white/40">Fecha emisión</p>
+                  <p className="text-white">{fmtFecha(factura.fechaEmision)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-white/40">Proveedor</p>
+                  <p className="text-white">{factura.nombreProveedor}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-white/40">Estado</p>
+                  <p className="text-white uppercase">{factura.estado || "—"}</p>
+                </div>
+              </div>
+
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 text-white/40 text-left">
+                    <th className="px-3 py-2 font-medium">Producto</th>
+                    <th className="px-3 py-2 font-medium text-center">Cantidad</th>
+                    <th className="px-3 py-2 font-medium text-center">Intercambio</th>
+                    <th className="px-3 py-2 font-medium text-right">P. unitario</th>
+                    <th className="px-3 py-2 font-medium text-right">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {detalles.map((d) => {
+                    const devuelto = cantDevuelta[String(d.idProducto)] ?? null;
+                    return (
+                      <tr key={d.idProducto ?? d.idDetalle} className="border-b border-white/5">
+                        <td className="px-3 py-2 text-white/80">{d.nombreProducto}</td>
+                        <td className="px-3 py-2 text-center text-white/70 font-mono">{d.cantidad}</td>
+                        <td className={`px-3 py-2 text-center font-mono ${devuelto != null ? "text-amber-400" : "text-white/30"}`}>
+                          {devuelto != null ? devuelto : "—"}
+                        </td>
+                        <td className="px-3 py-2 text-right text-white/70 font-mono">{fmtMoneda(d.precioUnitario)}</td>
+                        <td className="px-3 py-2 text-right text-white font-mono">{fmtMoneda(Number(d.cantidad) * Number(d.precioUnitario))}</td>
+                      </tr>
+                    );
+                  })}
+                  {detalles.length === 0 && (
+                    <tr>
+                      <td colSpan="5" className="px-3 py-8 text-center text-white/30">La factura no tiene productos</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+
+              <div className="flex justify-end pt-2 border-t border-white/10">
+                <p className="text-sm font-mono text-white">Total: <span className="text-[#22c55e]">{fmtMoneda(total)}</span></p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function ConfirmarAccionModal({ tipo, op, onCerrar, onConfirmar }) {
+  const esRecepcion = tipo === "recepcion";
+  const esCierre = tipo === "cierre";
+  const esCancelarDev = tipo === "cancelacionDev";
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onCerrar(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCerrar]);
+
+  const textoAviso = esRecepcion
+    ? <>Se confirmará la recepción del reemplazo de la orden <span className="font-mono">{op.facturaNumero}</span>.</>
+    : esCierre
+      ? <>Se cerrará el intercambio <span className="font-mono">{op.facturaNumero}</span>. El stock de los productos será repuesto automáticamente.</>
+      : esCancelarDev
+        ? <>Se cancelará la devolución de la factura <span className="font-mono">{op.facturaOriginal || op.facturaNumero}</span>. El stock será repuesto automáticamente.</>
+        : <>Se cancelará el intercambio <span className="font-mono">{op.facturaNumero}</span>. La operación quedará en estado <span className="text-red-400">CANCELADO</span>.</>;
+
+  const titulo = esRecepcion
+    ? "Confirmar recepción"
+    : esCierre
+      ? "Cerrar intercambio"
+      : esCancelarDev
+        ? "Cancelar devolución"
+        : "Cancelar intercambio";
+
+  const labelBoton = esRecepcion ? "Confirmar" : esCierre ? "Cerrar" : esCancelarDev ? "Cancelar devolución" : "Cancelar intercambio";
+
   return createPortal(
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={onCerrar}>
       <div
         role="alertdialog"
         aria-modal="true"
-        aria-label={esRecepcion ? "Confirmar recepción" : esCierre ? "Cerrar intercambio" : "Cancelar intercambio"}
+        aria-label={titulo}
         className="bg-[#1a1a20] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
@@ -578,7 +900,7 @@ function ConfirmarAccionModal({ tipo, op, onCerrar, onConfirmar }) {
             ) : (
               <XCircle className="w-4 h-4 text-red-400" />
             )}
-            {esRecepcion ? "Confirmar recepción" : esCierre ? "Cerrar intercambio" : "Cancelar intercambio"}
+            {titulo}
           </h2>
           <button onClick={onCerrar} className="p-1 text-white/40 hover:text-white transition-colors" aria-label="Cerrar">
             <X className="w-5 h-5" />
@@ -586,15 +908,7 @@ function ConfirmarAccionModal({ tipo, op, onCerrar, onConfirmar }) {
         </div>
 
         <div className="px-5 py-4">
-          <p className="text-sm text-white/70 leading-relaxed">
-            {esRecepcion ? (
-              <>Se confirmará la recepción del reemplazo de la orden <span className="font-mono">{op.facturaNumero}</span>.</>
-            ) : esCierre ? (
-              <>Se cerrará el intercambio <span className="font-mono">{op.facturaNumero}</span>. El stock de los productos será repuesto automáticamente.</>
-            ) : (
-              <>Se cancelará el intercambio <span className="font-mono">{op.facturaNumero}</span>. La operación quedará en estado <span className="text-red-400">CANCELADO</span>.</>
-            )}
-          </p>
+          <p className="text-sm text-white/70 leading-relaxed">{textoAviso}</p>
         </div>
 
         <div className="flex justify-end gap-3 px-5 py-4 border-t border-white/5">
@@ -608,9 +922,9 @@ function ConfirmarAccionModal({ tipo, op, onCerrar, onConfirmar }) {
           <button
             type="button"
             onClick={() => onConfirmar(op)}
-            className={`px-4 py-2.5 text-black font-medium rounded-lg transition-colors text-sm ${esRecepcion ? "bg-[#22c55e] hover:bg-green-400" : esCierre ? "bg-[#22c55e] hover:bg-green-400" : "bg-red-500 hover:bg-red-400"}`}
+            className={`px-4 py-2.5 text-black font-medium rounded-lg transition-colors text-sm ${esRecepcion || esCierre ? "bg-[#22c55e] hover:bg-green-400" : "bg-red-500 hover:bg-red-400"}`}
           >
-            {esRecepcion ? "Confirmar" : esCierre ? "Cerrar" : "Cancelar intercambio"}
+            {labelBoton}
           </button>
         </div>
       </div>
