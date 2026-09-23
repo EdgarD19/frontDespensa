@@ -342,7 +342,7 @@ export default function OperacionesTipo({ tipo }) {
     setErrorOperacion(null);
     try {
       await marcarIntercambioRecibido(op.idOrdenIntercambio);
-      setAviso("Recepción confirmada.");
+      setAviso("Recepción confirmada. El intercambio quedó cerrado y el stock fue repuesto.");
       cargarOperaciones();
     } catch (err) {
       console.error("Error al confirmar recepción:", err);
@@ -353,6 +353,11 @@ export default function OperacionesTipo({ tipo }) {
   const handleCerrarIntercambio = async (op) => {
     setErrorOperacion(null);
     try {
+      // Un solo paso: si aún está PENDIENTE, primero se marca RECIBIDO y luego se cierra.
+      if (op.estado === "PENDIENTE") {
+        await marcarIntercambioRecibido(op.idOrdenIntercambio);
+        setAviso("Intercambio recibido. Cerrando orden y reponiendo stock...");
+      }
       await cerrarIntercambio(op.idOrdenIntercambio);
       setAviso("Intercambio cerrado. El stock fue repuesto.");
       cargarOperaciones();
@@ -473,7 +478,7 @@ export default function OperacionesTipo({ tipo }) {
                       <td className="whitespace-nowrap px-4 py-3.5 text-white/60">{fmtFechaHora(op.fecha)}</td>
                       <td className="px-4 py-3.5"><EstadoBadge estado={op.estado} /></td>
                       {tipo !== "INTERCAMBIO" && (
-                        <td className="px-4 py-3.5 font-medium tabular-nums text-white">{op.facturaNueva || op.facturaNumero}</td>
+                        <td className="px-4 py-3.5 font-medium tabular-nums text-white">{op.facturaVinculada || (tipo === "INTERCAMBIO" ? "—" : op.facturaNueva || op.facturaNumero)}</td>
                       )}
                       {tipo === "DEVOLUCION" && (
                         <td className="px-4 py-3.5 tabular-nums text-white/50">{op.facturaNueva ? op.facturaOriginal : "—"}</td>
@@ -500,9 +505,9 @@ export default function OperacionesTipo({ tipo }) {
                                   <>
                                     <button
                                       type="button"
-                                      onClick={() => setModalConfirmacion({ tipo: "recepcion", op })}
-                                      title="Confirmar recepción del reemplazo"
-                                      aria-label="Confirmar recepción"
+                                      onClick={() => setModalConfirmacion({ tipo: "cierre", op })}
+                                      title="Recibir el reemplazo y cerrar el intercambio en un solo paso (reponer stock)"
+                                      aria-label="Recibir y cerrar intercambio"
                                       className={`${iconBtn} text-white/40 hover:bg-emerald-500/10 hover:text-emerald-400`}
                                     >
                                       <PackageCheck className="h-4 w-4" />
@@ -521,7 +526,7 @@ export default function OperacionesTipo({ tipo }) {
                                   <button
                                     type="button"
                                     onClick={() => setModalConfirmacion({ tipo: "cierre", op })}
-                                    title="Cerrar intercambio (el proveedor trajo el reemplazo)"
+                                    title="Cerrar intercambio (reponer stock)"
                                     aria-label="Cerrar intercambio"
                                     className={`${iconBtn} text-white/40 hover:bg-emerald-500/10 hover:text-emerald-400`}
                                   >
@@ -933,8 +938,8 @@ function ConfirmarAccionModal({ tipo, op, onCerrar, onConfirmar }) {
 
   const textoAviso = esRecepcion
     ? <>Se confirmará la recepción del reemplazo de la orden <span className="tabular-nums">{op.facturaNumero}</span>.</>
-    : esCierre
-      ? <>Se cerrará el intercambio <span className="tabular-nums">{op.facturaNumero}</span>. El stock de los productos será repuesto automáticamente.</>
+                    : esCierre
+                      ? <>Se recibirá el reemplazo y se cerrará el intercambio <span className="tabular-nums">{op.facturaVinculada || op.facturaNueva || op.facturaNumero}</span> en un solo paso. El stock de los productos será repuesto automáticamente.</>
       : esCancelarDev
         ? <>Se cancelará la devolución de la factura <span className="tabular-nums">{op.facturaOriginal || op.facturaNumero}</span>. El stock será repuesto automáticamente.</>
         : <>Se cancelará el intercambio <span className="tabular-nums">{op.facturaNumero}</span>. La operación quedará en estado <span className="font-medium text-red-400">CANCELADO</span>.</>;
