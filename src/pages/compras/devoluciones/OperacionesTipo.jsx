@@ -939,10 +939,10 @@ function ConfirmarAccionModal({ tipo, op, onCerrar, onConfirmar }) {
   const textoAviso = esRecepcion
     ? <>Se confirmará la recepción del reemplazo de la orden <span className="tabular-nums">{op.facturaNumero}</span>.</>
                     : esCierre
-                      ? <>Se recibirá el reemplazo y se cerrará el intercambio <span className="tabular-nums">{op.facturaVinculada || op.facturaNueva || op.facturaNumero}</span> en un solo paso. El stock de los productos será repuesto automáticamente.</>
+                      ? <>Se cerrará el intercambio al recibir el reemplazo y el stock se repondrá automáticamente.</>
       : esCancelarDev
         ? <>Se cancelará la devolución de la factura <span className="tabular-nums">{op.facturaOriginal || op.facturaNumero}</span>. El stock será repuesto automáticamente.</>
-        : <>Se cancelará el intercambio <span className="tabular-nums">{op.facturaNumero}</span>. La operación quedará en estado <span className="font-medium text-red-400">CANCELADO</span>.</>;
+        : <>Se cancelará el intercambio y quedará registrado en estado <span className="font-medium text-red-400">CANCELADO</span>.</>;
 
   const titulo = esRecepcion
     ? "Confirmar recepción"
