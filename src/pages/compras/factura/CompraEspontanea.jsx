@@ -7,6 +7,37 @@ import { apiErrorMessage } from "../../../api/errors";
 import TimbradosModal from "./TimbradosModal";
 import { money, hoyAsuncion, formatoFactura, esKG, stepCant, parseCant, estadoTimbrado, etiquetaTimbrado, S } from "../utils";
 
+// Recalcula el desglose de IVA desde los detalles de la factura guardada.
+// El backend guarda IVA por unidad; acá se calcula sobre el bruto (cantidad × precio).
+function desgloseFactura(f) {
+  const detalles = f?.detalles || [];
+  const porTasa = (tasa) => detalles.filter((d) => Number(d.tasaIva) === tasa);
+  const bruto = (d) => Math.round((Number(d.cantidad) || 0) * (Number(d.precioUnitario) || 0));
+  const ivaDe = (d) => {
+    const t = Number(d.tasaIva ?? 0);
+    if (t === 0) return 0;
+    const b = bruto(d);
+    return Math.round(b - b / (1 + t / 100));
+  };
+  const suma = (arr, fn) => arr.reduce((s, d) => s + fn(d), 0);
+  const subtotal10 = suma(porTasa(10), bruto);
+  const subtotal5 = suma(porTasa(5), bruto);
+  const subtotalExento = suma(porTasa(0), bruto);
+  const iva10 = suma(porTasa(10), ivaDe);
+  const iva5 = suma(porTasa(5), ivaDe);
+  const ivaExento = 0;
+  return {
+    subtotal10,
+    subtotal5,
+    subtotalExento,
+    iva10,
+    iva5,
+    ivaExento,
+    ivaTotal: iva10 + iva5,
+    total: subtotal10 + subtotal5 + subtotalExento,
+  };
+}
+
 export default function CompraEspontanea({ onVolver }) {
   const [proveedores, setProveedores] = useState([]);
   const [proveedorSearch, setProveedorSearch] = useState("");
@@ -192,6 +223,7 @@ export default function CompraEspontanea({ onVolver }) {
 
   if (exito) {
     const f = exito;
+    const dg = desgloseFactura(f);
     const detalle = (tasa) => (f.detalles || []).filter((d) => Number(d.tasaIva) === tasa);
     const mostrarDesglose =
       (detalle(0).length > 0) || (detalle(5).length > 0) || (detalle(10).length > 0);
@@ -210,22 +242,22 @@ export default function CompraEspontanea({ onVolver }) {
             {detalle(10).length > 0 && (
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
                 <p className={S.eyebrow}>IVA 10%</p>
-                <p className="font-mono text-lg font-bold text-white">₲ {money(f.iva10 ?? 0)}</p>
-                <p className="text-xs text-[#5a5a6e]">Subtotal ₲ {money(f.subtotal10 ?? 0)}</p>
+                <p className="font-mono text-lg font-bold text-white">₲ {money(dg.iva10)}</p>
+                <p className="text-xs text-[#5a5a6e]">Subtotal ₲ {money(dg.subtotal10)}</p>
               </div>
             )}
             {detalle(5).length > 0 && (
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
                 <p className={S.eyebrow}>IVA 5%</p>
-                <p className="font-mono text-lg font-bold text-white">₲ {money(f.iva5 ?? 0)}</p>
-                <p className="text-xs text-[#5a5a6e]">Subtotal ₲ {money(f.subtotal5 ?? 0)}</p>
+                <p className="font-mono text-lg font-bold text-white">₲ {money(dg.iva5)}</p>
+                <p className="text-xs text-[#5a5a6e]">Subtotal ₲ {money(dg.subtotal5)}</p>
               </div>
             )}
             {detalle(0).length > 0 && (
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
                 <p className={S.eyebrow}>Exento</p>
-                <p className="font-mono text-lg font-bold text-white">₲ {money(f.subtotalExento ?? 0)}</p>
-                <p className="text-xs text-[#5a5a6e]">Sin IVA</p>
+                <p className="font-mono text-lg font-bold text-white">₲ {money(dg.ivaExento)}</p>
+                <p className="text-xs text-[#5a5a6e]">Subtotal ₲ {money(dg.subtotalExento)}</p>
               </div>
             )}
           </div>
@@ -234,12 +266,12 @@ export default function CompraEspontanea({ onVolver }) {
         <div className="flex items-center justify-center gap-6">
           <div className="text-right">
             <p className="text-xs text-[#5a5a6e]">IVA total</p>
-            <p className="font-mono text-lg font-bold text-white">₲ {money(f.ivaTotal ?? 0)}</p>
+            <p className="font-mono text-lg font-bold text-white">₲ {money(dg.ivaTotal)}</p>
           </div>
           <div className="h-8 w-px bg-white/10" />
           <div className="text-right">
             <p className="text-xs text-[#5a5a6e]">Total</p>
-            <p className="font-mono text-2xl font-bold tracking-tight text-[#22c55e]">₲ {money(f.totalGeneral ?? 0)}</p>
+            <p className="font-mono text-2xl font-bold tracking-tight text-[#22c55e]">₲ {money(dg.total)}</p>
           </div>
         </div>
 
