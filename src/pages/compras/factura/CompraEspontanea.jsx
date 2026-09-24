@@ -6,6 +6,7 @@ import { crearFacturaCompra, facturaCompraNumeroExiste, getTimbradosProveedor } 
 import { apiErrorMessage } from "../../../api/errors";
 import TimbradosModal from "./TimbradosModal";
 import { money, hoyAsuncion, formatoFactura, esKG, stepCant, parseCant, estadoTimbrado, etiquetaTimbrado, S } from "../utils";
+import CantidadInput from "../../../components/ui/CantidadInput";
 
 // Recalcula el desglose de IVA desde los detalles de la factura guardada.
 // El backend guarda IVA por unidad; acá se calcula sobre el bruto (cantidad × precio).
@@ -554,14 +555,12 @@ export default function CompraEspontanea({ onVolver }) {
                 </div>
                 {/* Cantidad */}
                 <div className="py-1.5 text-right bg-white/[0.03]">
-                  <input
-                    type="number"
-                    min={esKG(l.producto) ? "0.001" : "1"}
-                    step={stepCant(l.producto)}
-                    value={l.cantidad}
-                    onChange={(e) => actualizarCantidad(l.producto.id, e.target.value)}
-                    className="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-right text-sm font-mono text-white outline-none transition-colors focus:border-[#22c55e]/50"
-                  />
+                  <CantidadInput
+                unidadMedida={esKG(l.producto) ? "KG" : "UN"}
+                value={l.cantidad}
+                onChange={(v) => actualizarCantidad(l.producto.id, v)}
+                maxDecimales={3}
+              />
                 </div>
                 {/* IVA % */}
                 <div className="py-1.5 text-center text-sm text-white bg-white/[0.03]">
