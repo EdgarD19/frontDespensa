@@ -94,7 +94,13 @@ export default function CompraEspontanea({ onVolver }) {
     let activo = true;
     setCargandoTimbrados(true);
     getTimbradosProveedor(id)
-      .then((res) => { if (activo) setTimbrados(res?.content || []); })
+      .then((res) => {
+        if (!activo) return;
+        const lista = res?.content || [];
+        setTimbrados(lista);
+        const vigente = lista.find((t) => estadoTimbrado(t, fechaEmision).tipo === "vigente");
+        setTimbradoId(vigente ? String(vigente.idTimbrado) : "");
+      })
       .catch(() => { if (activo) setTimbrados([]); })
       .finally(() => { if (activo) setCargandoTimbrados(false); });
     return () => { activo = false; };
@@ -361,8 +367,8 @@ export default function CompraEspontanea({ onVolver }) {
               <dd className="text-[0.8125rem] font-medium text-white">{proveedorSel.direccion || "—"}</dd>
             </div>
             <div>
-              <dt className={S.eyebrow}>Teléfono</dt>
-              <dd className="text-[0.8125rem] font-medium text-white">{proveedorSel.telefono || proveedorSel.celular || "—"}</dd>
+              <dt className={S.eyebrow}>Celular</dt>
+              <dd className="text-[0.8125rem] font-medium text-white">{proveedorSel.celular || proveedorSel.telefono || "—"}</dd>
             </div>
           </dl>
         )}
@@ -653,7 +659,7 @@ export default function CompraEspontanea({ onVolver }) {
               )}
               <button
                 onClick={handleSubmit}
-                disabled={guardando || timbradoBloqueado}
+                disabled={guardando || timbradoBloqueado || !proveedorSel || !numeroComprobante.trim() || lineas.length === 0}
                 className="inline-flex items-center justify-center gap-2 px-5 py-2 bg-[#22c55e] hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-lg transition-colors"
               >
                 <ShoppingCart size={16} />

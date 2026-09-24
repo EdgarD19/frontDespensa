@@ -12,6 +12,14 @@ import { getProveedorId } from "../../../api/proveedoresApi";
 const hoyAsuncion = () =>
   new Date().toLocaleDateString("en-CA", { timeZone: "America/Asuncion", year: "numeric", month: "2-digit", day: "2-digit" });
 
+const fmtFecha = (iso) => {
+  if (!iso) return "-";
+  const partes = String(iso).split("T")[0].split("-");
+  const [y, m, d] = partes;
+  if (partes.length !== 3 || !y || !m || !d) return String(iso);
+  return `${d}/${m}/${y}`;
+};
+
 const S = {
   field:
     "w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-sm text-white " +
@@ -177,7 +185,7 @@ export default function TimbradosModal({ proveedor, onClose, onCambio }) {
                       <div className="min-w-0">
                         <p className="font-mono text-sm font-semibold text-white">{t.numeroTimbrado}</p>
                         <p className="text-xs text-[#5a5a6e]">
-                          {t.fechaInicio} → {t.fechaVencimiento}
+                          {fmtFecha(t.fechaInicio)} → {fmtFecha(t.fechaVencimiento)}
                         </p>
                         <span className={`inline-block mt-1 rounded-full px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-wide ${st.cls}`}>
                           {st.label}
