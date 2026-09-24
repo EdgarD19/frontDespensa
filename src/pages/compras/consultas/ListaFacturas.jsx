@@ -146,7 +146,7 @@ export default function ListaFacturas() {
   return (
     <div className="max-w-6xl mx-auto py-8 px-4 space-y-6">
       <div className="flex items-center gap-3">
-        <Link to="/compras/consultas" className="p-2 rounded-lg hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
+        <Link to="/compras" className="p-2 rounded-lg hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
           <ArrowLeft size={18} />
         </Link>
         <div>

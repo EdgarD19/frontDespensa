@@ -21,7 +21,6 @@ import ComprasHub from './pages/compras/ComprasHub'
 import RegistroFactura from './pages/compras/factura/RegistroFactura'
 import PedidosABM from './pages/compras/pedidos/abm/PedidosABM'
 import ProveedoresABM from './pages/compras/proveedores/abm/ProveedoresABM'
-import ConsultasHub from './pages/compras/consultas/ConsultasHub'
 import ListaFacturas from './pages/compras/consultas/ListaFacturas'
 import ReportesCompras from './pages/compras/consultas/ReportesCompras'
 import OperacionesTipo from './pages/compras/devoluciones/OperacionesTipo'
@@ -59,7 +58,6 @@ export default function App() {
             <Route path="factura" element={<RegistroFactura />} />
             <Route path="pedidos" element={<PedidosABM />} />
             <Route path="proveedores" element={<ProveedoresABM />} />
-            <Route path="consultas" element={<ConsultasHub />} />
             <Route path="consultas/facturas" element={<ListaFacturas />} />
             <Route path="consultas/reportes" element={<ReportesCompras />} />
             <Route path="devoluciones-intercambios" element={<DevolucionesIntercambiosHub />} />

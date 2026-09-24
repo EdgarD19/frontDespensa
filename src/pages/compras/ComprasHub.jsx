@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Truck, ShoppingCart, ClipboardList, History, RotateCcw } from "lucide-react";
+import { Truck, ShoppingCart, ClipboardList, FileText, BarChart3, RotateCcw } from "lucide-react";
 import { hubCardClass as cardClass, hubIconClass as iconClass } from "../../components/ui/hubStyles";
 
 const MODULOS = [
@@ -22,10 +22,16 @@ const MODULOS = [
     icon: Truck,
   },
   {
-    to: "/compras/consultas",
-    label: "Consultas e Historial",
-    descripcion: "Consultar facturas registradas y generar reportes de compras.",
-    icon: History,
+    to: "/compras/consultas/facturas",
+    label: "Lista de Facturas",
+    descripcion: "Consultar facturas registradas y su historial.",
+    icon: FileText,
+  },
+  {
+    to: "/compras/consultas/reportes",
+    label: "Reportes de Compras",
+    descripcion: "Generar reportes y resumen de compras.",
+    icon: BarChart3,
   },
   {
     to: "/compras/devoluciones-intercambios",
