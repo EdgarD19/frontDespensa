@@ -69,6 +69,32 @@ export default function ProveedoresModal({
     if (errores[name]) setErrores((prev) => ({ ...prev, [name]: null }));
   }
 
+  const esJuridica = form.tipoPersona === "JURIDICA";
+
+  const docDocument = form.numeroDocumento ?? "";
+  const idxGuion = docDocument.lastIndexOf("-");
+  const baseDoc = idxGuion !== -1 ? docDocument.slice(0, idxGuion) : docDocument;
+  const dvDoc = idxGuion !== -1 ? docDocument.slice(idxGuion + 1) : "";
+
+  function handleDocBaseChange(e) {
+    const solo = e.target.value.replace(/\D/g, "").slice(0, 8);
+    setForm((prev) => ({ ...prev, numeroDocumento: dvDoc ? `${solo}-${dvDoc}` : solo }));
+  }
+
+  function handleDocDvChange(e) {
+    const dv = e.target.value.replace(/\D/g, "").slice(0, 1);
+    setForm((prev) => ({ ...prev, numeroDocumento: dv ? `${baseDoc}-${dv}` : baseDoc }));
+  }
+
+  const celularResto = form.celular?.startsWith("+595")
+    ? form.celular.slice(4)
+    : form.celular ?? "";
+
+  function handleCelularChange(e) {
+    const solo = e.target.value.replace(/\D/g, "").slice(0, 9);
+    setForm((prev) => ({ ...prev, celular: solo ? `+595${solo}` : "" }));
+  }
+
   const handleTipoPersonaChange = (value) => {
     setForm((prev) => ({
       ...prev,
@@ -91,11 +117,12 @@ export default function ProveedoresModal({
     if (!form.numeroDocumento.trim()) {
       errs.numeroDocumento = "Requerido";
     } else if (esJuridica) {
-      if (!/^80\d{6}-\d$/.test(form.numeroDocumento.trim())) {
-        errs.numeroDocumento = "RUC debe iniciar con 80 seguido de 6 dígitos más dígito verificador (formato: 800XXXXX-X)";
+      const ruc = form.numeroDocumento.trim();
+      if (!/^80\d{6}-\d$/.test(ruc)) {
+        errs.numeroDocumento = "El RUC debe empezar con 80, tener 8 dígitos y 1 dígito verificador";
       }
     } else if (!/^\d{6,8}-\d$/.test(form.numeroDocumento.trim())) {
-      errs.numeroDocumento = "CI debe ser la cédula más el guion y dígito verificador (formato: 1234567-X)";
+      errs.numeroDocumento = "La cédula debe tener de 6 a 8 dígitos y 1 dígito verificador";
     }
     if (
       form.telefono &&
@@ -104,7 +131,7 @@ export default function ProveedoresModal({
       errs.telefono = "Formato 0XX XXXXXX";
     }
     if (form.celular && !/^\+5959\d{8}$/.test(form.celular.trim())) {
-      errs.celular = "Formato +5959XXXXXXXX";
+      errs.celular = "Debés ingresar los 9 números del celular (formato +5959XXXXXXXX)";
     }
     const email = form.email?.trim() ?? "";
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -130,8 +157,6 @@ export default function ProveedoresModal({
       tipoDocumento: form.tipoPersona === "JURIDICA" ? "RUC" : "CI",
     });
   }
-
-  const esJuridica = form.tipoPersona === "JURIDICA";
 
   if (!abierto) return null;
 
@@ -223,15 +248,31 @@ export default function ProveedoresModal({
               <span className={labelText}>
                 {esJuridica ? "R.U.C." : "C.I. / R.U.C."} <span className="text-rose-400">*</span>
               </span>
-              <input
-                type="text"
-                name="numeroDocumento"
-                value={form.numeroDocumento}
-                onChange={handleChange}
-                required
-                placeholder={esJuridica ? "80012345-1" : "1234567-X"}
-                className={inputClass}
-              />
+              <div className="flex items-center gap-1">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  name="numeroDocumento"
+                  value={baseDoc}
+                  onChange={handleDocBaseChange}
+                  required
+                  maxLength={8}
+                  placeholder={esJuridica ? "80012345" : "1234567"}
+                  className={inputClass}
+                />
+                <span className="text-[#5a5a6e] font-mono">-</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  name="numeroDocumentoDv"
+                  value={dvDoc}
+                  onChange={handleDocDvChange}
+                  required
+                  maxLength={1}
+                  placeholder="DV"
+                  className={`${inputClass} !w-14 text-center`}
+                />
+              </div>
               {errores.numeroDocumento && <span className="text-[11px] text-rose-400">{errores.numeroDocumento}</span>}
             </label>
 
@@ -338,14 +379,21 @@ export default function ProveedoresModal({
 
             <label className={labelClass}>
               <span className={labelText}>Celular</span>
-              <input
-                type="tel"
-                name="celular"
-                value={form.celular}
-                onChange={handleChange}
-                placeholder="+5959XXXXXXXX"
-                className={inputClass}
-              />
+              <div className="flex items-center gap-1">
+                <span className="rounded-l-lg border border-r-0 border-[#2a2a32] bg-[#141418] px-2.5 py-1.5 text-sm text-[#f1f1f3] select-none">
+                  +595
+                </span>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  name="celular"
+                  value={celularResto}
+                  onChange={handleCelularChange}
+                  maxLength={9}
+                  placeholder="961000000"
+                  className={`${inputClass} !rounded-l-none`}
+                />
+              </div>
               {errores.celular && <span className="text-[11px] text-rose-400">{errores.celular}</span>}
             </label>
 
