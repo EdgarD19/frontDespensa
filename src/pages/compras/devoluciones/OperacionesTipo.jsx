@@ -282,7 +282,7 @@ export default function OperacionesTipo({ tipo }) {
           detalles: (op.items || []).map((it) => ({
             idProducto: it.idProducto,
             cantidad: it.cantidad,
-            motivoIntercambio: it.motivoIntercambio || "",
+            motivoIntercambio: it.motivoIntercambio || op.motivo || "",
           })),
         });
         setAviso(`Intercambio registrado.`);

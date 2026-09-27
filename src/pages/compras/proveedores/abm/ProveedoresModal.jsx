@@ -95,6 +95,15 @@ export default function ProveedoresModal({
     setForm((prev) => ({ ...prev, celular: solo ? `+595${solo}` : "" }));
   }
 
+  const telefonoResto = form.telefono?.startsWith("021")
+    ? form.telefono.slice(3)
+    : form.telefono ?? "";
+
+  function handleTelefonoChange(e) {
+    const solo = e.target.value.replace(/\D/g, "").slice(0, 6);
+    setForm((prev) => ({ ...prev, telefono: solo ? `021${solo}` : "" }));
+  }
+
   const handleTipoPersonaChange = (value) => {
     setForm((prev) => ({
       ...prev,
@@ -126,9 +135,9 @@ export default function ProveedoresModal({
     }
     if (
       form.telefono &&
-      !/^0(2|3|4|5|6|7)\d\s?\d{4}$/.test(form.telefono.trim())
+      !/^021\d{6}$/.test(form.telefono.trim())
     ) {
-      errs.telefono = "Formato 0XX XXXXXX";
+      errs.telefono = "Debés ingresar los 6 números del teléfono (formato 021 XXXXXX)";
     }
     if (form.celular && !/^\+5959\d{8}$/.test(form.celular.trim())) {
       errs.celular = "Debés ingresar los 9 números del celular (formato +5959XXXXXXXX)";
@@ -182,24 +191,26 @@ export default function ProveedoresModal({
           <div>
             <span className={labelText}>Tipo de persona *</span>
             <div className="flex items-center gap-4 mt-1">
-              <label className="flex items-center gap-1.5 cursor-pointer">
+              <label className={`flex items-center gap-1.5 ${proveedorEdit ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}>
                 <input
                   type="radio"
                   name="tipoPersona"
                   value="FISICA"
                   checked={form.tipoPersona === "FISICA"}
                   onChange={(e) => handleTipoPersonaChange(e.target.value)}
+                  disabled={!!proveedorEdit}
                   className="accent-[#22c55e]"
                 />
                 <span className="text-xs text-[#9a9aac]">Persona Física</span>
               </label>
-              <label className="flex items-center gap-1.5 cursor-pointer">
+              <label className={`flex items-center gap-1.5 ${proveedorEdit ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}>
                 <input
                   type="radio"
                   name="tipoPersona"
                   value="JURIDICA"
                   checked={form.tipoPersona === "JURIDICA"}
                   onChange={(e) => handleTipoPersonaChange(e.target.value)}
+                  disabled={!!proveedorEdit}
                   className="accent-[#22c55e]"
                 />
                 <span className="text-xs text-[#9a9aac]">Persona Jurídica</span>
@@ -366,14 +377,21 @@ export default function ProveedoresModal({
           <div className="grid grid-cols-3 gap-3">
             <label className={labelClass}>
               <span className={labelText}>Teléfono</span>
-              <input
-                type="tel"
-                name="telefono"
-                value={form.telefono}
-                onChange={handleChange}
-                placeholder="021 XXXXXX"
-                className={inputClass}
-              />
+              <div className="flex items-center gap-1">
+                <span className="rounded-l-lg border border-r-0 border-[#2a2a32] bg-[#141418] px-2.5 py-1.5 text-sm text-[#f1f1f3] select-none">
+                  021
+                </span>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  name="telefono"
+                  value={telefonoResto}
+                  onChange={handleTelefonoChange}
+                  maxLength={6}
+                  placeholder="123456"
+                  className={`${inputClass} !rounded-l-none`}
+                />
+              </div>
               {errores.telefono && <span className="text-[11px] text-rose-400">{errores.telefono}</span>}
             </label>
 

@@ -48,23 +48,9 @@ export async function getFacturasCompra({ page = 0, pageSize = 10 } = {}) {
   return unwrap(data);
 }
 
-/** Listar facturas de compra de un proveedor (paginado, vigentes). */
-export async function getFacturasCompraPorProveedor(idProveedor, { page = 0, pageSize = 10 } = {}) {
-  const { data } = await api.get(`${BASE}/proveedor/${idProveedor}`, {
-    params: { page, size: pageSize, sortBy: "fechaEmision", sortDirection: "desc" },
-  });
-  return unwrap(data);
-}
-
 /** Obtener una factura de compra por ID (con detalles). */
 export async function getFacturaCompraById(id) {
   const { data } = await api.get(`${BASE}/${id}`);
-  return data;
-}
-
-/** Obtener una factura de compra por número exacto (200) o error si no existe. */
-export async function getFacturaCompraPorNumero(numeroFactura) {
-  const { data } = await api.get(`${BASE}/numero/${encodeURIComponent(numeroFactura)}`);
   return data;
 }
 
