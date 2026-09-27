@@ -107,6 +107,8 @@ export default function ListaFacturas() {
     const d = (desde || "").trim();
     const h = (hasta || "").trim();
     return todas.filter((f) => {
+      // Las facturas anuladas por una devolución no deben listarse (la nueva es la vigente).
+      if (["ANULADO", "ANULADA"].includes(String(f.estado || "").toUpperCase())) return false;
       if (idProveedor && Number(f.idProveedor) !== Number(idProveedor)) return false;
       if (q) {
         const hito = String(f.numeroFactura || "").toLowerCase();

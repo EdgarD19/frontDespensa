@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
   Plus, X, Save, Search, FileText, AlertTriangle, CheckCircle, ArrowLeft,
-  ArrowLeftRight, Ban, ChevronLeft, ChevronRight, PackageCheck, XCircle, FilePlus2, Eye, ListChecks,
+  ArrowLeftRight, Ban, ChevronLeft, ChevronRight, PackageCheck, XCircle, FilePlus2, Eye, ListChecks, PackageOpen,
 } from "lucide-react";
 import { getFacturasCompra, getFacturaCompraById, getTimbradosProveedor } from "../../../api/facturasCompraApi";
 import {
@@ -28,6 +28,12 @@ function fmtMoneda(n) {
 
 function fmtFecha(valor) {
   if (!valor) return "—";
+  // LocalDate de Spring viene como "YYYY-MM-DD" sin zona horaria: se parsea como UTC
+  // y toLocaleDateString lo desplaza un día atrás en Asunción (UTC-3).
+  if (typeof valor === "string" && /^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+    const [yy, mm, dd] = valor.split("-").map(Number);
+    return new Date(yy, mm - 1, dd).toLocaleDateString("es-PY");
+  }
   const d = new Date(valor);
   return Number.isNaN(d.getTime()) ? String(valor) : d.toLocaleDateString("es-PY");
 }
@@ -220,6 +226,10 @@ export default function OperacionesTipo({ tipo }) {
   const [modalConfirmacion, setModalConfirmacion] = useState(null);
   const [modalFacturaNueva, setModalFacturaNueva] = useState(null);
   const [modalVerFactura, setModalVerFactura] = useState(null);
+  const [modalVerDevolucion, setModalVerDevolucion] = useState(null);
+  // Totales de anulaciones cuyo idFactura no está en la página de facturas cargada.
+  const [totalesAnulacion, setTotalesAnulacion] = useState({});
+  const [cargandoTotales, setCargandoTotales] = useState(false);
 
   const cargarFacturas = useCallback(async () => {
     setLoadingFacturas(true);
@@ -265,12 +275,57 @@ export default function OperacionesTipo({ tipo }) {
     cargarOperaciones();
   }, [cargarOperaciones]);
 
+  // Recarga operaciones y facturas (para reflejar anulaciones/facturas nuevas sin F5).
+  const refrescarTodo = useCallback(() => {
+    cargarOperaciones();
+    if (tipo === "ANULACION" || tipo === "DEVOLUCION") cargarFacturas();
+  }, [cargarOperaciones, cargarFacturas, tipo]);
+
   // Total de la factura original (para mostrar en anulaciones, ya que el backend no lo incluye).
   const totalFacturaById = useMemo(() => {
     const m = {};
     facturas.forEach((f) => { m[f.idFactura] = f.totalGeneral; });
     return m;
   }, [facturas]);
+
+  // Carga los totales de anulaciones que no están en la página de facturas (1000 más recientes).
+  const resolverTotalesAnulacion = useCallback(async (lista) => {
+    const faltantes = (lista || []).filter(
+      (a) => a.idFactura != null && totalFacturaById[a.idFactura] == null
+    );
+    if (faltantes.length === 0) return;
+    setCargandoTotales(true);
+    try {
+      const resultados = await Promise.all(
+        faltantes.map(async (a) => {
+          try {
+            const f = await getFacturaCompraById(a.idFactura);
+            const detalles = Array.isArray(f?.detalles) ? f.detalles : [];
+            const total = detalles.reduce(
+              (sum, d) => sum + (Number(d.cantidad) * Number(d.precioUnitario) || 0),
+              0
+            );
+            return [String(a.idFactura), total];
+          } catch {
+            return null;
+          }
+        })
+      );
+      setTotalesAnulacion((prev) => {
+        const next = { ...prev };
+        resultados.forEach((r) => { if (r) next[r[0]] = r[1]; });
+        return next;
+      });
+    } finally {
+      setCargandoTotales(false);
+    }
+  }, [totalFacturaById]);
+
+  useEffect(() => {
+    if (tipo === "ANULACION" && operaciones.length > 0) {
+      resolverTotalesAnulacion(operaciones);
+    }
+  }, [tipo, operaciones, resolverTotalesAnulacion]);
 
   const handleRegistrar = async (op) => {
     setErrorOperacion(null);
@@ -287,10 +342,14 @@ export default function OperacionesTipo({ tipo }) {
         });
         setAviso(`Intercambio registrado.`);
         if (creada.idOrdenIntercambio != null && op.idFactura != null) {
-          guardarVinculo(creada.idOrdenIntercambio, {
-            idFactura: op.idFactura,
-            numeroFactura: op.facturaNumero,
-          });
+          try {
+            guardarVinculo(creada.idOrdenIntercambio, {
+              idFactura: op.idFactura,
+              numeroFactura: op.facturaNumero,
+            });
+          } catch (e) {
+            console.error("No se pudo guardar el vínculo local del intercambio:", e);
+          }
         }
       } else if (op.tipo === "ANULACION") {
         const anulada = await anularFactura({ idFactura: op.idFactura, motivo: op.motivo || "" });
@@ -309,7 +368,7 @@ export default function OperacionesTipo({ tipo }) {
         setAviso(`Devolución registrada. El stock fue descontado.`);
       }
       setShowModal(false);
-      cargarOperaciones();
+      refrescarTodo();
     } catch (err) {
       console.error("Error al registrar operación:", err);
       setErrorOperacion(apiErrorMessage(err));
@@ -331,21 +390,9 @@ export default function OperacionesTipo({ tipo }) {
       });
       setAviso(`Devolución completada. La factura original quedó ANULADA.`);
       setModalFacturaNueva(null);
-      cargarOperaciones();
+      refrescarTodo();
     } catch (err) {
       console.error("Error al completar devolución:", err);
-      setErrorOperacion(apiErrorMessage(err));
-    }
-  };
-
-  const handleConfirmarRecepcion = async (op) => {
-    setErrorOperacion(null);
-    try {
-      await marcarIntercambioRecibido(op.idOrdenIntercambio);
-      setAviso("Recepción confirmada. El intercambio quedó cerrado y el stock fue repuesto.");
-      cargarOperaciones();
-    } catch (err) {
-      console.error("Error al confirmar recepción:", err);
       setErrorOperacion(apiErrorMessage(err));
     }
   };
@@ -360,7 +407,7 @@ export default function OperacionesTipo({ tipo }) {
       }
       await cerrarIntercambio(op.idOrdenIntercambio);
       setAviso("Intercambio cerrado. El stock fue repuesto.");
-      cargarOperaciones();
+      refrescarTodo();
     } catch (err) {
       console.error("Error al cerrar intercambio:", err);
       setErrorOperacion(apiErrorMessage(err));
@@ -372,7 +419,7 @@ export default function OperacionesTipo({ tipo }) {
     try {
       await cancelarIntercambio(op.idOrdenIntercambio);
       setAviso("Intercambio cancelado.");
-      cargarOperaciones();
+      refrescarTodo();
     } catch (err) {
       console.error("Error al cancelar intercambio:", err);
       setErrorOperacion(apiErrorMessage(err));
@@ -384,7 +431,7 @@ export default function OperacionesTipo({ tipo }) {
     try {
       await cancelarDevolucion(op.idDevolucion);
       setAviso("Devolución cancelada. El stock fue repuesto.");
-      cargarOperaciones();
+      refrescarTodo();
     } catch (err) {
       console.error("Error al cancelar devolución:", err);
       setErrorOperacion(apiErrorMessage(err));
@@ -400,6 +447,14 @@ export default function OperacionesTipo({ tipo }) {
     }
     setModalVerFactura({ idFactura: op.facturaId, numeroFactura: op.facturaVinculada, items: op.items || [] });
   };
+
+  // Facturas que ya tienen una devolución PENDIENTE: no deben poder crearse otra.
+  const facturasConDevPendiente = useMemo(() => {
+    if (tipo !== "DEVOLUCION") return [];
+    return operaciones
+      .filter((op) => op.tipo === "DEVOLUCION" && op.estado === "PENDIENTE" && op.idFactura != null)
+      .map((op) => op.idFactura);
+  }, [operaciones, tipo]);
 
   return (
     <div className="space-y-5">
@@ -472,7 +527,10 @@ export default function OperacionesTipo({ tipo }) {
               </thead>
               <tbody>
                 {operaciones.map((op) => {
-                  const totalAnulacion = tipo === "ANULACION" ? totalFacturaById[op.idFactura] ?? null : null;
+                  const totalAnulacion =
+                    tipo === "ANULACION"
+                      ? totalFacturaById[op.idFactura] ?? totalesAnulacion[String(op.idFactura)] ?? null
+                      : null;
                   return (
                     <tr key={op.id} className="border-b border-[#1e1e24] transition-colors last:border-0 hover:bg-white/[0.04]">
                       <td className="whitespace-nowrap px-4 py-3.5 text-white/60">{fmtFechaHora(op.fecha)}</td>
@@ -485,7 +543,13 @@ export default function OperacionesTipo({ tipo }) {
                       )}
                       <td className="px-4 py-3.5 text-white/70">{op.proveedor}</td>
                       <td className="px-4 py-3.5 text-right font-semibold tabular-nums text-zinc-100">
-                        {tipo === "ANULACION" ? (totalAnulacion != null ? fmtMoneda(totalAnulacion) : "—") : fmtMoneda(op.total)}
+                        {tipo === "ANULACION" ? (
+                          totalAnulacion != null
+                            ? fmtMoneda(totalAnulacion)
+                            : cargandoTotales
+                              ? <span className="text-white/30">…</span>
+                              : "—"
+                        ) : fmtMoneda(op.total)}
                       </td>
                       {tipo !== "ANULACION" && (
                         <td className="px-4 py-3.5">
@@ -538,6 +602,15 @@ export default function OperacionesTipo({ tipo }) {
                               <>
                                 <button
                                   type="button"
+                                  onClick={() => setModalVerDevolucion(op)}
+                                  title="Ver lo que se va a devolver"
+                                  aria-label="Ver devolución"
+                                  className={`${iconBtn} text-white/40 hover:bg-sky-500/10 hover:text-sky-400`}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
                                   onClick={() => setModalFacturaNueva(op)}
                                   title="Registrar factura nueva (reemplazo)"
                                   aria-label="Registrar factura nueva"
@@ -575,6 +648,7 @@ export default function OperacionesTipo({ tipo }) {
           tipo={tipo}
           facturas={facturas}
           loadingFacturas={loadingFacturas}
+          facturasExcluidas={facturasConDevPendiente}
           onCerrar={() => setShowModal(false)}
           onRegistrar={handleRegistrar}
         />
@@ -595,9 +669,7 @@ export default function OperacionesTipo({ tipo }) {
           op={modalConfirmacion.op}
           onCerrar={() => setModalConfirmacion(null)}
           onConfirmar={(sig) => {
-            if (modalConfirmacion.tipo === "recepcion") {
-              handleConfirmarRecepcion(sig);
-            } else if (modalConfirmacion.tipo === "cierre") {
+            if (modalConfirmacion.tipo === "cierre") {
               handleCerrarIntercambio(sig);
             } else if (modalConfirmacion.tipo === "cancelacionDev") {
               handleCancelarDevolucion(sig);
@@ -615,6 +687,13 @@ export default function OperacionesTipo({ tipo }) {
           numeroFactura={modalVerFactura.numeroFactura}
           items={modalVerFactura.items}
           onCerrar={() => setModalVerFactura(null)}
+        />
+      )}
+
+      {modalVerDevolucion && (
+        <VerDevolucionModal
+          op={modalVerDevolucion}
+          onCerrar={() => setModalVerDevolucion(null)}
         />
       )}
     </div>
@@ -645,7 +724,8 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar }) {
   const timbradoSel = timbrados.find((t) => String(t.idTimbrado) === String(timbradoId)) || null;
   const estadoTimbradoSel = timbradoSel ? estadoTimbrado(timbradoSel, fechaNueva) : null;
   const timbradoBloqueado = estadoTimbradoSel && estadoTimbradoSel.tipo !== "vigente";
-  const puedeGuardar = formatoValido && !yaExiste && Boolean(timbradoId) && !timbradoBloqueado;
+  const sinProveedor = !op.proveedorId;
+  const puedeGuardar = !sinProveedor && formatoValido && !yaExiste && Boolean(timbradoId) && !timbradoBloqueado;
 
   useEffect(() => {
     if (!op.proveedorId) return;
@@ -750,6 +830,11 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar }) {
             <label htmlFor="dev-timbrado" className={labelClass}>
               Timbrado <span className="text-rose-400">*</span>
             </label>
+            {!op.proveedorId ? (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-300">
+                Esta devolución no tiene un proveedor asociado, por lo que no se puede registrar la factura nueva.
+              </div>
+            ) : (
             <select
               id="dev-timbrado"
               value={timbradoId}
@@ -775,6 +860,7 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar }) {
                 </>
               )}
             </select>
+            )}
             {timbradoSel && estadoTimbradoSel && estadoTimbradoSel.tipo !== "vigente" && (
               <p className="mt-1 text-xs text-red-400">{estadoTimbradoSel.msg}</p>
             )}
@@ -813,8 +899,10 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], onCerrar }) {
 
   useEffect(() => {
     let activo = true;
+    setCargando(true);
+    setError(null);
     getFacturaCompraById(facturaId)
-      .then((res) => { if (activo) setFactura(res); })
+      .then((res) => { if (activo) setFactura(res ?? null); })
       .catch(() => { if (activo) setError("No se pudo cargar la factura."); })
       .finally(() => { if (activo) setCargando(false); });
     return () => { activo = false; };
@@ -858,6 +946,8 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], onCerrar }) {
             </div>
           ) : error ? (
             <p className="py-8 text-center text-red-400">{error}</p>
+          ) : !factura ? (
+            <p className="py-8 text-center text-white/50">La factura no pudo cargarse.</p>
           ) : (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4 rounded-lg border border-[#1e1e24] bg-white/[0.02] p-4 text-sm lg:grid-cols-4">
@@ -879,7 +969,7 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], onCerrar }) {
                 </div>
               </div>
 
-              <div className="overflow-hidden border border-[#1e1e24]">
+<div className="overflow-hidden border border-[#1e1e24]">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-[#1e1e24] bg-white/[0.02] text-left text-white/40">
@@ -926,33 +1016,136 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], onCerrar }) {
   );
 }
 
+/* ───────────── Ver lo que se va a devolver (devolución pendiente) ───────────── */
+
+function VerDevolucionModal({ op, onCerrar }) {
+  useEscape(onCerrar);
+
+  const items = op.items || [];
+  const total = items.reduce((sum, it) => sum + (Number(it.cantidad) * Number(it.precioUnitario) || 0), 0);
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onCerrar}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Ver devolución"
+        className={`${modalShell} max-w-3xl max-h-[90vh]`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-[#1e1e24] px-5 py-3.5">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-[#f1f1f3]">
+            <PackageOpen className="h-4 w-4 text-sky-400" /> Devolución a registrar
+          </h2>
+          <button type="button" onClick={onCerrar} aria-label="Cerrar"
+            className="rounded p-1 text-[#5a5a6e] transition-colors hover:bg-white/5 hover:text-[#e1e1eb]">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5">
+          <div className="grid grid-cols-2 gap-4 rounded-lg border border-[#1e1e24] bg-white/[0.02] p-4 text-sm lg:grid-cols-4">
+            <div>
+              <p className="text-xs text-white/40">Factura original</p>
+              <p className="tabular-nums text-white">{op.facturaOriginal || "—"}</p>
+            </div>
+            <div>
+              <p className="text-xs text-white/40">Fecha</p>
+              <p className="text-white">{fmtFecha(op.fecha)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-white/40">Proveedor</p>
+              <p className="text-white">{op.proveedor || "—"}</p>
+            </div>
+            <div>
+              <p className="text-xs text-white/40">Estado</p>
+              <EstadoBadge estado={op.estado} />
+            </div>
+          </div>
+
+          <div className="overflow-hidden border border-[#1e1e24]">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[#1e1e24] bg-white/[0.02] text-left text-white/40">
+                  <th className="px-3 py-2.5 font-medium">Producto</th>
+                  <th className="px-3 py-2.5 text-center font-medium">Cantidad</th>
+                  <th className="px-3 py-2.5 text-right font-medium">P. unitario</th>
+                  <th className="px-3 py-2.5 text-right font-medium">Subtotal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((it) => (
+                  <tr key={it.idProducto ?? it.producto} className="border-b border-[#1e1e24] last:border-0">
+                    <td className="px-3 py-2.5 text-white/80">{it.producto}</td>
+                    <td className="px-3 py-2.5 text-center tabular-nums text-white/70">{it.cantidad}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-white/70">{fmtMoneda(it.precioUnitario)}</td>
+                    <td className="px-3 py-2.5 text-right font-medium tabular-nums text-white">{fmtMoneda(Number(it.cantidad) * Number(it.precioUnitario) || 0)}</td>
+                  </tr>
+                ))}
+                {items.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-8 text-center text-white/30">Esta devolución no tiene productos registrados.</td>
+                  </tr>
+                )}
+                {items.some((it) => it.motivoDevolucion) && (
+                  <tr className="border-t border-[#1e1e24] bg-white/[0.01]">
+                    <td colSpan={4} className="px-3 py-2.5 text-xs text-white/60">
+                      {items.map((it) => it.motivoDevolucion ? (
+                        <p key={it.idProducto ?? it.producto}>
+                          <span className="text-white/40">{it.producto}:</span> {it.motivoDevolucion}
+                        </p>
+                      ) : null)}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            {op.motivo && (
+              <div className="border-t border-[#1e1e24] px-4 py-2.5 text-sm">
+                <span className="text-xs text-white/40">Motivo global: </span>
+                <span className="text-white/70">{op.motivo}</span>
+              </div>
+            )}
+            {op.observaciones && (
+              <div className="border-t border-[#1e1e24] px-4 py-2.5 text-sm">
+                <span className="text-xs text-white/40">Observaciones: </span>
+                <span className="text-white/70">{op.observaciones}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end border-t border-[#1e1e24] pt-3">
+            <p className="text-sm text-white">Total a devolver: <span className="text-lg font-bold tabular-nums text-[#22c55e]">{fmtMoneda(total)}</span></p>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 /* ───────────── Confirmación de acciones sobre una operación existente ───────────── */
 
 function ConfirmarAccionModal({ tipo, op, onCerrar, onConfirmar }) {
-  const esRecepcion = tipo === "recepcion";
   const esCierre = tipo === "cierre";
   const esCancelarDev = tipo === "cancelacionDev";
-  const esDestructiva = !esRecepcion && !esCierre;
+  const esDestructiva = !esCierre;
 
   useEscape(onCerrar);
 
-  const textoAviso = esRecepcion
-    ? <>Se confirmará la recepción del reemplazo de la orden <span className="tabular-nums">{op.facturaNumero}</span>.</>
-                    : esCierre
+  const textoAviso = esCierre
                       ? <>Se cerrará el intercambio al recibir el reemplazo y el stock se repondrá automáticamente.</>
-      : esCancelarDev
-        ? <>Se cancelará la devolución de la factura <span className="tabular-nums">{op.facturaOriginal || op.facturaNumero}</span>. El stock será repuesto automáticamente.</>
-        : <>Se cancelará el intercambio y quedará registrado en estado <span className="font-medium text-red-400">CANCELADO</span>.</>;
+                      : esCancelarDev
+                        ? <>Se cancelará la devolución de la factura <span className="tabular-nums">{op.facturaOriginal || op.facturaNumero}</span>. El stock será repuesto automáticamente.</>
+                        : <>Se cancelará el intercambio y quedará registrado en estado <span className="font-medium text-red-400">CANCELADA</span>.</>;
 
-  const titulo = esRecepcion
-    ? "Confirmar recepción"
-    : esCierre
+  const titulo = esCierre
       ? "Cerrar intercambio"
       : esCancelarDev
         ? "Cancelar devolución"
         : "Cancelar intercambio";
 
-  const labelBoton = esRecepcion ? "Confirmar" : esCierre ? "Cerrar" : esCancelarDev ? "Cancelar devolución" : "Cancelar intercambio";
+  const labelBoton = esCierre ? "Cerrar" : esCancelarDev ? "Cancelar devolución" : "Cancelar intercambio";
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onCerrar}>
@@ -965,9 +1158,7 @@ function ConfirmarAccionModal({ tipo, op, onCerrar, onConfirmar }) {
       >
         <div className="flex items-center justify-between border-b border-[#1e1e24] px-5 py-3.5">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-[#f1f1f3]">
-            {esRecepcion ? (
-              <PackageCheck className="h-4 w-4 text-[#22c55e]" />
-            ) : esCierre ? (
+            {esCierre ? (
               <CheckCircle className="h-4 w-4 text-[#22c55e]" />
             ) : (
               <XCircle className="h-4 w-4 text-red-400" />
@@ -1010,7 +1201,7 @@ function ConfirmarAccionModal({ tipo, op, onCerrar, onConfirmar }) {
 
 /* ───────────── Wizard: nueva devolución / intercambio / anulación ───────────── */
 
-function NuevaOperacionModal({ tipo, facturas, loadingFacturas, onCerrar, onRegistrar }) {
+function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasExcluidas = [], onCerrar, onRegistrar }) {
   const labelTipo = CONFIG[tipo].label;
   const [paso, setPaso] = useState(1);
   const [facturaSel, setFacturaSel] = useState(null);
@@ -1025,6 +1216,9 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, onCerrar, onRegi
   const [filtroFechaDesde, setFiltroFechaDesde] = useState("");
   const [filtroFechaHasta, setFiltroFechaHasta] = useState("");
 
+  // Contador de selección para descartar respuestas fuera de orden (race condition).
+  const seleccionSeq = useRef(0);
+
   const hayFiltros = Boolean(filtroNumero || filtroProveedor || filtroFechaDesde || filtroFechaHasta);
 
   const limpiarFiltros = () => {
@@ -1034,11 +1228,16 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, onCerrar, onRegi
     setFiltroFechaHasta("");
   };
 
+  // Conjunto de facturas que no se pueden seleccionar (las que ya tienen una devolución PENDIENTE).
+  const idsExcluidos = useMemo(() => new Set(facturasExcluidas), [facturasExcluidas]);
+  const cantidadExcluidas = tipo === "DEVOLUCION" ? facturasExcluidas.length : 0;
+
   const facturasFiltradas = useMemo(() => {
     const numero = filtroNumero.trim().toLowerCase();
     const proveedor = filtroProveedor.trim().toLowerCase();
     return facturas
       .filter((f) => f.activo !== false
+        && !idsExcluidos.has(f.idFactura)
         && !["CANCELADA", "ANULADO"].includes(String(f.estado || "").toUpperCase()))
       .filter((f) => !numero || String(f.numeroFactura || "").toLowerCase().includes(numero))
       .filter((f) => !proveedor || String(f.nombreProveedor || "").toLowerCase().includes(proveedor))
@@ -1048,7 +1247,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, onCerrar, onRegi
         if (filtroFechaHasta && fecha > filtroFechaHasta) return false;
         return true;
       });
-  }, [facturas, filtroNumero, filtroProveedor, filtroFechaDesde, filtroFechaHasta]);
+  }, [facturas, idsExcluidos, filtroNumero, filtroProveedor, filtroFechaDesde, filtroFechaHasta]);
 
   useEscape(onCerrar);
 
@@ -1058,19 +1257,24 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, onCerrar, onRegi
     setProductosEntregar({});
     setFacturaDetalle(null);
     setCargandoDetalle(true);
+    setMotivo(""); // el motivo debe reiniciarse al cambiar de factura
+    const miSeq = ++seleccionSeq.current;
     try {
       const res = await getFacturaCompraById(factura.idFactura);
+      if (seleccionSeq.current !== miSeq) return; // respuesta fuera de orden
       setFacturaDetalle(res);
     } catch (err) {
+      if (seleccionSeq.current !== miSeq) return;
       console.error("Error al cargar detalle:", err);
       setFacturaDetalle(null);
     } finally {
-      setCargandoDetalle(false);
+      if (seleccionSeq.current === miSeq) setCargandoDetalle(false);
     }
   };
 
   const handleCambiarCantidad = (idProducto, cantidad) => {
-    const max = Number(facturaDetalle?.detalles?.find((d) => d.idProducto === idProducto)?.cantidad) || 0;
+    const d = facturaDetalle?.detalles?.find((x) => x.idProducto === idProducto);
+    const max = d ? limitesCantidad(d, tipo) : 0;
     const val = Math.max(0, Math.min(Number(cantidad) || 0, max));
     if (tipo === "DEVOLUCION") {
       setProductosDevueltos((prev) => ({ ...prev, [idProducto]: val }));
@@ -1079,10 +1283,20 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, onCerrar, onRegi
     }
   };
 
-  // Atajo de comodidad: marcar todos los productos con su cantidad completa.
+  // Límite máximo de cantidad por producto según el tipo de operación.
+  // En devolución se permite hasta el 100% de la cantidad comprada.
+  const limitesCantidad = (d, tipoOp) => {
+    if (tipoOp !== "DEVOLUCION") return Number(d.cantidad) || 0;
+    return Math.max(0, Number(d.cantidad) || 0);
+  };
+
+  // Atajo de comodidad: marcar todos los productos con su cantidad máxima (100% en devolución).
   const marcarTodoElMaximo = () => {
     const todo = {};
-    (facturaDetalle?.detalles || []).forEach((d) => { todo[d.idProducto] = Number(d.cantidad) || 0; });
+    (facturaDetalle?.detalles || []).forEach((d) => {
+      const max = limitesCantidad(d, tipo);
+      if (max > 0) todo[d.idProducto] = max;
+    });
     if (tipo === "DEVOLUCION") setProductosDevueltos(todo);
     else setProductosEntregar(todo);
   };
@@ -1098,8 +1312,49 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, onCerrar, onRegi
   }, 0) || 0;
 
   const tieneProductos = Object.values(tipo === "DEVOLUCION" ? productosDevueltos : productosEntregar).some((v) => Number(v) > 0);
-  const puedeRegistrar = tipo === "ANULACION" ? true : tieneProductos;
-  const canAvanzar = paso === 1 ? Boolean(facturaDetalle) : true;
+
+  // ----- Prevalidación de anulación (espejo de las reglas del backend) -----
+  // El backend exige: estado RECIBIDA, sin anulación previa, ser la factura más
+  // reciente del proveedor y no superar los días permitidos (default 15).
+  const esMasRecienteEntreCargadas = (factura) => {
+    const otras = facturas
+      .filter((f) => f.activo !== false && f.idProveedor === factura.idProveedor && f.idFactura !== factura.idFactura);
+    return otras.length === 0 || otras.every((f) => {
+      const a = String(f.fechaEmision || "").slice(0, 10);
+      const b = String(factura.fechaEmision || "").slice(0, 10);
+      return a <= b;
+    });
+  };
+
+  const validarAnulacion = useCallback((factura) => {
+    if (!factura) return [];
+    const avisos = [];
+    if (String(factura.estado || "").toUpperCase() !== "RECIBIDA") {
+      avisos.push("Solo se pueden anular facturas en estado RECIBIDA.");
+    }
+    if (factura.anulada) {
+      avisos.push("Esta factura ya fue anulada.");
+    }
+    if (!esMasRecienteEntreCargadas(factura)) {
+      avisos.push("Debe ser la factura más reciente del proveedor.");
+    }
+    const diaEmision = String(factura.fechaEmision || "").slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(diaEmision)) {
+      const desde = new Date(diaEmision + "T00:00:00");
+      const hoy = new Date();
+      const dias = Math.floor((hoy.getTime() - desde.getTime()) / 86400000);
+      if (dias > 15) {
+        avisos.push(`Supera los 15 días permitidos para anular (pasaron ${dias} días).`);
+      }
+    }
+    return avisos;
+  }, [facturas]);
+
+  const avisosAnulacion = tipo === "ANULACION" && facturaDetalle ? validarAnulacion(facturaDetalle) : [];
+  const bloqueaAnulacion = avisosAnulacion.length > 0;
+
+  const puedeRegistrar = tipo === "ANULACION" ? !bloqueaAnulacion : tieneProductos;
+  const canAvanzar = paso === 1 ? Boolean(facturaDetalle) && !(tipo === "ANULACION" && bloqueaAnulacion) : true;
 
   const handleRegistrar = () => {
     if (!puedeRegistrar) return;
@@ -1252,7 +1507,9 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, onCerrar, onRegi
               {!loadingFacturas && facturasFiltradas.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-4 py-10 text-center text-white/30">
-                    No se encontraron facturas con esos filtros.
+                    {tipo === "DEVOLUCION" && cantidadExcluidas > 0 && facturas.length === cantidadExcluidas
+                      ? "Todas las facturas ya tienen una devolución pendiente."
+                      : "No se encontraron facturas con esos filtros."}
                   </td>
                 </tr>
               )}
@@ -1286,6 +1543,15 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, onCerrar, onRegi
       {facturaSel && cargandoDetalle && (
         <p className="text-xs text-[#5a5a6e]">Cargando detalle de la factura…</p>
       )}
+      {tipo === "ANULACION" && facturaSel && !cargandoDetalle && avisosAnulacion.length > 0 && (
+        <ul className="space-y-1 rounded-lg border border-red-500/20 bg-red-500/5 p-3 text-xs text-red-300">
+          {avisosAnulacion.map((a) => (
+            <li key={a} className="flex items-center gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {a}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 
@@ -1312,6 +1578,15 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, onCerrar, onRegi
               <span className="font-semibold tabular-nums text-red-400">{fmtMoneda(facturaDetalle.totalGeneral)}</span>{" "}
               (emitida el {fmtFecha(facturaDetalle.fechaEmision)}).
             </p>
+            {avisosAnulacion.length > 0 && (
+              <ul className="mt-2 space-y-1 text-xs text-red-300">
+                {avisosAnulacion.map((a) => (
+                  <li key={a} className="flex items-center gap-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {a}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
           <div>
             <label htmlFor="motivo-anulacion" className={labelClass}>Motivo (opcional)</label>
@@ -1366,7 +1641,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, onCerrar, onRegi
               <tbody>
                 {facturaDetalle.detalles?.map((d) => {
                   const cant = cantidades[d.idProducto] || 0;
-                  const max = Number(d.cantidad) || 0;
+                  const max = limitesCantidad(d, tipo);
                   const activo = cant > 0;
                   return (
                     <tr key={d.idProducto} className={`border-b border-[#1e1e24] last:border-0 transition-colors ${activo ? "bg-[#22c55e]/[0.04]" : "hover:bg-white/[0.03]"}`}>
