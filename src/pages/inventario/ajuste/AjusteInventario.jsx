@@ -12,6 +12,7 @@ import {
   crearAjuste,
   completarAjuste,
   desactivarAjuste,
+  getAjustes,
 } from "../../../api/ajustesApi";
 import { getCategorias } from "../../../api/maestrosApi";
 import { canGestionarAjustesInventario } from "../../../auth/inventoryAccess";
@@ -19,17 +20,36 @@ import { stockEntero, unidadAdmiteDecimales, sanitizarConteo, parseConteo } from
 import ListasConteo from "./ajuste-inventario/ListasConteo";
 import NuevaListaModal from "./ajuste-inventario/NuevaListaModal";
 
-const STORAGE_KEY = "ajuste.listas.conteo.v1";
-
-function cargarSesiones() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const arr = JSON.parse(raw);
-    return Array.isArray(arr) ? arr : [];
-  } catch {
-    return [];
-  }
+function cargarSesionesBack() {
+  return getAjustes().then((ajustes) =>
+    (ajustes || [])
+      .filter((a) => a?.idAjuste != null)
+      .map((a) => {
+        const estado =
+          a.estado === "CONFIRMADO"
+            ? "APLICADO"
+            : a.activo === false
+              ? "DESACTIVADO"
+              : "EN_PROCESO";
+        return {
+          id: a.idAjuste,
+          idAjuste: a.idAjuste,
+          numeroInforme: a.numeroInforme || "",
+          fechaHora: a.fechaCreacion || new Date().toISOString(),
+          descripcion: a.observaciones || "",
+          motivo: a.motivo || "",
+          estado,
+          items: (a.detalles || []).map((d) => ({
+            idProducto: d.idProducto ?? d.id_producto ?? d.productoId,
+            nombre: d.nombreProducto ?? d.nombre_producto ?? "",
+            codigo: d.codigoBarras ?? d.codigo_barra ?? "",
+            unidadMedida: d.unidadMedida ?? "",
+            stockSistema: d.stockRegistrado != null ? Number(d.stockRegistrado) : 0,
+            stockFisico: d.stockFisico != null ? String(d.stockFisico) : "",
+          })),
+        };
+      })
+  );
 }
 
 export default function AjusteInventario() {
@@ -41,7 +61,7 @@ export default function AjusteInventario() {
   const [error, setError] = useState(null);
   const [aviso, setAviso] = useState(null);
 
-  const [sesiones, setSesiones] = useState(cargarSesiones);
+  const [sesiones, setSesiones] = useState([]);
   const [aplicandoId, setAplicandoId] = useState(null);
   const [desactivandoId, setDesactivandoId] = useState(null);
   const [generando, setGenerando] = useState(false);
@@ -69,26 +89,20 @@ export default function AjusteInventario() {
   });
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sesiones));
-    } catch {
-      /* sin persistencia local */
-    }
-  }, [sesiones]);
-
-  useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         setError(null);
         setLoading(true);
-        const [prodRes, cats] = await Promise.all([
+        const [prodRes, cats, ajustes] = await Promise.all([
           getProductos({ pageSize: 500 }),
           getCategorias(),
+          cargarSesionesBack(),
         ]);
         if (!cancelled) {
           setProductos(prodRes.content || []);
           setCategorias(cats || []);
+          setSesiones(ajustes || []);
         }
       } catch (err) {
         if (!cancelled) {
@@ -113,17 +127,15 @@ export default function AjusteInventario() {
         idProductos: seleccion.map((p) => p.id),
         observaciones: descripcion,
       });
-      const idAjuste = ajuste?.idAjuste;
-      if (idAjuste == null) {
+      const id = ajuste?.idAjuste;
+      if (id == null) {
         throw new Error("El backend no devolvió un idAjuste.");
       }
-      const id =
-        sesiones.reduce((m, s) => Math.max(m, Number(s.id) || 0), 0) + 1;
       const sesion = {
         id,
-        idAjuste,
+        idAjuste: id,
         numeroInforme: ajuste?.numeroInforme || "",
-        fechaHora: new Date().toISOString(),
+        fechaHora: ajuste?.fechaCreacion || new Date().toISOString(),
         descripcion,
         motivo: (motivo || "").trim(),
         estado: "EN_PROCESO",
