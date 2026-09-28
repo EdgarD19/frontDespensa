@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, createContext, useContext } from "react";
 import { Link } from "react-router-dom";
 import {
   Plus, Pencil, Check, X, ChevronDown, ToggleLeft, ToggleRight, ArrowLeft,
@@ -13,29 +13,66 @@ import {
 const inputClass =
   "flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent-green)]";
 
-export function SeccionCategorias() {
+// Catálogo de categorías compartido entre las secciones de Categorías y Subcategorías,
+// para que al crear/editar una categoría la sección de subcategorías la vea al instante.
+const CategoriasContext = createContext(null);
+
+export function CategoriasProvider({ children }) {
   const [cats, setCats] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    setCargando(true);
+    try {
+      setCats(await getCategorias());
+      setError("");
+    } catch {
+      setError("No se pudieron cargar las categorías.");
+    } finally {
+      setCargando(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  return (
+    <CategoriasContext.Provider value={{ cats, cargando, error, setError, load }}>
+      {children}
+    </CategoriasContext.Provider>
+  );
+}
+
+function useCategoriasData() {
+  const ctx = useContext(CategoriasContext);
+  const [catsLocal, setCatsLocal] = useState([]);
+  const [cargandoLocal, setCargandoLocal] = useState(true);
+  const [errorLocal, setErrorLocal] = useState("");
+  const loadLocal = useCallback(async () => {
+    setCargandoLocal(true);
+    try {
+      setCatsLocal(await getCategorias());
+      setErrorLocal("");
+    } catch {
+      setErrorLocal("No se pudieron cargar las categorías.");
+    } finally {
+      setCargandoLocal(false);
+    }
+  }, []);
+  useEffect(() => { loadLocal(); }, [loadLocal]);
+
+  if (ctx) return { cats: ctx.cats, cargando: ctx.cargando, error: ctx.error, setError: ctx.setError, load: ctx.load };
+  return { cats: catsLocal, cargando: cargandoLocal, error: errorLocal, setError: setErrorLocal, load: loadLocal };
+}
+
+export function SeccionCategorias() {
+  const { cats, cargando, error, setError, load } = useCategoriasData();
 
   const [newName, setNewName] = useState("");
   const [editId, setEditId] = useState(null);
   const [editName, setEditName] = useState("");
   const [confirmarCat, setConfirmarCat] = useState(null);
   const [cambiando, setCambiando] = useState(false);
-
-  const load = async () => {
-    setLoading(true);
-    try {
-      setCats(await getCategorias());
-    } catch {
-      setError("No se pudieron cargar las categorías.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { load(); }, []);
 
   const handleAdd = async () => {
     setError("");
@@ -96,7 +133,7 @@ export function SeccionCategorias() {
 
       {error && <div className="mb-3 px-3 py-2 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-lg">{error}</div>}
 
-      {loading ? (
+      {cargando ? (
         <div className="text-white/40 text-sm py-4 text-center">Cargando...</div>
       ) : cats.length === 0 ? (
         <div className="text-white/30 text-sm py-4 text-center">Sin categorías</div>
@@ -151,7 +188,7 @@ export function SeccionCategorias() {
 }
 
 export function SeccionSubcategorias() {
-  const [cats, setCats] = useState([]);
+  const { cats } = useCategoriasData();
   const [idCategoria, setIdCategoria] = useState("");
   const [subs, setSubs] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -164,16 +201,8 @@ export function SeccionSubcategorias() {
   const [cambiando, setCambiando] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const c = await getCategorias();
-        setCats(c);
-        if (c.length) setIdCategoria(String(c[0].id));
-      } catch {
-        setError("No se pudieron cargar las categorías.");
-      }
-    })();
-  }, []);
+    if (cats.length && !idCategoria) setIdCategoria(String(cats[0].id));
+  }, [cats, idCategoria]);
 
   const loadSubs = async (catId) => {
     if (!catId) { setSubs([]); return; }
@@ -337,22 +366,24 @@ function AccordionSection({ titulo, defaultOpen = false, children }) {
 
 export default function MaestrosABM() {
   return (
-    <div className="space-y-5">
-      <div className="flex items-center gap-3">
-        <Link to="/inventario" className="p-2 rounded-lg hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
-          <ArrowLeft size={18} />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-semibold text-white mb-1">Administrar Maestros</h1>
-          <p className="text-sm text-white/40">Gestiona categorías y subcategorías</p>
+    <CategoriasProvider>
+      <div className="space-y-5">
+        <div className="flex items-center gap-3">
+          <Link to="/inventario" className="rounded-lg hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
+            <ArrowLeft size={18} />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-semibold text-white mb-1">Administrar Maestros</h1>
+            <p className="text-sm text-white/40">Gestiona categorías y subcategorías</p>
+          </div>
         </div>
+        <AccordionSection titulo="Categorías" defaultOpen={true}>
+          <SeccionCategorias />
+        </AccordionSection>
+        <AccordionSection titulo="Subcategorías">
+          <SeccionSubcategorias />
+        </AccordionSection>
       </div>
-      <AccordionSection titulo="Categorías" defaultOpen={true}>
-        <SeccionCategorias />
-      </AccordionSection>
-      <AccordionSection titulo="Subcategorías">
-        <SeccionSubcategorias />
-      </AccordionSection>
-    </div>
+    </CategoriasProvider>
   );
 }
