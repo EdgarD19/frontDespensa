@@ -14,6 +14,8 @@ import { getProveedores } from "../../../../api/proveedoresApi";
 import { getProductos } from "../../../../api/productosApi";
 import RecepcionPedidoModal from "../recepcion/RecepcionPedidoModal";
 import Pagination from "../../../../components/ui/Pagination";
+import CantidadInput from "../../../../components/ui/CantidadInput";
+import { esKG } from "../../utils";
 
 const ESTADOS = ["solicitado", "recibido", "cancelado"];
 
@@ -645,13 +647,11 @@ function PedidoModal({
                       <td className="px-4 py-2.5 font-medium text-white">{l.nombre || `Producto #${l.idProducto}`}</td>
                       <td className="px-3 py-2.5 text-center text-white/50">{l.unidadMedida || "—"}</td>
                       <td className="px-3 py-2.5">
-                        <input
-                          type="number"
-                          min="0.01"
-                          step="any"
+                        <CantidadInput
+                          unidadMedida={esKG(l) ? "KG" : "UN"}
                           value={l.cantidad}
-                          onChange={(e) => actualizarCantidad(l.idProducto, e.target.value)}
-                          className="w-full rounded-md border border-[#2a2a32] bg-[#0d0d0f] px-2 py-1.5 text-right text-sm tabular-nums text-white outline-none transition focus:border-[#22c55e]/60 focus:ring-2 focus:ring-[#22c55e]/15"
+                          onChange={(v) => actualizarCantidad(l.idProducto, v)}
+                          ariaLabel={`Cantidad de ${l.nombre || "producto"}`}
                         />
                       </td>
                       <td className="px-2 py-2.5 text-right">

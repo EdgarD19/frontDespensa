@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ClipboardList, FileText, PenLine, Check, X, Save, Ban } from "lucide-react";
 import Pagination from "../../../../components/ui/Pagination";
+import CantidadInput from "../../../../components/ui/CantidadInput";
 import PlanillaConteo from "./PlanillaConteo";
 import { unidadAdmiteDecimales } from "./utils";
 
@@ -386,18 +387,14 @@ export default function ListasConteo({
                         {(() => {
                           const decimal = unidadAdmiteDecimales(it.unidadMedida);
                           return (
-                            <input
-                              type="number"
-                              inputMode={decimal ? "decimal" : "numeric"}
-                              min={0}
-                              step={decimal ? "0.001" : 1}
+                            <CantidadInput
+                              unidadMedida={decimal ? "KG" : "UN"}
                               value={it.stockFisico}
-                              onChange={(e) =>
-                                onChangeFisico(cargar.id, it.idProducto, e.target.value)
-                              }
+                              onChange={(v) => onChangeFisico(cargar.id, it.idProducto, v)}
                               disabled={cargar.estado === "APLICADO"}
+                              permitirCero
+                              maxDecimales={3}
                               placeholder="contado"
-                              className="w-full rounded-md border border-[#2a2a32] bg-[#0d0d0f] px-2.5 py-2 text-right text-sm font-mono text-[#f1f1f3] placeholder:text-[#4a4a5a] focus:border-[#22c55e]/50 outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                             />
                           );
                         })()}

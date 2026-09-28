@@ -20,7 +20,9 @@ import {
   cancelarDevolucion,
 } from "../../../api/operacionesCompraApi";
 import { apiErrorMessage } from "../../../api/errors";
-import { formatoFactura, hoyAsuncion, estadoTimbrado, etiquetaTimbrado } from "../utils";
+import { getProductos } from "../../../api/productosApi";
+import { formatoFactura, hoyAsuncion, estadoTimbrado, etiquetaTimbrado, esKG } from "../utils";
+import CantidadInput from "../../../components/ui/CantidadInput";
 
 function fmtMoneda(n) {
   return new Intl.NumberFormat("es-PY", { style: "currency", currency: "PYG", minimumFractionDigits: 0 }).format(n ?? 0);
@@ -445,7 +447,7 @@ export default function OperacionesTipo({ tipo }) {
       setAviso("Este intercambio no tiene una factura vinculada.");
       return;
     }
-    setModalVerFactura({ idFactura: op.facturaId, numeroFactura: op.facturaVinculada, items: op.items || [] });
+    setModalVerFactura({ idFactura: op.facturaId, numeroFactura: op.facturaVinculada, items: op.items || [], estadoOperacion: op.estado });
   };
 
   // Facturas que ya tienen una devolución PENDIENTE: no deben poder crearse otra.
@@ -686,6 +688,7 @@ export default function OperacionesTipo({ tipo }) {
           facturaId={modalVerFactura.idFactura}
           numeroFactura={modalVerFactura.numeroFactura}
           items={modalVerFactura.items}
+          estadoOperacion={modalVerFactura.estadoOperacion}
           onCerrar={() => setModalVerFactura(null)}
         />
       )}
@@ -892,7 +895,7 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar }) {
 
 /* ───────────── Ver factura vinculada a un intercambio ───────────── */
 
-function VerFacturaModal({ facturaId, numeroFactura, items = [], onCerrar }) {
+function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion, onCerrar }) {
   const [factura, setFactura] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
@@ -950,7 +953,7 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], onCerrar }) {
             <p className="py-8 text-center text-white/50">La factura no pudo cargarse.</p>
           ) : (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 rounded-lg border border-[#1e1e24] bg-white/[0.02] p-4 text-sm lg:grid-cols-4">
+<div className="grid grid-cols-2 gap-4 rounded-lg border border-[#1e1e24] bg-white/[0.02] p-4 text-sm lg:grid-cols-4">
                 <div>
                   <p className="text-xs text-white/40">N° factura</p>
                   <p className="tabular-nums text-white">{factura.numeroFactura}</p>
@@ -964,8 +967,8 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], onCerrar }) {
                   <p className="text-white">{factura.nombreProveedor}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-white/40">Estado</p>
-                  <EstadoBadge estado={factura.estado} />
+                  <p className="text-xs text-white/40">Estado de intercambio</p>
+                  <EstadoBadge estado={estadoOperacion || factura.estado} />
                 </div>
               </div>
 
@@ -1215,6 +1218,22 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasExcluida
   const [filtroProveedor, setFiltroProveedor] = useState("");
   const [filtroFechaDesde, setFiltroFechaDesde] = useState("");
   const [filtroFechaHasta, setFiltroFechaHasta] = useState("");
+
+  // Catálogo de productos: map idProducto → unidad, para saber si la cantidad admite decimales (KG).
+  const [unidadesById, setUnidadesById] = useState({});
+
+  useEffect(() => {
+    let activo = true;
+    getProductos({ page: 0, pageSize: 500, sortBy: "nombre", sortDirection: "asc" })
+      .then((res) => {
+        if (!activo) return;
+        const m = {};
+        (res.content || []).forEach((p) => { if (p.id != null) m[Number(p.id)] = p.unidadMedida || ""; });
+        setUnidadesById(m);
+      })
+      .catch(() => {});
+    return () => { activo = false; };
+  }, []);
 
   // Contador de selección para descartar respuestas fuera de orden (race condition).
   const seleccionSeq = useRef(0);
@@ -1649,14 +1668,13 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasExcluida
                       <td className="px-2 py-2.5 text-center tabular-nums text-white/60">{d.cantidad}</td>
                       <td className="px-2 py-2.5">
                         <div className="mx-auto flex w-28 items-center gap-1">
-                          <input
-                            type="number" min="0" max={max} step="any" value={cant}
-                            onChange={(e) => handleCambiarCantidad(d.idProducto, e.target.value)}
-                            onFocus={(e) => e.target.select()}
-                            aria-label={`Cantidad a ${tipo === "DEVOLUCION" ? "devolver" : "intercambiar"} de ${d.nombreProducto}`}
-                            className={`w-full rounded-md border bg-[#0d0d0f] px-2 py-1.5 text-right text-sm tabular-nums text-white outline-none transition focus:border-[#22c55e]/60 focus:ring-2 focus:ring-[#22c55e]/15 ${
-                              activo ? "border-[#22c55e]/40" : "border-[#2a2a32]"
-                            }`}
+                          <CantidadInput
+                            unidadMedida={esKG({ unidadMedida: unidadesById[Number(d.idProducto)] }) ? "KG" : "UN"}
+                            value={cant}
+                            onChange={(v) => handleCambiarCantidad(d.idProducto, v)}
+                            permitirCero
+                            maxDecimales={3}
+                            ariaLabel={`Cantidad a ${tipo === "DEVOLUCION" ? "devolver" : "intercambiar"} de ${d.nombreProducto}`}
                           />
                           <button
                             type="button"

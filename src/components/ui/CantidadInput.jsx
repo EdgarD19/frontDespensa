@@ -1,4 +1,5 @@
 ﻿import { useEffect, useRef, useState } from "react";
+import { ChevronUp, ChevronDown } from "lucide-react";
 
 const separador = (t) =>
   t.indexOf(",") !== -1 ? "," : t.indexOf(".") !== -1 ? "." : null;
@@ -9,6 +10,7 @@ export default function CantidadInput({
   onChange,
   maxDecimales = 3,
   disabled = false,
+  permitirCero = false,
   placeholder,
   id,
   name,
@@ -139,8 +141,8 @@ export default function CantidadInput({
       return { error: "La cantidad debe ser un número entero.", emit: false };
     }
     const n = parseInt(t, 10);
-    if (n <= 0) {
-      return { error: "La cantidad debe ser mayor que 0.", emit: false };
+    if (n < (permitirCero ? 0 : 1)) {
+      return { error: "La cantidad no puede ser negativa.", emit: false };
     }
     return { error: null, emit: n.toString() };
   };
@@ -156,9 +158,22 @@ export default function CantidadInput({
     }
   };
 
+  const aplicarInt = (delta) => {
+    if (disabled || esKG) return;
+    const t = (textRef.current ?? "").toString().trim();
+    const base = /^\d+$/.test(t) ? parseInt(t, 10) : (permitirCero ? 0 : 1);
+    const floor = permitirCero ? 0 : 1;
+    const n = Math.max(floor, base + delta);
+    const s = String(n);
+    textRef.current = s;
+    setText(s);
+    setError(null);
+    onChange(n);
+  };
+
   return (
     <div className={`flex flex-col gap-1 ${className}`}>
-      <div className="relative">
+      <div className="relative flex items-center gap-1">
         <input
           type="text"
           inputMode={esKG ? "decimal" : "numeric"}
@@ -182,8 +197,32 @@ export default function CantidadInput({
           onKeyDown={onKeyDown}
           className={`w-full bg-white/5 border rounded px-2 py-1 text-right text-sm font-mono text-white placeholder:text-white/25 outline-none transition-colors focus:border-[#22c55e]/50 ${
             error ? "border-red-500/60" : "border-white/10"
-          }`}
+          } ${!esKG ? "pr-7" : ""}`}
         />
+        {!esKG && (
+          <div className="absolute right-1 top-1/2 flex -translate-y-1/2 flex-col">
+            <button
+              type="button"
+              tabIndex={-1}
+              disabled={disabled}
+              onClick={() => aplicarInt(1)}
+              aria-label="Aumentar cantidad"
+              className="rounded-sm p-0.5 leading-none text-[#5a5a6e] transition-colors hover:text-[#22c55e] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronUp className="h-3 w-3" />
+            </button>
+            <button
+              type="button"
+              tabIndex={-1}
+              disabled={disabled}
+              onClick={() => aplicarInt(-1)}
+              aria-label="Disminuir cantidad"
+              className="rounded-sm p-0.5 leading-none text-[#5a5a6e] transition-colors hover:text-[#22c55e] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronDown className="h-3 w-3" />
+            </button>
+          </div>
+        )}
       </div>
       {error && (
         <p className="text-xs text-red-400" role="alert">
