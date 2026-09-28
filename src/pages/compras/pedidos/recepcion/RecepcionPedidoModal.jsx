@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Truck, Search, Barcode, Trash2, ShoppingCart, Check, Calendar, FileText, X, PackageCheck } from "lucide-react";
+import { Truck, Search, Barcode, Trash2, ShoppingCart, Check, Calendar, FileText, X, PackageCheck, Plus, Settings2 } from "lucide-react";
 import { getProductos, getProductoByCodigo, getPrecioCompraVigente } from "../../../../api/productosApi";
 import { getProveedorById } from "../../../../api/proveedoresApi";
 import {
@@ -8,7 +8,9 @@ import {
   getTimbradosProveedor,
 } from "../../../../api/facturasCompraApi";
 import { apiErrorMessage } from "../../../../api/errors";
-import { money, hoyAsuncion, formatoFactura, esKG, stepCant, parseCant, estadoTimbrado, etiquetaTimbrado, S } from "../../utils";
+import CantidadInput from "../../../../components/ui/CantidadInput";
+import TimbradosModal from "../../factura/TimbradosModal";
+import { money, hoyAsuncion, formatoFactura, esKG, parseCant, estadoTimbrado, etiquetaTimbrado, S } from "../../utils";
 
 export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
   const [proveedor, setProveedor] = useState(null);
@@ -19,6 +21,8 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
   const [timbrados, setTimbrados] = useState([]);
   const [timbradoId, setTimbradoId] = useState("");
   const [cargandoTimbrados, setCargandoTimbrados] = useState(false);
+  const [showTimbradosModal, setShowTimbradosModal] = useState(false);
+  const [refrescoTimbrados, setRefrescoTimbrados] = useState(0);
   const [numeroComprobante, setNumeroComprobante] = useState("");
   const [formaPago, setFormaPago] = useState("CONTADO");
   const [fechaEmision, setFechaEmision] = useState(() => hoyAsuncion());
@@ -49,12 +53,18 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
     setTimbradoId("");
     setCargandoTimbrados(true);
     getTimbradosProveedor(idProveedor)
-      .then((res) => { if (activo) setTimbrados(res?.content || []); })
+      .then((res) => {
+        if (!activo) return;
+        const lista = res?.content || [];
+        setTimbrados(lista);
+        const vigente = lista.find((t) => estadoTimbrado(t, fechaEmision).tipo === "vigente");
+        setTimbradoId(vigente ? String(vigente.idTimbrado) : "");
+      })
       .catch(() => { if (activo) setTimbrados([]); })
       .finally(() => { if (activo) setCargandoTimbrados(false); });
 
     return () => { activo = false; };
-  }, [idProveedor]);
+  }, [idProveedor, refrescoTimbrados]);
 
   // Líneas precargadas desde el pedido + precio de costo vigente por producto
   useEffect(() => {
@@ -361,6 +371,24 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
                   {estadoTimbradoSel.msg}
                 </p>
               )}
+              {timbrados.length === 0 && !cargandoTimbrados && (
+                <button
+                  onClick={() => setShowTimbradosModal(true)}
+                  className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-[#22c55e] hover:text-green-400 transition-colors"
+                  type="button"
+                >
+                  <Plus size={13} /> Registrar timbrado
+                </button>
+              )}
+              {timbrados.length > 0 && (
+                <button
+                  onClick={() => setShowTimbradosModal(true)}
+                  className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-[#5a5a6e] hover:text-white transition-colors"
+                  type="button"
+                >
+                  <Settings2 size={13} /> Gestionar timbrados
+                </button>
+              )}
             </div>
 
             <div>
@@ -479,13 +507,13 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
                     </span>
                   </div>
                   <div className="py-1.5 text-right bg-white/[0.03]">
-                    <input
-                      type="number"
-                      min={esKG(l.producto) ? "0.001" : "1"}
-                      step={stepCant(l.producto)}
+                    <CantidadInput
+                      unidadMedida={esKG(l.producto) ? "KG" : "UN"}
                       value={l.cantidad}
-                      onChange={(e) => actualizarCantidad(l.producto.id, e.target.value)}
-                      className="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-right text-sm font-mono text-white outline-none transition-colors focus:border-[#22c55e]/50"
+                      onChange={(v) => actualizarCantidad(l.producto.id, v)}
+                      className="mx-auto w-20"
+                      maxDecimales={3}
+                      ariaLabel={`Cantidad de ${l.producto.nombre}`}
                     />
                   </div>
                   <div className="py-1.5 text-center text-sm text-white bg-white/[0.03]">
@@ -581,6 +609,14 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
           </div>
         </div>
       </div>
+
+      {showTimbradosModal && proveedor && (
+        <TimbradosModal
+          proveedor={proveedor}
+          onClose={() => setShowTimbradosModal(false)}
+          onCambio={() => setRefrescoTimbrados((n) => n + 1)}
+        />
+      )}
     </div>
   );
 }
