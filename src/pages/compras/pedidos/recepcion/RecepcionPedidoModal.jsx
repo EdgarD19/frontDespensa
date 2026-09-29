@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Truck, Search, Barcode, Trash2, ShoppingCart, Check, Calendar, FileText, X, PackageCheck, Plus, Settings2 } from "lucide-react";
 import { getProductos, getProductoByCodigo, getPrecioCompraVigente } from "../../../../api/productosApi";
 import { getProveedorById } from "../../../../api/proveedoresApi";
+import { getPedidoParaRecibir } from "../../../../api/comprasApi";
 import {
   crearFacturaCompra,
   facturaCompraNumeroExiste,
@@ -66,14 +67,24 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
     return () => { activo = false; };
   }, [idProveedor, refrescoTimbrados]);
 
-  // Líneas precargadas desde el pedido + precio de costo vigente por producto
+  // Líneas precargadas desde el pedido (GET /api/pedidos/{id}/para-recibir) + precio de costo vigente
   useEffect(() => {
-    if (!pedido?.detalles?.length) return;
+    if (!pedido?.idPedido) return;
     let activo = true;
 
     (async () => {
+      let detalles = pedido.detalles || [];
+      try {
+        const precargado = await getPedidoParaRecibir(pedido.idPedido);
+        const d = precargado?.detalles || precargado?.data?.detalles || detalles;
+        if (Array.isArray(d) && d.length > 0) detalles = d;
+        if (activo && precargado?.idProveedor != null) {
+          setProveedor((prev) => ({ ...(prev || {}), idProveedor: precargado.idProveedor, nombre: precargado.nombreProveedor || prev?.nombre }));
+        }
+      } catch { /* fallback: usa los detalles que ya trajo la lista de pedidos */ }
+
       const filas = await Promise.all(
-        pedido.detalles.map(async (d) => {
+        detalles.map(async (d) => {
           const costo = await getPrecioCompraVigente(d.idProducto).catch(() => 0);
           return {
             producto: {
@@ -92,7 +103,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
     })();
 
     return () => { activo = false; };
-  }, [pedido]);
+  }, [pedido?.idPedido]);
 
   useEffect(() => {
     const handler = (e) => {

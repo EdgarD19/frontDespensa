@@ -63,26 +63,6 @@ const iconBtn = "flex h-8 w-8 items-center justify-center rounded-lg transition-
 
 const modalShell = "w-full rounded-xl border border-[#1e1e24] bg-[#111114] shadow-2xl flex flex-col";
 
-// ====================================================================
-// Vínculo factura ↔ intercambio (el back no guarda la factura original).
-// Se guarda localmente al registrar el intercambio.
-// ====================================================================
-const VINCULO_KEY = "intercambioFacturaLink";
-
-function leerVinculos() {
-  try {
-    return JSON.parse(localStorage.getItem(VINCULO_KEY)) || {};
-  } catch {
-    return {};
-  }
-}
-
-function guardarVinculo(idOrden, vinculo) {
-  const m = leerVinculos();
-  m[idOrden] = vinculo;
-  localStorage.setItem(VINCULO_KEY, JSON.stringify(m));
-}
-
 const CONFIG = {
   DEVOLUCION: {
     label: "Devolución",
@@ -143,7 +123,6 @@ function useEscape(onCerrar) {
 // Convierte una OrdenIntercambioResponse (backend) a la forma interna de la tabla.
 function formatearIntercambio(o) {
   const detalles = o.detalles || [];
-  const vinculo = leerVinculos()[o.idOrdenIntercambio] || null;
   return {
     id: `ic-${o.idOrdenIntercambio}`,
     tipo: "INTERCAMBIO",
@@ -154,8 +133,8 @@ function formatearIntercambio(o) {
     facturaNumero: o.numeroOrden,
     proveedor: o.proveedorNombre,
     proveedorId: o.idProveedor,
-    facturaId: vinculo?.idFactura ?? null,
-    facturaVinculada: vinculo?.numeroFactura ?? null,
+    facturaId: o.idFactura ?? null,
+    facturaVinculada: o.numeroFactura ?? null,
     total: detalles.reduce((sum, d) => sum + (Number(d.subtotal) || Number(d.cantidad) * Number(d.precioUnitario) || 0), 0),
     items: detalles.map((d) => ({
       idProducto: d.idProducto,
@@ -205,6 +184,7 @@ function formatearAnulacion(a) {
     estado: "ANULADA",
     fecha: a.fechaAnulacion,
     facturaNumero: a.numeroFactura,
+    facturaVinculada: a.numeroFactura,
     proveedor: a.proveedorNombre,
     proveedorId: a.idProveedor,
     idFactura: a.idFactura,
@@ -232,6 +212,11 @@ export default function OperacionesTipo({ tipo }) {
   // Totales de anulaciones cuyo idFactura no está en la página de facturas cargada.
   const [totalesAnulacion, setTotalesAnulacion] = useState({});
   const [cargandoTotales, setCargandoTotales] = useState(false);
+  // Facturas que el backend no permite operar (dev pendiente / intercambio pendiente /
+  // estado no vigente). Se muestran atenuadas con su motivo y no se pueden seleccionar.
+  const [facturasBloqueadas, setFacturasBloqueadas] = useState([]);
+  // Sets cacheados de operaciones PENDIENTES (se cargan una sola vez por tipo).
+  const [pendientes, setPendientes] = useState({ devFacturas: [], intFacturas: [], intProveedores: [] });
 
   const cargarFacturas = useCallback(async () => {
     setLoadingFacturas(true);
@@ -277,11 +262,36 @@ export default function OperacionesTipo({ tipo }) {
     cargarOperaciones();
   }, [cargarOperaciones]);
 
+  // Carga UNA sola vez (y al refrescar) los IDs de operaciones PENDIENTES que bloquean.
+  // Debe declararse antes de refrescarTodo (que lo invoca).
+  const cargarPendientes = useCallback(async () => {
+    const [devoluciones, intercambios] = await Promise.all([
+      getDevoluciones({ page: 0, pageSize: 1000 }).catch(() => ({ content: [] })),
+      getIntercambios({ page: 0, pageSize: 1000 }).catch(() => ({ content: [] })),
+    ]);
+    setPendientes({
+      devFacturas: (devoluciones.content || [])
+        .filter((d) => String(d.estado || "").toUpperCase() === "PENDIENTE" && d.facturaOriginal?.idFactura != null)
+        .map((d) => Number(d.facturaOriginal.idFactura)),
+      intFacturas: (intercambios.content || [])
+        .filter((o) => String(o.estado || "").toUpperCase() === "PENDIENTE" && o.idFactura != null)
+        .map((o) => Number(o.idFactura)),
+      intProveedores: (intercambios.content || [])
+        .filter((o) => String(o.estado || "").toUpperCase() === "PENDIENTE" && o.idProveedor != null)
+        .map((o) => Number(o.idProveedor)),
+    });
+  }, []);
+
+  useEffect(() => {
+    cargarPendientes();
+  }, [cargarPendientes, tipo]);
+
   // Recarga operaciones y facturas (para reflejar anulaciones/facturas nuevas sin F5).
   const refrescarTodo = useCallback(() => {
     cargarOperaciones();
+    cargarPendientes();
     if (tipo === "ANULACION" || tipo === "DEVOLUCION") cargarFacturas();
-  }, [cargarOperaciones, cargarFacturas, tipo]);
+  }, [cargarOperaciones, cargarFacturas, cargarPendientes, tipo]);
 
   // Total de la factura original (para mostrar en anulaciones, ya que el backend no lo incluye).
   const totalFacturaById = useMemo(() => {
@@ -336,6 +346,8 @@ export default function OperacionesTipo({ tipo }) {
       if (op.tipo === "INTERCAMBIO") {
         const creada = await crearIntercambio({
           idProveedor: op.proveedorId,
+          idFactura: op.idFactura ?? undefined,
+          numeroFactura: op.facturaNumero ?? undefined,
           detalles: (op.items || []).map((it) => ({
             idProducto: it.idProducto,
             cantidad: it.cantidad,
@@ -343,16 +355,6 @@ export default function OperacionesTipo({ tipo }) {
           })),
         });
         setAviso(`Intercambio registrado.`);
-        if (creada.idOrdenIntercambio != null && op.idFactura != null) {
-          try {
-            guardarVinculo(creada.idOrdenIntercambio, {
-              idFactura: op.idFactura,
-              numeroFactura: op.facturaNumero,
-            });
-          } catch (e) {
-            console.error("No se pudo guardar el vínculo local del intercambio:", e);
-          }
-        }
       } else if (op.tipo === "ANULACION") {
         const anulada = await anularFactura({ idFactura: op.idFactura, motivo: op.motivo || "" });
         setAviso(`Factura ${anulada.numeroFactura || ""} anulada.`);
@@ -450,13 +452,39 @@ export default function OperacionesTipo({ tipo }) {
     setModalVerFactura({ idFactura: op.facturaId, numeroFactura: op.facturaVinculada, items: op.items || [], estadoOperacion: op.estado });
   };
 
-  // Facturas que ya tienen una devolución PENDIENTE: no deben poder crearse otra.
-  const facturasConDevPendiente = useMemo(() => {
-    if (tipo !== "DEVOLUCION") return [];
-    return operaciones
-      .filter((op) => op.tipo === "DEVOLUCION" && op.estado === "PENDIENTE" && op.idFactura != null)
-      .map((op) => op.idFactura);
-  }, [operaciones, tipo]);
+// Facturas que no se pueden operar: se muestran atenuadas con su motivo y no clickeables.
+  // Replica/amplía las reglas de negocio de los servicios del backend:
+  //  - devolución PENDIENTE sobre la factura (bloquea devolución, intercambio y anulación)
+  //  - intercambio PENDIENTE de la factura/proveedor (bloquea devolución y anulación)
+  //  - factura no vigente: para devolución solo se acepta RECIBIDA/VIGENTE
+  // Cálculo síncrono de las facturas bloqueadas (sin esperar nuevas llamadas HTTP).
+  useEffect(() => {
+    if (tipo !== "DEVOLUCION" && tipo !== "INTERCAMBIO" && tipo !== "ANULACION") {
+      setFacturasBloqueadas([]);
+      return;
+    }
+    const devSet = new Set(pendientes.devFacturas);
+    const intFacturasSet = new Set(pendientes.intFacturas);
+    const intProvSet = new Set(pendientes.intProveedores);
+    const bloqueadas = [];
+    facturas.forEach((f) => {
+      const idf = Number(f.idFactura);
+      const idProv = Number(f.idProveedor);
+      const estado = String(f.estado || "").toUpperCase();
+      if (devSet.has(idf)) {
+        bloqueadas.push({ idFactura: idf, motivo: "Tiene una devolución pendiente" });
+      } else if (tipo === "INTERCAMBIO" && intFacturasSet.has(idf)) {
+        bloqueadas.push({ idFactura: idf, motivo: "La factura ya tiene un intercambio pendiente" });
+      } else if (tipo === "ANULACION" && (intFacturasSet.has(idf) || intProvSet.has(idProv))) {
+        bloqueadas.push({ idFactura: idf, motivo: "El proveedor tiene un intercambio pendiente" });
+      } else if (tipo === "DEVOLUCION" && (intFacturasSet.has(idf) || intProvSet.has(idProv))) {
+        bloqueadas.push({ idFactura: idf, motivo: "El proveedor tiene un intercambio pendiente" });
+      } else if (tipo === "DEVOLUCION" && estado !== "RECIBIDA" && estado !== "VIGENTE") {
+        bloqueadas.push({ idFactura: idf, motivo: "La factura debe estar RECIBIDA" });
+      }
+    });
+    setFacturasBloqueadas(bloqueadas);
+  }, [tipo, facturas, pendientes]);
 
   return (
     <div className="space-y-5">
@@ -524,7 +552,7 @@ export default function OperacionesTipo({ tipo }) {
                   {tipo === "DEVOLUCION" && <th className={thBase}>Factura anulada</th>}
                   <th className={thBase}>Proveedor</th>
                   <th className={`${thBase} text-right`}>Total</th>
-                  {tipo !== "ANULACION" && <th className={`${thBase} w-28`} aria-label="Acciones" />}
+                  <th className={`${thBase} w-28`} aria-label="Acciones" />
                 </tr>
               </thead>
               <tbody>
@@ -553,10 +581,19 @@ export default function OperacionesTipo({ tipo }) {
                               : "—"
                         ) : fmtMoneda(op.total)}
                       </td>
-                      {tipo !== "ANULACION" && (
-                        <td className="px-4 py-3.5">
-                          <div className="flex items-center justify-end gap-1">
-                            {op.tipo === "INTERCAMBIO" ? (
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center justify-end gap-1">
+                            {op.tipo === "ANULACION" ? (
+                              <button
+                                type="button"
+                                onClick={() => handleVerFactura(op)}
+                                title="Ver factura anulada"
+                                aria-label="Ver factura anulada"
+                                className={`${iconBtn} text-white/40 hover:bg-sky-500/10 hover:text-sky-400`}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </button>
+                            ) : op.tipo === "INTERCAMBIO" ? (
                               <>
                                 <button
                                   type="button"
@@ -635,7 +672,6 @@ export default function OperacionesTipo({ tipo }) {
                             )}
                           </div>
                         </td>
-                      )}
                     </tr>
                   );
                 })}
@@ -650,7 +686,7 @@ export default function OperacionesTipo({ tipo }) {
           tipo={tipo}
           facturas={facturas}
           loadingFacturas={loadingFacturas}
-          facturasExcluidas={facturasConDevPendiente}
+          facturasBloqueadas={facturasBloqueadas}
           onCerrar={() => setShowModal(false)}
           onRegistrar={handleRegistrar}
         />
@@ -1204,7 +1240,7 @@ function ConfirmarAccionModal({ tipo, op, onCerrar, onConfirmar }) {
 
 /* ───────────── Wizard: nueva devolución / intercambio / anulación ───────────── */
 
-function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasExcluidas = [], onCerrar, onRegistrar }) {
+function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloqueadas = [], onCerrar, onRegistrar }) {
   const labelTipo = CONFIG[tipo].label;
   const [paso, setPaso] = useState(1);
   const [facturaSel, setFacturaSel] = useState(null);
@@ -1247,16 +1283,20 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasExcluida
     setFiltroFechaHasta("");
   };
 
-  // Conjunto de facturas que no se pueden seleccionar (las que ya tienen una devolución PENDIENTE).
-  const idsExcluidos = useMemo(() => new Set(facturasExcluidas), [facturasExcluidas]);
-  const cantidadExcluidas = tipo === "DEVOLUCION" ? facturasExcluidas.length : 0;
+  // Conjunto de facturas bloqueadas por el backend (devolución PENDIENTE, intercambio
+  // PENDIENTE del proveedor o estado no válido). Se muestran con su motivo y sin poder
+  // seleccionarse, en lugar de ocultarlas.
+  const motivosBloqueo = useMemo(() => {
+    const map = {};
+    facturasBloqueadas.forEach((b) => { map[Number(b.idFactura)] = b.motivo; });
+    return map;
+  }, [facturasBloqueadas]);
 
   const facturasFiltradas = useMemo(() => {
     const numero = filtroNumero.trim().toLowerCase();
     const proveedor = filtroProveedor.trim().toLowerCase();
     return facturas
       .filter((f) => f.activo !== false
-        && !idsExcluidos.has(f.idFactura)
         && !["CANCELADA", "ANULADO"].includes(String(f.estado || "").toUpperCase()))
       .filter((f) => !numero || String(f.numeroFactura || "").toLowerCase().includes(numero))
       .filter((f) => !proveedor || String(f.nombreProveedor || "").toLowerCase().includes(proveedor))
@@ -1266,7 +1306,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasExcluida
         if (filtroFechaHasta && fecha > filtroFechaHasta) return false;
         return true;
       });
-  }, [facturas, idsExcluidos, filtroNumero, filtroProveedor, filtroFechaDesde, filtroFechaHasta]);
+  }, [facturas, filtroNumero, filtroProveedor, filtroFechaDesde, filtroFechaHasta]);
 
   useEscape(onCerrar);
 
@@ -1526,8 +1566,8 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasExcluida
               {!loadingFacturas && facturasFiltradas.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-4 py-10 text-center text-white/30">
-                    {tipo === "DEVOLUCION" && cantidadExcluidas > 0 && facturas.length === cantidadExcluidas
-                      ? "Todas las facturas ya tienen una devolución pendiente."
+                    {facturas.length === 0
+                      ? "No hay facturas de compra registradas."
                       : "No se encontraron facturas con esos filtros."}
                   </td>
                 </tr>
@@ -1535,20 +1575,31 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasExcluida
 
               {!loadingFacturas && facturasFiltradas.map((f) => {
                 const seleccionada = facturaSel?.idFactura === f.idFactura;
+                const motivoBloqueo = motivosBloqueo[Number(f.idFactura)];
+                const bloqueada = Boolean(motivoBloqueo);
                 return (
                   <tr
                     key={f.idFactura}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => handleSeleccionarFactura(f)}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleSeleccionarFactura(f); } }}
-                    className={`cursor-pointer border-b border-[#1e1e24] transition-colors last:border-0 focus:outline-none ${
-                      seleccionada
-                        ? "border-l-2 border-l-[#22c55e] bg-[#22c55e]/[0.08]"
-                        : "hover:bg-white/[0.04]"
+                    role={bloqueada ? undefined : "button"}
+                    tabIndex={bloqueada ? -1 : 0}
+                    onClick={bloqueada ? undefined : () => handleSeleccionarFactura(f)}
+                    onKeyDown={bloqueada ? undefined : (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleSeleccionarFactura(f); } }}
+                    className={`border-b border-[#1e1e24] transition-colors last:border-0 focus:outline-none ${
+                      bloqueada
+                        ? "cursor-not-allowed opacity-50"
+                        : seleccionada
+                          ? "cursor-pointer border-l-2 border-l-[#22c55e] bg-[#22c55e]/[0.08]"
+                          : "cursor-pointer hover:bg-white/[0.04]"
                     }`}
                   >
-                    <td className="px-4 py-3 font-medium tabular-nums text-white">{f.numeroFactura}</td>
+                    <td className="px-4 py-3 font-medium tabular-nums text-white">
+                      {f.numeroFactura}
+                      {bloqueada && (
+                        <span className="mt-0.5 flex items-center gap-1 text-[11px] font-normal text-amber-300">
+                          <AlertTriangle className="h-3 w-3 shrink-0" /> {motivoBloqueo}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-white/70">{fmtFecha(f.fechaEmision)}</td>
                     <td className="px-4 py-3 text-white/70">{f.nombreProveedor}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-white">{fmtMoneda(f.totalGeneral)}</td>
