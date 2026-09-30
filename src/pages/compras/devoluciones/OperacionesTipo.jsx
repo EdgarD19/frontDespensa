@@ -135,7 +135,7 @@ function formatearIntercambio(o) {
     proveedorId: o.idProveedor,
     facturaId: o.idFactura ?? null,
     facturaVinculada: o.numeroFactura ?? null,
-    total: detalles.reduce((sum, d) => sum + (Number(d.subtotal) || Number(d.cantidad) * Number(d.precioUnitario) || 0), 0),
+    total: detalles.reduce((sum, d) => sum + (Number(d.cantidad) * Number(d.precioUnitario) || Number(d.subtotal) || 0), 0),
     items: detalles.map((d) => ({
       idProducto: d.idProducto,
       producto: d.productoNombre,
@@ -1016,7 +1016,7 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion
                       <th className="px-3 py-2.5 text-center font-medium">Cantidad</th>
                       <th className="px-3 py-2.5 text-center font-medium">Intercambio</th>
                       <th className="px-3 py-2.5 text-right font-medium">P. unitario</th>
-                      <th className="px-3 py-2.5 text-right font-medium">Subtotal</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Importe</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1109,7 +1109,7 @@ function VerDevolucionModal({ op, onCerrar }) {
                   <th className="px-3 py-2.5 font-medium">Producto</th>
                   <th className="px-3 py-2.5 text-center font-medium">Cantidad</th>
                   <th className="px-3 py-2.5 text-right font-medium">P. unitario</th>
-                  <th className="px-3 py-2.5 text-right font-medium">Subtotal</th>
+                  <th className="px-3 py-2.5 text-right font-medium">Importe</th>
                 </tr>
               </thead>
               <tbody>
@@ -1343,13 +1343,19 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
   };
 
   // Límite máximo de cantidad por producto según el tipo de operación.
-  // En devolución se permite hasta el 100% de la cantidad comprada.
+  // En devolución el backend NO permite devolver el 100% (eso es el flujo de
+  // anulación): DevolucionService valida cantidadDevuelta < cantidad original
+  // comparando contra la parte entera de la cantidad comprada. Espejo exacto.
   const limitesCantidad = (d, tipoOp) => {
     if (tipoOp !== "DEVOLUCION") return Number(d.cantidad) || 0;
-    return Math.max(0, Number(d.cantidad) || 0);
+    const original = Number(d.cantidad) || 0;
+    const entera = Math.floor(original);
+    const paso = esKG({ unidadMedida: unidadesById[Number(d.idProducto)] }) ? 0.001 : 1;
+    return Math.max(0, entera - paso);
   };
 
-  // Atajo de comodidad: marcar todos los productos con su cantidad máxima (100% en devolución).
+  // Atajo de comodidad: marcar todos los productos con su cantidad máxima
+  // (en devolución queda 1 paso por debajo del 100%, que es una anulación).
   const marcarTodoElMaximo = () => {
     const todo = {};
     (facturaDetalle?.detalles || []).forEach((d) => {
@@ -1705,7 +1711,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                   <th className="px-4 py-2.5 font-medium">Producto</th>
                   <th className="px-2 py-2.5 text-center font-medium">Comprado</th>
                   <th className="w-32 px-2 py-2.5 text-center font-medium">{tipo === "DEVOLUCION" ? "Devolver" : "Intercambiar"}</th>
-                  <th className="px-2 py-2.5 text-right font-medium">Subtotal</th>
+                  <th className="px-2 py-2.5 text-right font-medium">Importe</th>
                 </tr>
               </thead>
               <tbody>
@@ -1730,7 +1736,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                           <button
                             type="button"
                             onClick={() => handleCambiarCantidad(d.idProducto, max)}
-                            title={`Usar cantidad completa (${max})`}
+                            title={`Usar máximo permitido (${max})`}
                             className="shrink-0 rounded-md border border-[#2a2a32] px-1.5 py-1.5 text-[10px] text-white/40 transition-colors hover:border-[#22c55e]/40 hover:text-[#22c55e]"
                           >
                             Máx

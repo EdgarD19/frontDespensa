@@ -26,19 +26,19 @@ function fmtFechaHora(iso) {
 }
 
 function EstadoBadge({ estado }) {
-  const aplicado = estado === "APLICADO";
+  const confirmado = estado === "CONFIRMADO";
   const desactivada = estado === "DESACTIVADO";
   return (
     <span
       className={`inline-flex text-xs px-2 py-0.5 rounded-full font-medium ${
-        aplicado
+        confirmado
           ? "bg-[#22c55e]/10 text-[#22c55e]"
           : desactivada
             ? "bg-[#5a5a6e]/10 text-[#8a8a9a]"
             : "bg-yellow-500/10 text-yellow-400"
       }`}
     >
-      {aplicado ? "Aplicado" : desactivada ? "Desactivada" : "Pendiente"}
+      {confirmado ? "Confirmado" : desactivada ? "Desactivado" : "Borrador"}
     </span>
   );
 }
@@ -132,8 +132,8 @@ export default function ListasConteo({
               className="w-full rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-3 py-1.5 text-xs text-[#f1f1f3] focus:border-[#22c55e]/50 outline-none transition-colors"
             >
               <option value="">Todos</option>
-              <option value="PENDIENTE">Pendientes</option>
-              <option value="APLICADO">Aplicadas</option>
+              <option value="BORRADOR">Borradores</option>
+              <option value="CONFIRMADO">Confirmadas</option>
               <option value="DESACTIVADO">Desactivadas</option>
             </select>
           </label>
@@ -211,7 +211,7 @@ export default function ListasConteo({
         <div className="px-5 py-6 bg-[#0d0d0f]">
           <PlanillaConteo
             sesion={verPdf}
-            modo={verPdf.estado === "APLICADO" ? "informe" : "conteo"}
+            modo={verPdf.estado === "CONFIRMADO" ? "informe" : "conteo"}
             onVolver={() => setVerPdfId(null)}
           />
         </div>
@@ -240,7 +240,7 @@ export default function ListasConteo({
                 ) : (
                 pageSesiones.map((s) => {
                   const listo = completo(s);
-                  const aplicado = s.estado === "APLICADO";
+                  const aplicado = s.estado === "CONFIRMADO";
                   const desactivada = s.estado === "DESACTIVADO";
                   return (
                   <tr key={s.id} className="hover:bg-[#13131a]/80 transition-colors">
@@ -391,7 +391,7 @@ export default function ListasConteo({
                               unidadMedida={decimal ? "KG" : "UN"}
                               value={it.stockFisico}
                               onChange={(v) => onChangeFisico(cargar.id, it.idProducto, v)}
-                              disabled={cargar.estado === "APLICADO"}
+                              disabled={cargar.estado === "CONFIRMADO"}
                               permitirCero
                               maxDecimales={3}
                               placeholder="contado"
@@ -507,7 +507,7 @@ export default function ListasConteo({
               </div>
 
               <div className="flex items-center justify-between gap-3 pt-1 flex-wrap">
-                {confirmar.estado === "APLICADO" ? (
+                {confirmar.estado === "CONFIRMADO" ? (
                   <>
                     <span className="inline-flex items-center gap-2 text-sm font-medium text-[#22c55e]">
                       Lista aplicada.

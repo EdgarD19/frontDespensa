@@ -500,7 +500,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
               <div className="pb-1 text-center text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Cantidad</div>
               <div className="pb-1 text-center text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">IVA %</div>
               <div className="pb-1 text-right text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Precio costo</div>
-              <div className="pb-1 pr-3 text-right text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Subtotal</div>
+              <div className="pb-1 pr-3 text-right text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Importe</div>
               <div className="pb-1"></div>
 
               {lineas.length === 0 ? (

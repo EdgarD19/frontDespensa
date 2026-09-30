@@ -201,7 +201,7 @@ export default function ReportesCompras() {
           monto: 0,
         };
         row.cantidad += Number(d.cantidad || 0);
-        row.monto += Number(d.subtotal || 0);
+        row.monto += Math.round(Number(d.cantidad || 0) * Number(d.precioUnitario || 0));
         map.set(key, row);
       }
     }
@@ -767,9 +767,8 @@ function DetalleCompra({ factura, onClose }) {
               <thead>
                 <tr className="border-b border-white/10 text-white/40 text-left">
                   <th className="px-4 py-2.5 font-medium">Producto</th>
-                  <th className="px-4 py-2.5 font-medium text-right">Cantidad</th>
-                  <th className="px-4 py-2.5 font-medium text-right">Precio Costo Unit.</th>
-                  <th className="px-4 py-2.5 font-medium text-right">Subtotal</th>
+<th className="px-4 py-2.5 font-medium text-right">Cantidad</th>
+                  <th className="px-4 py-2.5 font-medium text-right">Importe</th>
                 </tr>
               </thead>
               <tbody>
@@ -783,7 +782,7 @@ function DetalleCompra({ factura, onClose }) {
                     <td className="px-4 py-2.5 text-white">{d.nombreProducto || `Producto #${d.idProducto}`}</td>
                     <td className="px-4 py-2.5 text-white/70 text-right whitespace-nowrap">{Number(d.cantidad)}</td>
                     <td className="px-4 py-2.5 text-white/70 text-right whitespace-nowrap">{money(d.precioUnitario)}</td>
-                    <td className="px-4 py-2.5 text-white text-right whitespace-nowrap">{money(d.subtotal)}</td>
+                    <td className="px-4 py-2.5 text-white text-right whitespace-nowrap">{money(Math.round(Number(d.cantidad) * Number(d.precioUnitario)))}</td>
                   </tr>
                 ))}
               </tbody>

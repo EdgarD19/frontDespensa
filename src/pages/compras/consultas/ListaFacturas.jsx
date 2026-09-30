@@ -49,7 +49,7 @@ const fmtFechaHora = (iso) => {
 const condicionPago = (c) => {
   const label = c === "CONTADO" ? "Contado" : c === "TRANSFERENCIA" ? "Transferencia" : c === "CREDITO" ? "Crédito" : (c || "—");
   const cls = c === "CONTADO"
-    ? "bg-[#22c55e]/15 text-[#22c55e]"
+    ? "bg-white/15 text-white/90"
     : c === "TRANSFERENCIA"
       ? "bg-sky-500/15 text-sky-400"
       : c === "CREDITO"
@@ -318,6 +318,30 @@ export default function ListaFacturas() {
   );
 }
 
+const TH = "sticky top-0 z-10 bg-[#17171b] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-white/80 border-b border-white/10";
+
+function Dato({ titulo, children }) {
+  return (
+    <div>
+      <dt className="text-xs text-white/50">{titulo}</dt>
+      <dd className="mt-1 text-sm font-medium text-white">{children}</dd>
+    </div>
+  );
+}
+
+function TasaBadge({ tasa }) {
+  const t = Number(tasa) || 0;
+  return (
+    <span
+      className={`inline-flex min-w-14 justify-center rounded-md px-2 py-0.5 text-xs font-medium ${
+        t ? "bg-white/10 text-white/90" : "border border-white/20 text-white/70"
+      }`}
+    >
+      {t ? `${t}%` : "Exenta"}
+    </span>
+  );
+}
+
 function DetalleFactura({ factura, cargando = false, onClose }) {
   const detalles = Array.isArray(factura.detalles) ? factura.detalles : [];
 
@@ -334,129 +358,131 @@ function DetalleFactura({ factura, cargando = false, onClose }) {
     },
     { 0: { subtotal: 0, iva: 0 }, 5: { subtotal: 0, iva: 0 }, 10: { subtotal: 0, iva: 0 }, totales: { total: 0, iva: 0 } },
   );
-  const subtotalGeneral = desglose.totales.total - desglose.totales.iva;
+
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    const overflowPrevio = document.body.style.overflow;
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = overflowPrevio;
+    };
+  }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div
-        className="w-full max-w-3xl my-4 bg-[#17171b] border border-white/10 rounded-2xl p-6 space-y-5 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="factura-detalle-titulo"
+        className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden border border-white/10 bg-[#111114] shadow-2xl"
       >
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-1">
-            <h2 className="text-lg font-semibold text-white">Factura {factura.numeroFactura || "—"}</h2>
-            <p className="text-sm text-[#5a5a6e]">{factura.nombreProveedor || "Proveedor desconocido"}</p>
+        {/* Cabecera */}
+        <header className="flex items-start justify-between gap-4 px-6 pt-6">
+          <h2 id="factura-detalle-titulo" className="text-lg font-semibold text-white">
+            Factura {factura.numeroFactura || "—"}
+          </h2>
+          <div className="flex items-center gap-3">
+            <p className="rounded-sm border border-white/15 bg-white/5 px-2.5 py-1 text-sm font-medium text-white/80">{factura.nombreProveedor || "Proveedor desconocido"}</p>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Cerrar"
+              className="-mr-2 -mt-1 rounded-lg p-2 text-white/50 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#22c55e]/60"
+            >
+              <X size={20} />
+            </button>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 text-white/50 transition-colors" aria-label="Cerrar">
-            <X size={18} />
-          </button>
-        </div>
+        </header>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-          <div className="space-y-0.5">
-            <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Fecha emisión</p>
-            <p className="text-white">{fmtFecha(factura.fechaEmision)}</p>
-          </div>
-          <div className="space-y-0.5">
-            <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">N° Timbrado</p>
-            <p className="text-white">{factura.numeroTimbrado || "—"}</p>
-          </div>
-          <div className="space-y-0.5">
-            <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Condición</p>
-            <div>{condicionPago(factura.condicionPago)}</div>
-          </div>
-          <div className="space-y-0.5">
-            <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Total</p>
-            <p className="text-white font-semibold">{money(totalDesdeDetalles(factura))}</p>
-          </div>
-        </div>
+        <dl className="grid grid-cols-2 gap-4 px-6 py-5 sm:grid-cols-3">
+          <Dato titulo="Fecha de emisión">{fmtFecha(factura.fechaEmision)}</Dato>
+          <Dato titulo="N° de timbrado">{factura.numeroTimbrado || "—"}</Dato>
+          <Dato titulo="Condición">{condicionPago(factura.condicionPago)}</Dato>
+        </dl>
 
-        {/* Productos */}
-        <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+        {/* Ítems: solo esta zona scrollea, cabecera y pie quedan fijos */}
+        <section className="flex min-h-0 flex-1 flex-col px-6 pb-5">
+          <div className="mb-2 flex items-baseline justify-between">
+            <h3 className="text-sm font-medium text-white">Productos ({detalles.length})</h3>
+            <p className="text-xs text-white/50">Montos con IVA incluido</p>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-auto border border-white/10 bg-[#17171b]">
+            <table className="w-full min-w-[34rem] text-sm">
               <thead>
-                <tr className="border-b border-white/10 text-white/40 text-left">
-                  <th className="px-4 py-2.5 font-medium">Producto</th>
-                  <th className="px-4 py-2.5 font-medium text-right">Cantidad</th>
-                  <th className="px-4 py-2.5 font-medium text-right">Precio Costo Unit.</th>
-                  <th className="px-4 py-2.5 font-medium text-right">IVA</th>
-                  <th className="px-4 py-2.5 font-medium text-right">Subtotal</th>
+                <tr>
+                  <th scope="col" className={`${TH} text-left`}>Producto</th>
+                  <th scope="col" className={`${TH} text-right`}>Cant.</th>
+                  <th scope="col" className={`${TH} text-right`}>Costo unit.</th>
+                  <th scope="col" className={`${TH} text-center`}>Tasa</th>
+                  <th scope="col" className={`${TH} text-right`}>IVA</th>
+                  <th scope="col" className={`${TH} text-right`}>Total</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-white/5">
                 {cargando && detalles.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-6 text-center text-white/30">
+                    <td colSpan={6} className="px-4 py-6 text-center text-white/30">
                       <span className="inline-block h-4 w-16 bg-white/10 rounded animate-pulse align-middle mr-2" />
                       Cargando productos…
                     </td>
                   </tr>
                 )}
                 {!cargando && detalles.length === 0 && (
-                  <tr><td colSpan={5} className="px-4 py-6 text-center text-white/30">Sin productos.</td></tr>
+                  <tr><td colSpan={6} className="px-4 py-6 text-center text-white/30">Sin productos.</td></tr>
                 )}
                 {detalles.map((d) => (
-                  <tr key={d.idDetalle ?? `${d.idProducto}-${d.nombreProducto}`} className="border-b border-white/5">
-                    <td className="px-4 py-2.5 text-white">{d.nombreProducto || `Producto #${d.idProducto}`}</td>
-                    <td className="px-4 py-2.5 text-white/70 text-right whitespace-nowrap">{Number(d.cantidad)}</td>
-                    <td className="px-4 py-2.5 text-white/70 text-right whitespace-nowrap">{money(d.precioUnitario)}</td>
-                    <td className="px-4 py-2.5 text-white/70 text-right whitespace-nowrap">
-                      {ivaLineaDetalle(d) > 0 ? money(ivaLineaDetalle(d)) : "—"}
+                  <tr key={d.idDetalle ?? `${d.idProducto}-${d.nombreProducto}`} className="transition hover:bg-white/[0.02]">
+                    <td className="px-4 py-3 font-medium text-white">{d.nombreProducto || `Producto #${d.idProducto}`}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white/80">{Number(d.cantidad)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white/80">{money(d.precioUnitario)}</td>
+                    <td className="px-4 py-3 text-center">
+                      <TasaBadge tasa={Number(d.tasaIva)} />
                     </td>
-                    <td className="px-4 py-2.5 text-white text-right whitespace-nowrap">{money(d.subtotal)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white/80">
+                      {Number(d.tasaIva) ? money(ivaLineaDetalle(d)) : "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right font-medium tabular-nums text-white">
+                      {money(Math.round(Number(d.cantidad) * Number(d.precioUnitario)))}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
 
-        {/* Totales + Desglose de IVA */}
-        <div className="pt-3 border-t border-white/10 grid gap-4 sm:grid-cols-3 items-end">
-          <div className="space-y-1.5">
-            <p className="text-sm text-[#5a5a6e]">
-              {detalles.length} ítem{detalles.length === 1 ? "" : "s"} en el
-              comprobante
-            </p>
-            <div className="space-y-1 font-mono text-sm">
-              <div className="flex items-center justify-between text-white/70">
-                <span className="text-[#5a5a6e]">Exentas:</span>
-                <span>{money(desglose[0].subtotal)}</span>
-              </div>
-              <div className="flex items-center justify-between text-white/70">
-                <span className="text-[#5a5a6e]">IVA 5%:</span>
-                <span>{money(desglose[5].iva)}</span>
-              </div>
-              <div className="flex items-center justify-between text-white/70">
-                <span className="text-[#5a5a6e]">IVA 10%:</span>
-                <span>{money(desglose[10].iva)}</span>
-              </div>
+        {/* Liquidación de IVA + Total factura */}
+        <footer className="border-t border-white/10 bg-white/[0.02] px-6 py-4">
+          <div className="flex items-center justify-between gap-6">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-sm">
+              <span className="border border-white/15 bg-white/5 px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-white/80">Liquidación IVA</span>
+              {desglose[5].iva > 0 && (
+                <span className="text-white/70">
+                  <span className="text-[#5a5a6e]">5%: </span>{money(desglose[5].iva)}
+                </span>
+              )}
+              {desglose[10].iva > 0 && (
+                <span className="text-white/70">
+                  <span className="text-[#5a5a6e]">10%: </span>{money(desglose[10].iva)}
+                </span>
+              )}
+              <span className="text-white/90 font-semibold">
+                <span className="text-[#5a5a6e]">Total IVA: </span>{money(desglose.totales.iva)}
+              </span>
+            </div>
+
+            <div className="shrink-0 text-right">
+              <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/50">Total factura</p>
+              <p className="text-xl font-semibold tabular-nums text-[#22c55e]">{money(totalDesdeDetalles(factura))}</p>
             </div>
           </div>
-
-          <div className="space-y-1.5 font-mono text-sm">
-            <div className="flex items-center justify-between text-white/90">
-              <span className="text-[#5a5a6e]">Total IVA:</span>
-              <span className="font-semibold">{money(desglose.totales.iva)}</span>
-            </div>
-            <div className="flex items-center justify-between text-white/90 border-t border-white/10 pt-1.5">
-              <span className="text-[#5a5a6e]">Subtotal:</span>
-              <span>{money(subtotalGeneral)}</span>
-            </div>
-          </div>
-
-          <div className="flex flex-col items-end justify-end gap-3">
-            <div className="text-right">
-              <p className="text-xs text-[#5a5a6e] uppercase tracking-[0.12em]">
-                Total factura
-              </p>
-              <p className="font-mono text-3xl font-bold tracking-tight text-[#22c55e]">
-                {money(totalDesdeDetalles(factura))}
-              </p>
-            </div>
-          </div>
-        </div>
+        </footer>
       </div>
     </div>
   );

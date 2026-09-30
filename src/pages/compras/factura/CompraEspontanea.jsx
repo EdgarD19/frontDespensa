@@ -21,21 +21,21 @@ function desgloseFactura(f) {
     return Math.round(b - b / (1 + t / 100));
   };
   const suma = (arr, fn) => arr.reduce((s, d) => s + fn(d), 0);
-  const subtotal10 = suma(porTasa(10), bruto);
-  const subtotal5 = suma(porTasa(5), bruto);
-  const subtotalExento = suma(porTasa(0), bruto);
+  const bruto10 = suma(porTasa(10), bruto);
+  const bruto5 = suma(porTasa(5), bruto);
+  const brutoExento = suma(porTasa(0), bruto);
   const iva10 = suma(porTasa(10), ivaDe);
   const iva5 = suma(porTasa(5), ivaDe);
   const ivaExento = 0;
   return {
-    subtotal10,
-    subtotal5,
-    subtotalExento,
+    subtotal10: bruto10 - iva10,
+    subtotal5: bruto5 - iva5,
+    subtotalExento: brutoExento,
     iva10,
     iva5,
     ivaExento,
     ivaTotal: iva10 + iva5,
-    total: subtotal10 + subtotal5 + subtotalExento,
+    total: bruto10 + bruto5 + brutoExento,
   };
 }
 
@@ -232,76 +232,97 @@ export default function CompraEspontanea({ onVolver }) {
     const f = exito;
     const dg = desgloseFactura(f);
     const detalle = (tasa) => (f.detalles || []).filter((d) => Number(d.tasaIva) === tasa);
-    const mostrarDesglose =
-      (detalle(0).length > 0) || (detalle(5).length > 0) || (detalle(10).length > 0);
+    const filasIva = [
+      { etiqueta: "Exentas", tasa: 0, subtotal: dg.subtotalExento, iva: null },
+      { etiqueta: "Gravadas 5%", tasa: 5, subtotal: dg.subtotal5, iva: dg.iva5 },
+      { etiqueta: "Gravadas 10%", tasa: 10, subtotal: dg.subtotal10, iva: dg.iva10 },
+    ].filter((r) => detalle(r.tasa).length > 0);
+    const cantProductos = (f.detalles || []).length;
     return (
-      <div className="rounded-2xl border border-[#22c55e]/30 bg-[#22c55e]/5 p-8 text-center space-y-4">
-        <div className="w-14 h-14 mx-auto rounded-full bg-[#22c55e]/10 flex items-center justify-center">
-          <Check className="w-7 h-7 text-[#22c55e]" />
-        </div>
-        <p className="text-lg font-medium text-white">Factura registrada correctamente</p>
-        <p className="text-sm text-[#5a5a6e]">
-          N° {f.numeroFactura} · Timbrado {f.numeroTimbrado || "—"} · {f.nombreProveedor}
-        </p>
+      <div className="border border-[#22c55e]/30 bg-[#22c55e]/5 p-6 sm:p-8">
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-14 h-14 shrink-0 bg-[#22c55e]/10 flex items-center justify-center">
+              <Check className="w-7 h-7 text-[#22c55e]" />
+            </div>
+            <div>
+              <p className="text-xl font-semibold text-white">Factura registrada correctamente</p>
+              <p className="text-sm text-white/60">
+                {cantProductos} {cantProductos === 1 ? "producto ingresado" : "productos ingresados"} al inventario
+              </p>
+            </div>
+          </div>
 
-        {mostrarDesglose && (
-          <div className="mx-auto max-w-md grid grid-cols-3 gap-3 text-sm">
-            {detalle(10).length > 0 && (
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                <p className={S.eyebrow}>IVA 10%</p>
-                <p className="font-mono text-lg font-bold text-white">₲ {money(dg.iva10)}</p>
-                <p className="text-xs text-[#5a5a6e]">Subtotal ₲ {money(dg.subtotal10)}</p>
-              </div>
-            )}
-            {detalle(5).length > 0 && (
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                <p className={S.eyebrow}>IVA 5%</p>
-                <p className="font-mono text-lg font-bold text-white">₲ {money(dg.iva5)}</p>
-                <p className="text-xs text-[#5a5a6e]">Subtotal ₲ {money(dg.subtotal5)}</p>
-              </div>
-            )}
-            {detalle(0).length > 0 && (
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                <p className={S.eyebrow}>Exento</p>
-                <p className="font-mono text-lg font-bold text-white">₲ {money(dg.ivaExento)}</p>
-                <p className="text-xs text-[#5a5a6e]">Subtotal ₲ {money(dg.subtotalExento)}</p>
-              </div>
-            )}
+          <div className="flex flex-col items-start gap-4 sm:items-end">
+            <div className="flex items-center gap-3">
+              <span className="text-base font-medium text-white/70">Total</span>
+              <span className="text-3xl font-bold tracking-tight text-[#22c55e] tabular-nums">₲ {money(dg.total)}</span>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setExito(null); setLineas([]); setProveedorSel(null); setProveedorSearch("");
+                  setTimbrados([]); setTimbradoId(""); setNumeroComprobante(""); setFormaPago("CONTADO");
+                  setFechaEmision(hoyAsuncion());
+                }}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold transition-colors"
+              >
+                <ShoppingCart className="w-4 h-4" /> Nueva compra
+              </button>
+              {onVolver && (
+                <button
+                  onClick={onVolver}
+                  className="px-5 py-3 bg-white/5 text-white border border-white/10 text-sm font-medium hover:bg-white/10 transition-colors"
+                >
+                  Volver
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Datos del comprobante */}
+        <dl className="mx-auto mt-6 max-w-2xl grid grid-cols-1 gap-x-6 gap-y-4 border-y border-white/10 py-5 sm:grid-cols-2">
+          <div>
+            <dt className="text-xs font-medium uppercase tracking-wide text-white/50">Proveedor</dt>
+            <dd className="mt-1 text-sm font-medium text-white">{f.nombreProveedor || "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium uppercase tracking-wide text-white/50">N° de factura</dt>
+            <dd className="mt-1 text-sm font-medium text-white tabular-nums">{f.numeroFactura || "—"}</dd>
+          </div>
+        </dl>
+
+        {/* Liquidación del IVA */}
+        {filasIva.length > 0 && (
+          <div className="mx-auto mt-6 max-w-2xl">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/10 text-xs uppercase tracking-wide text-white/50">
+                  <th scope="col" className="pb-2 pr-6 text-left font-medium">Liquidación del IVA</th>
+                  <th scope="col" className="pb-2 pr-6 text-right font-medium">Subtotal</th>
+                  <th scope="col" className="pb-2 text-right font-medium">IVA</th>
+                </tr>
+              </thead>
+              <tbody className="tabular-nums text-white/80">
+                {filasIva.map((r) => (
+                  <tr key={r.etiqueta}>
+                    <td className="py-2 pr-6">{r.etiqueta}</td>
+                    <td className="py-2 pr-6 text-right">₲ {money(r.subtotal)}</td>
+                    <td className="py-2 text-right">{r.iva == null ? "—" : `₲ ${money(r.iva)}`}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t border-white/10 font-medium tabular-nums text-white">
+                  <td className="pt-2 pr-6">Total IVA</td>
+                  <td className="pt-2 pr-6" />
+                  <td className="pt-2 text-right">₲ {money(dg.ivaTotal)}</td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         )}
-
-        <div className="flex items-center justify-center gap-6">
-          <div className="text-right">
-            <p className="text-xs text-[#5a5a6e]">IVA total</p>
-            <p className="font-mono text-lg font-bold text-white">₲ {money(dg.ivaTotal)}</p>
-          </div>
-          <div className="h-8 w-px bg-white/10" />
-          <div className="text-right">
-            <p className="text-xs text-[#5a5a6e]">Total</p>
-            <p className="font-mono text-2xl font-bold tracking-tight text-[#22c55e]">₲ {money(dg.total)}</p>
-          </div>
-        </div>
-
-        <div className="flex gap-3 justify-center">
-          <button
-            onClick={() => {
-              setExito(null); setLineas([]); setProveedorSel(null); setProveedorSearch("");
-              setTimbrados([]); setTimbradoId(""); setNumeroComprobante(""); setFormaPago("CONTADO");
-              setFechaEmision(hoyAsuncion());
-            }}
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold rounded-lg transition-colors"
-          >
-            <ShoppingCart className="w-4 h-4" /> Nueva compra
-          </button>
-          {onVolver && (
-            <button
-              onClick={onVolver}
-              className="px-5 py-3 bg-white/5 text-white border border-white/10 text-sm font-medium rounded-lg hover:bg-white/10 transition-colors"
-            >
-              Volver
-            </button>
-          )}
-        </div>
       </div>
     );
   }
@@ -539,7 +560,7 @@ export default function CompraEspontanea({ onVolver }) {
             <div className="pb-1 text-center text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Cantidad</div>
             <div className="pb-1 text-center text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">IVA %</div>
             <div className="pb-1 text-right text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Precio costo</div>
-            <div className="pb-1 pr-3 text-right text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Subtotal</div>
+            <div className="pb-1 pr-3 text-right text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Importe</div>
             <div className="pb-1"></div>
 
             {/* Filas */}

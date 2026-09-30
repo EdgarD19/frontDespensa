@@ -20,17 +20,19 @@ import { stockEntero, unidadAdmiteDecimales, sanitizarConteo, parseConteo } from
 import ListasConteo from "./ajuste-inventario/ListasConteo";
 import NuevaListaModal from "./ajuste-inventario/NuevaListaModal";
 
+// Deriva el estado de UI desde la terminología del backend:
+// estado ∈ {BORRADOR, CONFIRMADO} + flag activo (desactivado -> inactivo).
+function estadoAjuste(a) {
+  if (a?.activo === false) return "DESACTIVADO";
+  return a?.estado === "CONFIRMADO" ? "CONFIRMADO" : "BORRADOR";
+}
+
 function cargarSesionesBack() {
   return getAjustes().then((ajustes) =>
     (ajustes || [])
       .filter((a) => a?.idAjuste != null)
       .map((a) => {
-        const estado =
-          a.estado === "CONFIRMADO"
-            ? "APLICADO"
-            : a.activo === false
-              ? "DESACTIVADO"
-              : "EN_PROCESO";
+        const estado = estadoAjuste(a);
         return {
           id: a.idAjuste,
           idAjuste: a.idAjuste,
@@ -72,8 +74,8 @@ export default function AjusteInventario() {
   const [filtroMotivo, setFiltroMotivo] = useState("");
 
   const sesionesVisibles = sesiones.filter((s) => {
-    if (filtroEstado === "PENDIENTE" && s.estado !== "EN_PROCESO") return false;
-    if (filtroEstado === "APLICADO" && s.estado !== "APLICADO") return false;
+    if (filtroEstado === "BORRADOR" && s.estado !== "BORRADOR") return false;
+    if (filtroEstado === "CONFIRMADO" && s.estado !== "CONFIRMADO") return false;
     if (filtroEstado === "DESACTIVADO" && s.estado !== "DESACTIVADO") return false;
     if (filtroMotivo && (s.motivo || "") !== filtroMotivo) return false;
     const fecha = new Date(s.fechaHora);
@@ -138,7 +140,7 @@ export default function AjusteInventario() {
         fechaHora: ajuste?.fechaCreacion || new Date().toISOString(),
         descripcion,
         motivo: (motivo || "").trim(),
-        estado: "EN_PROCESO",
+        estado: "BORRADOR",
         items: seleccion.map((p) => ({
           idProducto: p.id,
           nombre: p.nombre || `Producto #${p.id}`,
@@ -183,7 +185,7 @@ export default function AjusteInventario() {
     setError(null);
     setAviso(null);
     const sesion = sesiones.find((s) => s.id === id);
-    if (!sesion || sesion.estado !== "EN_PROCESO") return;
+    if (!sesion || sesion.estado !== "BORRADOR") return;
 
     const pendientes = sesion.items.map((it) => {
       const raw = String(it.stockFisico ?? "").trim();
@@ -238,7 +240,7 @@ export default function AjusteInventario() {
           s.id === id
             ? {
                 ...s,
-                estado: "APLICADO",
+                estado: "CONFIRMADO",
                 idAjuste,
                 numeroInforme: resultado?.numeroInforme || "",
               }
@@ -266,8 +268,7 @@ export default function AjusteInventario() {
     setError(null);
     setAviso(null);
     const sesion = sesiones.find((s) => s.id === id);
-    if (!sesion || sesion.estado !== "EN_PROCESO") return;
-
+    if (!sesion || sesion.estado !== "BORRADOR") return;
     setDesactivandoId(id);
     try {
       if (sesion.idAjuste != null) {

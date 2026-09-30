@@ -47,7 +47,7 @@ const fmtFecha = (valor) => {
 export default function PlanillaConteo({ sesion, modo = "informe", onVolver }) {
   const esConteo = modo === "conteo";
   const detalles = useMemo(() => sesion?.items ?? [], [sesion]);
-  const aplicado = sesion?.estado === "APLICADO";
+  const aplicado = sesion?.estado === "CONFIRMADO";
 
   if (!sesion) return null;
 
@@ -91,7 +91,7 @@ export default function PlanillaConteo({ sesion, modo = "informe", onVolver }) {
                 aplicado ? "pc-estado--aplicado" : "pc-estado--pendiente"
               }`}
             >
-              {aplicado ? "Aplicado" : "Pendiente"}
+              {aplicado ? "Confirmado" : "Borrador"}
             </span>
           </div>
         </header>
