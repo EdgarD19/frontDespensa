@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
   Plus, X, Save, Search, FileText, AlertTriangle, CheckCircle, ArrowLeft,
-  ArrowLeftRight, Ban, ChevronLeft, ChevronRight, PackageCheck, XCircle, FilePlus2, Eye, ListChecks, PackageOpen,
+  ArrowLeftRight, Ban, ChevronLeft, PackageCheck, XCircle, FilePlus2, Eye, ListChecks, PackageOpen,
 } from "lucide-react";
 import { getFacturasCompra, getFacturaCompraById, getTimbradosProveedor } from "../../../api/facturasCompraApi";
 import {
@@ -87,7 +87,21 @@ const CONFIG = {
   },
 };
 
-const STEPS = ["Factura", "Detalle"];
+// Estados de bloqueo al operar una factura, para la columna "Estado" del selector.
+const ESTADO_BLOQUEO = {
+  DEVOLUCION_PENDIENTE: { label: "Devolución pendiente", badge: "bg-amber-500/10 text-amber-300", dot: "bg-amber-400" },
+  INTERCAMBIO_PENDIENTE: { label: "Intercambio pendiente", badge: "bg-amber-500/10 text-amber-300", dot: "bg-amber-400" },
+  INTERCAMBIO_PROVEEDOR: { label: "Intercambio en curso", badge: "bg-sky-500/10 text-sky-300", dot: "bg-sky-400" },
+  ESTADO_NO_RECIBIDA: { label: "No recibida", badge: "bg-white/10 text-white/50", dot: "bg-white/40" },
+};
+
+// Estado propio de la factura de compra.
+const ESTADO_FACTURA = {
+  RECIBIDA: { badge: "bg-emerald-500/10 text-emerald-400", dot: "bg-emerald-400" },
+  VIGENTE: { badge: "bg-emerald-500/10 text-emerald-400", dot: "bg-emerald-400" },
+  CANCELADA: { badge: "bg-white/10 text-white/50", dot: "bg-white/40" },
+  ANULADA: { badge: "bg-red-500/10 text-red-400", dot: "bg-red-400" },
+};
 
 // Clases completas para que Tailwind las detecte.
 const ESTADO_STYLES = {
@@ -108,6 +122,24 @@ function EstadoBadge({ estado }) {
     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${s.badge}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
       {estado || "—"}
+    </span>
+  );
+}
+
+// EstadoBadge para la columna "Estado" del selector de facturas: muestra el motivo
+// de bloqueo si la factura no se puede operar, o su estado propio si está libre.
+function EstadoFacturaBadge({ estado, bloqueada, motivo }) {
+  const key = String(estado || "").toUpperCase();
+  const cfg = bloqueada ? ESTADO_BLOQUEO[key] : ESTADO_FACTURA[key];
+  const s = cfg || { badge: "bg-white/10 text-white/60", dot: "bg-white/40" };
+  const texto = cfg?.label || key || "—";
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-1 text-[11px] font-medium ${s.badge}`}
+      title={bloqueada && motivo ? motivo : undefined}
+    >
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${s.dot}`} />
+      {texto}
     </span>
   );
 }
@@ -472,15 +504,15 @@ export default function OperacionesTipo({ tipo }) {
       const idProv = Number(f.idProveedor);
       const estado = String(f.estado || "").toUpperCase();
       if (devSet.has(idf)) {
-        bloqueadas.push({ idFactura: idf, motivo: "Tiene una devolución pendiente" });
+        bloqueadas.push({ idFactura: idf, motivo: "Tiene una devolución pendiente", estado: "DEVOLUCION_PENDIENTE" });
       } else if (tipo === "INTERCAMBIO" && intFacturasSet.has(idf)) {
-        bloqueadas.push({ idFactura: idf, motivo: "La factura ya tiene un intercambio pendiente" });
+        bloqueadas.push({ idFactura: idf, motivo: "La factura ya tiene un intercambio pendiente", estado: "INTERCAMBIO_PENDIENTE" });
       } else if (tipo === "ANULACION" && (intFacturasSet.has(idf) || intProvSet.has(idProv))) {
-        bloqueadas.push({ idFactura: idf, motivo: "El proveedor tiene un intercambio pendiente" });
+        bloqueadas.push({ idFactura: idf, motivo: "El proveedor tiene un intercambio pendiente", estado: "INTERCAMBIO_PROVEEDOR" });
       } else if (tipo === "DEVOLUCION" && (intFacturasSet.has(idf) || intProvSet.has(idProv))) {
-        bloqueadas.push({ idFactura: idf, motivo: "El proveedor tiene un intercambio pendiente" });
+        bloqueadas.push({ idFactura: idf, motivo: "El proveedor tiene un intercambio pendiente", estado: "INTERCAMBIO_PROVEEDOR" });
       } else if (tipo === "DEVOLUCION" && estado !== "RECIBIDA" && estado !== "VIGENTE") {
-        bloqueadas.push({ idFactura: idf, motivo: "La factura debe estar RECIBIDA" });
+        bloqueadas.push({ idFactura: idf, motivo: "La factura debe estar RECIBIDA", estado: "ESTADO_NO_RECIBIDA" });
       }
     });
     setFacturasBloqueadas(bloqueadas);
@@ -1242,7 +1274,7 @@ function ConfirmarAccionModal({ tipo, op, onCerrar, onConfirmar }) {
 
 function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloqueadas = [], onCerrar, onRegistrar }) {
   const labelTipo = CONFIG[tipo].label;
-  const [paso, setPaso] = useState(1);
+  const [verDetalle, setVerDetalle] = useState(false);
   const [facturaSel, setFacturaSel] = useState(null);
   const [facturaDetalle, setFacturaDetalle] = useState(null);
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
@@ -1284,11 +1316,11 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
   };
 
   // Conjunto de facturas bloqueadas por el backend (devolución PENDIENTE, intercambio
-  // PENDIENTE del proveedor o estado no válido). Se muestran con su motivo y sin poder
+  // PENDIENTE del proveedor o estado no válido). Se muestran con su estado y sin poder
   // seleccionarse, en lugar de ocultarlas.
-  const motivosBloqueo = useMemo(() => {
+  const bloqueosPorFactura = useMemo(() => {
     const map = {};
-    facturasBloqueadas.forEach((b) => { map[Number(b.idFactura)] = b.motivo; });
+    facturasBloqueadas.forEach((b) => { map[Number(b.idFactura)] = b; });
     return map;
   }, [facturasBloqueadas]);
 
@@ -1308,7 +1340,12 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
       });
   }, [facturas, filtroNumero, filtroProveedor, filtroFechaDesde, filtroFechaHasta]);
 
-  useEscape(onCerrar);
+  // Escape cierra solo la capa superior: si el detalle está abierto vuelve al
+// selector de facturas, si no cierra el modal completo.
+  useEscape(useCallback(() => {
+    if (verDetalle) setVerDetalle(false);
+    else onCerrar();
+  }, [verDetalle, onCerrar]));
 
   const handleSeleccionarFactura = async (factura) => {
     setFacturaSel(factura);
@@ -1317,6 +1354,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
     setFacturaDetalle(null);
     setCargandoDetalle(true);
     setMotivo(""); // el motivo debe reiniciarse al cambiar de factura
+    setVerDetalle(true);
     const miSeq = ++seleccionSeq.current;
     try {
       const res = await getFacturaCompraById(factura.idFactura);
@@ -1342,16 +1380,26 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
     }
   };
 
-  // Límite máximo de cantidad por producto según el tipo de operación.
-  // En devolución el backend NO permite devolver el 100% (eso es el flujo de
-  // anulación): DevolucionService valida cantidadDevuelta < cantidad original
-  // comparando contra la parte entera de la cantidad comprada. Espejo exacto.
-  const limitesCantidad = (d, tipoOp) => {
-    if (tipoOp !== "DEVOLUCION") return Number(d.cantidad) || 0;
+  // Tope impuesto por la factura, antes de considerar el stock.
+  // Un producto puede devolverse al 100% (si está defectuoso, va la unidad
+  // completa de vuelta). Lo que NO se permite es devolver el 100% de TODOS los
+  // productos: eso equivale a anular la factura y corresponde al flujo de
+  // Anulación, por eso se valida de forma cruzada en `esDevolucionTotal`.
+  const maxPorFactura = (d, tipoOp) => {
     const original = Number(d.cantidad) || 0;
-    const entera = Math.floor(original);
-    const paso = esKG({ unidadMedida: unidadesById[Number(d.idProducto)] }) ? 0.001 : 1;
-    return Math.max(0, entera - paso);
+    return Math.max(0, original);
+  };
+
+  // Límite máximo de cantidad por producto según el tipo de operación.
+  // El stock físico actual es siempre el techo: el backend rechaza con
+  // StockInsuficienteParaDevolucion/ParaIntercambio si no alcanza.
+  const limitesCantidad = (d, tipoOp) => {
+    const topeFactura = maxPorFactura(d, tipoOp);
+    const stockActual = d?.stockActual !== undefined && d?.stockActual !== null
+      ? Number(d.stockActual)
+      : null;
+    if (stockActual === null || !Number.isFinite(stockActual)) return topeFactura;
+    return Math.max(0, Math.min(topeFactura, stockActual));
   };
 
   // Atajo de comodidad: marcar todos los productos con su cantidad máxima
@@ -1377,6 +1425,14 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
   }, 0) || 0;
 
   const tieneProductos = Object.values(tipo === "DEVOLUCION" ? productosDevueltos : productosEntregar).some((v) => Number(v) > 0);
+
+  // Devolver el 100% de todos los productos es una anulación, no una devolución.
+  // Se valida de forma cruzada: cada línea llega a su cantidad original.
+  const esDevolucionTotal = tipo === "DEVOLUCION" && (facturaDetalle?.detalles?.length || 0) > 0
+    && facturaDetalle.detalles.every((d) => {
+      const cant = Number(productosDevueltos[d.idProducto]) || 0;
+      return cant >= (Number(d.cantidad) || 0);
+    });
 
   // ----- Prevalidación de anulación (espejo de las reglas del backend) -----
   // El backend exige: estado RECIBIDA, sin anulación previa, ser la factura más
@@ -1417,9 +1473,9 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
 
   const avisosAnulacion = tipo === "ANULACION" && facturaDetalle ? validarAnulacion(facturaDetalle) : [];
   const bloqueaAnulacion = avisosAnulacion.length > 0;
-
-  const puedeRegistrar = tipo === "ANULACION" ? !bloqueaAnulacion : tieneProductos;
-  const canAvanzar = paso === 1 ? Boolean(facturaDetalle) && !(tipo === "ANULACION" && bloqueaAnulacion) : true;
+const puedeRegistrar = tipo === "ANULACION"
+    ? !bloqueaAnulacion
+    : tieneProductos && !esDevolucionTotal;
 
   const handleRegistrar = () => {
     if (!puedeRegistrar) return;
@@ -1485,151 +1541,176 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
     }
   };
 
-  const pasoInfo = [
-    "Seleccioná la factura de compra.",
-    tipo === "ANULACION"
-      ? "Confirmá la anulación de la factura."
-      : tipo === "DEVOLUCION"
-        ? "Indicá las cantidades a devolver."
-        : "Indicá las cantidades a intercambiar.",
-  ];
+  const renderPasoFactura = () => {
+    // Las facturas disponibles van primero; las bloqueadas (con su motivo) quedan al final.
+    const ordenadas = [...facturasFiltradas].sort(
+      (a, b) => Number(Boolean(bloqueosPorFactura[Number(a.idFactura)])) - Number(Boolean(bloqueosPorFactura[Number(b.idFactura)]))
+    );
+    const totalBloqueadas = ordenadas.filter((f) => bloqueosPorFactura[Number(f.idFactura)]).length;
+    const totalDisponibles = ordenadas.length - totalBloqueadas;
 
-  const renderPasoFactura = () => (
-    <div className="space-y-4 p-5">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div>
-          <label htmlFor="filtro-numero" className={labelClass}>N° factura</label>
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+    return (
+      <div className="space-y-4 p-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-[1fr_1fr_9.5rem_9.5rem]">
+          <div>
+            <label htmlFor="filtro-numero" className={labelClass}>N° factura</label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/40" />
+              <input
+                id="filtro-numero"
+                type="text"
+                value={filtroNumero}
+                onChange={(e) => setFiltroNumero(e.target.value)}
+                placeholder="Buscar número…"
+                autoComplete="off"
+                className={`${fieldClass} pl-9`}
+              />
+            </div>
+          </div>
+          <div>
+            <label htmlFor="filtro-proveedor" className={labelClass}>Proveedor</label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/40" />
+              <input
+                id="filtro-proveedor"
+                type="text"
+                value={filtroProveedor}
+                onChange={(e) => setFiltroProveedor(e.target.value)}
+                placeholder="Buscar proveedor…"
+                autoComplete="off"
+                className={`${fieldClass} pl-9`}
+              />
+            </div>
+          </div>
+          <div>
+            <label htmlFor="filtro-desde" className={labelClass}>Desde</label>
             <input
-              id="filtro-numero" type="text" value={filtroNumero}
-              onChange={(e) => setFiltroNumero(e.target.value)}
-              placeholder="N° de factura"
-              autoComplete="off"
-              className={`${fieldClass} pl-9`}
+              id="filtro-desde"
+              type="date"
+              value={filtroFechaDesde}
+              onChange={(e) => setFiltroFechaDesde(e.target.value)}
+              className={`${fieldClass} [color-scheme:dark]`}
+            />
+          </div>
+          <div>
+            <label htmlFor="filtro-hasta" className={labelClass}>Hasta</label>
+            <input
+              id="filtro-hasta"
+              type="date"
+              value={filtroFechaHasta}
+              onChange={(e) => setFiltroFechaHasta(e.target.value)}
+              className={`${fieldClass} [color-scheme:dark]`}
             />
           </div>
         </div>
-        <div>
-          <label htmlFor="filtro-proveedor" className={labelClass}>Proveedor</label>
-          <input
-            id="filtro-proveedor" type="text" value={filtroProveedor}
-            onChange={(e) => setFiltroProveedor(e.target.value)}
-            placeholder="Nombre del proveedor"
-            autoComplete="off"
-            className={fieldClass}
-          />
-        </div>
-        <div>
-          <label htmlFor="filtro-desde" className={labelClass}>Fecha desde</label>
-          <input
-            id="filtro-desde" type="date" value={filtroFechaDesde}
-            onChange={(e) => setFiltroFechaDesde(e.target.value)}
-            className={`${fieldClass} [color-scheme:dark]`}
-          />
-        </div>
-        <div>
-          <label htmlFor="filtro-hasta" className={labelClass}>Fecha hasta</label>
-          <input
-            id="filtro-hasta" type="date" value={filtroFechaHasta}
-            onChange={(e) => setFiltroFechaHasta(e.target.value)}
-            className={`${fieldClass} [color-scheme:dark]`}
-          />
-        </div>
-      </div>
-      {hayFiltros && (
-        <div className="flex justify-end">
-          <button type="button" onClick={limpiarFiltros} className="flex items-center gap-1 text-xs text-[#22c55e] transition-colors hover:text-green-400">
-            <X className="h-3.5 w-3.5" /> Limpiar filtros
-          </button>
-        </div>
-      )}
 
-      <div className="overflow-hidden border border-[#1e1e24]">
-        <div className="max-h-80 overflow-y-auto">
-          <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-[#111114]">
-              <tr className="border-b border-[#1e1e24] bg-white/[0.02] text-left text-white/40">
-                <th className="px-4 py-2.5 font-medium">N° factura</th>
-                <th className="px-4 py-2.5 font-medium">Fecha</th>
-                <th className="px-4 py-2.5 font-medium">Proveedor</th>
-                <th className="px-4 py-2.5 text-right font-medium">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loadingFacturas && (
-                Array.from({ length: 4 }).map((_, i) => (
-                  <tr key={i} className="border-b border-[#1e1e24] last:border-0">
-                    {Array.from({ length: 4 }).map((__, j) => (
-                      <td key={j} className="px-4 py-3">
-                        <div className="h-4 w-3/4 animate-pulse rounded bg-white/10" />
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              )}
+        <div className="flex items-center justify-between gap-3 text-xs">
+          <p className="text-[#5a5a6e]">
+            {loadingFacturas ? "Cargando facturas…" : ""}
+          </p>
+          {hayFiltros && (
+            <button type="button" onClick={limpiarFiltros} className="flex items-center gap-1 text-[#22c55e] transition-colors hover:text-green-400">
+              <X className="h-3.5 w-3.5" /> Limpiar filtros
+            </button>
+          )}
+        </div>
 
-              {!loadingFacturas && facturasFiltradas.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-4 py-10 text-center text-white/30">
-                    {facturas.length === 0
-                      ? "No hay facturas de compra registradas."
-                      : "No se encontraron facturas con esos filtros."}
-                  </td>
+        <div className="overflow-hidden rounded-lg border border-[#1e1e24]">
+          <div className="max-h-[45vh] overflow-y-auto [color-scheme:dark] [scrollbar-color:#2a2a32_transparent] [scrollbar-width:thin]">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 z-10 bg-[#111114]">
+                <tr className="border-b border-[#1e1e24] bg-white/[0.02] text-left text-[11px] uppercase tracking-[0.14em] text-white/40">
+                  <th className="w-[24%] px-4 py-2.5 font-medium">N° factura</th>
+                  <th className="w-[13%] px-4 py-2.5 font-medium">Fecha</th>
+                  <th className="w-[22%] px-4 py-2.5 font-medium">Estado</th>
+                  <th className="px-4 py-2.5 font-medium">Proveedor</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Total</th>
                 </tr>
-              )}
+              </thead>
+              <tbody>
+                {loadingFacturas && (
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <tr key={i} className="border-b border-[#1e1e24] last:border-0">
+                      {Array.from({ length: 5 }).map((__, j) => (
+                        <td key={j} className="px-4 py-3">
+                          <div className="h-4 w-3/4 animate-pulse rounded bg-white/10" />
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                )}
 
-              {!loadingFacturas && facturasFiltradas.map((f) => {
-                const seleccionada = facturaSel?.idFactura === f.idFactura;
-                const motivoBloqueo = motivosBloqueo[Number(f.idFactura)];
-                const bloqueada = Boolean(motivoBloqueo);
-                return (
-                  <tr
-                    key={f.idFactura}
-                    role={bloqueada ? undefined : "button"}
-                    tabIndex={bloqueada ? -1 : 0}
-                    onClick={bloqueada ? undefined : () => handleSeleccionarFactura(f)}
-                    onKeyDown={bloqueada ? undefined : (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleSeleccionarFactura(f); } }}
-                    className={`border-b border-[#1e1e24] transition-colors last:border-0 focus:outline-none ${
-                      bloqueada
-                        ? "cursor-not-allowed opacity-50"
-                        : seleccionada
-                          ? "cursor-pointer border-l-2 border-l-[#22c55e] bg-[#22c55e]/[0.08]"
-                          : "cursor-pointer hover:bg-white/[0.04]"
-                    }`}
-                  >
-                    <td className="px-4 py-3 font-medium tabular-nums text-white">
-                      {f.numeroFactura}
-                      {bloqueada && (
-                        <span className="mt-0.5 flex items-center gap-1 text-[11px] font-normal text-amber-300">
-                          <AlertTriangle className="h-3 w-3 shrink-0" /> {motivoBloqueo}
-                        </span>
-                      )}
+                {!loadingFacturas && ordenadas.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-10 text-center text-white/30">
+                      {facturas.length === 0
+                        ? "No hay facturas de compra registradas."
+                        : "No se encontraron facturas con esos filtros."}
                     </td>
-                    <td className="px-4 py-3 text-white/70">{fmtFecha(f.fechaEmision)}</td>
-                    <td className="px-4 py-3 text-white/70">{f.nombreProveedor}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-white">{fmtMoneda(f.totalGeneral)}</td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                )}
+
+                {!loadingFacturas && ordenadas.map((f) => {
+                  const seleccionada = facturaSel?.idFactura === f.idFactura;
+                  const bloqueo = bloqueosPorFactura[Number(f.idFactura)];
+                  const bloqueada = Boolean(bloqueo);
+                  const textoClase = bloqueada ? "text-white/35" : "text-white/70";
+                  return (
+                    <tr
+                      key={f.idFactura}
+                      role={bloqueada ? undefined : "button"}
+                      tabIndex={bloqueada ? -1 : 0}
+                      aria-selected={seleccionada}
+                      aria-disabled={bloqueada || undefined}
+                      onClick={bloqueada ? undefined : () => handleSeleccionarFactura(f)}
+                      onKeyDown={bloqueada ? undefined : (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleSeleccionarFactura(f); } }}
+                      className={`border-b border-[#1e1e24] border-l-2 transition-colors last:border-b-0 focus:outline-none focus-visible:bg-white/[0.06] ${
+                        bloqueada
+                          ? "cursor-not-allowed border-l-transparent"
+                          : seleccionada
+                            ? "cursor-pointer border-l-[#22c55e] bg-[#22c55e]/[0.08]"
+                            : "cursor-pointer border-l-transparent hover:bg-white/[0.04]"
+                      }`}
+                    >
+                      <td className={`px-4 py-3 align-top font-medium tabular-nums ${bloqueada ? "text-white/45" : "text-white"}`}>
+                        <span className="flex items-center gap-1.5">
+                          {f.numeroFactura}
+                          {seleccionada && <CheckCircle className="h-3.5 w-3.5 text-[#22c55e]" aria-hidden />}
+                        </span>
+                      </td>
+                      <td className={`whitespace-nowrap px-4 py-3 align-top ${textoClase}`}>{fmtFecha(f.fechaEmision)}</td>
+                      <td className="px-4 py-3 align-top">
+                        <EstadoFacturaBadge
+                          estado={bloqueada ? bloqueo.estado : f.estado}
+                          bloqueada={bloqueada}
+                          motivo={bloqueo?.motivo}
+                        />
+                      </td>
+                      <td className={`px-4 py-3 align-top ${textoClase}`}>{f.nombreProveedor}</td>
+                      <td className={`whitespace-nowrap px-4 py-3 text-right align-top tabular-nums ${bloqueada ? "text-white/45" : "text-white"}`}>{fmtMoneda(f.totalGeneral)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
+
+        {facturaSel && cargandoDetalle && (
+          <p className="text-xs text-[#5a5a6e]">Cargando detalle de la factura…</p>
+        )}
+        {tipo === "ANULACION" && facturaSel && !cargandoDetalle && avisosAnulacion.length > 0 && (
+          <ul className="space-y-1 rounded-lg border border-red-500/20 bg-red-500/5 p-3 text-xs text-red-300">
+            {avisosAnulacion.map((a) => (
+              <li key={a} className="flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {a}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
-      {facturaSel && cargandoDetalle && (
-        <p className="text-xs text-[#5a5a6e]">Cargando detalle de la factura…</p>
-      )}
-      {tipo === "ANULACION" && facturaSel && !cargandoDetalle && avisosAnulacion.length > 0 && (
-        <ul className="space-y-1 rounded-lg border border-red-500/20 bg-red-500/5 p-3 text-xs text-red-300">
-          {avisosAnulacion.map((a) => (
-            <li key={a} className="flex items-center gap-1.5">
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {a}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
+    );
+  };
 
   const renderPasoDetalle = () => {
     if (cargandoDetalle || !facturaDetalle) {
@@ -1710,6 +1791,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                 <tr className="border-b border-[#1e1e24] bg-white/[0.02] text-left text-white/40">
                   <th className="px-4 py-2.5 font-medium">Producto</th>
                   <th className="px-2 py-2.5 text-center font-medium">Comprado</th>
+                  <th className="px-2 py-2.5 text-center font-medium">Stock</th>
                   <th className="w-32 px-2 py-2.5 text-center font-medium">{tipo === "DEVOLUCION" ? "Devolver" : "Intercambiar"}</th>
                   <th className="px-2 py-2.5 text-right font-medium">Importe</th>
                 </tr>
@@ -1719,10 +1801,19 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                   const cant = cantidades[d.idProducto] || 0;
                   const max = limitesCantidad(d, tipo);
                   const activo = cant > 0;
+                  const stock = d?.stockActual !== undefined && d?.stockActual !== null
+                    ? Number(d.stockActual)
+                    : null;
+                  const sinStock = stock !== null && stock <= 0;
+                  const stockLimita = stock !== null && max < maxPorFactura(d, tipo);
                   return (
                     <tr key={d.idProducto} className={`border-b border-[#1e1e24] last:border-0 transition-colors ${activo ? "bg-[#22c55e]/[0.04]" : "hover:bg-white/[0.03]"}`}>
                       <td className="px-4 py-2.5 text-white">{d.nombreProducto}</td>
                       <td className="px-2 py-2.5 text-center tabular-nums text-white/60">{d.cantidad}</td>
+                      <td className={`px-2 py-2.5 text-center tabular-nums ${sinStock ? "text-red-400/80" : stockLimita ? "text-amber-400/80" : "text-white/60"}`}
+                        title={stockLimita ? `Stock insuficiente: máximo ${max}` : undefined}>
+                        {stock === null ? "—" : stock}
+                      </td>
                       <td className="px-2 py-2.5">
                         <div className="mx-auto flex w-28 items-center gap-1">
                           <CantidadInput
@@ -1730,14 +1821,16 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                             value={cant}
                             onChange={(v) => handleCambiarCantidad(d.idProducto, v)}
                             permitirCero
+                            max={max}
                             maxDecimales={3}
                             ariaLabel={`Cantidad a ${tipo === "DEVOLUCION" ? "devolver" : "intercambiar"} de ${d.nombreProducto}`}
                           />
                           <button
                             type="button"
                             onClick={() => handleCambiarCantidad(d.idProducto, max)}
-                            title={`Usar máximo permitido (${max})`}
-                            className="shrink-0 rounded-md border border-[#2a2a32] px-1.5 py-1.5 text-[10px] text-white/40 transition-colors hover:border-[#22c55e]/40 hover:text-[#22c55e]"
+                            disabled={max <= 0}
+                            title={max > 0 ? `Usar máximo permitido (${max})` : "No hay stock disponible"}
+                            className="shrink-0 rounded-md border border-[#2a2a32] px-1.5 py-1.5 text-[10px] text-white/40 transition-colors hover:border-[#22c55e]/40 hover:text-[#22c55e] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-[#2a2a32] disabled:hover:text-white/40"
                           >
                             Máx
                           </button>
@@ -1752,22 +1845,21 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
           </div>
         </div>
 
-        <div>
-          <label htmlFor="motivo-operacion" className={labelClass}>Motivo (opcional)</label>
-          <input
-            id="motivo-operacion"
-            type="text"
-            value={motivo}
-            onChange={(e) => setMotivo(e.target.value)}
-            maxLength={100}
-            autoComplete="off"
-            placeholder="Ej: Producto defectuoso, error en pedido"
-            className={fieldClass}
-          />
-        </div>
-
-        <div className="flex items-center justify-end border-t border-[#1e1e24] pt-3">
-          <p className="text-sm text-white">
+        <div className="flex flex-wrap items-end gap-4 border-t border-[#1e1e24] pt-3">
+          <div className="min-w-[14rem] flex-1">
+            <label htmlFor="motivo-operacion" className={labelClass}>Motivo (opcional)</label>
+            <input
+              id="motivo-operacion"
+              type="text"
+              value={motivo}
+              onChange={(e) => setMotivo(e.target.value)}
+              maxLength={100}
+              autoComplete="off"
+              placeholder="Ej: Producto defectuoso, error en pedido"
+              className={fieldClass}
+            />
+          </div>
+          <p className="whitespace-nowrap pb-2 text-sm text-white">
             Total {tipo === "DEVOLUCION" ? "a devolver" : "a intercambiar"}:{" "}
             <span className="text-lg font-bold tabular-nums text-[#22c55e]">{fmtMoneda(totalOperacion)}</span>
           </p>
@@ -1776,89 +1868,110 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
     );
   };
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onCerrar}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Nueva ${labelTipo} con proveedor`}
-        className={`${modalShell} max-w-4xl max-h-[90vh]`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-[#1e1e24] px-5 py-3.5">
-          <div>
-            <h2 className="text-sm font-semibold text-[#f1f1f3]">Nueva {labelTipo.toLowerCase()}</h2>
-            <p className="mt-0.5 text-xs text-[#7a7a8c]">{pasoInfo[paso - 1]}</p>
-          </div>
-          <button type="button" onClick={onCerrar} aria-label="Cerrar"
-            className="rounded p-1 text-[#5a5a6e] transition-colors hover:bg-white/5 hover:text-[#e1e1eb]">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+  const tituloDetalle = tipo === "ANULACION"
+    ? "Confirmar anulación"
+    : tipo === "DEVOLUCION"
+      ? "Productos a devolver"
+      : "Productos a intercambiar";
 
-        {/* Stepper */}
-        <div className="flex items-center px-5 pt-4">
-          {STEPS.map((s, i) => (
-            <Fragment key={s}>
-              <div className={`flex items-center gap-2 ${i + 1 < paso ? "text-white/50" : i + 1 === paso ? "text-[#22c55e]" : "text-white/25"}`}>
-                <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs ${
-                  i + 1 < paso ? "border-emerald-500/50 bg-emerald-500/20" : i + 1 === paso ? "border-[#22c55e] bg-[#22c55e] text-black" : "border-white/20"
-                }`}>
-                  {i + 1 < paso ? <CheckCircle className="h-3.5 w-3.5" /> : i + 1}
-                </span>
-                <span className="text-xs font-medium">{s}</span>
+  const subtituloDetalle = tipo === "ANULACION"
+    ? "Revisá y confirmá la anulación de la factura."
+    : tipo === "DEVOLUCION"
+      ? "Indicá las cantidades a devolver."
+      : "Indicá las cantidades a intercambiar.";
+
+  return (
+    <>
+      {/* Capa 1: selector de factura */}
+      {createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onCerrar}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Nueva ${labelTipo} con proveedor`}
+            className={`${modalShell} max-w-4xl max-h-[90vh]`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-[#1e1e24] px-5 py-3.5">
+              <div>
+                <h2 className="text-sm font-semibold text-[#f1f1f3]">Nueva {labelTipo.toLowerCase()}</h2>
+                <p className="mt-0.5 text-xs text-[#7a7a8c]">Seleccioná la factura de compra.</p>
               </div>
-              {i < STEPS.length - 1 && <div className="mx-3 h-px flex-1 bg-white/10" />}
-            </Fragment>
-          ))}
-        </div>
+              <button type="button" onClick={onCerrar} aria-label="Cerrar"
+                className="rounded p-1 text-[#5a5a6e] transition-colors hover:bg-white/5 hover:text-[#e1e1eb]">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
 
-        <div className="flex-1 overflow-y-auto">
-          {paso === 1 && renderPasoFactura()}
-          {paso === 2 && renderPasoDetalle()}
-        </div>
+            <div className="flex-1 overflow-y-auto">{renderPasoFactura()}</div>
+          </div>
+        </div>,
+        document.body
+      )}
 
-        <div className="flex items-center justify-between gap-3 border-t border-[#1e1e24] px-5 py-3.5">
-          <div className="text-xs text-white/40">
-            {paso === 2 && tipo === "INTERCAMBIO" && !puedeRegistrar
-              ? "Seleccioná al menos un producto a intercambiar."
-              : paso === 2 && tipo === "DEVOLUCION" && !puedeRegistrar
-                ? "Seleccioná al menos un producto a devolver."
-                : ""}
+      {/* Capa 2: detalle de la factura, superpuesto al selector */}
+      {verDetalle && createPortal(
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => setVerDetalle(false)}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={tituloDetalle}
+            className={`${modalShell} max-w-4xl max-h-[90vh]`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-[#1e1e24] px-5 py-3.5">
+              <div>
+                <h2 className="text-sm font-semibold text-[#f1f1f3]">{tituloDetalle}</h2>
+                <p className="mt-0.5 text-xs text-[#7a7a8c]">{subtituloDetalle}</p>
+              </div>
+              <button type="button" onClick={() => setVerDetalle(false)} aria-label="Cerrar"
+                className="rounded p-1 text-[#5a5a6e] transition-colors hover:bg-white/5 hover:text-[#e1e1eb]">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">{renderPasoDetalle()}</div>
+
+            <div className="flex items-center justify-between gap-3 border-t border-[#1e1e24] px-5 py-3.5">
+              <div className="flex flex-1 items-start gap-2 text-xs">
+                {esDevolucionTotal ? (
+                  <p className="flex items-center gap-1.5 text-amber-400" role="alert">
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                    Estás devuyendo el total de la factura. Para eso usá la sección
+                    <span className="font-semibold"> Anular factura</span>.
+                  </p>
+                ) : (
+                  <p className="text-white/40">
+                    {tipo === "INTERCAMBIO" && !puedeRegistrar
+                      ? "Seleccioná al menos un producto a intercambiar."
+                      : tipo === "DEVOLUCION" && !puedeRegistrar
+                        ? "Seleccioná al menos un producto a devolver."
+                        : ""}
+                  </p>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setVerDetalle(false)}
+                  className="flex items-center gap-1 rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-4 py-2.5 text-sm text-[#9a9aac] transition-colors hover:text-[#e1e1eb]"
+                >
+                  <ChevronLeft className="h-4 w-4" /> Volver
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRegistrar}
+                  disabled={!puedeRegistrar}
+                  className="flex items-center gap-2 rounded-lg bg-[#22c55e] px-6 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Save className="h-4 w-4" /> {tipo === "ANULACION" ? "Anular" : "Registrar"}
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="flex gap-2">
-            {paso > 1 && (
-              <button
-                type="button"
-                onClick={() => setPaso((p) => p - 1)}
-                className="flex items-center gap-1 rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-4 py-2.5 text-sm text-[#9a9aac] transition-colors hover:text-[#e1e1eb]"
-              >
-                <ChevronLeft className="h-4 w-4" /> Anterior
-              </button>
-            )}
-            {paso < 2 ? (
-              <button
-                type="button"
-                onClick={() => setPaso((p) => p + 1)}
-                disabled={!canAvanzar}
-                className="flex items-center gap-1 rounded-lg bg-[#22c55e] px-6 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Siguiente <ChevronRight className="h-4 w-4" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleRegistrar}
-                disabled={!puedeRegistrar}
-                className="flex items-center gap-2 rounded-lg bg-[#22c55e] px-6 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <Save className="h-4 w-4" /> {tipo === "ANULACION" ? "Anular" : "Registrar"}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>,
-    document.body
+        </div>,
+        document.body
+      )}
+    </>
   );
 }

@@ -11,6 +11,7 @@ export default function CantidadInput({
   maxDecimales = 3,
   disabled = false,
   permitirCero = false,
+  max,
   placeholder,
   id,
   name,
@@ -19,6 +20,8 @@ export default function CantidadInput({
 }) {
   const esKG = unidadMedida === "KG";
   const maxDec = esKG ? Math.max(0, maxDecimales | 0) : 0;
+  const maxNum = max === undefined || max === null || isNaN(Number(max)) ? null : Number(max);
+  const hayMax = maxNum !== null && maxNum >= 0;
 
   const [text, setText] = useState("");
   const [error, setError] = useState(null);
@@ -62,6 +65,13 @@ export default function CantidadInput({
     }
   };
 
+  const excedeMax = (txt) => {
+    if (!hayMax) return false;
+    const norm = (txt ?? "").toString().trim().replace(",", ".");
+    if (norm === "" || isNaN(Number(norm))) return false;
+    return Number(norm) > maxNum;
+  };
+
   const onKeyDown = (e) => {
     if (disabled) return;
     const isMod = e.ctrlKey || e.metaKey || e.altKey;
@@ -85,6 +95,15 @@ export default function CantidadInput({
       // UN: solo dígitos
       if (!/^\d$/.test(k)) {
         e.preventDefault();
+        return;
+      }
+      if (hayMax) {
+        const sel = e.target.selectionStart ?? textRef.current.length;
+        const previo = textRef.current.slice(0, sel) + k + textRef.current.slice(e.target.selectionEnd ?? sel);
+        if (excedeMax(previo)) {
+          e.preventDefault();
+          return;
+        }
       }
       return;
     }
@@ -101,6 +120,15 @@ export default function CantidadInput({
         : 0;
       if (decCount >= maxDec && maxDec > 0 && (before.includes(".") || before.includes(","))) {
         e.preventDefault();
+        return;
+      }
+      if (hayMax) {
+        const fin = e.target.selectionEnd ?? sel;
+        const previo = cur.slice(0, sel) + k + cur.slice(fin);
+        if (excedeMax(previo)) {
+          e.preventDefault();
+          return;
+        }
       }
       return;
     }
@@ -126,6 +154,9 @@ export default function CantidadInput({
       if (num <= 0) {
         return { error: "La cantidad debe ser mayor que 0.", emit: false };
       }
+      if (hayMax && num > maxNum) {
+        return { error: `La cantidad no puede superar ${maxNum}.`, emit: false };
+      }
       const dec = norm.split(".")[1] ? norm.split(".")[1].length : 0;
       if (maxDec > 0 && dec > maxDec) {
         return {
@@ -143,6 +174,9 @@ export default function CantidadInput({
     const n = parseInt(t, 10);
     if (n < (permitirCero ? 0 : 1)) {
       return { error: "La cantidad no puede ser negativa.", emit: false };
+    }
+    if (hayMax && n > maxNum) {
+      return { error: `La cantidad no puede superar ${maxNum}.`, emit: false };
     }
     return { error: null, emit: n.toString() };
   };
@@ -164,11 +198,12 @@ export default function CantidadInput({
     const base = /^\d+$/.test(t) ? parseInt(t, 10) : (permitirCero ? 0 : 1);
     const floor = permitirCero ? 0 : 1;
     const n = Math.max(floor, base + delta);
-    const s = String(n);
+    const tope = hayMax ? Math.min(n, maxNum) : n;
+    const s = String(tope);
     textRef.current = s;
     setText(s);
     setError(null);
-    onChange(n);
+    onChange(tope);
   };
 
   return (
@@ -204,7 +239,7 @@ export default function CantidadInput({
             <button
               type="button"
               tabIndex={-1}
-              disabled={disabled}
+              disabled={disabled || (hayMax && Number(textRef.current) >= maxNum)}
               onClick={() => aplicarInt(1)}
               aria-label="Aumentar cantidad"
               className="rounded-sm p-0.5 leading-none text-[#5a5a6e] transition-colors hover:text-[#22c55e] disabled:cursor-not-allowed disabled:opacity-40"
