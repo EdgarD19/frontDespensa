@@ -191,7 +191,7 @@ function formatearDevolucion(d) {
     facturaNumero: d.facturaOriginal?.numeroFactura,
     facturaOriginal: d.facturaOriginal?.numeroFactura,
     facturaNueva: d.facturaNueva?.numeroFactura ?? null,
-    idFactura: d.facturaOriginal?.idFactura,
+    facturaId: d.facturaOriginal?.idFactura ?? null,
     proveedor: d.proveedor?.nombre,
     proveedorId: d.proveedor?.idProveedor,
     motivo: d.motivo,
@@ -219,7 +219,7 @@ function formatearAnulacion(a) {
     facturaVinculada: a.numeroFactura,
     proveedor: a.proveedorNombre,
     proveedorId: a.idProveedor,
-    idFactura: a.idFactura,
+    facturaId: a.idFactura ?? null,
     motivo: a.motivo,
     total: null,
   };
@@ -236,6 +236,7 @@ export default function OperacionesTipo({ tipo }) {
   const [error, setError] = useState(null);
   const [errorOperacion, setErrorOperacion] = useState(null);
   const [aviso, setAviso] = useState(null);
+  const [registrando, setRegistrando] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [modalConfirmacion, setModalConfirmacion] = useState(null);
   const [modalFacturaNueva, setModalFacturaNueva] = useState(null);
@@ -372,13 +373,17 @@ export default function OperacionesTipo({ tipo }) {
   }, [tipo, operaciones, resolverTotalesAnulacion]);
 
   const handleRegistrar = async (op) => {
+    // Doble clic: el segundo POST compite con el primero y el backend lo rechaza
+    // con 500 por violar el UNIQUE de anulacion_factura.facturaCompra.
+    if (registrando) return;
     setErrorOperacion(null);
     setAviso(null);
+    setRegistrando(true);
     try {
       if (op.tipo === "INTERCAMBIO") {
         const creada = await crearIntercambio({
           idProveedor: op.proveedorId,
-          idFactura: op.idFactura ?? undefined,
+          idFactura: op.facturaId ?? undefined,
           numeroFactura: op.facturaNumero ?? undefined,
           detalles: (op.items || []).map((it) => ({
             idProducto: it.idProducto,
@@ -388,11 +393,11 @@ export default function OperacionesTipo({ tipo }) {
         });
         setAviso(`Intercambio registrado.`);
       } else if (op.tipo === "ANULACION") {
-        const anulada = await anularFactura({ idFactura: op.idFactura, motivo: op.motivo || "" });
+        const anulada = await anularFactura({ idFactura: op.facturaId, motivo: op.motivo || "" });
         setAviso(`Factura ${anulada.numeroFactura || ""} anulada.`);
       } else if (op.tipo === "DEVOLUCION") {
         await crearDevolucion({
-          idFacturaOriginal: op.idFactura,
+          idFacturaOriginal: op.facturaId,
           motivo: op.motivo || "",
           observaciones: op.observaciones || "",
           detalles: (op.items || []).map((it) => ({
@@ -408,6 +413,8 @@ export default function OperacionesTipo({ tipo }) {
     } catch (err) {
       console.error("Error al registrar operación:", err);
       setErrorOperacion(apiErrorMessage(err));
+    } finally {
+      setRegistrando(false);
     }
   };
 
@@ -478,7 +485,7 @@ export default function OperacionesTipo({ tipo }) {
     setErrorOperacion(null);
     setAviso(null);
     if (op.facturaId == null) {
-      setAviso("Este intercambio no tiene una factura vinculada.");
+      setAviso(`Esta ${cfg.accion} no tiene una factura vinculada.`);
       return;
     }
     setModalVerFactura({ idFactura: op.facturaId, numeroFactura: op.facturaVinculada, items: op.items || [], estadoOperacion: op.estado });
@@ -591,7 +598,7 @@ export default function OperacionesTipo({ tipo }) {
                 {operaciones.map((op) => {
                   const totalAnulacion =
                     tipo === "ANULACION"
-                      ? totalFacturaById[op.idFactura] ?? totalesAnulacion[String(op.idFactura)] ?? null
+                      ? totalFacturaById[op.facturaId] ?? totalesAnulacion[String(op.facturaId)] ?? null
                       : null;
                   return (
                     <tr key={op.id} className="border-b border-[#1e1e24] transition-colors last:border-0 hover:bg-white/[0.04]">
@@ -619,9 +626,9 @@ export default function OperacionesTipo({ tipo }) {
                               <button
                                 type="button"
                                 onClick={() => handleVerFactura(op)}
-                                title="Ver factura anulada"
+                                title={op.facturaId != null ? "Ver factura anulada" : "Esta anulación no tiene factura vinculada"}
                                 aria-label="Ver factura anulada"
-                                className={`${iconBtn} text-white/40 hover:bg-sky-500/10 hover:text-sky-400`}
+                                className={`${iconBtn} ${op.facturaId != null ? "text-white/40 hover:bg-sky-500/10 hover:text-sky-400" : "text-white/15"}`}
                               >
                                 <Eye className="h-4 w-4" />
                               </button>
@@ -721,6 +728,7 @@ export default function OperacionesTipo({ tipo }) {
           facturasBloqueadas={facturasBloqueadas}
           onCerrar={() => setShowModal(false)}
           onRegistrar={handleRegistrar}
+          registrando={registrando}
         />
       )}
 
@@ -757,6 +765,7 @@ export default function OperacionesTipo({ tipo }) {
           numeroFactura={modalVerFactura.numeroFactura}
           items={modalVerFactura.items}
           estadoOperacion={modalVerFactura.estadoOperacion}
+          tipoOp={tipo}
           onCerrar={() => setModalVerFactura(null)}
         />
       )}
@@ -963,7 +972,7 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar }) {
 
 /* ───────────── Ver factura vinculada a un intercambio ───────────── */
 
-function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion, onCerrar }) {
+function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion, tipoOp, onCerrar }) {
   const [factura, setFactura] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
@@ -989,6 +998,14 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion
     return m;
   }, [items]);
 
+  const esIntercambio = tipoOp === "INTERCAMBIO";
+  const esAnulacion = tipoOp === "ANULACION";
+  const tituloOp = esAnulacion ? "Factura anulada" : esIntercambio ? "Factura del intercambio" : "Factura de la devolución";
+  const etiquetaEstado = esAnulacion
+    ? "Estado de la factura"
+    : esIntercambio ? "Estado de intercambio" : "Estado de la devolución";
+  const totalTexto = esAnulacion ? "Total de la factura anulada" : esIntercambio ? "Total del intercambio" : "Total de la devolución";
+
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onCerrar}>
       <div
@@ -1000,7 +1017,7 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion
       >
         <div className="flex items-center justify-between border-b border-[#1e1e24] px-5 py-3.5">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-[#f1f1f3]">
-            <FileText className="h-4 w-4 text-sky-400" /> Factura {numeroFactura || factura?.numeroFactura || ""}
+            <FileText className="h-4 w-4 text-sky-400" /> {tituloOp} {numeroFactura || factura?.numeroFactura || ""}
           </h2>
           <button type="button" onClick={onCerrar} aria-label="Cerrar"
             className="rounded p-1 text-[#5a5a6e] transition-colors hover:bg-white/5 hover:text-[#e1e1eb]">
@@ -1035,7 +1052,7 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion
                   <p className="text-white">{factura.nombreProveedor}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-white/40">Estado de intercambio</p>
+                  <p className="text-xs text-white/40">{etiquetaEstado}</p>
                   <EstadoBadge estado={estadoOperacion || factura.estado} />
                 </div>
               </div>
@@ -1046,7 +1063,9 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion
                     <tr className="border-b border-[#1e1e24] bg-white/[0.02] text-left text-white/40">
                       <th className="px-3 py-2.5 font-medium">Producto</th>
                       <th className="px-3 py-2.5 text-center font-medium">Cantidad</th>
-                      <th className="px-3 py-2.5 text-center font-medium">Intercambio</th>
+                      {esIntercambio && (
+                        <th className="px-3 py-2.5 text-center font-medium">Intercambio</th>
+                      )}
                       <th className="px-3 py-2.5 text-right font-medium">P. unitario</th>
                       <th className="px-3 py-2.5 text-right font-medium">Importe</th>
                     </tr>
@@ -1058,9 +1077,11 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion
                         <tr key={d.idProducto ?? d.idDetalle} className="border-b border-[#1e1e24] last:border-0">
                           <td className="px-3 py-2.5 text-white/80">{d.nombreProducto}</td>
                           <td className="px-3 py-2.5 text-center tabular-nums text-white/70">{d.cantidad}</td>
-                          <td className={`px-3 py-2.5 text-center tabular-nums ${cambiado != null ? "font-medium text-amber-300" : "text-white/20"}`}>
-                            {cambiado != null ? cambiado : "—"}
-                          </td>
+                          {esIntercambio && (
+                            <td className={`px-3 py-2.5 text-center tabular-nums ${cambiado != null ? "font-medium text-amber-300" : "text-white/20"}`}>
+                              {cambiado != null ? cambiado : "—"}
+                            </td>
+                          )}
                           <td className="px-3 py-2.5 text-right tabular-nums text-white/70">{fmtMoneda(d.precioUnitario)}</td>
                           <td className="px-3 py-2.5 text-right font-medium tabular-nums text-white">{fmtMoneda(Number(d.cantidad) * Number(d.precioUnitario))}</td>
                         </tr>
@@ -1068,7 +1089,7 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion
                     })}
                     {detalles.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="px-3 py-8 text-center text-white/30">La factura no tiene productos</td>
+                        <td colSpan={esIntercambio ? 5 : 4} className="px-3 py-8 text-center text-white/30">La factura no tiene productos</td>
                       </tr>
                     )}
                   </tbody>
@@ -1076,7 +1097,7 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion
               </div>
 
               <div className="flex justify-end border-t border-[#1e1e24] pt-3">
-                <p className="text-sm text-white">Total: <span className="text-lg font-bold tabular-nums text-[#22c55e]">{fmtMoneda(total)}</span></p>
+                <p className="text-sm text-white">{totalTexto}: <span className={`text-lg font-bold tabular-nums ${esAnulacion ? "text-red-400" : "text-[#22c55e]"}`}>{fmtMoneda(total)}</span></p>
               </div>
             </div>
           )}
@@ -1272,7 +1293,7 @@ function ConfirmarAccionModal({ tipo, op, onCerrar, onConfirmar }) {
 
 /* ───────────── Wizard: nueva devolución / intercambio / anulación ───────────── */
 
-function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloqueadas = [], onCerrar, onRegistrar }) {
+function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloqueadas = [], onCerrar, onRegistrar, registrando = false }) {
   const labelTipo = CONFIG[tipo].label;
   const [verDetalle, setVerDetalle] = useState(false);
   const [facturaSel, setFacturaSel] = useState(null);
@@ -1435,11 +1456,25 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
     });
 
   // ----- Prevalidación de anulación (espejo de las reglas del backend) -----
-  // El backend exige: estado RECIBIDA, sin anulación previa, ser la factura más
-  // reciente del proveedor y no superar los días permitidos (default 15).
+  // Espejo de AnulacionFacturaService.anular: estado RECIBIDA (esto cubre de
+  // paso que ya esté anulada, porque una anulada queda en estado ANULADO), ser la
+  // factura más reciente del proveedor y no superar los días permitidos.
+  const DIAS_PERMITIDOS_ANULACION = 15;
+
+  // Espejo de FacturaCompraRepository.findMasRecienteDeProveedor: sólo cuentan
+  // las facturas del proveedor en estado RECIBIDA o VIGENTE y activas. Si una
+  // factura ANULADA más nueva participara en la comparación, el front rechazaría
+  // facturas que el backend sí acepta.
   const esMasRecienteEntreCargadas = (factura) => {
-    const otras = facturas
-      .filter((f) => f.activo !== false && f.idProveedor === factura.idProveedor && f.idFactura !== factura.idFactura);
+    const otras = facturas.filter((f) => {
+      const estado = String(f.estado || "").toUpperCase();
+      return (
+        f.activo !== false &&
+        (estado === "RECIBIDA" || estado === "VIGENTE") &&
+        f.idProveedor === factura.idProveedor &&
+        f.idFactura !== factura.idFactura
+      );
+    });
     return otras.length === 0 || otras.every((f) => {
       const a = String(f.fechaEmision || "").slice(0, 10);
       const b = String(factura.fechaEmision || "").slice(0, 10);
@@ -1453,9 +1488,6 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
     if (String(factura.estado || "").toUpperCase() !== "RECIBIDA") {
       avisos.push("Solo se pueden anular facturas en estado RECIBIDA.");
     }
-    if (factura.anulada) {
-      avisos.push("Esta factura ya fue anulada.");
-    }
     if (!esMasRecienteEntreCargadas(factura)) {
       avisos.push("Debe ser la factura más reciente del proveedor.");
     }
@@ -1464,9 +1496,21 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
       const desde = new Date(diaEmision + "T00:00:00");
       const hoy = new Date();
       const dias = Math.floor((hoy.getTime() - desde.getTime()) / 86400000);
-      if (dias > 15) {
-        avisos.push(`Supera los 15 días permitidos para anular (pasaron ${dias} días).`);
+      if (dias > DIAS_PERMITIDOS_ANULACION) {
+        avisos.push(`Supera los ${DIAS_PERMITIDOS_ANULACION} días permitidos para anular (pasaron ${dias} días).`);
       }
+    }
+    // Espejo de AnulacionFacturaService.revertirStock: al anular la mercadería
+    // vuelve al proveedor, así que hace falta tenerla físicamente en stock.
+    const sinStock = (factura.detalles || []).filter(
+      (d) => d?.stockActual !== undefined && d?.stockActual !== null
+        && Number(d.stockActual) < (Number(d.cantidad) || 0)
+    );
+    for (const d of sinStock) {
+      avisos.push(
+        `Stock insuficiente para anular ${d.nombreProducto}: hay ${d.stockActual} en stock ` +
+        `y la factura requiere ${d.cantidad}.`
+      );
     }
     return avisos;
   }, [facturas]);
@@ -1478,13 +1522,15 @@ const puedeRegistrar = tipo === "ANULACION"
     : tieneProductos && !esDevolucionTotal;
 
   const handleRegistrar = () => {
-    if (!puedeRegistrar) return;
+    if (!puedeRegistrar || registrando) return;
     const base = {
       fecha: new Date().toISOString(),
       facturaNumero: facturaDetalle.numeroFactura,
       proveedor: facturaDetalle.nombreProveedor,
       proveedorId: facturaDetalle.idProveedor ?? null,
-      idFactura: facturaDetalle.idFactura ?? null,
+      // Mismo nombre que usan los formateadores de fila (facturaId) para que el
+      // objeto que llega a onRegistrar sea idéntico al de la tabla.
+      facturaId: facturaDetalle.idFactura ?? null,
       motivo,
       documentoTipo: "",
       documentoNumero: "",
@@ -1744,6 +1790,36 @@ const puedeRegistrar = tipo === "ANULACION"
                 ))}
               </ul>
             )}
+            {(facturaDetalle.detalles?.length || 0) > 0 && (
+              <div className="mt-3 max-h-40 overflow-y-auto rounded-lg border border-[#1e1e24]">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-[#111114]">
+                    <tr className="border-b border-[#1e1e24] bg-white/[0.02] text-left text-white/40">
+                      <th className="px-3 py-2 font-medium">Producto</th>
+                      <th className="px-2 py-2 text-center font-medium">Comprado</th>
+                      <th className="px-2 py-2 text-center font-medium">Stock</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {facturaDetalle.detalles.map((d) => {
+                      const stock = d?.stockActual !== undefined && d?.stockActual !== null
+                        ? Number(d.stockActual)
+                        : null;
+                      const falta = stock !== null && stock < (Number(d.cantidad) || 0);
+                      return (
+                        <tr key={d.idProducto} className={`border-b border-[#1e1e24] last:border-0 ${falta ? "bg-red-500/[0.07]" : ""}`}>
+                          <td className="px-3 py-2 text-white">{d.nombreProducto}</td>
+                          <td className="px-2 py-2 text-center tabular-nums text-white/60">{d.cantidad}</td>
+                          <td className={`px-2 py-2 text-center tabular-nums ${falta ? "font-semibold text-red-400" : "text-white/60"}`}>
+                            {stock === null ? "—" : stock}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
           <div>
             <label htmlFor="motivo-anulacion" className={labelClass}>Motivo (opcional)</label>
@@ -1961,10 +2037,13 @@ const puedeRegistrar = tipo === "ANULACION"
                 <button
                   type="button"
                   onClick={handleRegistrar}
-                  disabled={!puedeRegistrar}
+                  disabled={!puedeRegistrar || registrando}
                   className="flex items-center gap-2 rounded-lg bg-[#22c55e] px-6 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <Save className="h-4 w-4" /> {tipo === "ANULACION" ? "Anular" : "Registrar"}
+                  <Save className="h-4 w-4" />
+                  {registrando
+                    ? "Enviando…"
+                    : tipo === "ANULACION" ? "Anular" : "Registrar"}
                 </button>
               </div>
             </div>

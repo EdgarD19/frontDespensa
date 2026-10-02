@@ -9,8 +9,8 @@
  *   modo="informe" -> se imprime DESPUÉS. Muestra los valores cargados,
  *                     la diferencia calculada y los totales.
  *
- * Recibe directamente una sesión de ajuste (la misma que guarda AjusteInventario
- * en localStorage) y deriva los datos de cabecera/detalle.
+ * Recibe directamente la sesión de ajuste que mantiene el padre y deriva los
+ * datos de cabecera/detalle.
  *
  * Uso:
  *   <PlanillaConteo sesion={sesion} modo="informe" onVolver={() => ...} />
