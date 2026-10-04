@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Truck, Search, Barcode, Trash2, ShoppingCart, Check, Calendar, FileText, Plus, Settings2 } from "lucide-react";
 import { getProductos, getProductoByCodigo, getPrecioCompraVigente } from "../../../api/productosApi";
 import { getProveedores, getProveedorId } from "../../../api/proveedoresApi";
-import { crearFacturaCompra, facturaCompraNumeroExiste, getTimbradosProveedor } from "../../../api/facturasCompraApi";
+import { crearFacturaCompra, getTimbradosProveedor } from "../../../api/facturasCompraApi";
 import { apiErrorMessage } from "../../../api/errors";
 import TimbradosModal from "./TimbradosModal";
 import { money, hoyAsuncion, formatoFactura, esKG, stepCant, parseCant, estadoTimbrado, etiquetaTimbrado, S } from "../utils";
@@ -200,15 +200,6 @@ export default function CompraEspontanea({ onVolver }) {
       if (l.cantidad <= 0) { setError(`La cantidad de "${l.producto.nombre}" debe ser mayor a cero`); return; }
     }
     setGuardando(true);
-    try {
-      if (await facturaCompraNumeroExiste(numeroComprobante.trim())) {
-        setError(`El número de factura ${numeroComprobante.trim()} ya está registrado en otra factura.`);
-        setGuardando(false);
-        return;
-      }
-    } catch {
-      /* si la verificación falla, se deja pasar y el backend lo valida */
-    }
     setError(null);
     try {
       const res = await crearFacturaCompra({

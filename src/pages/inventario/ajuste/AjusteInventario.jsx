@@ -127,6 +127,7 @@ export default function AjusteInventario() {
     try {
       const ajuste = await crearAjuste({
         idProductos: seleccion.map((p) => p.id),
+        motivo,
         observaciones: descripcion,
       });
       const id = ajuste?.idAjuste;
@@ -218,6 +219,7 @@ export default function AjusteInventario() {
       if (idAjuste == null) {
         const ajuste = await crearAjuste({
           idProductos: sesion.items.map((it) => it.idProducto),
+          motivo: sesion.motivo,
           observaciones: sesion.descripcion,
         });
         idAjuste = ajuste?.idAjuste;

@@ -124,9 +124,10 @@ export async function getAjustes(pageSize = 500) {
  * POST crear ajuste de inventario (borrador con la lista de productos).
  * AjusteCrearRequest: { idProductos: number[], observaciones?: string }
  */
-export async function crearAjuste({ idProductos, observaciones } = {}) {
+export async function crearAjuste({ idProductos, motivo, observaciones } = {}) {
   const { data } = await api.post("/api/ajuste-inventario", {
     idProductos,
+    motivo,
     observaciones: observaciones || undefined,
   });
   return normalizeAjuste(data);

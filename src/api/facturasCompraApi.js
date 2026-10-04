@@ -54,16 +54,6 @@ export async function getFacturaCompraById(id) {
   return data;
 }
 
-/** Devuelve true si ya existe una factura de compra con ese número (200 = existe). */
-export async function facturaCompraNumeroExiste(numeroFactura) {
-  try {
-    await api.get(`${BASE}/numero/${encodeURIComponent(numeroFactura)}`);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 /** Crear timbrado de un proveedor. */
 export async function crearTimbrado(payload) {
   const { data } = await api.post(TIMBRADOS, payload);

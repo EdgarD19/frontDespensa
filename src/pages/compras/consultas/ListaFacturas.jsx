@@ -58,6 +58,41 @@ const condicionPago = (c) => {
   return <span className={`text-xs px-2 py-0.5 rounded-full ${cls}`}>{label}</span>;
 };
 
+const esAnulada = (f) => {
+  const raw = String(f?.estado || "").toUpperCase();
+  return raw === "ANULADO" || raw === "ANULADA" || raw === "CANCELADA" || f?.activo === false;
+};
+
+const estadoFactura = (f) => {
+  const raw = String(f?.estado || "").toUpperCase();
+  if (raw === "CANCELADA" || (!raw && f?.activo === false)) {
+    return (
+      <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-white/10 text-[#8b8b9e]">
+        Cancelada
+      </span>
+    );
+  }
+  if (raw === "ANULADO" || raw === "ANULADA") {
+    return (
+      <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-rose-500/15 text-rose-400">
+        Anulada
+      </span>
+    );
+  }
+  if (raw === "RECIBIDA") {
+    return (
+      <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-sky-500/15 text-sky-400">
+        Recibida
+      </span>
+    );
+  }
+  return (
+    <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-emerald-500/15 text-emerald-400">
+      {raw ? raw.charAt(0) + raw.slice(1).toLowerCase() : "Vigente"}
+    </span>
+  );
+};
+
 export default function ListaFacturas() {
   const [todas, setTodas] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -71,6 +106,7 @@ export default function ListaFacturas() {
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [condicion, setCondicion] = useState("");
+const [estado, setEstado] = useState("");
   const [seleccionada, setSeleccionada] = useState(null);
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
 
@@ -107,8 +143,8 @@ export default function ListaFacturas() {
     const d = (desde || "").trim();
     const h = (hasta || "").trim();
     return todas.filter((f) => {
-      // Las facturas anuladas por una devolución no deben listarse (la nueva es la vigente).
-      if (["ANULADO", "ANULADA"].includes(String(f.estado || "").toUpperCase())) return false;
+      if (estado === "VIGENTES" && esAnulada(f)) return false;
+      if (estado === "ANULADAS" && !esAnulada(f)) return false;
       if (idProveedor && Number(f.idProveedor) !== Number(idProveedor)) return false;
       if (q) {
         const hito = String(f.numeroFactura || "").toLowerCase();
@@ -116,13 +152,13 @@ export default function ListaFacturas() {
       }
       if (condicion && String(f.condicionPago || "") !== condicion) return false;
       if (d || h) {
-        const fecha = String(f.fechaEmision || "").slice(0, 10);
+        const fecha = String(f.fechaCreacion || "").slice(0, 10);
         if (d && fecha < d) return false;
         if (h && fecha > h) return false;
       }
       return true;
     });
-  }, [todas, idProveedor, texto, condicion, desde, hasta]);
+  }, [todas, idProveedor, texto, condicion, desde, hasta, estado]);
 
   const paginadas = useMemo(() => filtradas.slice(page * 10, page * 10 + 10), [filtradas, page]);
 
@@ -143,7 +179,7 @@ export default function ListaFacturas() {
     }
   }
 
-  const columns = 8;
+  const columns = 7;
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4 space-y-6">
@@ -219,6 +255,21 @@ export default function ListaFacturas() {
             <option value="CREDITO">Crédito</option>
           </select>
         </div>
+        <div className="w-full sm:w-44">
+          <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]" htmlFor="filtro-estado">
+            Estado
+          </label>
+          <select
+            id="filtro-estado"
+            value={estado}
+            onChange={(e) => setEstado(e.target.value)}
+            className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#22c55e]/50 transition-colors"
+          >
+            <option value="">Todos</option>
+            <option value="VIGENTES">Vigentes</option>
+            <option value="ANULADAS">Anuladas</option>
+          </select>
+        </div>
         <div className="w-full sm:w-64">
           <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]" htmlFor="filtro-proveedor">
             Proveedor
@@ -247,12 +298,11 @@ export default function ListaFacturas() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/10 text-white/40 text-left whitespace-nowrap">
-                <th className="px-4 py-3 font-medium">Fecha Emisión</th>
                 <th className="px-4 py-3 font-medium">Fecha Registro</th>
                 <th className="px-4 py-3 font-medium">Proveedor</th>
                 <th className="px-4 py-3 font-medium">N° Factura</th>
-                <th className="px-4 py-3 font-medium">N° Timbrado</th>
                 <th className="px-4 py-3 font-medium">Condición</th>
+                <th className="px-4 py-3 font-medium">Estado</th>
                 <th className="px-4 py-3 font-medium text-right">Monto Total</th>
                 <th className="px-4 py-3 font-medium w-12" aria-label="Acciones" />
               </tr>
@@ -273,15 +323,14 @@ export default function ListaFacturas() {
                 </td></tr>
               )}
               {!loading && paginadas.map((f) => {
-                const cancelada = f.estado === "CANCELADA" || f.activo === false;
+                const cancelada = esAnulada(f);
                 return (
                   <tr key={f.idFactura} className={`border-b border-white/5 hover:bg-white/5 transition-colors ${cancelada ? "opacity-60" : ""}`}>
-                    <td className="px-4 py-3 text-white whitespace-nowrap">{fmtFecha(f.fechaEmision)}</td>
                     <td className="px-4 py-3 text-white/70 whitespace-nowrap">{fmtFechaHora(f.fechaCreacion)}</td>
                     <td className="px-4 py-3 text-white">{f.nombreProveedor || "—"}</td>
                     <td className="px-4 py-3 text-white/70 whitespace-nowrap">{f.numeroFactura || "—"}</td>
-                    <td className="px-4 py-3 text-white/70 whitespace-nowrap">{f.numeroTimbrado || "—"}</td>
                     <td className="px-4 py-3">{condicionPago(f.condicionPago)}</td>
+                    <td className="px-4 py-3">{estadoFactura(f)}</td>
                     <td className="px-4 py-3 text-white font-medium text-right whitespace-nowrap">{money(totalDesdeDetalles(f))}</td>
                     <td className="px-4 py-3 text-right">
                       <button

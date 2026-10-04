@@ -71,12 +71,13 @@ function buildClientBody(clienteData) {
         email, direccion, activo, observaciones,
     } = clienteData ?? {};
 
+    const esJuridica = tipoCliente === "JURIDICA";
     const body = {
-        firstName: String(firstName ?? "").trim(),
+        firstName: String((esJuridica ? razonSocial || firstName : firstName) ?? "").trim(),
         lastName: String(lastName ?? "").trim(),
         tipoCliente: tipoCliente || "FISICA",
-        id_ciudad: resolveIdCiudad(),
-        nationality_id_pais: resolveNationalityIdPais(),
+        idCity: resolveIdCiudad(),
+        nationality: resolveNationalityIdPais(),
     };
 
     if (tipoCliente === "JURIDICA") {

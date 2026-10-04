@@ -5,7 +5,6 @@ import { getProveedorById } from "../../../../api/proveedoresApi";
 import { getPedidoParaRecibir } from "../../../../api/comprasApi";
 import {
   crearFacturaCompra,
-  facturaCompraNumeroExiste,
   getTimbradosProveedor,
 } from "../../../../api/facturasCompraApi";
 import { apiErrorMessage } from "../../../../api/errors";
@@ -188,11 +187,9 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
     return Math.round(bruto - bruto / (1 + t / 100));
   };
   const tasasLineas = (tasa) => lineas.filter((l) => Number(l.producto.iva ?? 10) === tasa);
-  const ivaExento = tasasLineas(0).reduce((s, l) => s + ivaLinea(l), 0);
   const iva5 = tasasLineas(5).reduce((s, l) => s + ivaLinea(l), 0);
   const iva10 = tasasLineas(10).reduce((s, l) => s + ivaLinea(l), 0);
-  const totalIva = ivaExento + iva5 + iva10;
-  const subtotalSinIva = total - totalIva;
+  const totalIva = iva5 + iva10;
 
   const handleSubmit = async () => {
     if (!timbradoId) { setError("Seleccioná el timbrado del proveedor"); return; }
@@ -206,13 +203,6 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
       if (l.cantidad <= 0) { setError(`La cantidad de "${l.producto.nombre}" debe ser mayor a cero`); return; }
     }
     setGuardando(true);
-    try {
-      if (await facturaCompraNumeroExiste(numeroComprobante.trim())) {
-        setError(`El número de factura ${numeroComprobante.trim()} ya está registrado en otra factura.`);
-        setGuardando(false);
-        return;
-      }
-    } catch { /* si la verificación falla, el backend lo valida */ }
     setError(null);
     try {
       const res = await crearFacturaCompra({
@@ -560,61 +550,49 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
           </div>
 
           {/* Totales + Acciones */}
-          <div className="pt-3 border-t border-white/10 grid gap-4 sm:grid-cols-3 items-end">
-            <div className="space-y-1.5">
-              <p className="text-sm text-[#5a5a6e]">
-                {lineas.length} ítem{lineas.length === 1 ? "" : "s"} en el comprobante
-              </p>
-              <div className="space-y-1 font-mono text-sm">
-                <div className="flex items-center justify-between text-white/70">
-                  <span className="text-[#5a5a6e]">Exentas:</span>
-                  <span>₲ {money(ivaExento)}</span>
-                </div>
-                <div className="flex items-center justify-between text-white/70">
-                  <span className="text-[#5a5a6e]">IVA 5%:</span>
-                  <span>₲ {money(iva5)}</span>
-                </div>
-                <div className="flex items-center justify-between text-white/70">
-                  <span className="text-[#5a5a6e]">IVA 10%:</span>
-                  <span>₲ {money(iva10)}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-1.5 font-mono text-sm">
-              <div className="flex items-center justify-between text-white/90">
-                <span className="text-[#5a5a6e]">Total IVA:</span>
-                <span className="font-semibold">₲ {money(totalIva)}</span>
-              </div>
-              <div className="flex items-center justify-between text-white/90 border-t border-white/10 pt-1.5">
-                <span className="text-[#5a5a6e]">Subtotal:</span>
-                <span>₲ {money(subtotalSinIva)}</span>
-              </div>
-            </div>
-
-            <div className="flex flex-col items-end justify-end gap-3">
-              <div className="w-full sm:w-auto text-right">
-                <p className="text-xs text-[#5a5a6e] uppercase tracking-[0.12em]">Total factura</p>
-                <p className="font-mono text-3xl font-bold tracking-tight text-[#22c55e]">
-                  ₲ {money(total)}
-                </p>
+          <div className="pt-3 border-t border-white/10">
+            <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-sm">
+                <span className="border border-white/15 bg-white/5 px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-white/80">Liquidación IVA</span>
+                {iva5 > 0 && (
+                  <span className="text-white/70">
+                    <span className="text-[#5a5a6e]">5%: </span>₲ {money(iva5)}
+                  </span>
+                )}
+                {iva10 > 0 && (
+                  <span className="text-white/70">
+                    <span className="text-[#5a5a6e]">10%: </span>₲ {money(iva10)}
+                  </span>
+                )}
+                <span className="text-white/90 font-semibold">
+                  <span className="text-[#5a5a6e]">Total IVA: </span>₲ {money(totalIva)}
+                </span>
               </div>
 
-              <div className="flex gap-2">
-                <button
-                  onClick={onClose}
-                  className="px-4 py-2 bg-white/5 text-white border border-white/10 text-sm font-medium rounded-lg hover:bg-white/10 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleSubmit}
-                  disabled={guardando || timbradoBloqueado}
-                  className="inline-flex items-center justify-center gap-2 px-5 py-2 bg-[#22c55e] hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-lg transition-colors"
-                >
-                  <Truck size={16} />
-                  {guardando ? "Registrando..." : "Recepcionar y registrar compra"}
-                </button>
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+                <div className="text-right">
+                  <p className="text-xs text-[#5a5a6e] uppercase tracking-[0.12em]">Total factura</p>
+                  <p className="font-mono text-3xl font-bold tracking-tight text-[#22c55e]">
+                    ₲ {money(total)}
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={onClose}
+                    className="px-4 py-2 bg-white/5 text-white border border-white/10 text-sm font-medium rounded-lg hover:bg-white/10 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSubmit}
+                    disabled={guardando || timbradoBloqueado}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2 bg-[#22c55e] hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-lg transition-colors"
+                  >
+                    <Truck size={16} />
+                    {guardando ? "Registrando..." : "Recepcionar y registrar compra"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

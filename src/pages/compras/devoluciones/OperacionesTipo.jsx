@@ -504,20 +504,18 @@ export default function OperacionesTipo({ tipo }) {
     }
     const devSet = new Set(pendientes.devFacturas);
     const intFacturasSet = new Set(pendientes.intFacturas);
-    const intProvSet = new Set(pendientes.intProveedores);
     const bloqueadas = [];
     facturas.forEach((f) => {
       const idf = Number(f.idFactura);
-      const idProv = Number(f.idProveedor);
       const estado = String(f.estado || "").toUpperCase();
       if (devSet.has(idf)) {
         bloqueadas.push({ idFactura: idf, motivo: "Tiene una devolución pendiente", estado: "DEVOLUCION_PENDIENTE" });
       } else if (tipo === "INTERCAMBIO" && intFacturasSet.has(idf)) {
         bloqueadas.push({ idFactura: idf, motivo: "La factura ya tiene un intercambio pendiente", estado: "INTERCAMBIO_PENDIENTE" });
-      } else if (tipo === "ANULACION" && (intFacturasSet.has(idf) || intProvSet.has(idProv))) {
-        bloqueadas.push({ idFactura: idf, motivo: "El proveedor tiene un intercambio pendiente", estado: "INTERCAMBIO_PROVEEDOR" });
-      } else if (tipo === "DEVOLUCION" && (intFacturasSet.has(idf) || intProvSet.has(idProv))) {
-        bloqueadas.push({ idFactura: idf, motivo: "El proveedor tiene un intercambio pendiente", estado: "INTERCAMBIO_PROVEEDOR" });
+      } else if (tipo === "ANULACION" && intFacturasSet.has(idf)) {
+        bloqueadas.push({ idFactura: idf, motivo: "La factura ya tiene un intercambio pendiente", estado: "INTERCAMBIO_PENDIENTE" });
+      } else if (tipo === "DEVOLUCION" && intFacturasSet.has(idf)) {
+        bloqueadas.push({ idFactura: idf, motivo: "La factura ya tiene un intercambio pendiente", estado: "INTERCAMBIO_PENDIENTE" });
       } else if (tipo === "DEVOLUCION" && estado !== "RECIBIDA" && estado !== "VIGENTE") {
         bloqueadas.push({ idFactura: idf, motivo: "La factura debe estar RECIBIDA", estado: "ESTADO_NO_RECIBIDA" });
       }
