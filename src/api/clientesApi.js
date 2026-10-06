@@ -76,8 +76,8 @@ function buildClientBody(clienteData) {
         firstName: String((esJuridica ? razonSocial || firstName : firstName) ?? "").trim(),
         lastName: String(lastName ?? "").trim(),
         tipoCliente: tipoCliente || "FISICA",
-        idCity: resolveIdCiudad(),
-        nationality: resolveNationalityIdPais(),
+        id_ciudad: resolveIdCiudad(),
+        nationality_id_pais: resolveNationalityIdPais(),
     };
 
     if (tipoCliente === "JURIDICA") {

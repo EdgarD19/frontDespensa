@@ -1,4 +1,4 @@
-import { Search, ToggleLeft, ToggleRight } from "lucide-react";
+import { Search, ToggleLeft, ToggleRight, Pencil } from "lucide-react";
 import Pagination from "../../../../components/ui/Pagination";
 
 export default function ClientesTabla({
@@ -114,6 +114,18 @@ export default function ClientesTabla({
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSeleccionar?.(c);
+                        }}
+                        className="p-1.5 rounded text-white/40 hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
+                        title="Editar cliente"
+                        aria-label="Editar cliente"
+                      >
+                        <Pencil size={16} />
+                      </button>
                       <button
                         type="button"
                         onClick={(e) => {

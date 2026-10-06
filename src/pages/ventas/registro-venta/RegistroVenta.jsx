@@ -1,15 +1,14 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
-  Search, ShoppingCart, User, Trash2, Scale,
+  Search, ShoppingCart, Trash2, Scale,
   Banknote, Landmark, AlertTriangle, RotateCcw, Check,
-  Keyboard, UserPlus, ArrowLeft,
+  ArrowLeft,
 } from "lucide-react";
 import { getProductos, getProductoByCodigo } from "../../../api/productosApi";
 import { registrarVentaFactura } from "../../../api/ventasApi";
 import { apiErrorMessage } from "../../../api/errors";
 import ComprobanteImpresion from "./ComprobanteImpresion";
-import ClienteOpcional from "./ClienteOpcional";
 import {
   parsePrecioVenta, parseStockDisponible, esProductoPesable, formatMoney,
   labelCliente, labelFormaPago, numeroFacturaPreview, hoyISO,
@@ -44,7 +43,6 @@ export default function RegistroVenta() {
   const [editandoCantidad, setEditandoCantidad] = useState(null);
   const [numeroPreview] = useState(() => numeroFacturaPreview());
   const [datosImpresion, setDatosImpresion] = useState(null);
-  const [modalCliente, setModalCliente] = useState(false);
 
   const searchRef = useRef(null);
   const qtyInputRef = useRef(null);
@@ -214,11 +212,6 @@ export default function RegistroVenta() {
       if (puedeConfirmar && !confirmando) confirmarRef.current?.();
       return;
     }
-    if (key === "F4") {
-      e.preventDefault();
-      setModalCliente(true);
-      return;
-    }
     if (key === "Delete" && !isInput) {
       e.preventDefault();
       const c = carritoRef.current;
@@ -277,31 +270,12 @@ export default function RegistroVenta() {
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b shrink-0" style={{ borderColor: 'var(--border)' }}>
+      <div className="flex items-center justify-between px-4 py-2.5 shrink-0">
         <div className="flex items-center gap-3">
           <Link to="/ventas" className="p-2 rounded-lg hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
             <ArrowLeft size={18} />
           </Link>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: 'var(--accent-dim)', border: '1px solid var(--border-accent)' }}>
-            <ShoppingCart className="w-4 h-4" style={{ color: 'var(--accent)' }} />
-          </div>
-          <h1 className="text-sm font-semibold" style={{ color: 'var(--text-1)', fontFamily: 'var(--font-display)' }}>Caja 01 — Venta Rápida</h1>
         </div>
-        <button type="button" onClick={() => setModalCliente(true)}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors"
-          style={{ color: 'var(--text-2)' }}
-          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-2)'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-          <User className="w-3.5 h-3.5" />
-          {cliente ? (
-            <span style={{ color: 'var(--text-1)' }}>{labelCliente(cliente)}</span>
-          ) : (
-            <>
-              <span>Sin nombre</span>
-              <kbd className="ml-0.5 px-1 py-0.5 rounded text-[10px]" style={{ background: 'var(--surface-2)' }}>F4</kbd>
-            </>
-          )}
-        </button>
       </div>
 
       {/* Error */}
@@ -484,35 +458,13 @@ export default function RegistroVenta() {
             )}
           </div>
 
-          {/* Keyboard shortcuts footer */}
-          <div className="shrink-0 flex items-center gap-1.5 pt-1.5">
-            <Keyboard className="w-4 h-4 mr-0.5" style={{ color: 'var(--accent)' }} />
-            {[
-              { k: "Enter", v: "agregar" },
-              { k: "F2", v: "cant." },
-              { k: "Supr", v: "quitar" },
-              { k: "F6", v: "exacto" },
-              { k: "F7", v: "efec." },
-              { k: "F8", v: "transf." },
-              { k: "F9", v: "cobrar" },
-              { k: "Esc", v: "limpiar" },
-            ].map(({ k, v }) => (
-              <span key={k} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition-colors"
-                style={{ background: 'rgba(26,32,48,0.7)', border: '1px solid var(--border-accent)' }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-2)'; e.currentTarget.style.borderColor = 'var(--border-accent)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(26,32,48,0.7)'; e.currentTarget.style.borderColor = 'var(--border-accent)'; }}>
-                <kbd className="text-[10px] font-bold tabular-nums" style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>{k}</kbd>
-                <span className="text-[10px]" style={{ color: 'var(--text-2)' }}>{v}</span>
-              </span>
-            ))}
-          </div>
         </div>
 
         {/* Payment panel — fills full height */}
         <div className="w-[420px] shrink-0 flex flex-col rounded-xl overflow-hidden"
           style={{ background: 'var(--surface-1)', border: '1px solid var(--border)' }}>
           {/* BIG total */}
-          <div className="px-5 pt-4 pb-3" style={{ borderBottom: '1px solid var(--border)' }}>
+          <div className="px-5 pt-4 pb-3">
             <p className="text-[10px] uppercase tracking-widest mb-1" style={{ color: 'var(--text-3)' }}>Total a cobrar</p>
             <p className="text-5xl font-black leading-none tracking-tight"
               style={{ color: 'var(--accent)', fontFamily: 'var(--font-display)', fontVariantNumeric: 'tabular-nums' }}>
@@ -634,14 +586,6 @@ export default function RegistroVenta() {
       </div>
 
       <ComprobanteImpresion datos={datosImpresion} />
-
-      <ClienteOpcional
-        cliente={cliente}
-        onSeleccionar={setCliente}
-        onQuitar={() => setCliente(null)}
-        abierto={modalCliente}
-        onCerrar={() => setModalCliente(false)}
-      />
     </div>
   );
 }
