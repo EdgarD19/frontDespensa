@@ -1,0 +1,680 @@
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { Truck, Search, Barcode, Trash2, ShoppingCart, Check, Calendar, FileText, Plus, Settings2 } from "lucide-react";
+import { getProductos, getProductoByCodigo, getPrecioCompraVigente } from "../../../api/productosApi";
+import { getProveedores, getProveedorId } from "../../../api/proveedoresApi";
+import { crearFacturaCompra, getTimbradosProveedor } from "../../../api/facturasCompraApi";
+import { apiErrorMessage } from "../../../api/errors";
+import TimbradosModal from "./TimbradosModal";
+import { money, hoyAsuncion, formatoFactura, esKG, stepCant, parseCant, estadoTimbrado, etiquetaTimbrado, S } from "../utils";
+import CantidadInput from "../../../components/ui/CantidadInput";
+
+// Recalcula el desglose de IVA desde los detalles de la factura guardada.
+// El backend guarda IVA por unidad; acá se calcula sobre el bruto (cantidad × precio).
+function desgloseFactura(f) {
+  const detalles = f?.detalles || [];
+  const porTasa = (tasa) => detalles.filter((d) => Number(d.tasaIva) === tasa);
+  const bruto = (d) => Math.round((Number(d.cantidad) || 0) * (Number(d.precioUnitario) || 0));
+  const ivaDe = (d) => {
+    const t = Number(d.tasaIva ?? 0);
+    if (t === 0) return 0;
+    const b = bruto(d);
+    return Math.round(b - b / (1 + t / 100));
+  };
+  const suma = (arr, fn) => arr.reduce((s, d) => s + fn(d), 0);
+  const bruto10 = suma(porTasa(10), bruto);
+  const bruto5 = suma(porTasa(5), bruto);
+  const brutoExento = suma(porTasa(0), bruto);
+  const iva10 = suma(porTasa(10), ivaDe);
+  const iva5 = suma(porTasa(5), ivaDe);
+  const ivaExento = 0;
+  return {
+    subtotal10: bruto10 - iva10,
+    subtotal5: bruto5 - iva5,
+    subtotalExento: brutoExento,
+    iva10,
+    iva5,
+    ivaExento,
+    ivaTotal: iva10 + iva5,
+    total: bruto10 + bruto5 + brutoExento,
+  };
+}
+
+export default function CompraEspontanea({ onVolver }) {
+  const [proveedores, setProveedores] = useState([]);
+  const [proveedorSearch, setProveedorSearch] = useState("");
+  const [proveedorSel, setProveedorSel] = useState(null);
+  const [showProveedores, setShowProveedores] = useState(false);
+
+  const [timbrados, setTimbrados] = useState([]);
+  const [timbradoId, setTimbradoId] = useState("");
+  const [cargandoTimbrados, setCargandoTimbrados] = useState(false);
+  const [showTimbradosModal, setShowTimbradosModal] = useState(false);
+  const [refrescoTimbrados, setRefrescoTimbrados] = useState(0);
+  const [numeroComprobante, setNumeroComprobante] = useState("");
+  const [formaPago, setFormaPago] = useState("CONTADO");
+  const [fechaEmision, setFechaEmision] = useState(() => hoyAsuncion());
+
+  const [productos, setProductos] = useState([]);
+  const [prodSearch, setProdSearch] = useState("");
+  const [showProductos, setShowProductos] = useState(false);
+
+  const [lineas, setLineas] = useState([]);
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState(null);
+  const [exito, setExito] = useState(null);
+
+  const provRef = useRef(null);
+  const prodRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (provRef.current && !provRef.current.contains(e.target)) setShowProveedores(false);
+      if (prodRef.current && !prodRef.current.contains(e.target)) setShowProductos(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  useEffect(() => {
+    if (!showProveedores) return;
+    const t = setTimeout(async () => {
+      try {
+        const res = await getProveedores({ search: proveedorSearch || undefined, pageSize: 20 });
+        setProveedores((res?.content || []).filter((p) => p.activo !== false));
+      } catch { setProveedores([]); }
+    }, proveedorSearch.length > 0 ? 300 : 0);
+    return () => clearTimeout(t);
+  }, [proveedorSearch, showProveedores]);
+
+  useEffect(() => {
+    const id = proveedorSel ? getProveedorId(proveedorSel) : null;
+    setTimbrados([]);
+    setTimbradoId("");
+    if (id == null) return;
+    let activo = true;
+    setCargandoTimbrados(true);
+    getTimbradosProveedor(id)
+      .then((res) => {
+        if (!activo) return;
+        const lista = res?.content || [];
+        setTimbrados(lista);
+        const vigente = lista.find((t) => estadoTimbrado(t, fechaEmision).tipo === "vigente");
+        setTimbradoId(vigente ? String(vigente.idTimbrado) : "");
+      })
+      .catch(() => { if (activo) setTimbrados([]); })
+      .finally(() => { if (activo) setCargandoTimbrados(false); });
+    return () => { activo = false; };
+  }, [proveedorSel, refrescoTimbrados]);
+
+  useEffect(() => {
+    if (!showProductos) return;
+    const t = setTimeout(async () => {
+      try {
+        const res = await getProductos({ search: prodSearch || undefined, pageSize: 20 });
+        const content = (res?.content || []).map((p) => ({ ...p, precioCompra: Number(p.precioCompra) }));
+        const conCosto = await Promise.all(
+          content.map(async (p) => {
+            if (p.precioCompra > 0) return p;
+            const costo = await getPrecioCompraVigente(p.id);
+            return { ...p, precioCompra: costo };
+          })
+        );
+        setProductos(conCosto);
+      } catch { setProductos([]); }
+    }, prodSearch.length > 0 ? 300 : 0);
+    return () => clearTimeout(t);
+  }, [prodSearch, showProductos]);
+
+  const agregarLinea = useCallback(async (prod) => {
+    const existente = lineas.find((l) => l.producto.id === prod.id);
+    if (existente) {
+      setLineas((prev) =>
+        prev.map((l) =>
+          l.producto.id === prod.id ? { ...l, cantidad: l.cantidad + (esKG(prod) ? 0.001 : 1) } : l
+        )
+      );
+    } else {
+      let costo = Number(prod.precioCompra);
+      if (!(costo > 0)) costo = await getPrecioCompraVigente(prod.id);
+      setLineas((prev) => [...prev, {
+        producto: prod,
+        cantidad: esKG(prod) ? 1.0 : 1,
+        precioUnitario: costo > 0 ? costo : 0,
+      }]);
+    }
+    setProdSearch("");
+    setShowProductos(false);
+  }, [lineas]);
+
+  const buscarPorCodigo = useCallback(async (codigo) => {
+    if (!codigo.trim()) return;
+    const prod = await getProductoByCodigo(codigo.trim()).catch(() => null);
+    if (prod) { agregarLinea(prod); setProdSearch(""); return; }
+    setProdSearch(codigo);
+  }, [agregarLinea]);
+
+  const eliminarLinea = (id) => setLineas((prev) => prev.filter((l) => l.producto.id !== id));
+
+  const actualizarCantidad = (id, val) => {
+    setLineas((prev) => prev.map((l) => {
+      if (l.producto.id !== id) return l;
+      return { ...l, cantidad: parseCant(val, l.producto) };
+    }));
+  };
+
+  const actualizarPrecio = (id, val) => {
+    const n = Math.round(parseFloat(val.replace(",", ".")));
+    setLineas((prev) => prev.map((l) => (l.producto.id === id ? { ...l, precioUnitario: Number.isFinite(n) && n >= 0 ? n : 0 } : l)));
+  };
+
+  const subtotalLinea = (l) => Math.round(l.cantidad * l.precioUnitario);
+  const total = lineas.reduce((sum, l) => sum + subtotalLinea(l), 0);
+
+  const timbradoSel = timbrados.find((t) => String(t.idTimbrado) === String(timbradoId)) || null;
+  const estadoTimbradoSel = timbradoSel ? estadoTimbrado(timbradoSel, fechaEmision) : null;
+  const timbradoBloqueado = estadoTimbradoSel && estadoTimbradoSel.tipo !== "vigente";
+
+  // Desglose de IVA (misma fórmula que el backend: precio CON IVA -> base + IVA)
+  const ivaLinea = (l) => {
+    const t = Number(l.producto.iva ?? 10);
+    const bruto = l.cantidad * l.precioUnitario;
+    if (t === 0) return 0;
+    return Math.round(bruto - bruto / (1 + t / 100));
+  };
+  const tasasLineas = (tasa) => lineas.filter((l) => Number(l.producto.iva ?? 10) === tasa);
+  const iva5 = tasasLineas(5).reduce((s, l) => s + ivaLinea(l), 0);
+  const iva10 = tasasLineas(10).reduce((s, l) => s + ivaLinea(l), 0);
+  // Las líneas exentas (tasa 0) no aportan IVA: ivaLinea devuelve 0 para ellas.
+  const totalIva = iva5 + iva10;
+
+  const handleSubmit = async () => {
+    if (!proveedorSel) { setError("Seleccioná un proveedor"); return; }
+    if (!timbradoId) { setError("Seleccioná el timbrado del proveedor"); return; }
+    if (timbradoBloqueado) { setError(estadoTimbradoSel.msg); return; }
+    if (!numeroComprobante.match(/^\d{3}-\d{3}-\d{7}$/)) {
+      setError("El número de factura debe tener el formato 000-000-0000000"); return;
+    }
+    if (lineas.length === 0) { setError("Agregá al menos un producto"); return; }
+    for (const l of lineas) {
+      if (l.precioUnitario <= 0) { setError(`Indicá el precio de costo de "${l.producto.nombre}"`); return; }
+      if (l.cantidad <= 0) { setError(`La cantidad de "${l.producto.nombre}" debe ser mayor a cero`); return; }
+    }
+    setGuardando(true);
+    setError(null);
+    try {
+      const res = await crearFacturaCompra({
+        idProveedor: getProveedorId(proveedorSel),
+        idTimbrado: Number(timbradoId),
+        numeroFactura: numeroComprobante.trim(),
+        condicionPago: formaPago,
+        fechaEmision,
+        detalles: lineas.map((l) => ({ idProducto: l.producto.id, cantidad: l.cantidad, precioUnitario: l.precioUnitario })),
+      });
+      setExito(res);
+    } catch (err) {
+      setError(apiErrorMessage(err) || "Error al registrar factura");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  if (exito) {
+    const f = exito;
+    const dg = desgloseFactura(f);
+    const detalle = (tasa) => (f.detalles || []).filter((d) => Number(d.tasaIva) === tasa);
+    const filasIva = [
+      { etiqueta: "Exentas", tasa: 0, subtotal: dg.subtotalExento, iva: null },
+      { etiqueta: "Gravadas 5%", tasa: 5, subtotal: dg.subtotal5, iva: dg.iva5 },
+      { etiqueta: "Gravadas 10%", tasa: 10, subtotal: dg.subtotal10, iva: dg.iva10 },
+    ].filter((r) => detalle(r.tasa).length > 0);
+    const cantProductos = (f.detalles || []).length;
+    return (
+      <div className="border border-[#22c55e]/30 bg-[#22c55e]/5 p-6 sm:p-8">
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-14 h-14 shrink-0 bg-[#22c55e]/10 flex items-center justify-center">
+              <Check className="w-7 h-7 text-[#22c55e]" />
+            </div>
+            <div>
+              <p className="text-xl font-semibold text-white">Factura registrada correctamente</p>
+              <p className="text-sm text-white/60">
+                {cantProductos} {cantProductos === 1 ? "producto ingresado" : "productos ingresados"} al inventario
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-start gap-4 sm:items-end">
+            <div className="flex items-center gap-3">
+              <span className="text-base font-medium text-white/70">Total</span>
+              <span className="text-3xl font-bold tracking-tight text-[#22c55e] tabular-nums">₲ {money(dg.total)}</span>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setExito(null); setLineas([]); setProveedorSel(null); setProveedorSearch("");
+                  setTimbrados([]); setTimbradoId(""); setNumeroComprobante(""); setFormaPago("CONTADO");
+                  setFechaEmision(hoyAsuncion());
+                }}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold transition-colors"
+              >
+                <ShoppingCart className="w-4 h-4" /> Nueva compra
+              </button>
+              {onVolver && (
+                <button
+                  onClick={onVolver}
+                  className="px-5 py-3 bg-white/5 text-white border border-white/10 text-sm font-medium hover:bg-white/10 transition-colors"
+                >
+                  Volver
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Datos del comprobante */}
+        <dl className="mx-auto mt-6 max-w-2xl grid grid-cols-1 gap-x-6 gap-y-4 border-y border-white/10 py-5 sm:grid-cols-2">
+          <div>
+            <dt className="text-xs font-medium uppercase tracking-wide text-white/50">Proveedor</dt>
+            <dd className="mt-1 text-sm font-medium text-white">{f.nombreProveedor || "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium uppercase tracking-wide text-white/50">N° de factura</dt>
+            <dd className="mt-1 text-sm font-medium text-white tabular-nums">{f.numeroFactura || "—"}</dd>
+          </div>
+        </dl>
+
+        {/* Liquidación del IVA */}
+        {filasIva.length > 0 && (
+          <div className="mx-auto mt-6 max-w-2xl">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/10 text-xs uppercase tracking-wide text-white/50">
+                  <th scope="col" className="pb-2 pr-6 text-left font-medium">Liquidación del IVA</th>
+                  <th scope="col" className="pb-2 pr-6 text-right font-medium">Subtotal</th>
+                  <th scope="col" className="pb-2 text-right font-medium">IVA</th>
+                </tr>
+              </thead>
+              <tbody className="tabular-nums text-white/80">
+                {filasIva.map((r) => (
+                  <tr key={r.etiqueta}>
+                    <td className="py-2 pr-6">{r.etiqueta}</td>
+                    <td className="py-2 pr-6 text-right">₲ {money(r.subtotal)}</td>
+                    <td className="py-2 text-right">{r.iva == null ? "—" : `₲ ${money(r.iva)}`}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t border-white/10 font-medium tabular-nums text-white">
+                  <td className="pt-2 pr-6">Total IVA</td>
+                  <td className="pt-2 pr-6" />
+                  <td className="pt-2 text-right">₲ {money(dg.ivaTotal)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-0">
+      {/* Error */}
+      {error && (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300 mb-5">
+          {error}
+        </div>
+      )}
+
+      {/* Panel principal */}
+      <section className="rounded-2xl border border-white/10 bg-[#111114] p-4 sm:p-5">
+        {/* Proveedor */}
+        <label className={S.eyebrow} htmlFor="proveedor">Proveedor *</label>
+        <div className="relative mt-1" ref={provRef}>
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-[#5a5a6e]">
+            <Truck size={16} />
+          </span>
+          <input
+            id="proveedor"
+            value={proveedorSearch}
+            onChange={(e) => { setProveedorSearch(e.target.value); setProveedorSel(null); setShowProveedores(true); }}
+            onFocus={() => setShowProveedores(true)}
+            placeholder="Buscar proveedor..."
+            className={`${S.field} pl-[2.5rem]`}
+          />
+          {showProveedores && (
+            <div className={S.dropdown}>
+              {proveedores.length === 0 ? (
+                <div className="px-2.5 py-1.5 text-sm italic text-[#5a5a6e]">Sin resultados</div>
+              ) : proveedores.map((p) => {
+                const id = p.id ?? p.idProveedor;
+                return (
+                  <button
+                    key={id} type="button"
+                    onClick={() => { setProveedorSel(p); setProveedorSearch(p.tipoPersona === "FISICA" ? [p.nombre, p.apellido].filter(Boolean).join(" ") : (p.nombre || "")); setShowProveedores(false); }}
+                    className={S.dropdownItem}
+                  >
+                    {p.tipoPersona === "FISICA" ? [p.nombre, p.apellido].filter(Boolean).join(" ") : p.nombre}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Info proveedor */}
+        {proveedorSel && !showProveedores && (
+          <dl className="mt-2.5 grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-1.5 rounded-xl border border-white/10 bg-white/[0.03] p-3.5">
+            <div>
+              <dt className={S.eyebrow}>RUC / Doc.</dt>
+              <dd className="text-[0.8125rem] font-medium text-white">{proveedorSel.numeroDocumento || "—"}</dd>
+            </div>
+            <div>
+              <dt className={S.eyebrow}>Razón social</dt>
+              <dd className="text-[0.8125rem] font-medium text-white">{proveedorSel.tipoPersona !== "JURIDICA" ? [proveedorSel.nombre, proveedorSel.apellido].filter(Boolean).join(" ") : (proveedorSel.nombreRazonSocial || proveedorSel.nombre || "—")}</dd>
+            </div>
+            <div>
+              <dt className={S.eyebrow}>Dirección</dt>
+              <dd className="text-[0.8125rem] font-medium text-white">{proveedorSel.direccion || "—"}</dd>
+            </div>
+            <div>
+              <dt className={S.eyebrow}>Celular</dt>
+              <dd className="text-[0.8125rem] font-medium text-white">{proveedorSel.celular || proveedorSel.telefono || "—"}</dd>
+            </div>
+          </dl>
+        )}
+
+        {/* Formulario comprobante */}
+        <div className="mt-3.5 grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Timbrado */}
+          <div>
+            <label className={S.eyebrow} htmlFor="timbrado">Timbrado *</label>
+            <div className="relative mt-1">
+              <select
+                id="timbrado"
+                value={timbradoId}
+                onChange={(e) => setTimbradoId(e.target.value)}
+                disabled={!proveedorSel || cargandoTimbrados}
+                className={`${S.field} appearance-none pr-8`}
+              >
+                {cargandoTimbrados ? (
+                  <option value="">Cargando timbrados...</option>
+                ) : !proveedorSel ? (
+                  <option value="">Seleccioná un proveedor</option>
+                ) : timbrados.length === 0 ? (
+                  <option value="">Sin timbrados registrados</option>
+                ) : (
+                  <>
+                    <option value="">Seleccionar timbrado</option>
+                    {timbrados.map((t) => {
+                      const st = estadoTimbrado(t, fechaEmision);
+                      return (
+                        <option key={t.idTimbrado} value={t.idTimbrado}>
+                          {t.numeroTimbrado} — {etiquetaTimbrado(st.tipo)}
+                        </option>
+                      );
+                    })}
+                  </>
+                )}
+              </select>
+
+              {/* Aviso visual de timbrado no vigente */}
+              {timbradoSel && estadoTimbradoSel && estadoTimbradoSel.tipo !== "vigente" && (
+                <p className="mt-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-xs text-red-300">
+                  {estadoTimbradoSel.msg}
+                </p>
+              )}
+              {proveedorSel && timbrados.length === 0 && !cargandoTimbrados && (
+                <button
+                  onClick={() => setShowTimbradosModal(true)}
+                  className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-[#22c55e] hover:text-green-400 transition-colors"
+                  type="button"
+                >
+                  <Plus size={13} /> Registrar timbrado
+                </button>
+              )}
+            </div>
+            {proveedorSel && timbrados.length > 0 && (
+              <button
+                onClick={() => setShowTimbradosModal(true)}
+                className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-[#5a5a6e] hover:text-white transition-colors"
+                type="button"
+              >
+                <Settings2 size={13} /> Gestionar timbrados
+              </button>
+            )}
+          </div>
+
+          {/* N° Factura */}
+          <div>
+            <label className={S.eyebrow} htmlFor="factura">N° factura *</label>
+            <div className="relative mt-1">
+              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-[#5a5a6e]">
+                <FileText size={14} />
+              </span>
+              <input
+                id="factura"
+                value={numeroComprobante}
+                onChange={(e) => setNumeroComprobante(formatoFactura(e.target.value))}
+                placeholder="XXX-XXX-XXXXXXX"
+                maxLength={15}
+                className={`${S.fieldMono} pl-[2.2rem]`}
+              />
+            </div>
+          </div>
+
+          {/* Condición de pago */}
+          <div>
+            <label className={S.eyebrow} htmlFor="condicion">Condición de pago *</label>
+            <select
+              id="condicion"
+              value={formaPago}
+              onChange={(e) => setFormaPago(e.target.value)}
+              className={`${S.field} mt-1 appearance-none`}
+            >
+              <option value="CONTADO">Contado</option>
+              <option value="CREDITO">Crédito</option>
+            </select>
+          </div>
+
+          {/* Fecha emisión */}
+          <div>
+            <label className={S.eyebrow} htmlFor="fecha">Fecha emisión *</label>
+            <div className="relative mt-1">
+              <input
+                id="fecha"
+                type="date"
+                value={fechaEmision}
+                onChange={(e) => setFechaEmision(e.target.value)}
+                className={`${S.field} pr-[2.2rem]`}
+              />
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-[#5a5a6e]">
+                <Calendar size={14} />
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Productos */}
+        <div className="mt-4" ref={prodRef}>
+          <label className={S.eyebrow} htmlFor="buscar">Productos</label>
+          <div className="relative mt-1">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-[#5a5a6e]">
+              <Search size={16} />
+            </span>
+            <input
+              id="buscar"
+              value={prodSearch}
+              onChange={(e) => { setProdSearch(e.target.value); setShowProductos(true); }}
+              onFocus={() => setShowProductos(true)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); buscarPorCodigo(prodSearch); } }}
+              placeholder="Escanear código de barras o buscar por nombre..."
+              className={`${S.field} pl-[2.5rem] pr-[2.5rem]`}
+            />
+            <button
+              onClick={() => buscarPorCodigo(prodSearch)}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#5a5a6e] hover:text-white transition-colors"
+            >
+              <Barcode size={16} />
+            </button>
+
+            {showProductos && (
+              <div className={S.dropdown}>
+                {productos.length === 0 ? (
+                  <div className="px-2.5 py-1.5 text-sm italic text-[#5a5a6e]">Sin resultados</div>
+                ) : productos.map((p) => (
+                  <button
+                    key={p.id} type="button" onClick={() => agregarLinea(p)}
+                    className={`${S.dropdownItem} flex items-center justify-between`}
+                  >
+                    <span>{p.nombre}</span>
+                    <span className="text-xs text-[#5a5a6e]">
+                      {Number(p.precioCompra) > 0
+                        ? `₲ ${money(p.precioCompra)}`
+                        : "Sin costo registrado"}
+                      {p.unidadMedida ? ` (${p.unitAbbreviation || p.unidadMedida})` : ""}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Tabla */}
+        <div className="mt-3 max-h-[26vh] overflow-y-auto rounded-xl">
+          <div className="w-full grid grid-cols-[1fr_80px_90px_64px_120px_120px_36px] gap-x-2 gap-y-1 items-center">
+            {/* Headers */}
+            <div className="pb-1 pl-3 text-left text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Producto</div>
+            <div className="pb-1 text-center text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">U.M.</div>
+            <div className="pb-1 text-center text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Cantidad</div>
+            <div className="pb-1 text-center text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">IVA %</div>
+            <div className="pb-1 text-right text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Precio costo</div>
+            <div className="pb-1 pr-3 text-right text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Importe</div>
+            <div className="pb-1"></div>
+
+            {/* Filas */}
+            {lineas.length === 0 ? (
+              <div className="col-span-7 text-center py-6 text-sm text-[#5a5a6e] border border-dashed border-white/10 rounded-xl">
+                Todavía no agregaste productos a esta factura.
+              </div>
+            ) : lineas.map((l) => (
+              <React.Fragment key={l.producto.id}>
+                {/* Producto */}
+                <div className="py-1.5 pl-3 text-sm font-medium text-white bg-white/[0.03] rounded-l-xl">
+                  {l.producto.nombre}
+                </div>
+                {/* U.M. */}
+                <div className="py-1.5 text-center text-sm text-white bg-white/[0.03]">
+                  <span className="rounded px-1.5 py-0.5 text-xs bg-white/10 text-[#5a5a6e]">
+                    {l.producto.unitAbbreviation || l.producto.unidadMedida || "UNI"}
+                  </span>
+                </div>
+                {/* Cantidad */}
+                <div className="py-1.5 text-right bg-white/[0.03]">
+                  <CantidadInput
+                unidadMedida={esKG(l.producto) ? "KG" : "UN"}
+                value={l.cantidad}
+                onChange={(v) => actualizarCantidad(l.producto.id, v)}
+                maxDecimales={3}
+              />
+                </div>
+                {/* IVA % */}
+                <div className="py-1.5 text-center text-sm text-white bg-white/[0.03]">
+                  <span className="rounded px-1.5 py-0.5 text-xs bg-white/10 text-[#5a5a6e]">
+                    {l.producto.iva != null ? `${l.producto.iva}%` : "10%"}
+                  </span>
+                </div>
+                {/* Precio costo */}
+                <div className="py-1.5 text-right bg-white/[0.03]">
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={l.precioUnitario}
+                    onChange={(e) => actualizarPrecio(l.producto.id, e.target.value)}
+                    className="w-28 bg-white/5 border border-white/10 rounded px-2 py-1 text-right text-sm font-mono text-white outline-none transition-colors focus:border-[#22c55e]/50"
+                  />
+                </div>
+                {/* Subtotal */}
+                <div className="py-1.5 pr-3 text-right font-semibold font-mono text-sm text-white bg-white/[0.03]">
+                  ₲ {money(subtotalLinea(l))}
+                </div>
+                {/* Eliminar */}
+                <div className="py-1.5 pr-3 text-right bg-white/[0.03] rounded-r-xl">
+                  <button
+                    onClick={() => eliminarLinea(l.producto.id)}
+                    className="rounded p-1 text-[#5a5a6e] hover:bg-red-500/15 hover:text-red-400 transition-colors"
+                    aria-label={`Quitar ${l.producto.nombre}`}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+
+        {/* Totales + Acciones */}
+        <div className="mt-3 border-t border-white/10 pt-3">
+          {/* Liquidación IVA + Total factura — misma estructura que el detalle de
+              /compras/consultas/facturas */}
+          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-sm">
+              <span className="border border-white/15 bg-white/5 px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-white/80">Liquidación IVA</span>
+              {iva5 > 0 && (
+                <span className="text-white/70">
+                  <span className="text-[#5a5a6e]">5%: </span>₲ {money(iva5)}
+                </span>
+              )}
+              {iva10 > 0 && (
+                <span className="text-white/70">
+                  <span className="text-[#5a5a6e]">10%: </span>₲ {money(iva10)}
+                </span>
+              )}
+              <span className="text-white/90 font-semibold">
+                <span className="text-[#5a5a6e]">Total IVA: </span>₲ {money(totalIva)}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+              <div className="text-right">
+                <p className="text-xs text-[#5a5a6e] uppercase tracking-[0.12em]">Total factura</p>
+                <p className="font-mono text-3xl font-bold tracking-tight text-[#22c55e]">
+                  ₲ {money(total)}
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                {onVolver && (
+                  <button
+                    onClick={onVolver}
+                    className="px-4 py-2 bg-white/5 text-white border border-white/10 text-sm font-medium rounded-lg hover:bg-white/10 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                )}
+                <button
+                  onClick={handleSubmit}
+                  disabled={guardando || timbradoBloqueado || !proveedorSel || !numeroComprobante.trim() || lineas.length === 0}
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2 bg-[#22c55e] hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-lg transition-colors"
+                >
+                  <ShoppingCart size={16} />
+                  {guardando ? "Guardando..." : "Registrar compra"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {showTimbradosModal && proveedorSel && (
+        <TimbradosModal
+          proveedor={proveedorSel}
+          onClose={() => setShowTimbradosModal(false)}
+          onCambio={() => setRefrescoTimbrados((n) => n + 1)}
+        />
+      )}
+    </div>
+  );
+}

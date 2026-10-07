@@ -1,0 +1,273 @@
+﻿import { useEffect, useRef, useState } from "react";
+import { ChevronUp, ChevronDown } from "lucide-react";
+
+const separador = (t) =>
+  t.indexOf(",") !== -1 ? "," : t.indexOf(".") !== -1 ? "." : null;
+
+export default function CantidadInput({
+  unidadMedida = "UN",
+  value,
+  onChange,
+  maxDecimales = 3,
+  disabled = false,
+  permitirCero = false,
+  max,
+  placeholder,
+  id,
+  name,
+  ariaLabel,
+  className = "",
+  onBlur,
+}) {
+  const esKG = unidadMedida === "KG";
+  const maxDec = esKG ? Math.max(0, maxDecimales | 0) : 0;
+  const maxNum = max === undefined || max === null || isNaN(Number(max)) ? null : Number(max);
+  const hayMax = maxNum !== null && maxNum >= 0;
+
+  const [text, setText] = useState("");
+  const [error, setError] = useState(null);
+  const textRef = useRef("");
+  const focusedRef = useRef(false);
+
+  const toText = (v) => {
+    if (v === "" || v === null || v === undefined) return "";
+    return String(v).replace(".", esKG ? "." : "").replace(",", ".");
+  };
+
+  useEffect(() => {
+    if (!focusedRef.current) {
+      const v = toText(value);
+      if (v !== textRef.current) {
+        textRef.current = v;
+        setText(v);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  const emit = (txt) => {
+    const t = txt.trim();
+    setText(txt);
+    textRef.current = txt;
+
+    if (esKG) {
+      const norm = t.replace(",", ".").replace(/\s/g, "");
+      if (norm === "" || isNaN(Number(norm))) {
+        onChange(norm === "" ? "" : undefined);
+        return;
+      }
+      onChange(norm);
+    } else {
+      if (t === "") {
+        onChange("");
+        return;
+      }
+      onChange(t);
+    }
+  };
+
+  const excedeMax = (txt) => {
+    if (!hayMax) return false;
+    const norm = (txt ?? "").toString().trim().replace(",", ".");
+    if (norm === "" || isNaN(Number(norm))) return false;
+    return Number(norm) > maxNum;
+  };
+
+  const onKeyDown = (e) => {
+    if (disabled) return;
+    const isMod = e.ctrlKey || e.metaKey || e.altKey;
+    if (isMod) return;
+    const k = e.key;
+
+    // navegación y edición permitidas
+    if (
+      ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Home", "End", "Tab", "Enter"].includes(k)
+    ) {
+      if (k === "Enter") handleCommit();
+      return;
+    }
+
+    if (!/^[\d.,]$/.test(k)) {
+      e.preventDefault();
+      return;
+    }
+
+    if (!esKG) {
+      // UN: solo dígitos
+      if (!/^\d$/.test(k)) {
+        e.preventDefault();
+        return;
+      }
+      if (hayMax) {
+        const sel = e.target.selectionStart ?? textRef.current.length;
+        const previo = textRef.current.slice(0, sel) + k + textRef.current.slice(e.target.selectionEnd ?? sel);
+        if (excedeMax(previo)) {
+          e.preventDefault();
+          return;
+        }
+      }
+      return;
+    }
+
+    // KG
+    if (/^\d$/.test(k)) {
+      // bloquear decimales extra considerando la selección
+      const cur = textRef.current;
+      const sel = e.target.selectionStart ?? cur.length;
+      const fin = e.target.selectionEnd ?? sel;
+      const replaced = cur.slice(0, sel) + k + cur.slice(fin);
+      const sepIdx = replaced.search(/[.,]/);
+      const decCount = sepIdx !== -1 ? replaced.slice(sepIdx + 1).length : 0;
+      if (sepIdx !== -1 && decCount > maxDec) {
+        e.preventDefault();
+        return;
+      }
+      if (hayMax && excedeMax(replaced)) {
+        e.preventDefault();
+        return;
+      }
+      return;
+    }
+
+    if (k === "-") { e.preventDefault(); return; }
+    if (k === "," || k === ".") {
+      const cur = textRef.current;
+      const sel = e.target.selectionStart ?? cur.length;
+      const fin = e.target.selectionEnd ?? sel;
+      const replaced = cur.slice(0, sel) + k + cur.slice(fin);
+      const separadores = replaced.match(/[.,]/g) || [];
+      if (separadores.length > 1) {
+        e.preventDefault();
+      }
+    }
+  };
+
+  const resolveCommit = (txt) => {
+    const t = (txt ?? "").toString().trim();
+    if (t === "") return { error: null, emit: false };
+
+    if (esKG) {
+      const norm = t.replace(",", ".");
+      const num = Number(norm);
+      if (isNaN(num)) {
+        return { error: "Ingrese una cantidad válida.", emit: false };
+      }
+      if (num <= 0) {
+        return { error: "La cantidad debe ser mayor que 0.", emit: false };
+      }
+      if (hayMax && num > maxNum) {
+        return { error: `La cantidad no puede superar ${maxNum}.`, emit: false };
+      }
+      const dec = norm.split(".")[1] ? norm.split(".")[1].length : 0;
+      if (maxDec > 0 && dec > maxDec) {
+        return {
+          error: `La cantidad no puede tener más de ${maxDecimales} decimales.`,
+          emit: false,
+        };
+      }
+      const redondeado = Number(num.toFixed(maxDec));
+      return { error: null, emit: redondeado.toString() };
+    }
+
+    if (!/^\d+$/.test(t)) {
+      return { error: "La cantidad debe ser un número entero.", emit: false };
+    }
+    const n = parseInt(t, 10);
+    if (n < (permitirCero ? 0 : 1)) {
+      return { error: "La cantidad no puede ser negativa.", emit: false };
+    }
+    if (hayMax && n > maxNum) {
+      return { error: `La cantidad no puede superar ${maxNum}.`, emit: false };
+    }
+    return { error: null, emit: n.toString() };
+  };
+
+  const handleCommit = () => {
+    const res = resolveCommit(textRef.current);
+    setError(res.error);
+    if (res.emit !== false) {
+      const formatted = esKG ? res.emit : res.emit;
+      onChange(esKG ? formatted : parseInt(formatted, 10));
+      textRef.current = formatted;
+      setText(formatted);
+    }
+  };
+
+  const aplicarInt = (delta) => {
+    if (disabled || esKG) return;
+    const t = (textRef.current ?? "").toString().trim();
+    const base = /^\d+$/.test(t) ? parseInt(t, 10) : (permitirCero ? 0 : 1);
+    const floor = permitirCero ? 0 : 1;
+    const n = Math.max(floor, base + delta);
+    const tope = hayMax ? Math.min(n, maxNum) : n;
+    const s = String(tope);
+    textRef.current = s;
+    setText(s);
+    setError(null);
+    onChange(tope);
+  };
+
+  return (
+    <div className={`flex flex-col gap-1 ${className}`}>
+      <div className="relative flex items-center gap-1">
+        <input
+          type="text"
+          inputMode={esKG ? "decimal" : "numeric"}
+          autoComplete="off"
+          id={id}
+          name={name}
+          aria-label={ariaLabel}
+          aria-invalid={!!error}
+          disabled={disabled}
+          placeholder={placeholder}
+          value={text}
+          onFocus={() => (focusedRef.current = true)}
+          onBlur={(e) => {
+            focusedRef.current = false;
+            handleCommit();
+            onBlur?.(e);
+          }}
+          onChange={(e) => {
+            if (!focusedRef.current) focusedRef.current = true;
+            emit(e.target.value);
+          }}
+          onKeyDown={onKeyDown}
+          className={`w-full bg-white/5 border rounded px-2 py-1 text-right text-sm font-mono text-white placeholder:text-white/25 outline-none transition-colors focus:border-[#22c55e]/50 ${
+            error ? "border-red-500/60" : "border-white/10"
+          } ${!esKG ? "pr-7" : ""}`}
+        />
+        {!esKG && (
+          <div className="absolute right-1 top-1/2 flex -translate-y-1/2 flex-col">
+            <button
+              type="button"
+              tabIndex={-1}
+              disabled={disabled || (hayMax && Number(textRef.current) >= maxNum)}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => aplicarInt(1)}
+              aria-label="Aumentar cantidad"
+              className="rounded-sm p-0.5 leading-none text-[#5a5a6e] transition-colors hover:text-[#22c55e] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronUp className="h-3 w-3" />
+            </button>
+            <button
+              type="button"
+              tabIndex={-1}
+              disabled={disabled}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => aplicarInt(-1)}
+              aria-label="Disminuir cantidad"
+              className="rounded-sm p-0.5 leading-none text-[#5a5a6e] transition-colors hover:text-[#22c55e] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronDown className="h-3 w-3" />
+            </button>
+          </div>
+        )}
+      </div>
+      {error && (
+        <p className="text-xs text-red-400" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
