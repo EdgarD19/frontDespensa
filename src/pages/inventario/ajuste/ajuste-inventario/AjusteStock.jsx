@@ -87,11 +87,11 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
         {/* Columna izquierda: buscar producto + lista de resultados */}
         <section className="w-[40%] min-w-0 flex flex-col gap-3 min-h-0">
           <label className="block space-y-1.5 shrink-0">
-            <span className="text-xs font-medium text-[#9a9aac]">
+            <span className="text-xs font-medium text-white/70">
               Buscar producto para agregar
             </span>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5a5a6e]" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
               <input
                 type="search"
                 value={search}
@@ -104,13 +104,13 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
                 }}
                 disabled={disabled}
                 placeholder="Escanear código de barras o buscar por nombre…"
-                className="w-full rounded-lg border border-[#2a2a32] bg-[#111114] pl-10 pr-12 py-2.5 text-sm text-[#f1f1f3] placeholder:text-[#4a4a5a] focus:border-[#22c55e]/50 focus:ring-1 focus:ring-[#22c55e]/20 outline-none disabled:opacity-50"
+                className="w-full rounded-none border border-white/10 bg-[#0c0c0e] pl-10 pr-12 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-[var(--accent)] focus:ring-1 focus:ring-[#22c55e]/20 outline-none disabled:opacity-50"
               />
               <button
                 type="button"
                 onClick={() => buscarPorCodigo(search)}
                 disabled={disabled}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5a5a6e] hover:text-white transition-colors disabled:opacity-50"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors disabled:opacity-50"
                 title="Buscar por código de barras"
               >
                 <Barcode size={16} />
@@ -124,10 +124,10 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
             </p>
           ) : null}
 
-          <div className="flex-1 min-h-0 flex flex-col rounded-lg border border-[#1e1e24] bg-[#0d0d0f] overflow-hidden">
-            <div className="px-3 py-2 border-b border-[#1e1e24] flex items-center gap-2 shrink-0">
-              <h3 className="text-sm font-semibold text-[#e1e1eb]">Productos</h3>
-              <span className="ml-auto text-xs text-[#5a5a6e] tabular-nums">
+          <div className="flex-1 min-h-0 flex flex-col rounded-none border border-white/10 bg-white/[0.03] overflow-hidden">
+            <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2 shrink-0">
+              <h3 className="text-sm font-semibold text-white">Productos</h3>
+              <span className="ml-auto text-xs text-white/40 tabular-nums">
                 {visibles.length} disponible{visibles.length !== 1 ? "s" : ""}
               </span>
               {categoria && visibles.length > 0 ? (
@@ -135,7 +135,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
                   type="button"
                   onClick={seleccionarTodos}
                   disabled={disabled}
-                  className="text-xs font-medium text-[#22c55e] hover:text-green-400 disabled:opacity-40 transition-colors"
+                  className="text-xs font-medium text-[var(--accent)] hover:text-green-400 disabled:opacity-40 transition-colors"
                 >
                   Seleccionar todos
                 </button>
@@ -143,7 +143,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
             </div>
             <ul className="flex-1 min-h-0 overflow-y-auto divide-y divide-[#1e1e24]">
               {visibles.length === 0 ? (
-                <li className="px-4 py-4 text-sm text-[#5a5a6e]">
+                <li className="px-4 py-3 text-sm text-white/40">
                   {q
                     ? "Sin resultados para esa búsqueda."
                     : categoria
@@ -159,15 +159,15 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
                       disabled={disabled}
                       className="w-full text-left px-3 py-2.5 flex items-center gap-2 hover:bg-[#13131a] transition-colors disabled:opacity-60"
                     >
-                      <span className="flex-1 min-w-0 font-medium text-[#f1f1f3] text-sm truncate">
+                      <span className="flex-1 min-w-0 font-medium text-white text-sm truncate">
                         {p.nombre}
                       </span>
                       {p.unitAbbreviation || p.unidadMedida ? (
-                        <span className="text-xs text-[#5a5a6e] whitespace-nowrap">
+                        <span className="text-xs text-white/40 whitespace-nowrap">
                           {p.unitAbbreviation || p.unidadMedida}
                         </span>
                       ) : null}
-                      <span className="text-xs font-semibold text-[#22c55e] tabular-nums whitespace-nowrap">
+                      <span className="text-xs font-semibold text-[var(--accent)] tabular-nums whitespace-nowrap">
                         {stockEntero(p)}
                       </span>
                     </button>
@@ -182,14 +182,14 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
         <section className="flex-1 min-w-0 flex flex-col gap-4 min-h-0">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 shrink-0">
           <label className="block space-y-1.5">
-            <span className="text-xs font-medium text-[#9a9aac]">
+            <span className="text-xs font-medium text-white/70">
               Filtrar por categoría
             </span>
             <select
               value={categoria}
               onChange={(e) => setCategoria(e.target.value)}
               disabled={disabled}
-              className="w-full rounded-lg border border-[#2a2a32] bg-[#111114] px-3 py-2.5 text-sm text-[#f1f1f3] placeholder:text-[#4a4a5a] focus:border-[#22c55e]/50 focus:ring-1 focus:ring-[#22c55e]/25 outline-none disabled:opacity-50"
+              className="w-full rounded-none border border-white/10 bg-[#0c0c0e] px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-[var(--accent)] focus:ring-1 focus:ring-[#22c55e]/25 outline-none disabled:opacity-50"
             >
               <option value="">Todas las categorías</option>
               {categorias.map((c) => (
@@ -201,7 +201,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
           </label>
 
           <label className="block space-y-1.5">
-            <span className="text-xs font-medium text-[#9a9aac]">Motivo</span>
+            <span className="text-xs font-medium text-white/70">Motivo</span>
             <select
               value={motivo}
               onChange={(e) => {
@@ -209,7 +209,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
                 setMotivoError(false);
               }}
               disabled={disabled}
-              className="w-full rounded-lg border border-[#2a2a32] bg-[#111114] px-3 py-2.5 text-sm text-[#f1f1f3] focus:border-[#22c55e]/50 focus:ring-1 focus:ring-[#22c55e]/20 outline-none disabled:opacity-50"
+              className="w-full rounded-none border border-white/10 bg-[#0c0c0e] px-3 py-2.5 text-sm text-white focus:border-[var(--accent)] focus:ring-1 focus:ring-[#22c55e]/20 outline-none disabled:opacity-50"
             >
               <option value="">Seleccionar motivo…</option>
               <option value="ROBO">Robo</option>
@@ -227,42 +227,42 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
           </div>
 
           <div className="flex-1 min-h-0 flex flex-col">
-            <label className="block text-xs font-medium text-[#9a9aac] mb-1.5 uppercase tracking-wider">
+            <label className="block text-xs font-medium text-white/70 mb-1.5 uppercase tracking-wider">
               Productos seleccionados
             </label>
             {seleccion.length > 0 ? (
-              <div className="flex-1 min-h-0 overflow-hidden rounded-lg border border-[#1e1e24] bg-[#111114]">
+              <div className="flex-1 min-h-0 overflow-hidden rounded-none border border-white/10 bg-[#0c0c0e]">
                 <div className="h-full max-h-full overflow-y-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="text-xs text-[#5a5a6e] uppercase tracking-wider border-b border-white/10 sticky top-0 bg-[#111114]">
-                        <th className="text-left py-2 pr-2 pl-3 font-medium">Producto</th>
-                        <th className="text-center py-2 px-2 w-16 font-medium">U.M.</th>
-                        <th className="text-right py-2 px-2 w-24 font-medium">Stock</th>
-                        <th className="py-2 pl-2 pr-3 w-10"></th>
+                      <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300 sticky top-0">
+                        <th className="px-4 py-3 font-medium">Producto</th>
+                        <th className="w-16 px-4 py-3 text-center font-medium">U.M.</th>
+                        <th className="w-24 px-4 py-3 text-right font-medium">Stock</th>
+                        <th className="w-10 px-4 py-3"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {seleccion.map((p) => (
                         <tr
                           key={p.id}
-                          className="border-b border-white/5 last:border-b-0 hover:bg-white/[0.02]"
+                          className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]"
                         >
-                          <td className="py-2 pr-2 pl-3 text-white">
+                          <td className="px-4 py-3 text-white">
                             {p.nombre || `Producto #${p.id}`}
                           </td>
-                          <td className="py-2 px-2 text-center text-white/50">
+                          <td className="px-4 py-3 text-center text-white/50">
                             {p.unitAbbreviation || p.unidadMedida || "—"}
                           </td>
-                          <td className="py-2 px-2 text-right text-[#22c55e] font-semibold tabular-nums">
+                          <td className="px-4 py-3 text-right text-[var(--accent)] font-semibold tabular-nums">
                             {Number.isFinite(Number(p.stockActual)) ? stockEntero(p) : "—"}
                           </td>
-                          <td className="py-2 pl-2 pr-3 text-right">
+                          <td className="px-4 py-3 text-right">
                             <button
                               type="button"
                               onClick={() => toggleProducto(p)}
                               disabled={disabled}
-                              className="p-1 text-[#5a5a6e] hover:text-red-400 transition-colors disabled:opacity-50"
+                              className="p-1 text-white/40 hover:text-red-400 transition-colors disabled:opacity-50"
                               title="Quitar"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -275,7 +275,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
                 </div>
               </div>
             ) : (
-              <div className="flex-1 rounded-lg border border-dashed border-white/10 px-4 py-6 text-center text-sm text-[#5a5a6e]">
+              <div className="flex-1 rounded-none border border-dashed border-white/10 px-4 py-6 text-center text-sm text-white/40">
                 Todavía no agregaste productos a esta lista.
               </div>
             )}
@@ -284,7 +284,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
       </div>
 
       <div className="flex items-center justify-between gap-3 pt-1 shrink-0">
-        <span className="text-sm text-[#5a5a6e]">
+        <span className="text-sm text-white/40">
           {seleccion.length > 0
             ? `${seleccion.length} producto${seleccion.length !== 1 ? "s" : ""}`
             : "Ningún producto seleccionado"}
@@ -294,7 +294,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
             type="button"
             disabled={disabled || seleccion.length === 0}
             onClick={limpiar}
-            className="rounded-lg border border-[#2a2a32] bg-[#111114] px-4 py-2.5 text-sm font-medium text-[#b0b0c0] hover:bg-[#1a1a22] hover:text-[#e1e1eb] disabled:opacity-40 transition-colors"
+            className="rounded-none border border-white/10 bg-[#0c0c0e] px-4 py-2.5 text-sm font-medium text-[#b0b0c0] hover:bg-[#1a1a22] hover:text-white disabled:opacity-40 transition-colors"
           >
             Limpiar
           </button>
@@ -302,7 +302,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
             type="button"
             onClick={generar}
             disabled={disabled || seleccion.length === 0}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#22c55e] hover:bg-[#1aad4e] text-[#0d0d0f] text-sm font-semibold px-6 py-2.5 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+            className="inline-flex items-center gap-2 rounded-none bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-black text-sm font-semibold px-6 py-2.5 disabled:opacity-40 disabled:pointer-events-none transition-colors"
           >
             <Check className="w-4 h-4" aria-hidden />
             Generar

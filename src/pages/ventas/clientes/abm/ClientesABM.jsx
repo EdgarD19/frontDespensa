@@ -173,14 +173,14 @@ export default function ClientesABM() {
     return (
         <div>
             <div className="flex items-center gap-3 mb-4">
-                <Link to="/ventas" className="p-2 rounded-lg hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
+                <Link to="/ventas" className="p-2 rounded-none hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
                     <ArrowLeft size={18} />
                 </Link>
                 <h1 className="text-2xl font-semibold text-white">Gestión de Clientes</h1>
             </div>
 
             {error && (
-                <div className="mb-4 px-4 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg py-3">
+                <div className="mb-4 px-4 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-none py-3">
                     {error}
                 </div>
             )}
@@ -213,13 +213,13 @@ export default function ClientesABM() {
             {/* Modal confirmar toggle activo/inactivo */}
             {toggleModal && (
                 <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-[#1a1a20] border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+                    <div className="bg-[#0c0c0e] border border-white/10 rounded-none w-full max-w-md overflow-hidden shadow-2xl">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
                             <div>
                                 <h2 className="text-lg font-semibold text-white">
                                     {toggleModal.activo ? "Inactivar Cliente" : "Activar Cliente"}
                                 </h2>
-                                <p className="text-xs text-[#7a7a8c] mt-0.5">
+                                <p className="text-xs text-white/50 mt-0.5">
                                     {toggleModal.nombre}
                                 </p>
                             </div>
@@ -239,14 +239,14 @@ export default function ClientesABM() {
                                 <button
                                     type="button"
                                     onClick={() => setToggleModal(null)}
-                                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#111114] hover:bg-[#1a1a22] text-[#b0b0c0] font-medium rounded-lg transition-colors"
+                                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0c0c0e] hover:bg-[#1a1a22] text-[#b0b0c0] font-medium rounded-none transition-colors"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     type="button"
                                     onClick={handleConfirmToggle}
-                                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-medium rounded-lg transition-colors"
+                                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-medium rounded-none transition-colors"
                                 >
                                     <Ban className="w-4 h-4" />
                                     {toggleModal.activo ? "Inactivar" : "Activar"}

@@ -235,36 +235,36 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
       (detalle(10).length > 0) || (detalle(5).length > 0) || (detalle(0).length > 0);
     return (
       <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div className="bg-[#1a1a20] border border-[#22c55e]/30 rounded-2xl w-full max-w-lg shadow-2xl p-8 text-center space-y-4">
-          <div className="w-14 h-14 mx-auto rounded-full bg-[#22c55e]/10 flex items-center justify-center">
+        <div className="bg-[#0c0c0e] border border-[#22c55e]/30 rounded-none w-full max-w-lg shadow-2xl p-8 text-center space-y-4">
+          <div className="w-14 h-14 mx-auto rounded-full bg-[var(--accent)]/10 flex items-center justify-center">
             <Check className="w-7 h-7 text-[#22c55e]" />
           </div>
           <p className="text-lg font-medium text-white">Pedido #<span className="font-mono">{f.idPedido ?? pedido.idPedido}</span> recibido y factura registrada</p>
-          <p className="text-sm text-[#5a5a6e]">
+          <p className="text-sm text-white/40">
             N° {f.numeroFactura} · Timbrado {f.numeroTimbrado || "—"} · {f.nombreProveedor}
           </p>
 
           {mostrarDesglose && (
             <div className="mx-auto max-w-md grid grid-cols-3 gap-3 text-sm">
               {detalle(10).length > 0 && (
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <div className="rounded-none border border-white/10 bg-white/[0.03] p-3">
                   <p className={S.eyebrow}>IVA 10%</p>
                   <p className="font-mono text-lg font-bold text-white">₲ {money(f.iva10 ?? 0)}</p>
-                  <p className="text-xs text-[#5a5a6e]">Subtotal ₲ {money(f.subtotal10 ?? 0)}</p>
+                  <p className="text-xs text-white/40">Subtotal ₲ {money(f.subtotal10 ?? 0)}</p>
                 </div>
               )}
               {detalle(5).length > 0 && (
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <div className="rounded-none border border-white/10 bg-white/[0.03] p-3">
                   <p className={S.eyebrow}>IVA 5%</p>
                   <p className="font-mono text-lg font-bold text-white">₲ {money(f.iva5 ?? 0)}</p>
-                  <p className="text-xs text-[#5a5a6e]">Subtotal ₲ {money(f.subtotal5 ?? 0)}</p>
+                  <p className="text-xs text-white/40">Subtotal ₲ {money(f.subtotal5 ?? 0)}</p>
                 </div>
               )}
               {detalle(0).length > 0 && (
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <div className="rounded-none border border-white/10 bg-white/[0.03] p-3">
                   <p className={S.eyebrow}>Exento</p>
                   <p className="font-mono text-lg font-bold text-white">₲ {money(f.subtotalExento ?? 0)}</p>
-                  <p className="text-xs text-[#5a5a6e]">Sin IVA</p>
+                  <p className="text-xs text-white/40">Sin IVA</p>
                 </div>
               )}
             </div>
@@ -272,12 +272,12 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
 
           <div className="flex items-center justify-center gap-6">
             <div className="text-right">
-              <p className="text-xs text-[#5a5a6e]">IVA total</p>
+              <p className="text-xs text-white/40">IVA total</p>
               <p className="font-mono text-lg font-bold text-white">₲ {money(f.ivaTotal ?? 0)}</p>
             </div>
             <div className="h-8 w-px bg-white/10" />
             <div className="text-right">
-              <p className="text-xs text-[#5a5a6e]">Total</p>
+              <p className="text-xs text-white/40">Total</p>
               <p className="font-mono text-2xl font-bold tracking-tight text-[#22c55e]">₲ {money(f.totalGeneral ?? 0)}</p>
             </div>
           </div>
@@ -285,7 +285,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
           <div className="flex gap-3 justify-center">
             <button
               onClick={volverSinCambios}
-              className="px-6 py-3 bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold rounded-lg transition-colors"
+              className="px-6 py-3 bg-[var(--accent)] hover:bg-green-400 text-black text-sm font-semibold rounded-none transition-colors"
             >
               Volver a pedidos
             </button>
@@ -297,10 +297,10 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-[#1a1a20] border border-white/10 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 sticky top-0 bg-[#1a1a20] z-10">
+      <div className="bg-[#0c0c0e] border border-white/10 rounded-none w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 sticky top-0 bg-[#0c0c0e] z-10">
           <div className="flex items-center gap-3">
-            <span className="rounded-lg bg-[#22c55e]/10 p-2 text-[#22c55e]">
+            <span className="rounded-none bg-[var(--accent)]/10 p-2 text-[#22c55e]">
               <PackageCheck className="w-5 h-5" />
             </span>
             <div>
@@ -312,13 +312,13 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
 
         <div className="p-5 space-y-4">
           {error && (
-            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>
+            <div className="rounded-none border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>
           )}
 
           {/* Proveedor (precargado) */}
           <div>
             <label className={S.eyebrow}>Proveedor</label>
-            <dl className="mt-1 grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-1.5 rounded-xl border border-white/10 bg-white/[0.03] p-3.5">
+            <dl className="mt-1 grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-1.5 rounded-none border border-white/10 bg-white/[0.03] p-3.5">
               <div>
                 <dt className={S.eyebrow}>RUC / Doc.</dt>
                 <dd className="text-[0.8125rem] font-medium text-white">{proveedor?.numeroDocumento || "—"}</dd>
@@ -368,7 +368,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
                 )}
               </select>
               {timbradoSel && estadoTimbradoSel && estadoTimbradoSel.tipo !== "vigente" && (
-                <p className="mt-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-xs text-red-300">
+                <p className="mt-1.5 rounded-none border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-xs text-red-300">
                   {estadoTimbradoSel.msg}
                 </p>
               )}
@@ -384,7 +384,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
               {timbrados.length > 0 && (
                 <button
                   onClick={() => setShowTimbradosModal(true)}
-                  className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-[#5a5a6e] hover:text-white transition-colors"
+                  className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-white/40 hover:text-white transition-colors"
                   type="button"
                 >
                   <Settings2 size={13} /> Gestionar timbrados
@@ -395,7 +395,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
             <div>
               <label className={S.eyebrow} htmlFor="rc-factura">N° factura *</label>
               <div className="relative mt-1">
-                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-[#5a5a6e]">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-white/40">
                   <FileText size={14} />
                 </span>
                 <input
@@ -432,7 +432,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
                   onChange={(e) => setFechaEmision(e.target.value)}
                   className={`${S.field} pr-[2.2rem]`}
                 />
-                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-[#5a5a6e]">
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-white/40">
                   <Calendar size={14} />
                 </span>
               </div>
@@ -443,7 +443,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
           <div className="mt-1" ref={prodRef}>
             <label className={S.eyebrow}>Productos</label>
             <div className="relative mt-1">
-              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-[#5a5a6e]">
+              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-white/40">
                 <Search size={16} />
               </span>
               <input
@@ -456,7 +456,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
               />
               <button
                 onClick={() => buscarPorCodigo(prodSearch)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#5a5a6e] hover:text-white transition-colors"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
               >
                 <Barcode size={16} />
               </button>
@@ -464,14 +464,14 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
               {showProductos && (
                 <div className={S.dropdown}>
                   {productos.length === 0 ? (
-                    <div className="px-2.5 py-1.5 text-sm italic text-[#5a5a6e]">Sin resultados</div>
+                    <div className="px-2.5 py-1.5 text-sm italic text-white/40">Sin resultados</div>
                   ) : productos.map((p) => (
                     <button
                       key={p.id} type="button" onClick={() => agregarLinea(p)}
                       className={`${S.dropdownItem} flex items-center justify-between`}
                     >
                       <span>{p.nombre}</span>
-                      <span className="text-xs text-[#5a5a6e]">
+                      <span className="text-xs text-white/40">
                         {Number(p.precioCompra) > 0 ? `₲ ${money(p.precioCompra)}` : "Sin costo registrado"}
                         {p.unidadMedida ? ` (${p.unitAbbreviation || p.unidadMedida})` : ""}
                       </span>
@@ -483,27 +483,27 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
           </div>
 
           {/* Tabla de líneas */}
-          <div className="max-h-[26vh] overflow-y-auto rounded-xl">
+          <div className="max-h-[26vh] overflow-y-auto rounded-none">
             <div className="w-full grid grid-cols-[1fr_80px_90px_64px_120px_120px_36px] gap-x-2 gap-y-1 items-center">
-              <div className="pb-1 pl-3 text-left text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Producto</div>
-              <div className="pb-1 text-center text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">U.M.</div>
-              <div className="pb-1 text-center text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Cantidad</div>
-              <div className="pb-1 text-center text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">IVA %</div>
-              <div className="pb-1 text-right text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Precio costo</div>
-              <div className="pb-1 pr-3 text-right text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Importe</div>
+              <div className="pb-1 pl-3 text-left text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40">Producto</div>
+              <div className="pb-1 text-center text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40">U.M.</div>
+              <div className="pb-1 text-center text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40">Cantidad</div>
+              <div className="pb-1 text-center text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40">IVA %</div>
+              <div className="pb-1 text-right text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40">Precio costo</div>
+              <div className="pb-1 pr-3 text-right text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40">Importe</div>
               <div className="pb-1"></div>
 
               {lineas.length === 0 ? (
-                <div className="col-span-7 text-center py-6 text-sm text-[#5a5a6e] border border-dashed border-white/10 rounded-xl">
+                <div className="col-span-7 text-center py-6 text-sm text-white/40 border border-dashed border-white/10 rounded-none">
                   Todavía no agregaste productos a esta factura.
                 </div>
               ) : lineas.map((l) => (
                 <React.Fragment key={l.producto.id}>
-                  <div className="py-1.5 pl-3 text-sm font-medium text-white bg-white/[0.03] rounded-l-xl">
+                  <div className="py-1.5 pl-3 text-sm font-medium text-white bg-white/[0.03] rounded-l-none">
                     {l.producto.nombre}
                   </div>
                   <div className="py-1.5 text-center text-sm text-white bg-white/[0.03]">
-                    <span className="rounded px-1.5 py-0.5 text-xs bg-white/10 text-[#5a5a6e]">
+                    <span className="rounded px-1.5 py-0.5 text-xs bg-white/10 text-white/40">
                       {l.producto.unitAbbreviation || l.producto.unidadMedida || "UNI"}
                     </span>
                   </div>
@@ -518,7 +518,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
                     />
                   </div>
                   <div className="py-1.5 text-center text-sm text-white bg-white/[0.03]">
-                    <span className="rounded px-1.5 py-0.5 text-xs bg-white/10 text-[#5a5a6e]">
+                    <span className="rounded px-1.5 py-0.5 text-xs bg-white/10 text-white/40">
                       {l.producto.iva != null ? `${l.producto.iva}%` : "10%"}
                     </span>
                   </div>
@@ -529,16 +529,16 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
                       step="1"
                       value={l.precioUnitario}
                       onChange={(e) => actualizarPrecio(l.producto.id, e.target.value)}
-                      className="w-28 bg-white/5 border border-white/10 rounded px-2 py-1 text-right text-sm font-mono text-white outline-none transition-colors focus:border-[#22c55e]/50"
+                      className="w-28 bg-white/5 border border-white/10 rounded px-2 py-1 text-right text-sm font-mono text-white outline-none transition-colors focus:border-[var(--accent)]"
                     />
                   </div>
                   <div className="py-1.5 pr-3 text-right font-semibold font-mono text-sm text-white bg-white/[0.03]">
                     ₲ {money(subtotalLinea(l))}
                   </div>
-                  <div className="py-1.5 pr-3 text-right bg-white/[0.03] rounded-r-xl">
+                  <div className="py-1.5 pr-3 text-right bg-white/[0.03] rounded-r-none">
                     <button
                       onClick={() => eliminarLinea(l.producto.id)}
-                      className="rounded p-1 text-[#5a5a6e] hover:bg-red-500/15 hover:text-red-400 transition-colors"
+                      className="rounded p-1 text-white/40 hover:bg-red-500/15 hover:text-red-400 transition-colors"
                       aria-label={`Quitar ${l.producto.nombre}`}
                     >
                       <Trash2 size={14} />
@@ -556,22 +556,22 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
                 <span className="border border-white/15 bg-white/5 px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-white/80">Liquidación IVA</span>
                 {iva5 > 0 && (
                   <span className="text-white/70">
-                    <span className="text-[#5a5a6e]">5%: </span>₲ {money(iva5)}
+                    <span className="text-white/40">5%: </span>₲ {money(iva5)}
                   </span>
                 )}
                 {iva10 > 0 && (
                   <span className="text-white/70">
-                    <span className="text-[#5a5a6e]">10%: </span>₲ {money(iva10)}
+                    <span className="text-white/40">10%: </span>₲ {money(iva10)}
                   </span>
                 )}
                 <span className="text-white/90 font-semibold">
-                  <span className="text-[#5a5a6e]">Total IVA: </span>₲ {money(totalIva)}
+                  <span className="text-white/40">Total IVA: </span>₲ {money(totalIva)}
                 </span>
               </div>
 
               <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
                 <div className="text-right">
-                  <p className="text-xs text-[#5a5a6e] uppercase tracking-[0.12em]">Total factura</p>
+                  <p className="text-xs text-white/40 uppercase tracking-[0.12em]">Total factura</p>
                   <p className="font-mono text-3xl font-bold tracking-tight text-[#22c55e]">
                     ₲ {money(total)}
                   </p>
@@ -580,14 +580,14 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
                 <div className="flex gap-2">
                   <button
                     onClick={onClose}
-                    className="px-4 py-2 bg-white/5 text-white border border-white/10 text-sm font-medium rounded-lg hover:bg-white/10 transition-colors"
+                    className="px-4 py-2 bg-white/5 text-white border border-white/10 text-sm font-medium rounded-none hover:bg-white/10 transition-colors"
                   >
                     Cancelar
                   </button>
                   <button
                     onClick={handleSubmit}
                     disabled={guardando || timbradoBloqueado}
-                    className="inline-flex items-center justify-center gap-2 px-5 py-2 bg-[#22c55e] hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-lg transition-colors"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2 bg-[var(--accent)] hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-none transition-colors"
                   >
                     <Truck size={16} />
                     {guardando ? "Registrando..." : "Recepcionar y registrar compra"}

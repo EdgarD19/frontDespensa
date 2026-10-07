@@ -281,14 +281,14 @@ export default function Inventario() {
   return (
     <div>
       <div className="flex items-center gap-3 mb-4">
-        <Link to="/inventario" className="p-2 rounded-lg hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
+        <Link to="/inventario" className="p-2 rounded-none hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
           <ArrowLeft size={18} />
         </Link>
         <h1 className="text-2xl font-semibold text-white">Gestión de Productos</h1>
       </div>
 
       {error && (
-        <div className="mb-4 px-4 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg py-3">{error}</div>
+        <div className="mb-4 px-4 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-none py-3">{error}</div>
       )}
 
       <ProductList
@@ -342,8 +342,8 @@ export default function Inventario() {
           confirmarLabel={confirmarProducto.activar ? "Activar" : "Inactivar"}
           confirmarClass={
             confirmarProducto.activar
-              ? "bg-[#22c55e] text-[#0d0d0f] hover:bg-[#16a34a]"
-              : "bg-[#ef4444] text-[#0d0d0f] hover:bg-[#dc2626]"
+              ? "bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)]"
+              : "bg-[#ef4444] text-black hover:bg-[#dc2626]"
           }
           onConfirmar={confirmarCambioEstado}
           onCerrar={() => setConfirmarProducto(null)}

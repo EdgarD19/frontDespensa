@@ -1,14 +1,14 @@
 import { X } from "lucide-react";
 
 const inputClass =
-  "w-full rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-3 py-1.5 text-sm text-[#f1f1f3] placeholder:text-[#4a4a5a] focus:border-[#22c55e]/50 outline-none transition-colors";
+  "w-full rounded-none border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-[var(--accent)] outline-none transition-colors";
 
 const selectClass =
-  "w-full rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-3 py-1.5 text-sm text-[#f1f1f3] focus:border-[#22c55e]/50 outline-none cursor-pointer transition-colors";
+  "w-full rounded-none border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-white focus:border-[var(--accent)] outline-none cursor-pointer transition-colors";
 
 const labelClass = "block space-y-0.5";
 
-const labelText = "text-[11px] text-[#7a7a8c]";
+const labelText = "text-[11px] text-white/50";
 
 export default function ProductForm({
   formData,
@@ -49,15 +49,15 @@ export default function ProductForm({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-      <div className="bg-[#111114] border border-[#1e1e24] rounded-xl w-full max-w-2xl flex flex-col shadow-2xl">
+      <div className="bg-[#0c0c0e] border border-white/10 rounded-none w-full max-w-2xl flex flex-col shadow-2xl">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#1e1e24] shrink-0">
-          <h2 className="text-sm font-semibold text-[#f1f1f3]">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10 shrink-0">
+          <h2 className="text-sm font-semibold text-white">
             {isEditing ? "Editar Producto" : "Nuevo Producto"}
           </h2>
           <button type="button" onClick={onClose}
-            className="p-1 rounded text-[#5a5a6e] hover:text-[#e1e1eb] hover:bg-[#1a1f2e] transition-colors">
+            className="p-1 rounded text-white/40 hover:text-white hover:bg-[#1a1f2e] transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -170,9 +170,9 @@ export default function ProductForm({
                     checked={formData.productoPesable === "si"}
                     onChange={handleRadioChange}
                     
-                    className="accent-[#22c55e]"
+                    className="accent-[var(--accent)]"
                   />
-                  <span className="text-xs text-[#9a9aac]">Si</span>
+                  <span className="text-xs text-white/70">Si</span>
                 </label>
                 <label className="flex items-center gap-1.5 cursor-pointer">
                   <input
@@ -182,9 +182,9 @@ export default function ProductForm({
                     checked={formData.productoPesable === "no"}
                     onChange={handleRadioChange}
                     
-                    className="accent-[#22c55e]"
+                    className="accent-[var(--accent)]"
                   />
-                  <span className="text-xs text-[#9a9aac]">No</span>
+                  <span className="text-xs text-white/70">No</span>
                 </label>
               </div>
             </div>
@@ -230,11 +230,11 @@ export default function ProductForm({
           {/* Botones */}
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={onClose}
-              className="flex-1 rounded-lg border border-[#2a2a32] bg-[#0d0d0f] py-1.5 text-sm text-[#9a9aac] hover:text-[#e1e1eb] transition-colors">
+              className="flex-1 rounded-none border border-white/10 bg-white/[0.03] py-1.5 text-sm text-white/70 hover:text-white transition-colors">
               Cancelar
             </button>
             <button type="submit"
-              className="flex-1 rounded-lg bg-[#22c55e] py-1.5 text-sm font-semibold text-[#0d0d0f] hover:bg-[#16a34a] disabled:opacity-40 transition-colors">
+              className="flex-1 rounded-none bg-[var(--accent)] py-1.5 text-sm font-semibold text-black hover:bg-[var(--accent-hover)] disabled:opacity-40 transition-colors">
               {isEditing ? "Guardar cambios" : "Agregar producto"}
             </button>
           </div>

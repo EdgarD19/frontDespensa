@@ -5,7 +5,7 @@ export default function ConfirmModal({
   titulo,
   mensaje,
   confirmarLabel = "Confirmar",
-  confirmarClass = "bg-[#22c55e] text-[#0d0d0f] hover:bg-[#16a34a]",
+  confirmarClass = "bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)]",
   cargando = false,
   onConfirmar,
   onCerrar,
@@ -16,27 +16,27 @@ export default function ConfirmModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={onCerrar}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-[#111114] border border-[#1e1e24] rounded-xl w-full max-w-sm shadow-2xl"
+        className="bg-[#0c0c0e] border border-white/10 rounded-none w-full max-w-sm shadow-2xl"
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e1e24]">
-          <h2 className="text-sm font-semibold text-[#f1f1f3]">{titulo}</h2>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+          <h2 className="text-sm font-semibold text-white">{titulo}</h2>
           <button type="button" onClick={onCerrar}
-            className="p-1 rounded text-[#5a5a6e] hover:text-[#e1e1eb] hover:bg-[#1a1f2e] transition-colors">
+            className="p-1 rounded text-white/40 hover:text-white hover:bg-[#1a1f2e] transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
 
         <div className="px-4 py-4">
-          <p className="text-sm text-[#9a9aac]">{mensaje}</p>
+          <p className="text-sm text-white/70">{mensaje}</p>
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-[#1e1e24]">
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-white/10">
           <button type="button" onClick={onCerrar} disabled={cargando}
-            className="rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-4 py-1.5 text-sm text-[#9a9aac] hover:text-[#e1e1eb] disabled:opacity-40 transition-colors">
+            className="rounded-none border border-white/10 bg-white/[0.03] px-4 py-1.5 text-sm text-white/70 hover:text-white disabled:opacity-40 transition-colors">
             Cancelar
           </button>
           <button type="button" onClick={onConfirmar} disabled={cargando}
-            className={`rounded-lg px-4 py-1.5 text-sm font-semibold disabled:opacity-40 transition-colors ${confirmarClass}`}>
+            className={`rounded-none px-4 py-1.5 text-sm font-semibold disabled:opacity-40 transition-colors ${confirmarClass}`}>
             {cargando ? "Procesando..." : confirmarLabel}
           </button>
         </div>

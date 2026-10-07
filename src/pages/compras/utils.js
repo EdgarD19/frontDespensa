@@ -56,13 +56,13 @@ export function etiquetaTimbrado(tipo) {
 
 export const S = {
   field:
-    "w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-sm text-white " +
-    "placeholder:text-white/30 outline-none transition-colors duration-150 focus:border-[#22c55e]/50",
+    "w-full bg-white/5 border border-white/10 rounded-none px-2.5 py-1.5 text-sm text-white " +
+    "placeholder:text-white/30 outline-none transition-colors duration-150 focus:border-[var(--accent)]",
   fieldMono:
-    "w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-sm font-mono text-white " +
-    "placeholder:text-white/30 outline-none transition-colors duration-150 focus:border-[#22c55e]/50",
-  eyebrow: "text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]",
+    "w-full bg-white/5 border border-white/10 rounded-none px-2.5 py-1.5 text-sm font-mono text-white " +
+    "placeholder:text-white/30 outline-none transition-colors duration-150 focus:border-[var(--accent)]",
+  eyebrow: "text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40",
   dropdown:
-    "absolute z-20 mt-0.5 w-full bg-[#17171c] border border-white/10 rounded-lg max-h-40 overflow-y-auto shadow-lg",
+    "absolute z-20 mt-0.5 w-full bg-[#17171c] border border-white/10 rounded-none max-h-40 overflow-y-auto shadow-lg",
   dropdownItem: "w-full text-left px-2.5 py-1.5 text-sm text-white transition-colors duration-150 hover:bg-white/5",
 };

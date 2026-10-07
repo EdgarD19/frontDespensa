@@ -3,7 +3,7 @@ import { formatMoney, labelCliente, esProductoPesable } from "./utils";
 /** Contenido imprimible (window.print); estilos en index.css `.print-invoice`. */
 export default function ComprobanteImpresion({ datos }) {
   if (!datos) return null;
-  const { fecha, numero, cliente, lineas, total, montoPagado, cambio, tipo, formaPagoLabel } = datos;
+  const { fecha, numero, cliente, lineas, total, montoPagado, cambio, tipo, formaPagoLabel, timbrado } = datos;
 
   return (
     <div className="print-invoice hidden print:block print:p-8 print:bg-white print:text-black">
@@ -15,6 +15,16 @@ export default function ComprobanteImpresion({ datos }) {
         <p className="mb-1">
           <strong>Nº:</strong> {numero}
         </p>
+        {timbrado ? (
+          <>
+            <p className="mb-1">
+              <strong>Timbrado:</strong> {timbrado.numeroTimbrado}
+            </p>
+            <p className="mb-1">
+              <strong>Vigencia:</strong> hasta el {timbrado.vigenciaHasta}
+            </p>
+          </>
+        ) : null}
         <p className="mb-1">
           <strong>Tipo:</strong> {tipo}
         </p>

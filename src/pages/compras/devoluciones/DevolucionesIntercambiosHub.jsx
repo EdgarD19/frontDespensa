@@ -24,12 +24,12 @@ export default function DevolucionesIntercambiosHub() {
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 space-y-6">
       <div className="flex items-center gap-3">
-        <Link to="/compras" className="p-2 rounded-lg hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
+        <Link to="/compras" className="p-2 rounded-none hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
           <ArrowLeft size={18} />
         </Link>
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold text-[#f1f1f3] tracking-tight">Devoluciones e Intercambios</h1>
-          <p className="text-sm text-[#5a5a6e]">Registrar devoluciones, intercambios y anulaciones de compras</p>
+          <h1 className="text-2xl font-semibold text-white tracking-tight">Devoluciones e Intercambios</h1>
+          <p className="text-sm text-white/40">Registrar devoluciones, intercambios y anulaciones de compras</p>
         </div>
       </div>
 

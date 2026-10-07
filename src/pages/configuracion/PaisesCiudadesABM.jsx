@@ -10,7 +10,7 @@ import {
 } from "../../api/paisesCiudadesApi";
 
 const inputClass =
-  "flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent-green)]";
+  "flex-1 bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent)]";
 
 function esCodigoValido(codigo) {
   return /^[A-Z]{2}$/.test(String(codigo || "").trim().toUpperCase());
@@ -102,13 +102,13 @@ export function SeccionPaises() {
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           placeholder="Código (PY)"
           maxLength={2}
-          className="w-28 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent-green)]" />
-        <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent-green)]/90 hover:bg-[var(--accent-green)] text-black text-sm font-medium rounded-lg transition-colors">
+          className="w-28 bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent)]" />
+        <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent)]/90 hover:bg-[var(--accent)] text-black text-sm font-medium rounded-none transition-colors">
           <Plus className="w-4 h-4" /> Agregar
         </button>
       </div>
 
-      {error && <div className="mb-3 px-3 py-2 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-lg">{error}</div>}
+      {error && <div className="mb-3 px-3 py-2 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-none">{error}</div>}
 
       {loading ? (
         <div className="text-white/40 text-sm py-4 text-center">Cargando...</div>
@@ -117,7 +117,7 @@ export function SeccionPaises() {
       ) : (
         <div className="space-y-1">
           {paises.map((p) => (
-            <div key={p.id} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 group">
+            <div key={p.id} className="flex items-center gap-2 px-3 py-2 rounded-none hover:bg-white/5 group">
               {editId === p.id ? (
                 <>
                   <input value={editNombre} onChange={(e) => setEditNombre(e.target.value)}
@@ -138,8 +138,8 @@ export function SeccionPaises() {
                     {p.activo === false ? "Inactivo" : "Activo"}
                   </span>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => { setEditId(p.id); setEditNombre(p.nombre); setEditCodigo(p.codigo ?? ""); }} className="p-1 text-white/40 hover:text-[var(--accent-green)]"><Pencil className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => handleToggle(p)} className="p-1 text-white/40 hover:text-[var(--accent-green)]">
+                    <button onClick={() => { setEditId(p.id); setEditNombre(p.nombre); setEditCodigo(p.codigo ?? ""); }} className="p-1 text-white/40 hover:text-[var(--accent)]"><Pencil className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => handleToggle(p)} className="p-1 text-white/40 hover:text-[var(--accent)]">
                       {p.activo === false ? <ToggleLeft className="w-3.5 h-3.5" /> : <ToggleRight className="w-3.5 h-3.5" />}
                     </button>
                   </div>
@@ -157,8 +157,8 @@ export function SeccionPaises() {
           confirmarLabel={confirmarPais.activar ? "Activar" : "Inactivar"}
           confirmarClass={
             confirmarPais.activar
-              ? "bg-[#22c55e] text-[#0d0d0f] hover:bg-[#16a34a]"
-              : "bg-[#ef4444] text-[#0d0d0f] hover:bg-[#dc2626]"
+              ? "bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)]"
+              : "bg-[#ef4444] text-black hover:bg-[#dc2626]"
           }
           cargando={cambiando}
           onConfirmar={confirmarCambioEstado}
@@ -275,7 +275,7 @@ export function SeccionCiudades() {
   };
 
   const selectClass =
-    "bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[var(--accent-green)] cursor-pointer";
+    "bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white focus:outline-none focus:border-[var(--accent)] cursor-pointer";
 
   return (
     <div>
@@ -296,13 +296,13 @@ export function SeccionCiudades() {
         <input value={nuevoCodigoPostal} onChange={(e) => setNuevoCodigoPostal(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           placeholder="Código postal"
-          className="w-32 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent-green)]" />
-        <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent-green)]/90 hover:bg-[var(--accent-green)] text-black text-sm font-medium rounded-lg transition-colors">
+          className="w-32 bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent)]" />
+        <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent)]/90 hover:bg-[var(--accent)] text-black text-sm font-medium rounded-none transition-colors">
           <Plus className="w-4 h-4" /> Agregar
         </button>
       </div>
 
-      {error && <div className="mb-3 px-3 py-2 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-lg">{error}</div>}
+      {error && <div className="mb-3 px-3 py-2 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-none">{error}</div>}
 
       {loading ? (
         <div className="text-white/40 text-sm py-4 text-center">Cargando...</div>
@@ -311,7 +311,7 @@ export function SeccionCiudades() {
       ) : (
         <div className="space-y-1">
           {ciudades.map((c) => (
-            <div key={c.id} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 group">
+            <div key={c.id} className="flex items-center gap-2 px-3 py-2 rounded-none hover:bg-white/5 group">
               {editId === c.id ? (
                 <>
                   <input value={editNombre} onChange={(e) => setEditNombre(e.target.value)}
@@ -331,8 +331,8 @@ export function SeccionCiudades() {
                     {c.activo === false ? "Inactivo" : "Activo"}
                   </span>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => { setEditId(c.id); setEditNombre(c.nombre); setEditCodigoPostal(c.codigoPostal ?? ""); }} className="p-1 text-white/40 hover:text-[var(--accent-green)]"><Pencil className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => handleToggle(c)} className="p-1 text-white/40 hover:text-[var(--accent-green)]">
+                    <button onClick={() => { setEditId(c.id); setEditNombre(c.nombre); setEditCodigoPostal(c.codigoPostal ?? ""); }} className="p-1 text-white/40 hover:text-[var(--accent)]"><Pencil className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => handleToggle(c)} className="p-1 text-white/40 hover:text-[var(--accent)]">
                       {c.activo === false ? <ToggleLeft className="w-3.5 h-3.5" /> : <ToggleRight className="w-3.5 h-3.5" />}
                     </button>
                   </div>
@@ -350,8 +350,8 @@ export function SeccionCiudades() {
           confirmarLabel={confirmarCiudad.activar ? "Activar" : "Inactivar"}
           confirmarClass={
             confirmarCiudad.activar
-              ? "bg-[#22c55e] text-[#0d0d0f] hover:bg-[#16a34a]"
-              : "bg-[#ef4444] text-[#0d0d0f] hover:bg-[#dc2626]"
+              ? "bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)]"
+              : "bg-[#ef4444] text-black hover:bg-[#dc2626]"
           }
           cargando={cambiando}
           onConfirmar={confirmarCambioEstado}
@@ -365,7 +365,7 @@ export function SeccionCiudades() {
 function AccordionSection({ titulo, defaultOpen = false, children }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="border border-white/10 rounded-xl overflow-hidden">
+    <div className="border border-white/10 rounded-none overflow-hidden">
       <button onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between px-5 py-3.5 bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-left">
         <h3 className="text-white font-medium text-sm">{titulo}</h3>
@@ -380,14 +380,14 @@ export default function PaisesCiudadesABM() {
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 space-y-6">
       <div className="flex items-center gap-3">
-        <Link to="/configuracion" className="p-2 rounded-lg hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
+        <Link to="/configuracion" className="p-2 rounded-none hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
           <ArrowLeft size={18} />
         </Link>
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold text-[#f1f1f3] tracking-tight">
+          <h1 className="text-2xl font-semibold text-white tracking-tight">
             Países y Ciudades
           </h1>
-          <p className="text-sm text-[#5a5a6e]">
+          <p className="text-sm text-white/40">
             Gestión de países y ciudades
           </p>
         </div>

@@ -18,7 +18,7 @@ function formatPrecioVenta(p) {
 }
 
 const iconBtn =
-  "flex h-8 w-8 items-center justify-center rounded-lg text-white/40 transition-colors";
+  "flex h-8 w-8 items-center justify-center rounded-none text-white/40 transition-colors";
 
 /* ───────────── Componente principal ───────────── */
 
@@ -50,20 +50,20 @@ export default function ProductList({
             value={search}
             onChange={(e) => onSearch(e.target.value)}
             placeholder="Buscar por nombre..."
-            className="w-full rounded-lg border border-[#2a2a32] bg-[#111114]
+            className="w-full rounded-none border border-white/10 bg-[#0c0c0e]
               pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-white/30
-              transition focus:outline-none focus:border-[var(--accent-green)]/60
-              focus:ring-2 focus:ring-[var(--accent-green)]/20"
+              transition focus:outline-none focus:border-[var(--accent)]/60
+              focus:ring-2 focus:ring-[var(--accent)]/20"
           />
         </div>
 
         <button
           type="button"
           onClick={onNuevo}
-          className="flex items-center gap-2 whitespace-nowrap rounded-lg
-            bg-[var(--accent-green)] px-4 py-2.5 text-sm font-semibold text-black
+          className="flex items-center gap-2 whitespace-nowrap rounded-none
+            bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-black
             transition hover:opacity-90 focus:outline-none
-            focus-visible:ring-2 focus-visible:ring-[var(--accent-green)]/50"
+            focus-visible:ring-2 focus-visible:ring-[var(--accent)]/50"
         >
           <Plus className="h-4 w-4" />
           Nuevo producto
@@ -71,7 +71,7 @@ export default function ProductList({
       </div>
 
       {/* Tabla */}
-      <div className="overflow-hidden border border-[#1e1e24] bg-[#111114] shadow-lg shadow-black/20">
+      <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
@@ -88,9 +88,9 @@ export default function ProductList({
           <tbody>
             {loading &&
               Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i} className="border-b border-[#1e1e24] last:border-0">
+                <tr key={i} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                   {Array.from({ length: 7 }).map((_, j) => (
-                    <td key={j} className="px-4 py-4">
+                    <td key={j} className="px-4 py-3">
                       <div className="h-4 w-3/4 animate-pulse rounded bg-white/10" />
                     </td>
                   ))}
@@ -119,21 +119,21 @@ export default function ProductList({
                   <tr
                     key={p.id}
                     onClick={() => onSeleccionar?.(p)}
-                    className={`cursor-pointer border-b border-[#1e1e24] transition-colors
+                    className={`cursor-pointer border-b border-white/10 transition-colors
                       last:border-0 hover:bg-white/[0.04] ${!activo ? "opacity-60" : ""}`}
                   >
-                    <td className="px-4 py-4 font-mono text-xs text-white/40">
+                    <td className="px-4 py-3 font-mono text-xs text-white/40">
                       {p.codigoBarras || "—"}
                     </td>
 
                     <td
-                      className="max-w-[14rem] truncate px-4 py-4 font-medium capitalize text-white"
+                      className="max-w-[14rem] truncate px-4 py-3 font-medium capitalize text-white"
                       title={p.nombre}
                     >
                       {p.nombre}
                     </td>
 
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3">
                       {p.categoria ? (
                         <span className="inline-flex rounded-full bg-white/5 px-2.5 py-1 text-xs font-medium text-white/70 ring-1 ring-inset ring-white/10">
                           {p.categoria}
@@ -143,9 +143,9 @@ export default function ProductList({
                       )}
                     </td>
 
-                    <td className="px-4 py-4 text-white/70">{p.unidadMedida || "—"}</td>
+                    <td className="px-4 py-3 text-white/70">{p.unidadMedida || "—"}</td>
 
-                    <td className="px-4 py-4 text-right tabular-nums">
+                    <td className="px-4 py-3 text-right tabular-nums">
                       {sinPrecioVenta ? (
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-300 ring-1 ring-inset ring-amber-500/20">
                           <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
@@ -158,7 +158,7 @@ export default function ProductList({
                       )}
                     </td>
 
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3">
                       <span
                         className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
                           activo
@@ -175,7 +175,7 @@ export default function ProductList({
                       </span>
                     </td>
 
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
                         {/* Editar */}
                         <button

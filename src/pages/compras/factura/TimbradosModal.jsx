@@ -22,17 +22,17 @@ const fmtFecha = (iso) => {
 
 const S = {
   field:
-    "w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-sm text-white " +
-    "placeholder:text-white/30 outline-none transition-colors duration-150 focus:border-[#22c55e]/50",
+    "w-full bg-white/5 border border-white/10 rounded-none px-2.5 py-1.5 text-sm text-white " +
+    "placeholder:text-white/30 outline-none transition-colors duration-150 focus:border-[var(--accent)]",
   fieldMono:
-    "w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-sm font-mono text-white " +
-    "placeholder:text-white/30 outline-none transition-colors duration-150 focus:border-[#22c55e]/50",
-  eyebrow: "text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]",
+    "w-full bg-white/5 border border-white/10 rounded-none px-2.5 py-1.5 text-sm font-mono text-white " +
+    "placeholder:text-white/30 outline-none transition-colors duration-150 focus:border-[var(--accent)]",
+  eyebrow: "text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40",
 };
 
 const estado = (t) => {
   if (!t.activo) return { label: "Inactivo", cls: "bg-white/10 text-[#8b8b9e]" };
-  if (t.esVigente) return { label: "Vigente", cls: "bg-[#22c55e]/15 text-[#22c55e]" };
+  if (t.esVigente) return { label: "Vigente", cls: "bg-[var(--accent)]/15 text-[#22c55e]" };
   if (t.estaVencido) return { label: "Vencido", cls: "bg-red-500/15 text-red-400" };
   return { label: "Pendiente", cls: "bg-white/10 text-[#8b8b9e]" };
 };
@@ -142,15 +142,15 @@ export default function TimbradosModal({ proveedor, onClose, onCambio }) {
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-2xl rounded-2xl border border-white/10 bg-[#111114] p-5 shadow-2xl">
+      <div className="relative w-full max-w-2xl rounded-none border border-white/10 bg-[#0c0c0e] p-5 shadow-2xl">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-lg font-semibold text-white">Timbrados del proveedor</h3>
-            <p className="text-sm text-[#5a5a6e]">{proveedor?.tipoPersona === "FISICA" ? [proveedor?.nombre, proveedor?.apellido].filter(Boolean).join(" ") : proveedor?.nombre || ""}</p>
+            <p className="text-sm text-white/40">{proveedor?.tipoPersona === "FISICA" ? [proveedor?.nombre, proveedor?.apellido].filter(Boolean).join(" ") : proveedor?.nombre || ""}</p>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-2 text-[#5a5a6e] hover:bg-white/5 hover:text-white transition-colors"
+            className="rounded-none p-2 text-white/40 hover:bg-white/5 hover:text-white transition-colors"
             aria-label="Cerrar"
           >
             <X size={18} />
@@ -158,7 +158,7 @@ export default function TimbradosModal({ proveedor, onClose, onCambio }) {
         </div>
 
         {error && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-300 mb-4">
+          <div className="rounded-none border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-300 mb-4">
             {error}
           </div>
         )}
@@ -166,12 +166,12 @@ export default function TimbradosModal({ proveedor, onClose, onCambio }) {
         <div className="grid grid-cols-1 md:grid-cols-[1fr_1.1fr] gap-5">
           {/* Lista */}
           <div>
-            <p className="mb-2 text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Registrados</p>
+            <p className="mb-2 text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40">Registrados</p>
             <div className="max-h-[38vh] overflow-y-auto space-y-2 pr-1">
               {cargando ? (
-                <p className="text-sm italic text-[#5a5a6e]">Cargando...</p>
+                <p className="text-sm italic text-white/40">Cargando...</p>
               ) : timbrados.length === 0 ? (
-                <p className="text-sm italic text-[#5a5a6e]">
+                <p className="text-sm italic text-white/40">
                   Este proveedor no tiene timbrados registrados.
                 </p>
               ) : (
@@ -180,11 +180,11 @@ export default function TimbradosModal({ proveedor, onClose, onCambio }) {
                   return (
                     <div
                       key={t.idTimbrado}
-                      className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2"
+                      className="flex items-center justify-between gap-2 rounded-none border border-white/10 bg-white/[0.03] px-3 py-2"
                     >
                       <div className="min-w-0">
                         <p className="font-mono text-sm font-semibold text-white">{t.numeroTimbrado}</p>
-                        <p className="text-xs text-[#5a5a6e]">
+                        <p className="text-xs text-white/40">
                           {fmtFecha(t.fechaInicio)} → {fmtFecha(t.fechaVencimiento)}
                         </p>
                         <span className={`inline-block mt-1 rounded-full px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-wide ${st.cls}`}>
@@ -194,14 +194,14 @@ export default function TimbradosModal({ proveedor, onClose, onCambio }) {
                       <div className="flex items-center gap-1 shrink-0">
                         <button
                           onClick={() => setEditando(t)}
-                          className="rounded p-1.5 text-[#5a5a6e] hover:bg-white/5 hover:text-white transition-colors"
+                          className="rounded p-1.5 text-white/40 hover:bg-white/5 hover:text-white transition-colors"
                           title="Editar"
                         >
                           <Pencil size={14} />
                         </button>
                         <button
                           onClick={() => handleToggle(t)}
-                          className={`rounded p-1.5 transition-colors ${t.activo ? "text-[#22c55e]" : "text-[#5a5a6e]"} hover:bg-white/5`}
+                          className={`rounded p-1.5 transition-colors ${t.activo ? "text-[#22c55e]" : "text-white/40"} hover:bg-white/5`}
                           title={t.activo ? "Desactivar" : "Activar"}
                         >
                           <Power size={14} />
@@ -222,7 +222,7 @@ export default function TimbradosModal({ proveedor, onClose, onCambio }) {
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="inline-flex items-center gap-1 text-xs text-[#5a5a6e] hover:text-white transition-colors"
+                  className="inline-flex items-center gap-1 text-xs text-white/40 hover:text-white transition-colors"
                 >
                   <Plus size={13} /> Limpiar
                 </button>
@@ -268,7 +268,7 @@ export default function TimbradosModal({ proveedor, onClose, onCambio }) {
                 type="checkbox"
                 checked={activo}
                 onChange={(e) => setActivo(e.target.checked)}
-                className="w-4 h-4 accent-[#22c55e]"
+                className="w-4 h-4 accent-[var(--accent)]"
               />
               Timbrado activo
             </label>
@@ -277,7 +277,7 @@ export default function TimbradosModal({ proveedor, onClose, onCambio }) {
               <button
                 type="submit"
                 disabled={guardando}
-                className="inline-flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-[#22c55e] hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-lg transition-colors"
+                className="inline-flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-[var(--accent)] hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-none transition-colors"
               >
                 {guardando ? (
                   "Guardando..."
@@ -292,7 +292,7 @@ export default function TimbradosModal({ proveedor, onClose, onCambio }) {
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="px-4 py-2 bg-white/5 text-white border border-white/10 text-sm font-medium rounded-lg hover:bg-white/10 transition-colors"
+                  className="px-4 py-2 bg-white/5 text-white border border-white/10 text-sm font-medium rounded-none hover:bg-white/10 transition-colors"
                 >
                   Cancelar edición
                 </button>
@@ -302,13 +302,13 @@ export default function TimbradosModal({ proveedor, onClose, onCambio }) {
         </div>
 
         <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-3">
-          <p className="text-xs text-[#5a5a6e]">
+          <p className="text-xs text-white/40">
             {timbrados.length} timbrado{timbrados.length === 1 ? "" : "s"} · {" "}
             {timbrados.filter((t) => t.esVigente).length} vigente(s)
           </p>
           <button
             onClick={onClose}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white/5 text-white border border-white/10 text-sm font-medium rounded-lg hover:bg-white/10 transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white/5 text-white border border-white/10 text-sm font-medium rounded-none hover:bg-white/10 transition-colors"
           >
             <Check size={15} /> Cerrar
           </button>

@@ -14,6 +14,7 @@ import AjusteInventario from './pages/inventario/ajuste/AjusteInventario'
 import MaestrosABM from './pages/inventario/maestros/MaestrosABM'
 
 import VentasHub from './pages/ventas/VentasHub'
+import DevolucionesVentasHub from './pages/ventas/devoluciones/DevolucionesVentasHub'
 import ClientesABM from './pages/ventas/clientes/abm/ClientesABM'
 import RegistroVenta from './pages/ventas/registro-venta/RegistroVenta'
 
@@ -31,6 +32,7 @@ import Caja from './pages/caja/Caja'
 import ConfiguracionHub from './pages/configuracion/ConfiguracionHub'
 import CategoriasABM from './pages/configuracion/CategoriasABM'
 import PaisesCiudadesABM from './pages/configuracion/PaisesCiudadesABM'
+import ComprobantesConfig from './pages/configuracion/ComprobantesConfig'
 
 export default function App() {
   return (
@@ -43,6 +45,7 @@ export default function App() {
             <Route index element={<VentasHub />} />
             <Route path="registro" element={<RegistroVenta />} />
             <Route path="clientes" element={<ClientesABM />} />
+            <Route path="devoluciones" element={<DevolucionesVentasHub />} />
           </Route>
     
           <Route path="inventario">
@@ -72,6 +75,7 @@ export default function App() {
             <Route index element={<ConfiguracionHub />} />
             <Route path="categorias" element={<CategoriasABM />} />
             <Route path="paises" element={<PaisesCiudadesABM />} />
+            <Route path="comprobantes" element={<ComprobantesConfig />} />
           </Route>
         </Route>
       </Routes>

@@ -32,7 +32,7 @@ function EstadoBadge({ estado }) {
     <span
       className={`inline-flex text-xs px-2 py-0.5 rounded-full font-medium ${
         confirmado
-          ? "bg-[#22c55e]/10 text-[#22c55e]"
+          ? "bg-[var(--accent)]/10 text-[var(--accent)]"
           : desactivada
             ? "bg-[#5a5a6e]/10 text-[#8a8a9a]"
             : "bg-yellow-500/10 text-yellow-400"
@@ -100,7 +100,7 @@ export default function ListasConteo({
 
   if (total === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-[#2a2a32] bg-[#111114]/50 p-10 text-center text-sm text-[#5a5a6e]">
+      <div className="rounded-none border border-dashed border-white/10 bg-[#0c0c0e]/50 p-10 text-center text-sm text-white/40">
         Aún no generaste listas de conteo. Usá el botón "Nueva lista" para
         crear la primera.
       </div>
@@ -108,19 +108,19 @@ export default function ListasConteo({
   }
 
   return (
-    <div className="rounded-xl border border-[#1e1e24] bg-[#111114] overflow-hidden">
-      <div className="px-5 py-4 border-b border-[#1e1e24]">
+    <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
+      <div className="px-5 py-4 border-b border-white/10">
         <div className="flex items-center gap-3 flex-wrap">
-          <ClipboardList className="w-5 h-5 text-[#22c55e] shrink-0" aria-hidden />
-          <h2 className="text-base font-semibold text-[#e1e1eb]">Listas Generadas</h2>
-          <span className="ml-auto text-xs text-[#5a5a6e] tabular-nums whitespace-nowrap">
+          <ClipboardList className="w-5 h-5 text-[var(--accent)] shrink-0" aria-hidden />
+          <h2 className="text-base font-semibold text-white">Listas Generadas</h2>
+          <span className="ml-auto text-xs text-white/40 tabular-nums whitespace-nowrap">
             {total} lista{total !== 1 ? "s" : ""}
           </span>
         </div>
 
         <div className="mt-3 grid grid-cols-2 lg:grid-cols-4 gap-3">
           <label className="block space-y-1">
-            <span className="text-[11px] font-medium uppercase tracking-wide text-[#5a5a6e]">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-white/40">
               Estado
             </span>
             <select
@@ -129,7 +129,7 @@ export default function ListasConteo({
                 onFiltroEstadoChange?.(e.target.value);
                 setCurrentPage(0);
               }}
-              className="w-full rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-3 py-1.5 text-xs text-[#f1f1f3] focus:border-[#22c55e]/50 outline-none transition-colors"
+              className="w-full rounded-none border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white focus:border-[var(--accent)] outline-none transition-colors"
             >
               <option value="">Todos</option>
               <option value="BORRADOR">Borradores</option>
@@ -139,7 +139,7 @@ export default function ListasConteo({
           </label>
 
           <label className="block space-y-1">
-            <span className="text-[11px] font-medium uppercase tracking-wide text-[#5a5a6e]">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-white/40">
               Motivo
             </span>
             <select
@@ -148,7 +148,7 @@ export default function ListasConteo({
                 onFiltroMotivoChange?.(e.target.value);
                 setCurrentPage(0);
               }}
-              className="w-full rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-3 py-1.5 text-xs text-[#f1f1f3] focus:border-[#22c55e]/50 outline-none transition-colors"
+              className="w-full rounded-none border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white focus:border-[var(--accent)] outline-none transition-colors"
             >
               <option value="">Todos</option>
               {Object.entries(MOTIVO_LABELS).map(([code, label]) => (
@@ -160,7 +160,7 @@ export default function ListasConteo({
           </label>
 
           <label className="block space-y-1">
-            <span className="text-[11px] font-medium uppercase tracking-wide text-[#5a5a6e]">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-white/40">
               Desde
             </span>
             <input
@@ -170,12 +170,12 @@ export default function ListasConteo({
                 onFechaDesdeChange?.(e.target.value);
                 setCurrentPage(0);
               }}
-              className="w-full rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-3 py-1.5 text-xs text-[#f1f1f3] focus:border-[#22c55e]/50 outline-none transition-colors"
+              className="w-full rounded-none border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white focus:border-[var(--accent)] outline-none transition-colors"
             />
           </label>
 
           <label className="block space-y-1">
-            <span className="text-[11px] font-medium uppercase tracking-wide text-[#5a5a6e]">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-white/40">
               Hasta
             </span>
             <input
@@ -185,7 +185,7 @@ export default function ListasConteo({
                 onFechaHastaChange?.(e.target.value);
                 setCurrentPage(0);
               }}
-              className="w-full rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-3 py-1.5 text-xs text-[#f1f1f3] focus:border-[#22c55e]/50 outline-none transition-colors"
+              className="w-full rounded-none border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white focus:border-[var(--accent)] outline-none transition-colors"
             />
           </label>
         </div>
@@ -200,7 +200,7 @@ export default function ListasConteo({
               onFechaHastaChange?.("");
               setCurrentPage(0);
             }}
-            className="mt-3 text-xs font-medium text-[#22c55e] hover:text-green-400 transition-colors"
+            className="mt-3 text-xs font-medium text-[var(--accent)] hover:text-green-400 transition-colors"
           >
             Limpiar filtros
           </button>
@@ -208,7 +208,7 @@ export default function ListasConteo({
       </div>
 
       {verPdf ? (
-        <div className="px-5 py-6 bg-[#0d0d0f]">
+        <div className="px-5 py-6 bg-white/[0.03]">
           <PlanillaConteo
             sesion={verPdf}
             modo={verPdf.estado === "CONFIRMADO" ? "informe" : "conteo"}
@@ -220,18 +220,18 @@ export default function ListasConteo({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-[11px] uppercase tracking-wide text-[#5a5a6e] border-b border-[#1e1e24]">
-                  <th className="px-5 py-2 font-medium">N° Registro</th>
-                  <th className="px-3 py-2 font-medium">Fecha/Hora</th>
-                  <th className="px-3 py-2 font-medium">Motivo</th>
-                  <th className="px-3 py-2 font-medium">Estado</th>
-                  <th className="px-2 py-2 text-right font-medium">Acciones</th>
+                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                  <th className="px-4 py-3 font-medium">N° Registro</th>
+                  <th className="px-4 py-3 font-medium">Fecha/Hora</th>
+                  <th className="px-4 py-3 font-medium">Motivo</th>
+                  <th className="px-4 py-3 font-medium">Estado</th>
+                  <th className="px-4 py-3 text-right font-medium">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#1e1e24]">
+              <tbody>
                 {totalItems === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-5 py-8 text-center text-sm text-[#5a5a6e]">
+                    <td colSpan={5} className="px-4 py-8 text-center text-sm text-white/40">
                       {filtrosActivos
                         ? "No se encontraron listas con esos filtros."
                         : "Aún no generaste listas de conteo."}
@@ -243,25 +243,25 @@ export default function ListasConteo({
                   const aplicado = s.estado === "CONFIRMADO";
                   const desactivada = s.estado === "DESACTIVADO";
                   return (
-                  <tr key={s.id} className="hover:bg-[#13131a]/80 transition-colors">
-                    <td className="px-5 py-3 font-semibold text-[#f1f1f3] tabular-nums">
+                  <tr key={s.id} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
+                    <td className="px-4 py-3 font-semibold text-white tabular-nums">
                       #{s.id}
                     </td>
-                    <td className="px-3 py-3 text-[#9a9aac] whitespace-nowrap">
+                    <td className="px-4 py-3 text-white/70 whitespace-nowrap">
                       {fmtFechaHora(s.fechaHora)}
                     </td>
-                    <td className="px-3 py-3 text-[#e1e1eb]">
+                    <td className="px-4 py-3 text-white">
                       {nombreMotivo(s.motivo)}
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="px-4 py-3">
                       <EstadoBadge estado={s.estado} />
                     </td>
-                    <td className="px-2 py-3 text-right">
+                    <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
                           type="button"
                           onClick={() => setVerPdfId(s.id)}
-                          className="p-1.5 rounded text-white/40 hover:text-[#22c55e] hover:bg-[#22c55e]/10 transition-colors"
+                          className="p-1.5 rounded text-white/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors"
                           title="Planilla / PDF"
                           aria-label="Ver e imprimir la planilla de la lista"
                         >
@@ -271,7 +271,7 @@ export default function ListasConteo({
                           type="button"
                           onClick={() => setCargarId(s.id)}
                           disabled={desactivada}
-                          className="p-1.5 rounded text-white/40 hover:text-[#22c55e] hover:bg-[#22c55e]/10 transition-colors disabled:opacity-25 disabled:pointer-events-none"
+                          className="p-1.5 rounded text-white/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors disabled:opacity-25 disabled:pointer-events-none"
                           title={
                             aplicado
                               ? "Ver carga de stock"
@@ -287,7 +287,7 @@ export default function ListasConteo({
                           type="button"
                           onClick={() => setConfirmarId(s.id)}
                           disabled={aplicado || desactivada || !listo}
-                          className="p-1.5 rounded text-white/40 hover:text-[#22c55e] hover:bg-[#22c55e]/10 transition-colors disabled:opacity-25 disabled:pointer-events-none"
+                          className="p-1.5 rounded text-white/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors disabled:opacity-25 disabled:pointer-events-none"
                           title={
                             desactivada
                               ? "Lista desactivada"
@@ -332,7 +332,7 @@ export default function ListasConteo({
               onPageChange={setCurrentPage}
               pageSize={ITEMS_PER_PAGE}
               totalItems={totalItems}
-              className="px-5 py-4 border-t border-[#1e1e24]"
+              className="px-5 py-4 border-t border-white/10"
             />
           )}
         </>
@@ -341,13 +341,13 @@ export default function ListasConteo({
       {/* Modal: cargar stock físico (solo producto + stock a cargar) */}
       {cargar && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#1a1a20] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-2xl">
+          <div className="bg-[#0c0c0e] border border-white/10 rounded-none w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
               <div>
                 <h2 className="text-lg font-semibold text-white">
                   Cargar Stock Físico — Lista #{cargar.id}
                 </h2>
-                <p className="text-xs text-[#7a7a8c] mt-0.5">
+                <p className="text-xs text-white/50 mt-0.5">
                   {cargar.descripcion}
                   {cargar.motivo ? ` • ${cargar.motivo}` : ""}
                   {" • "}
@@ -365,25 +365,25 @@ export default function ListasConteo({
             <div className="p-6 space-y-4">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-[11px] uppercase tracking-wide text-[#5a5a6e] border-b border-[#1e1e24]">
-                    <th className="px-4 py-2 font-medium">Producto</th>
-                    <th className="px-3 py-2 font-medium">Stock Físico a cargar</th>
+                  <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                    <th className="px-4 py-3 font-medium">Producto</th>
+                    <th className="px-4 py-3 font-medium">Stock Físico a cargar</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#1e1e24]">
+                <tbody>
                   {cargar.items.map((it) => (
-                    <tr key={it.idProducto} className="hover:bg-[#13131a]/60">
+                    <tr key={it.idProducto} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                       <td className="px-4 py-3 min-w-[12rem]">
-                        <span className="font-medium text-[#f1f1f3] block truncate">
+                        <span className="font-medium text-white block truncate">
                           {it.nombre}
                         </span>
                         {it.unidadMedida ? (
-                          <span className="text-xs text-[#5a5a6e]">
+                          <span className="text-xs text-white/40">
                             {it.unidadMedida}
                           </span>
                         ) : null}
                       </td>
-                      <td className="px-3 py-3 w-32">
+                      <td className="px-4 py-3 w-32">
                         {(() => {
                           const decimal = unidadAdmiteDecimales(it.unidadMedida);
                           return (
@@ -405,13 +405,13 @@ export default function ListasConteo({
               </table>
 
               <div className="flex items-center justify-between pt-1">
-                <span className="text-sm text-[#5a5a6e]">
+                <span className="text-sm text-white/40">
                   {cargar.items.filter((it) => String(it.stockFisico ?? "").trim() !== "").length} de {cargar.items.length} producto{cargar.items.length !== 1 ? "s" : ""} cargado{cargar.items.length !== 1 ? "s" : ""}
                 </span>
                 <button
                   type="button"
                   onClick={() => setCargarId(null)}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#22c55e] hover:bg-green-400 text-black font-medium rounded-lg transition-colors"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-[var(--accent)] hover:bg-green-400 text-black font-medium rounded-none transition-colors"
                 >
                   Listo
                 </button>
@@ -424,13 +424,13 @@ export default function ListasConteo({
       {/* Modal: resumen y confirmación del ajuste */}
       {confirmar && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#1a1a20] border border-white/10 rounded-2xl w-full max-w-3xl max-h-[85vh] overflow-y-auto shadow-2xl">
+          <div className="bg-[#0c0c0e] border border-white/10 rounded-none w-full max-w-3xl max-h-[85vh] overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
               <div>
                 <h2 className="text-lg font-semibold text-white">
                   Confirmar Ajuste — Lista #{confirmar.id}
                 </h2>
-                <p className="text-xs text-[#7a7a8c] mt-0.5">
+                <p className="text-xs text-white/50 mt-0.5">
                   {confirmar.descripcion}
                   {confirmar.motivo ? ` • ${confirmar.motivo}` : ""}
                   {" • "}
@@ -449,48 +449,48 @@ export default function ListasConteo({
               {error && (
                 <div
                   role="alert"
-                  className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200"
+                  className="rounded-none border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200"
                 >
                   {error}
                 </div>
               )}
 
-              <div className="rounded-xl border border-[#1e1e24] bg-[#111114] overflow-hidden">
+              <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="text-left text-[11px] uppercase tracking-wide text-[#5a5a6e] border-b border-[#1e1e24]">
-                        <th className="px-4 py-2 font-medium">Producto</th>
-                        <th className="px-3 py-2 font-medium text-right">Cant. en sistema</th>
-                        <th className="px-3 py-2 font-medium text-right">Stock físico cargado</th>
-                        <th className="px-3 py-2 font-medium text-right">Diferencia</th>
+                      <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                        <th className="px-4 py-3 font-medium">Producto</th>
+                        <th className="px-4 py-3 text-right font-medium">Cant. en sistema</th>
+                        <th className="px-4 py-3 text-right font-medium">Stock físico cargado</th>
+                        <th className="px-4 py-3 text-right font-medium">Diferencia</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#1e1e24]">
+                    <tbody>
                       {confirmar.items.map((it) => {
                         const diff = calcDiff(it);
                         const diffCls =
                           diff > 0
-                            ? "text-[#22c55e]"
+                            ? "text-[var(--accent)]"
                             : diff < 0
                               ? "text-rose-400"
                               : "text-[#6e6e80]";
                         return (
-                          <tr key={it.idProducto} className="hover:bg-[#13131a]/60">
+                          <tr key={it.idProducto} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                             <td className="px-4 py-3 min-w-[12rem]">
-                              <span className="font-medium text-[#f1f1f3] block truncate">
+                              <span className="font-medium text-white block truncate">
                                 {it.nombre}
                               </span>
                               {it.unidadMedida ? (
-                                <span className="text-xs text-[#5a5a6e]">
+                                <span className="text-xs text-white/40">
                                   {it.unidadMedida}
                                 </span>
                               ) : null}
                             </td>
-                            <td className="px-3 py-3 text-right tabular-nums text-[#f1f1f3] whitespace-nowrap">
+                            <td className="px-4 py-3 text-right tabular-nums text-white whitespace-nowrap">
                               {it.stockSistema}
                             </td>
-                            <td className="px-3 py-3 text-right tabular-nums text-[#f1f1f3] whitespace-nowrap">
+                            <td className="px-4 py-3 text-right tabular-nums text-white whitespace-nowrap">
                               {it.stockFisico}
                             </td>
                             <td
@@ -509,27 +509,27 @@ export default function ListasConteo({
               <div className="flex items-center justify-between gap-3 pt-1 flex-wrap">
                 {confirmar.estado === "CONFIRMADO" ? (
                   <>
-                    <span className="inline-flex items-center gap-2 text-sm font-medium text-[#22c55e]">
+                    <span className="inline-flex items-center gap-2 text-sm font-medium text-[var(--accent)]">
                       Lista aplicada.
                     </span>
                     <button
                       type="button"
                       onClick={() => setConfirmarId(null)}
-                      className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#22c55e] hover:bg-green-400 text-black font-medium rounded-lg transition-colors"
+                      className="inline-flex items-center gap-2 px-6 py-2.5 bg-[var(--accent)] hover:bg-green-400 text-black font-medium rounded-none transition-colors"
                     >
                       Cerrar
                     </button>
                   </>
                 ) : (
                   <>
-                    <span className="text-sm text-[#5a5a6e]">
+                    <span className="text-sm text-white/40">
                       Al confirmar, el stock se actualiza al conteo físico.
                     </span>
                     <button
                       type="button"
                       onClick={() => onAplicar(confirmar.id)}
                       disabled={aplicandoConfirmar}
-                      className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#22c55e] hover:bg-green-400 disabled:opacity-40 disabled:pointer-events-none text-black font-medium rounded-lg transition-colors"
+                      className="inline-flex items-center gap-2 px-6 py-2.5 bg-[var(--accent)] hover:bg-green-400 disabled:opacity-40 disabled:pointer-events-none text-black font-medium rounded-none transition-colors"
                     >
                       <Save className="w-4 h-4" />
                       {aplicandoConfirmar ? "Aplicando…" : "Confirmar ajuste"}
@@ -544,13 +544,13 @@ export default function ListasConteo({
     {/* Modal: confirmar desactivación de una lista pendiente */}
       {desactivar && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#1a1a20] border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+          <div className="bg-[#0c0c0e] border border-white/10 rounded-none w-full max-w-md overflow-hidden shadow-2xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
               <div>
                 <h2 className="text-lg font-semibold text-white">
                   Desactivar Lista #{desactivar.id}
                 </h2>
-                <p className="text-xs text-[#7a7a8c] mt-0.5">
+                <p className="text-xs text-white/50 mt-0.5">
                   {desactivar.descripcion}
                   {desactivar.motivo ? ` • ${desactivar.motivo}` : ""}• {fmtFechaHora(desactivar.fechaHora)}
                 </p>
@@ -571,7 +571,7 @@ export default function ListasConteo({
                 <button
                   type="button"
                   onClick={() => setDesactivarId(null)}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#111114] hover:bg-[#1a1a22] text-[#b0b0c0] font-medium rounded-lg transition-colors"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0c0c0e] hover:bg-[#1a1a22] text-[#b0b0c0] font-medium rounded-none transition-colors"
                 >
                   Cancelar
                 </button>
@@ -582,7 +582,7 @@ export default function ListasConteo({
                     setDesactivarId(null);
                   }}
                   disabled={desactivandoConfirm}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-rose-500 hover:bg-rose-600 disabled:opacity-40 disabled:pointer-events-none text-white font-medium rounded-lg transition-colors"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-rose-500 hover:bg-rose-600 disabled:opacity-40 disabled:pointer-events-none text-white font-medium rounded-none transition-colors"
                 >
                   <Ban className="w-4 h-4" />
                   {desactivandoConfirm ? "Desactivando…" : "Desactivar lista"}

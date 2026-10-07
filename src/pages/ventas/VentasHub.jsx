@@ -30,11 +30,10 @@ const MODULOS = [
     pronto: true,
   },
   {
-    to: null,
+    to: "/ventas/devoluciones",
     label: "Devoluciones de ventas",
-    descripcion: "Gestión de devoluciones de ventas. Próximamente.",
+    descripcion: "Gestión de devoluciones, intercambios y anulaciones de ventas.",
     icon: Undo2,
-    pronto: true,
   },
 ];
 
@@ -42,8 +41,8 @@ export default function Ventas() {
     return (
         <div className="max-w-5xl mx-auto py-8 px-4 space-y-6">
             <div className="space-y-1">
-                <h1 className="text-2xl font-semibold text-[#f1f1f3] tracking-tight">Ventas</h1>
-                <p className="text-sm text-[#5a5a6e]">Selecciona un modulo para continuar</p>
+                <h1 className="text-2xl font-semibold text-white tracking-tight">Ventas</h1>
+                <p className="text-sm text-white/40">Selecciona un modulo para continuar</p>
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                 {MODULOS.map((m) => {
@@ -55,7 +54,7 @@ export default function Ventas() {
                             </div>
                             <div className="text-center space-y-1">
                                 <h2 className="text-base font-semibold text-white tracking-tight">{label}</h2>
-                                <p className="text-xs text-[#5a5a6e] leading-relaxed line-clamp-2">{descripcion}</p>
+                                <p className="text-xs text-white/40 leading-relaxed line-clamp-2">{descripcion}</p>
                             </div>
                         </div>
                     );

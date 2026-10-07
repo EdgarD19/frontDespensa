@@ -14,18 +14,18 @@ export default function Pagination({
   const to = showRange ? Math.min((page + 1) * pageSize, totalItems) : 0;
 
   const pageBtn =
-    "flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-white/60 hover:border-white/30 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm";
+    "flex h-7 w-7 items-center justify-center rounded-none border border-white/10 bg-white/[0.04] text-white/60 hover:border-white/30 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-colors text-sm";
 
   return (
     <div className={`flex items-center justify-between gap-3 flex-wrap ${className}`}>
       {showRange ? (
-        <span className="text-xs text-[#5a5a6e] tabular-nums">
+        <span className="text-xs text-white/40 tabular-nums">
           Mostrando {from}–{to} de {totalItems}
         </span>
       ) : (
         <span />
       )}
-      <div className="inline-flex items-center gap-0.5 rounded-xl border border-white/10 bg-white/[0.04] px-1.5 py-1.5 text-sm select-none shadow-sm">
+      <div className="inline-flex items-center gap-0.5 rounded-none border border-white/10 bg-white/[0.04] px-1.5 py-1.5 text-sm select-none shadow-sm">
         <button
           type="button"
           disabled={page <= 0}

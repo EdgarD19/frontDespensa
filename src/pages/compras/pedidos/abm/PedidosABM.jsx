@@ -56,11 +56,11 @@ function EstadoBadge({ estado }) {
 const thClass =
   "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300";
 
-const actionBase = "flex h-8 w-8 items-center justify-center rounded-lg transition-colors";
+const actionBase = "flex h-8 w-8 items-center justify-center rounded-none transition-colors";
 
 const fieldClass =
-  "w-full rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-3 py-2.5 text-sm text-[#f1f1f3] " +
-  "placeholder:text-[#4a4a5a] outline-none transition focus:border-[#22c55e]/60 focus:ring-2 focus:ring-[#22c55e]/15";
+  "w-full rounded-none border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm text-white " +
+  "placeholder:text-white/30 outline-none transition focus:border-[#22c55e]/60 focus:ring-2 focus:ring-[#22c55e]/15";
 
 /* ───────────── Página ───────────── */
 
@@ -187,17 +187,17 @@ export default function PedidosABM() {
 
       {/* Encabezado */}
       <div className="flex items-center gap-3">
-        <Link to="/compras" className="rounded-lg p-2 text-white/50 transition-colors hover:bg-white/10" aria-label="Volver">
+        <Link to="/compras" className="rounded-none p-2 text-white/50 transition-colors hover:bg-white/10" aria-label="Volver">
           <ArrowLeft size={18} />
         </Link>
         <div className="space-y-0.5">
-          <h1 className="text-2xl font-semibold tracking-tight text-[#f1f1f3]">Pedidos</h1>
-          <p className="text-sm text-[#5a5a6e]">Seguimiento de pedidos a proveedores</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-white">Pedidos</h1>
+          <p className="text-sm text-white/40">Seguimiento de pedidos a proveedores</p>
         </div>
       </div>
 
       {error && !sinBackend && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>
+        <div className="rounded-none border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>
       )}
 
       {/* Barra superior: filtro de estado + acción principal */}
@@ -213,8 +213,8 @@ export default function PedidosABM() {
                 onClick={() => { setFiltroEstado(opt.value); setPage(0); }}
                 className={`rounded-full border px-3.5 py-1.5 text-sm transition-colors ${
                   activo
-                    ? "border-[#22c55e]/40 bg-[#22c55e]/10 font-medium text-[#22c55e]"
-                    : "border-[#2a2a32] bg-[#111114] text-white/60 hover:border-[#3a3a44] hover:text-white"
+                    ? "border-[#22c55e]/40 bg-[var(--accent)]/10 font-medium text-[var(--accent)]"
+                    : "border-white/10 bg-[#0c0c0e] text-white/60 hover:border-[#3a3a44] hover:text-white"
                 }`}
               >
                 {opt.label}
@@ -226,7 +226,7 @@ export default function PedidosABM() {
         <button
           type="button"
           onClick={abrirCrear}
-          className="flex items-center gap-2 whitespace-nowrap rounded-lg bg-[#22c55e] px-4 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#22c55e]/50"
+          className="flex items-center gap-2 whitespace-nowrap rounded-none bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#22c55e]/50"
         >
           <Plus className="h-4 w-4" />
           Generar pedido
@@ -234,11 +234,11 @@ export default function PedidosABM() {
       </div>
 
       {/* Tabla */}
-      <div className="overflow-hidden border border-[#1e1e24] bg-[#111114] shadow-lg shadow-black/20">
+      <div className="overflow-hidden border border-white/10 bg-[#0c0c0e] shadow-lg shadow-black/20">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/10 bg-emerald-500/10">
+              <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
                 <th className={`${thClass} w-24`}>N°</th>
                 <th className={thClass}>Proveedor</th>
                 <th className={`${thClass} w-36`}>Emisión</th>
@@ -251,9 +251,9 @@ export default function PedidosABM() {
             <tbody>
               {loading &&
                 Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="border-b border-[#1e1e24] last:border-0">
+                  <tr key={i} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                     {Array.from({ length: 6 }).map((_, j) => (
-                      <td key={j} className="px-4 py-4">
+                      <td key={j} className="px-4 py-3">
                         <div className="h-4 w-3/4 animate-pulse rounded bg-white/10" />
                       </td>
                     ))}
@@ -294,23 +294,23 @@ export default function PedidosABM() {
                 return (
                   <tr
                     key={p.idPedido}
-                    className={`border-b border-[#1e1e24] transition-colors last:border-0 hover:bg-white/[0.04] ${
+                    className={`border-b border-white/10 transition-colors last:border-0 hover:bg-white/[0.04] ${
                       e === "cancelado" ? "opacity-60" : ""
                     }`}
                   >
-                    <td className="px-4 py-4 font-mono text-xs text-white/50">#{p.idPedido}</td>
-                    <td className="px-4 py-4 font-medium text-white">{p.nombreProveedor || "—"}</td>
-                    <td className="whitespace-nowrap px-4 py-4 text-white/60">{fmtFecha(p.fechaCreacion)}</td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3 font-mono text-xs text-white/50">#{p.idPedido}</td>
+                    <td className="px-4 py-3 font-medium text-white">{p.nombreProveedor || "—"}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-white/60">{fmtFecha(p.fechaCreacion)}</td>
+                    <td className="px-4 py-3">
                       <EstadoBadge estado={p.estado} />
                     </td>
                     <td
-                      className="max-w-[220px] truncate px-4 py-4 text-xs text-white/50"
+                      className="max-w-[220px] truncate px-4 py-3 text-xs text-white/50"
                       title={p.observaciones || undefined}
                     >
                       {p.observaciones || "—"}
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
                         {recibible && (
                           <button
@@ -318,7 +318,7 @@ export default function PedidosABM() {
                             onClick={() => abrirRecepcion(p)}
                             title="Recepcionar pedido"
                             aria-label="Recepcionar pedido"
-                            className={`${actionBase} bg-[#22c55e]/10 text-[#22c55e] hover:bg-[#22c55e]/20`}
+                            className={`${actionBase} bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20`}
                           >
                             <PackageCheck className="h-4 w-4" />
                           </button>
@@ -345,7 +345,7 @@ export default function PedidosABM() {
                             <XCircle className="h-4 w-4" />
                           </button>
                         )}
-                        {sinAcciones && <span className="pr-2 text-xs text-[#5a5a6e]">—</span>}
+                        {sinAcciones && <span className="pr-2 text-xs text-white/40">—</span>}
                       </div>
                     </td>
                   </tr>
@@ -414,14 +414,14 @@ export default function PedidosABM() {
 
       {cancelarSel && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm space-y-4 rounded-xl border border-[#1e1e24] bg-[#111114] p-5 shadow-2xl">
+          <div className="w-full max-w-sm space-y-4 rounded-none border border-white/10 bg-[#0c0c0e] p-5 shadow-2xl">
             <div className="flex items-center gap-3">
               <div className="rounded-full bg-red-500/10 p-2 text-red-400">
                 <XCircle className="h-5 w-5" />
               </div>
               <div>
                 <h3 className="text-base font-semibold text-white">Cancelar pedido</h3>
-                <p className="text-sm text-[#7a7a8c]">
+                <p className="text-sm text-white/50">
                   {cancelarSel.nombreProveedor || `Pedido #${cancelarSel.idPedido}`}
                 </p>
               </div>
@@ -432,11 +432,11 @@ export default function PedidosABM() {
             </p>
             <div className="flex justify-end gap-2">
               <button type="button" onClick={() => setCancelarSel(null)} disabled={cancelando}
-                className="rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-4 py-2 text-sm text-[#9a9aac] transition-colors hover:text-white disabled:opacity-40">
+                className="rounded-none border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white/70 transition-colors hover:text-white disabled:opacity-40">
                 No
               </button>
               <button type="button" onClick={confirmarCancelar} disabled={cancelando}
-                className="rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-400 disabled:opacity-40">
+                className="rounded-none bg-red-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-400 disabled:opacity-40">
                 {cancelando ? "Cancelando…" : "Sí, cancelar"}
               </button>
             </div>
@@ -524,29 +524,29 @@ function PedidoModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <div className="max-h-[85vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-[#1e1e24] bg-[#111114] shadow-2xl">
+      <div className="max-h-[85vh] w-full max-w-3xl overflow-y-auto rounded-none border border-white/10 bg-[#0c0c0e] shadow-2xl">
 
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#1e1e24] px-5 py-3">
-          <h2 className="text-sm font-semibold text-[#f1f1f3]">
+        <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
+          <h2 className="text-sm font-semibold text-white">
             {esEditar ? `Editar pedido #${pedido?.idPedido}` : "Generar pedido"}
           </h2>
           <button type="button" onClick={onCerrar} aria-label="Cerrar"
-            className="rounded p-1 text-[#5a5a6e] transition-colors hover:bg-white/5 hover:text-[#e1e1eb]">
+            className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
             <X className="h-4 w-4" />
           </button>
         </div>
 
         <div className="space-y-4 p-5">
           {mensajeError && (
-            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-300">
+            <div className="rounded-none border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-300">
               {mensajeError}
             </div>
           )}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="block space-y-1">
-              <span className="text-xs text-[#7a7a8c]">
+              <span className="text-xs text-white/50">
                 Proveedor <span className="text-rose-400">*</span>
               </span>
               <select
@@ -554,20 +554,20 @@ function PedidoModal({
                 onChange={(e) => { setForm({ ...form, idProveedor: e.target.value }); setFormError(null); }}
                 className={`${fieldClass} cursor-pointer`}
               >
-                <option value="" className="bg-[#111114]">Seleccionar proveedor</option>
+                <option value="" className="bg-[#0c0c0e]">Seleccionar proveedor</option>
                 {(esEditar && pedido?.idProveedor && !proveedores.some((x) => String(x.id ?? x.idProveedor) === String(pedido.idProveedor))) && (
-                  <option value={pedido.idProveedor} className="bg-[#111114]">
+                  <option value={pedido.idProveedor} className="bg-[#0c0c0e]">
                     {pedido.nombreProveedor || `Proveedor #${pedido.idProveedor}`} (inactivo)
                   </option>
                 )}
                 {proveedores.map((p) => (
-                  <option key={p.id ?? p.idProveedor} value={p.id ?? p.idProveedor} className="bg-[#111114]">{p.tipoPersona === "FISICA" ? [p.nombre, p.apellido].filter(Boolean).join(" ") : p.nombre}</option>
+                  <option key={p.id ?? p.idProveedor} value={p.id ?? p.idProveedor} className="bg-[#0c0c0e]">{p.tipoPersona === "FISICA" ? [p.nombre, p.apellido].filter(Boolean).join(" ") : p.nombre}</option>
                 ))}
               </select>
             </label>
 
             <label className="block space-y-1">
-              <span className="text-xs text-[#7a7a8c]">Observación</span>
+              <span className="text-xs text-white/50">Observación</span>
               <input
                 value={form.observaciones}
                 onChange={(e) => setForm({ ...form, observaciones: e.target.value })}
@@ -579,9 +579,9 @@ function PedidoModal({
 
           {/* Buscador de productos */}
           <div className="space-y-1">
-            <span className="text-xs text-[#7a7a8c]">Productos</span>
+            <span className="text-xs text-white/50">Productos</span>
             <div ref={prodRef} className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#5a5a6e]">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/40">
                 <Search className="h-4 w-4" />
               </span>
               <input
@@ -592,9 +592,9 @@ function PedidoModal({
                 className={`${fieldClass} pl-10`}
               />
               {showProd && (
-                <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-[#2a2a32] bg-[#111114] shadow-xl shadow-black/40">
+                <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-none border border-white/10 bg-[#0c0c0e] shadow-xl shadow-black/40">
                   {prodResults.length === 0 ? (
-                    <p className="px-3 py-3 text-sm text-[#5a5a6e]">No se encontraron productos.</p>
+                    <p className="px-3 py-3 text-sm text-white/40">No se encontraron productos.</p>
                   ) : prodResults.map((p) => {
                     const um = p.unitAbbreviation || p.unidadMedida;
                     return (
@@ -606,7 +606,7 @@ function PedidoModal({
                       >
                         <span className="truncate">{p.name || p.nombre}</span>
                         {um && (
-                          <span className="shrink-0 rounded-full border border-[#2a2a32] px-2 py-0.5 text-[11px] text-[#7a7a8c]">
+                          <span className="shrink-0 rounded-full border border-white/10 px-2 py-0.5 text-[11px] text-white/50">
                             {um}
                           </span>
                         )}
@@ -621,7 +621,7 @@ function PedidoModal({
                       onPageChange={setProdPage}
                       pageSize={8}
                       totalItems={prodTotalItems}
-                      className="border-t border-[#1e1e24] px-3 py-1.5"
+                      className="border-t border-white/10 px-3 py-1.5"
                     />
                   )}
                 </div>
@@ -631,22 +631,22 @@ function PedidoModal({
 
           {/* Líneas del pedido */}
           {lineas.length > 0 ? (
-            <div className="overflow-hidden border border-[#1e1e24]">
+            <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-white/10 bg-emerald-500/10 text-left">
-                    <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">Producto</th>
-                    <th className="w-24 px-3 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">U.M.</th>
-                    <th className="w-32 px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">Cantidad</th>
-                    <th className="w-12 px-2 py-2.5" aria-label="Quitar" />
+                  <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                    <th className="px-4 py-3 font-medium">Producto</th>
+                    <th className="w-24 px-4 py-3 text-center font-medium">U.M.</th>
+                    <th className="w-32 px-4 py-3 text-right font-medium">Cantidad</th>
+                    <th className="w-12 px-4 py-3" aria-label="Quitar" />
                   </tr>
                 </thead>
                 <tbody>
                   {lineas.map((l) => (
-                    <tr key={l.idProducto} className="border-b border-[#1e1e24] last:border-0 hover:bg-white/[0.03]">
-                      <td className="px-4 py-2.5 font-medium text-white">{l.nombre || `Producto #${l.idProducto}`}</td>
-                      <td className="px-3 py-2.5 text-center text-white/50">{l.unidadMedida || "—"}</td>
-                      <td className="px-3 py-2.5">
+                    <tr key={l.idProducto} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
+                      <td className="px-4 py-3 font-medium text-white">{l.nombre || `Producto #${l.idProducto}`}</td>
+                      <td className="px-4 py-3 text-center text-white/50">{l.unidadMedida || "—"}</td>
+                      <td className="px-4 py-3">
                         <CantidadInput
                           unidadMedida={esKG(l) ? "KG" : "UN"}
                           value={l.cantidad}
@@ -654,13 +654,13 @@ function PedidoModal({
                           ariaLabel={`Cantidad de ${l.nombre || "producto"}`}
                         />
                       </td>
-                      <td className="px-2 py-2.5 text-right">
+                      <td className="px-4 py-3 text-right">
                         <button
                           type="button"
                           onClick={() => eliminarLinea(l.idProducto)}
                           title="Quitar producto"
                           aria-label="Quitar producto"
-                          className="flex h-8 w-8 items-center justify-center rounded-lg text-[#5a5a6e] transition-colors hover:bg-red-500/10 hover:text-red-400"
+                          className="flex h-8 w-8 items-center justify-center rounded-none text-white/40 transition-colors hover:bg-red-500/10 hover:text-red-400"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -671,15 +671,15 @@ function PedidoModal({
               </table>
             </div>
           ) : (
-            <div className="rounded-lg border border-dashed border-[#2a2a32] px-4 py-8 text-center">
+            <div className="rounded-none border border-dashed border-white/10 px-4 py-8 text-center">
               <p className="text-sm text-white/60">Todavía no agregaste productos a este pedido.</p>
-              <p className="mt-1 text-xs text-[#5a5a6e]">Buscá un producto arriba para sumarlo.</p>
+              <p className="mt-1 text-xs text-white/40">Buscá un producto arriba para sumarlo.</p>
             </div>
           )}
 
           {/* Pie */}
-          <div className="flex items-center justify-between gap-3 border-t border-[#1e1e24] pt-4">
-            <span className="text-sm text-[#5a5a6e]">
+          <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-4">
+            <span className="text-sm text-white/40">
               {lineas.length > 0
                 ? `${lineas.length} producto${lineas.length !== 1 ? "s" : ""}`
                 : "Ningún producto seleccionado"}
@@ -688,7 +688,7 @@ function PedidoModal({
               <button
                 type="button"
                 onClick={onCerrar}
-                className="rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-4 py-2.5 text-sm text-[#9a9aac] transition-colors hover:text-[#e1e1eb]"
+                className="rounded-none border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white/70 transition-colors hover:text-white"
               >
                 Cancelar
               </button>
@@ -696,7 +696,7 @@ function PedidoModal({
                 type="button"
                 onClick={handleSubmit}
                 disabled={guardando || sinBackend}
-                className="flex items-center gap-2 rounded-lg bg-[#22c55e] px-6 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-[#1b2e23] disabled:text-[#6bd695]/40"
+                className="flex items-center gap-2 rounded-none bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-[#1b2e23] disabled:text-[#6bd695]/40"
               >
                 {guardando ? "Guardando..." : esEditar ? "Guardar cambios" : "Crear pedido"}
               </button>

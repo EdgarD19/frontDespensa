@@ -6,8 +6,8 @@
 
 /* Fondo oscuro global */
 html, body {
-  background-color: #101419;
-  color: #f0f6fc;
+  background-color: #0b0f14;
+  color: #e8ecf0;
 }
 
 /* Dropdown nativo (select) en dark mode: fondo y texto oscuros */
@@ -25,12 +25,12 @@ select option:checked {
 
 
 :root {
-  --bg-main: #020203;
-  --bg-card: #040606;
+  --bg-main: #0b0f14;
+  --bg-card: #0c0c0e;
   --bg-sidebar: #040507; 
-  --bg-input: #0d1117;
-  --border: #30363d;
-  --text-primary: #f0f6fc;
+  --bg-input: #0d0d0f;
+  --border: rgba(255, 255, 255, 0.10);
+  --text-primary: #e8ecf0;
   --accent-green: #22c55e;
   --accent-green-hover: #16a34a;
   --accent-cyan: #06b6d4;

@@ -3,11 +3,14 @@ import { Link } from "react-router-dom";
 import {
   Search, ShoppingCart, Trash2, Scale,
   Banknote, Landmark, AlertTriangle, RotateCcw, Check,
-  ArrowLeft, Barcode, X,
+  ArrowLeft, Barcode, X, Ban, Settings,
 } from "lucide-react";
 import { getProductos, getProductoByCodigo } from "../../../api/productosApi";
 import { registrarVentaFactura } from "../../../api/ventasApi";
 import { apiErrorMessage } from "../../../api/errors";
+import {
+  seleccionarComprobante, proximoNumero, numeroCompleto, emitirYConsumir,
+} from "../../../api/comprobantesApi";
 import ComprobanteImpresion from "./ComprobanteImpresion";
 import CantidadInput from "../../../components/ui/CantidadInput";
 import {
@@ -75,6 +78,12 @@ export default function RegistroVenta() {
   const [editandoCantidad, setEditandoCantidad] = useState(null);
   const [numeroPreview] = useState(() => numeroFacturaPreview());
   const [datosImpresion, setDatosImpresion] = useState(null);
+
+  // Timbrado vigente + próximo correlativo (configurado en Configuración > Comprobantes).
+  const [comprobanteSel, setComprobanteSel] = useState(() => seleccionarComprobante());
+  const timbrado = comprobanteSel.comprobante;
+  const ventaBloqueada = comprobanteSel.estado !== "vigente" || !timbrado;
+  const proximoNro = timbrado ? numeroCompleto(timbrado, proximoNumero(timbrado)) : null;
 
   const searchRef = useRef(null);
   const qtyInputRef = useRef(null);
@@ -158,7 +167,7 @@ export default function RegistroVenta() {
   const montoOk = esEfectivo ? Number.isFinite(montoIngresado) && montoIngresado >= 0 : true;
   const cambio = esEfectivo && montoOk ? Math.max(0, montoIngresado - totalConIva) : 0;
 
-  const puedeConfirmar = carrito.length > 0 && totalConIva > 0 &&
+  const puedeConfirmar = !ventaBloqueada && carrito.length > 0 && totalConIva > 0 &&
     (esEfectivo ? montoOk && montoIngresado >= totalConIva : true);
 
   // Solo presentación: cuánto falta para cubrir el total y por qué está deshabilitado "Cobrar".
@@ -306,7 +315,9 @@ export default function RegistroVenta() {
     };
     try {
       const data = await registrarVentaFactura(payload);
-      const numFactura = data?.numeroFactura ?? data?.numero_factura ?? numeroPreview;
+      // Consume el número correlativo del timbrado vigente (persistido en el front).
+      const consumido = timbrado ? emitirYConsumir(timbrado.id) : null;
+      const numFactura = consumido?.numero ?? data?.numeroFactura ?? data?.numero_factura ?? numeroPreview;
       const snap = carrito.map((l) => ({ ...l }));
       const cliSnap = cliente;
       setCarrito([]); setMontoPagado(""); setCliente(null); setEditandoCantidad(null);
@@ -315,7 +326,11 @@ export default function RegistroVenta() {
         idComprobante: `${Date.now()}-${numFactura}`, fecha: hoyISO(), numero: numFactura,
         cliente: cliSnap, lineas: snap, total: totalConIva, montoPagado: montoNum,
         cambio, tipo: "CONTADO", formaPago, formaPagoLabel: labelFormaPago(formaPago),
+        timbrado: consumido?.record
+          ? { numeroTimbrado: consumido.record.numeroTimbrado, vigenciaHasta: consumido.record.fechaVencimiento }
+          : null,
       });
+      setComprobanteSel(seleccionarComprobante());
       focusSearch();
     } catch (err) {
       const status = err?.response?.status;
@@ -326,7 +341,7 @@ export default function RegistroVenta() {
         setErrorGlobal(base);
       }
     } finally { setConfirmando(false); }
-  }, [puedeConfirmar, cliente, carrito, subtotal, montoNum, cambio, formaPago, totalConIva, cargarProductos, numeroPreview, focusSearch]);
+  }, [puedeConfirmar, cliente, carrito, subtotal, montoNum, cambio, formaPago, totalConIva, cargarProductos, numeroPreview, focusSearch, timbrado]);
 
   confirmarRef.current = handleConfirmar;
 
@@ -344,6 +359,15 @@ export default function RegistroVenta() {
           <span className="rounded-full border border-white/10 bg-white/[0.06] px-2.5 py-0.5 text-xs text-white/70">
             Contado
           </span>
+          {timbrado && (
+            <>
+              <span className="hidden rounded-full border border-[var(--border-accent)] bg-[var(--accent-dim)] px-2.5 py-0.5 text-xs text-[var(--accent)] lg:inline-flex">
+                Timbre <span className="mx-1 font-semibold" style={MONO}>{timbrado.numeroTimbrado}</span>
+                · Nº sig. <span className="mx-1 font-semibold" style={MONO}>{proximoNro}</span>
+                · vence <span className="ml-1">{timbrado.fechaVencimiento}</span>
+              </span>
+            </>
+          )}
         </div>
 
         {datosImpresion && (
@@ -370,6 +394,9 @@ export default function RegistroVenta() {
         </div>
       )}
 
+      {ventaBloqueada ? (
+        <PantallaVentaBloqueada estado={comprobanteSel.estado} motivo={comprobanteSel.motivo} />
+      ) : (
       <div className="flex min-h-0 flex-1 gap-5 pb-5">
         {/* ───────── Columna izquierda: búsqueda + carrito ───────── */}
         <section className="flex min-w-0 flex-1 flex-col gap-4">
@@ -562,6 +589,17 @@ export default function RegistroVenta() {
             </p>
           </div>
 
+          {timbrado && (
+            <div className="border-t border-white/10 px-4 py-3">
+              <p className={LABEL}>Comprobante a emitir</p>
+              <p className="mt-1 text-lg font-semibold leading-none text-white" style={MONO}>{proximoNro}</p>
+              <p className="mt-1.5 text-xs text-white/45">
+                Timbre <span className="text-white/70" style={MONO}>{timbrado.numeroTimbrado}</span>
+                {" · "}vigente hasta {timbrado.fechaVencimiento}
+              </p>
+            </div>
+          )}
+
           <div className="border-t border-white/10 px-4 py-3">
             <p className={`${LABEL} mb-3`}>Forma de pago</p>
             <div className="grid grid-cols-2 gap-2" role="group" aria-label="Forma de pago">
@@ -655,8 +693,59 @@ export default function RegistroVenta() {
           </div>
         </aside>
       </div>
+      )}
 
       <ComprobanteImpresion datos={datosImpresion} />
+    </div>
+  );
+}
+
+const MOTIVO_BLOQUEO = {
+  sin_configuracion: {
+    titulo: "Ventas bloqueadas",
+    detalle: "Todavía no se configuró ningún timbrado.",
+    accion: "Configurá los datos del comprobante (nº de timbrado, vigencia, establecimiento y rango) para habilitar la venta.",
+  },
+  vencido: {
+    titulo: "Timbrado vencido",
+    detalle: "El timbrado configurado superó su fecha de vigencia.",
+    accion: "Registrá un nuevo timbrado con vigencia vigente o desactivá el vencido.",
+  },
+  sin_iniciar: {
+    titulo: "Timbrado aún no vigente",
+    detalle: "La fecha actual es anterior al inicio de vigencia del timbrado.",
+    accion: "Revisá la fecha de inicio o activá otro timbrado.",
+  },
+  agotado: {
+    titulo: "Rango de numeración agotado",
+    detalle: "Se alcanzaron los números límite autorizados por la DNIT.",
+    accion: "Registrá un timbrado nuevo con un rango disponible.",
+  },
+};
+
+function PantallaVentaBloqueada({ estado, motivo }) {
+  const info = MOTIVO_BLOQUEO[estado] || MOTIVO_BLOQUEO.sin_configuracion;
+  return (
+    <div className="flex min-h-0 flex-1 flex-col items-center justify-center pb-5">
+      <div className="w-full max-w-xl rounded-none border border-red-500/30 bg-red-500/[0.06] p-6">
+        <div className="flex items-center gap-3 border-b border-red-500/20 pb-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-none border border-red-500/40 bg-red-500/10">
+            <Ban className="h-5 w-5 text-red-400" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-white">{info.titulo}</h2>
+            <p className="text-sm text-red-300">{info.detalle}</p>
+          </div>
+        </div>
+        <p className="mt-3 text-sm text-white/60">{motivo}</p>
+        <p className="mt-1 text-xs text-white/45">{info.accion}</p>
+        <Link
+          to="/configuracion/comprobantes"
+          className="mt-4 inline-flex items-center gap-2 rounded-none bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[var(--accent-hover)]">
+          <Settings className="h-4 w-4" />
+          Ir a Configuración de comprobantes
+        </Link>
+      </div>
     </div>
   );
 }

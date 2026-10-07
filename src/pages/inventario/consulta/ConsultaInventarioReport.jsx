@@ -20,7 +20,7 @@ export default function ConsultaInventarioReport({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="bg-[var(--bg-card)] border border-white/10 overflow-hidden">
+      <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
@@ -36,7 +36,7 @@ export default function ConsultaInventarioReport({
           <tbody>
             {loading && (
               Array.from({ length: 6 }).map((_, i) => (
-                <tr key={i} className="border-b border-white/5">
+                <tr key={i} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                   {Array.from({ length: 6 }).map((_, j) => (
                     <td key={j} className="px-4 py-3">
                       <div className="h-4 bg-white/10 rounded animate-pulse w-3/4" />
@@ -68,7 +68,7 @@ export default function ConsultaInventarioReport({
                 return (
                   <tr
                     key={p.id}
-                    className="border-b border-white/5 hover:bg-white/5 transition-colors"
+                    className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]"
                   >
                     <td className="px-4 py-3 text-white/40 font-mono text-xs">
                       {p.codigoBarras || "—"}

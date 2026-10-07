@@ -295,15 +295,15 @@ export default function AjusteInventario() {
   if (!puedeRegistrar) {
     return (
       <div className="max-w-xl mx-auto py-12 px-4 text-center space-y-3">
-        <ClipboardList className="w-10 h-10 text-[#5a5a6e] mx-auto" aria-hidden />
-        <h1 className="text-lg font-semibold text-[#e1e1eb]">
+        <ClipboardList className="w-10 h-10 text-white/40 mx-auto" aria-hidden />
+        <h1 className="text-lg font-semibold text-white">
           Ajuste de Stock
         </h1>
-        <p className="text-sm text-[#7a7a8c]">
+        <p className="text-sm text-white/50">
           No tenés permisos para acceder a los movimientos de stock. Solo
           usuarios con rol{" "}
-          <span className="text-[#9a9aac]">ADMIN</span> o{" "}
-          <span className="text-[#9a9aac]">ENCARGADO_INVENTARIO</span> pueden
+          <span className="text-white/70">ADMIN</span> o{" "}
+          <span className="text-white/70">ENCARGADO_INVENTARIO</span> pueden
           utilizar este módulo.
         </p>
       </div>
@@ -312,13 +312,13 @@ export default function AjusteInventario() {
 
   return (
     <div className="max-w-5xl mx-auto pb-10">
-      <div className="rounded-2xl border border-[#1e1e24] bg-[#111114] overflow-hidden">
+      <div className="rounded-none border border-white/10 bg-[#0c0c0e] overflow-hidden">
         <header className="px-5 sm:px-6 pt-5 pb-4 flex items-center gap-3 flex-wrap">
-          <Link to="/inventario" className="p-2 rounded-lg hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
+          <Link to="/inventario" className="p-2 rounded-none hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
             <ArrowLeft size={18} />
           </Link>
           <div className="flex-1 min-w-0 flex items-center justify-between flex-wrap gap-3">
-            <h1 className="text-xl sm:text-2xl font-bold text-[#f1f1f3] tracking-tight flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
               <ArrowLeftRight className="w-5 h-5 text-[#22c55e]" />
               Ajuste de Stock
             </h1>
@@ -326,7 +326,7 @@ export default function AjusteInventario() {
             type="button"
             onClick={() => setModalAbierto(true)}
             disabled={loading}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#22c55e] hover:bg-[#1aad4e] text-[#0d0d0f] text-sm font-semibold px-4 py-2.5 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+            className="inline-flex items-center gap-2 rounded-none bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-black text-sm font-semibold px-4 py-2.5 disabled:opacity-40 disabled:pointer-events-none transition-colors"
           >
             <Plus className="w-4 h-4" aria-hidden />
             Nueva lista
@@ -338,7 +338,7 @@ export default function AjusteInventario() {
           {error ? (
             <div
               role="alert"
-              className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200"
+              className="rounded-none border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200"
             >
               {error}
             </div>
@@ -347,7 +347,7 @@ export default function AjusteInventario() {
           {aviso ? (
             <div
               role="status"
-              className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"
+              className="rounded-none border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"
             >
               {aviso}
             </div>

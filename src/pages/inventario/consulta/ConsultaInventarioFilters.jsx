@@ -1,6 +1,6 @@
 import { Search } from "lucide-react";
 
-const fieldClass = "flex items-center gap-2 rounded-lg px-3 py-2 bg-white/5 border border-white/10";
+const fieldClass = "flex items-center gap-2 rounded-none px-3 py-2 bg-white/5 border border-white/10";
 const inputClass = "flex-1 bg-transparent border-none outline-none w-full text-white placeholder:text-white/30 focus:ring-0 text-sm";
 const selectClass = "w-full bg-transparent border-none outline-none text-white focus:ring-0 cursor-pointer text-sm";
 

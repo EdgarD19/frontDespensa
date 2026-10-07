@@ -11,7 +11,7 @@ import {
 } from "../../../api/maestrosABMApi";
 
 const inputClass =
-  "flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent-green)]";
+  "flex-1 bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent)]";
 
 // Catálogo de categorías compartido entre las secciones de Categorías y Subcategorías,
 // para que al crear/editar una categoría la sección de subcategorías la vea al instante.
@@ -126,12 +126,12 @@ export function SeccionCategorias() {
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           placeholder="Nueva categoría..."
           className={inputClass} />
-        <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent-green)]/90 hover:bg-[var(--accent-green)] text-black text-sm font-medium rounded-lg transition-colors">
+        <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent)]/90 hover:bg-[var(--accent)] text-black text-sm font-medium rounded-none transition-colors">
           <Plus className="w-4 h-4" /> Agregar
         </button>
       </div>
 
-      {error && <div className="mb-3 px-3 py-2 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-lg">{error}</div>}
+      {error && <div className="mb-3 px-3 py-2 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-none">{error}</div>}
 
       {cargando ? (
         <div className="text-white/40 text-sm py-4 text-center">Cargando...</div>
@@ -140,7 +140,7 @@ export function SeccionCategorias() {
       ) : (
         <div className="space-y-1">
           {cats.map((c) => (
-            <div key={c.id} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 group">
+            <div key={c.id} className="flex items-center gap-2 px-3 py-2 rounded-none hover:bg-white/5 group">
               {editId === c.id ? (
                 <>
                   <input value={editName} onChange={(e) => setEditName(e.target.value)}
@@ -156,8 +156,8 @@ export function SeccionCategorias() {
                     {c.activo === false ? "Inactivo" : "Activo"}
                   </span>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => { setEditId(c.id); setEditName(c.nombre); }} className="p-1 text-white/40 hover:text-[var(--accent-green)]"><Pencil className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => handleToggle(c)} className="p-1 text-white/40 hover:text-[var(--accent-green)]">
+                    <button onClick={() => { setEditId(c.id); setEditName(c.nombre); }} className="p-1 text-white/40 hover:text-[var(--accent)]"><Pencil className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => handleToggle(c)} className="p-1 text-white/40 hover:text-[var(--accent)]">
                       {c.activo === false ? <ToggleLeft className="w-3.5 h-3.5" /> : <ToggleRight className="w-3.5 h-3.5" />}
                     </button>
                   </div>
@@ -175,8 +175,8 @@ export function SeccionCategorias() {
           confirmarLabel={confirmarCat.activar ? "Activar" : "Inactivar"}
           confirmarClass={
             confirmarCat.activar
-              ? "bg-[#22c55e] text-[#0d0d0f] hover:bg-[#16a34a]"
-              : "bg-[#ef4444] text-[#0d0d0f] hover:bg-[#dc2626]"
+              ? "bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)]"
+              : "bg-[#ef4444] text-black hover:bg-[#dc2626]"
           }
           cargando={cambiando}
           onConfirmar={confirmarCambioEstado}
@@ -271,7 +271,7 @@ export function SeccionSubcategorias() {
   };
 
   const selectClass =
-    "bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[var(--accent-green)] cursor-pointer";
+    "bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white focus:outline-none focus:border-[var(--accent)] cursor-pointer";
 
   return (
     <div>
@@ -289,12 +289,12 @@ export function SeccionSubcategorias() {
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           placeholder="Nueva subcategoría..."
           className={inputClass} />
-        <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent-green)]/90 hover:bg-[var(--accent-green)] text-black text-sm font-medium rounded-lg transition-colors">
+        <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent)]/90 hover:bg-[var(--accent)] text-black text-sm font-medium rounded-none transition-colors">
           <Plus className="w-4 h-4" /> Agregar
         </button>
       </div>
 
-      {error && <div className="mb-3 px-3 py-2 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-lg">{error}</div>}
+      {error && <div className="mb-3 px-3 py-2 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-none">{error}</div>}
 
       {loading ? (
         <div className="text-white/40 text-sm py-4 text-center">Cargando...</div>
@@ -303,7 +303,7 @@ export function SeccionSubcategorias() {
       ) : (
         <div className="space-y-1">
           {subs.map((s) => (
-            <div key={s.id} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 group">
+            <div key={s.id} className="flex items-center gap-2 px-3 py-2 rounded-none hover:bg-white/5 group">
               {editId === s.id ? (
                 <>
                   <input value={editName} onChange={(e) => setEditName(e.target.value)}
@@ -319,8 +319,8 @@ export function SeccionSubcategorias() {
                     {s.activo === false ? "Inactivo" : "Activo"}
                   </span>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => { setEditId(s.id); setEditName(s.nombre); }} className="p-1 text-white/40 hover:text-[var(--accent-green)]"><Pencil className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => handleToggle(s)} className="p-1 text-white/40 hover:text-[var(--accent-green)]">
+                    <button onClick={() => { setEditId(s.id); setEditName(s.nombre); }} className="p-1 text-white/40 hover:text-[var(--accent)]"><Pencil className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => handleToggle(s)} className="p-1 text-white/40 hover:text-[var(--accent)]">
                       {s.activo === false ? <ToggleLeft className="w-3.5 h-3.5" /> : <ToggleRight className="w-3.5 h-3.5" />}
                     </button>
                   </div>
@@ -338,8 +338,8 @@ export function SeccionSubcategorias() {
           confirmarLabel={confirmarSub.activar ? "Activar" : "Inactivar"}
           confirmarClass={
             confirmarSub.activar
-              ? "bg-[#22c55e] text-[#0d0d0f] hover:bg-[#16a34a]"
-              : "bg-[#ef4444] text-[#0d0d0f] hover:bg-[#dc2626]"
+              ? "bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)]"
+              : "bg-[#ef4444] text-black hover:bg-[#dc2626]"
           }
           cargando={cambiando}
           onConfirmar={confirmarCambioEstado}
@@ -353,7 +353,7 @@ export function SeccionSubcategorias() {
 function AccordionSection({ titulo, defaultOpen = false, children }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="border border-white/10 rounded-xl overflow-hidden">
+    <div className="border border-white/10 rounded-none overflow-hidden">
       <button onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between px-5 py-3.5 bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-left">
         <h3 className="text-white font-medium text-sm">{titulo}</h3>
@@ -369,7 +369,7 @@ export default function MaestrosABM() {
     <CategoriasProvider>
       <div className="space-y-5">
         <div className="flex items-center gap-3">
-          <Link to="/inventario" className="rounded-lg hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
+          <Link to="/inventario" className="rounded-none hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
             <ArrowLeft size={18} />
           </Link>
           <div>

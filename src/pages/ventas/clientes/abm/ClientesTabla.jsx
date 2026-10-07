@@ -26,16 +26,16 @@ export default function ClientesTabla({
             value={search}
             onChange={(e) => onSearch(e.target.value)}
             placeholder="Buscar por nombre, apellido, razón social, RUC o documento"
-            className="w-full bg-white/5 border border-white/10 rounded-lg
+            className="w-full bg-white/5 border border-white/10 rounded-none
                       pl-9 pr-4 py-2 text-sm text-white placeholder:text-white/30
-                      focus:outline-none focus:border-[var(--accent-green)] transition-colors"
+                      focus:outline-none focus:border-[var(--accent)] transition-colors"
           />
         </div>
 
         <button
           onClick={onNuevo}
-          className="flex items-center gap-2 bg-[var(--accent-green)] hover:opacity-90
-                    text-black text-sm font-medium px-4 py-2 rounded-lg
+          className="flex items-center gap-2 bg-[var(--accent)] hover:opacity-90
+                    text-black text-sm font-medium px-4 py-2 rounded-none
                     transition-opacity whitespace-nowrap"
         >
           Nuevo cliente
@@ -43,10 +43,10 @@ export default function ClientesTabla({
       </div>
       
       {/* Tabla */}
-      <div className="bg-[var(--bg-card)] border border-white/5 rounded-xl overflow-hidden">
+      <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/10 text-white/40 text-left">
+            <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
               <th className="px-4 py-3 font-medium">Nombre / Razón Social</th>
               <th className="px-4 py-3 font-medium">Documento</th>
               <th className="px-4 py-3 font-medium">Tipo</th>
@@ -58,7 +58,7 @@ export default function ClientesTabla({
           <tbody>
             {loading && (
               Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i} className="border-b border-white/5">
+                <tr key={i} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                   {Array.from({ length: 5 }).map((_, j) => (
                     <td key={j} className="px-4 py-3">
                       <div className="h-4 bg-white/10 rounded animate-pulse w-3/4" />
@@ -88,7 +88,8 @@ export default function ClientesTabla({
                 <tr
                   key={c.id ?? c.idCliente}
                   onClick={() => onSeleccionar(c)}
-                  className={`border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors ${
+                  className={`border-b border-white/10 hover:bg-white/[0.04] last:border-0
+ cursor-pointer transition-colors ${
                     !activo ? "opacity-60" : ""
                   }`}
                 >

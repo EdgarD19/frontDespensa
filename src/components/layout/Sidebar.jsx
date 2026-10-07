@@ -26,20 +26,20 @@ export default function Sidebar() {
   return (
     <aside
       style={{ width: collapsed ? "64px" : "220px" }}
-      className="min-h-screen bg-[#0d0d0f] text-[#7a7a8c] flex flex-col border-r border-[#1e1e24] transition-all duration-300 ease-in-out flex-shrink-0"
+      className="min-h-screen bg-white/[0.03] text-white/50 flex flex-col border-r border-white/10 transition-all duration-300 ease-in-out flex-shrink-0"
     >
       {/* Logo */}
-      <div className="h-16 flex items-center border-b border-[#1e1e24] flex-shrink-0 px-4 overflow-hidden">
+      <div className="h-16 flex items-center border-b border-white/10 flex-shrink-0 px-4 overflow-hidden">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 rounded-none bg-[var(--accent)]/10 border border-[#22c55e]/20 flex items-center justify-center flex-shrink-0">
             <Store className="w-4 h-4 text-[#22c55e]" />
           </div>
           {!collapsed && (
             <div className="overflow-hidden min-w-0">
-              <p className="text-sm font-semibold text-[#f1f1f3] whitespace-nowrap leading-tight">
+              <p className="text-sm font-semibold text-white whitespace-nowrap leading-tight">
                 Despensa
               </p>
-              <p className="text-[10px] text-[#4a4a5a] whitespace-nowrap leading-tight">
+              <p className="text-[10px] text-white/30 whitespace-nowrap leading-tight">
                 Panel de control
               </p>
             </div>
@@ -68,11 +68,11 @@ export default function Sidebar() {
               className={({ isActive }) => {
                 const active = isActive || isActiveInventario || isActiveConfiguracion;
                 return [
-                  "relative flex items-center rounded-lg transition-all duration-200 overflow-hidden group",
+                  "relative flex items-center rounded-none transition-all duration-200 overflow-hidden group",
                   collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5",
                   active
-                    ? "bg-[#22c55e]/10 text-[#22c55e]"
-                    : "text-[#5a5a6e] hover:bg-[#15151a] hover:text-[#b0b0c0]",
+                    ? "bg-[var(--accent)]/10 text-[#22c55e]"
+                    : "text-white/40 hover:bg-[#15151a] hover:text-[#b0b0c0]",
                 ].join(" ");
               }}
             >
@@ -96,12 +96,12 @@ export default function Sidebar() {
       </nav>
 
       {/* Collapse button */}
-      <div className="p-3 border-t border-[#1e1e24]">
+      <div className="p-3 border-t border-white/10">
         <button
           onClick={() => setCollapsed(!collapsed)}
           title={collapsed ? "Expandir" : "Colapsar"}
           className={[
-            "w-full flex items-center rounded-lg text-[#3a3a4a] hover:bg-[#15151a] hover:text-[#8a8a9a] transition-all duration-200 overflow-hidden",
+            "w-full flex items-center rounded-none text-[#3a3a4a] hover:bg-[#15151a] hover:text-[#8a8a9a] transition-all duration-200 overflow-hidden",
             collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5",
           ].join(" ")}
         >

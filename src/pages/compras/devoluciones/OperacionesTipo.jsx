@@ -48,20 +48,20 @@ function fmtFechaHora(valor) {
 
 /* ───────────── Estilos compartidos ───────────── */
 
-const labelClass = "block text-xs text-[#7a7a8c] mb-1";
+const labelClass = "block text-xs text-white/50 mb-1";
 
 const fieldClass =
-  "w-full rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-3 py-2 text-sm text-[#f1f1f3] " +
-  "placeholder:text-[#4a4a5a] outline-none transition focus:border-[#22c55e]/60 focus:ring-2 focus:ring-[#22c55e]/15 " +
+  "w-full rounded-none border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white " +
+  "placeholder:text-white/30 outline-none transition focus:border-[#22c55e]/60 focus:ring-2 focus:ring-[#22c55e]/15 " +
   "disabled:cursor-not-allowed disabled:opacity-50";
 
 const fieldMonoClass = `${fieldClass} tabular-nums tracking-wide`;
 
-const thBase = "px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.14em] text-[#22c55e]/70";
+const thBase = "px-4 py-3 font-medium";
 
-const iconBtn = "flex h-8 w-8 items-center justify-center rounded-lg transition-colors";
+const iconBtn = "flex h-8 w-8 items-center justify-center rounded-none transition-colors";
 
-const modalShell = "w-full rounded-xl border border-[#1e1e24] bg-[#111114] shadow-2xl flex flex-col";
+const modalShell = "w-full rounded-none border border-white/10 bg-[#0c0c0e] shadow-2xl flex flex-col";
 
 const CONFIG = {
   DEVOLUCION: {
@@ -526,17 +526,17 @@ export default function OperacionesTipo({ tipo }) {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3">
-        <Link to="/compras/devoluciones-intercambios" className="rounded-lg p-2 text-white/50 transition-colors hover:bg-white/10" aria-label="Volver">
+        <Link to="/compras/devoluciones-intercambios" className="rounded-none p-2 text-white/50 transition-colors hover:bg-white/10" aria-label="Volver">
           <ArrowLeft size={18} />
         </Link>
         <div className="flex-1 space-y-0.5">
-          <h1 className="text-2xl font-semibold tracking-tight text-[#f1f1f3]">{cfg.plural}</h1>
-          <p className="text-sm text-[#5a5a6e]">{cfg.subtitulo}</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-white">{cfg.plural}</h1>
+          <p className="text-sm text-white/40">{cfg.subtitulo}</p>
         </div>
         <button
           type="button"
           onClick={() => { setErrorOperacion(null); setAviso(null); setShowModal(true); }}
-          className="flex items-center gap-2 whitespace-nowrap rounded-lg bg-[#22c55e] px-4 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#22c55e]/50"
+          className="flex items-center gap-2 whitespace-nowrap rounded-none bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-black transition hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#22c55e]/50"
         >
           <Plus className="h-4 w-4" />
           Registrar {cfg.label.toLowerCase()}
@@ -544,26 +544,26 @@ export default function OperacionesTipo({ tipo }) {
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+        <div className="flex items-center gap-2 rounded-none border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
           <AlertTriangle className="h-5 w-5 shrink-0" /> {error}
         </div>
       )}
       {errorOperacion && (
-        <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+        <div className="flex items-center gap-2 rounded-none border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
           <AlertTriangle className="h-5 w-5 shrink-0" /> {errorOperacion}
         </div>
       )}
       {aviso && (
-        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+        <div className="flex items-center gap-2 rounded-none border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
           <CheckCircle className="h-5 w-5 shrink-0" /> {aviso}
         </div>
       )}
 
-      <div className="overflow-hidden border border-[#1e1e24] bg-[#111114] shadow-lg shadow-black/20">
+      <div className="overflow-hidden border border-white/10 bg-[#0c0c0e] shadow-lg shadow-black/20">
         {cargandoOperaciones && operaciones.length === 0 ? (
           <div className="divide-y divide-[#1e1e24]">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 px-4 py-4">
+              <div key={i} className="flex items-center gap-4 px-4 py-3">
                 {Array.from({ length: 5 }).map((__, j) => (
                   <div key={j} className="h-4 flex-1 animate-pulse rounded bg-white/10" />
                 ))}
@@ -574,7 +574,7 @@ export default function OperacionesTipo({ tipo }) {
           <div className="space-y-2 px-4 py-14 text-center">
             <FileText className="mx-auto h-10 w-10 text-white/15" />
             <p className="text-sm text-white/50">{cfg.empty}</p>
-            <p className="text-xs text-[#5a5a6e]">
+            <p className="text-xs text-white/40">
               Empezá con “Registrar {cfg.label.toLowerCase()}”.
             </p>
           </div>
@@ -582,7 +582,7 @@ export default function OperacionesTipo({ tipo }) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#1e1e24] bg-white/[0.02]">
+                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
                   <th className={thBase}>Fecha</th>
                   <th className={thBase}>Estado</th>
                   {tipo !== "INTERCAMBIO" && <th className={thBase}>N° factura</th>}
@@ -599,17 +599,17 @@ export default function OperacionesTipo({ tipo }) {
                       ? totalFacturaById[op.facturaId] ?? totalesAnulacion[String(op.facturaId)] ?? null
                       : null;
                   return (
-                    <tr key={op.id} className="border-b border-[#1e1e24] transition-colors last:border-0 hover:bg-white/[0.04]">
-                      <td className="whitespace-nowrap px-4 py-3.5 text-white/60">{fmtFechaHora(op.fecha)}</td>
-                      <td className="px-4 py-3.5"><EstadoBadge estado={op.estado} /></td>
+                    <tr key={op.id} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
+                      <td className="whitespace-nowrap px-4 py-3 text-white/60">{fmtFechaHora(op.fecha)}</td>
+                      <td className="px-4 py-3"><EstadoBadge estado={op.estado} /></td>
                       {tipo !== "INTERCAMBIO" && (
-                        <td className="px-4 py-3.5 font-medium tabular-nums text-white">{op.facturaVinculada || (tipo === "INTERCAMBIO" ? "—" : op.facturaNueva || op.facturaNumero)}</td>
+                        <td className="px-4 py-3 font-medium tabular-nums text-white">{op.facturaVinculada || (tipo === "INTERCAMBIO" ? "—" : op.facturaNueva || op.facturaNumero)}</td>
                       )}
                       {tipo === "DEVOLUCION" && (
-                        <td className="px-4 py-3.5 tabular-nums text-white/50">{op.facturaNueva ? op.facturaOriginal : "—"}</td>
+                        <td className="px-4 py-3 tabular-nums text-white/50">{op.facturaNueva ? op.facturaOriginal : "—"}</td>
                       )}
-                      <td className="px-4 py-3.5 text-white/70">{op.proveedor}</td>
-                      <td className="px-4 py-3.5 text-right font-semibold tabular-nums text-zinc-100">
+                      <td className="px-4 py-3 text-white/70">{op.proveedor}</td>
+                      <td className="px-4 py-3 text-right font-semibold tabular-nums text-zinc-100">
                         {tipo === "ANULACION" ? (
                           totalAnulacion != null
                             ? fmtMoneda(totalAnulacion)
@@ -618,7 +618,7 @@ export default function OperacionesTipo({ tipo }) {
                               : "—"
                         ) : fmtMoneda(op.total)}
                       </td>
-                      <td className="px-4 py-3.5">
+                      <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
                             {op.tipo === "ANULACION" ? (
                               <button
@@ -705,7 +705,7 @@ export default function OperacionesTipo({ tipo }) {
                                 </button>
                               </>
                             ) : (
-                              <span className="pr-1 text-xs text-[#5a5a6e]">—</span>
+                              <span className="pr-1 text-xs text-white/40">—</span>
                             )}
                           </div>
                         </td>
@@ -832,19 +832,19 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar }) {
         className={`${modalShell} max-w-2xl max-h-[90vh]`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-[#1e1e24] px-5 py-3.5">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-[#f1f1f3]">
-            <FilePlus2 className="h-4 w-4 text-[#22c55e]" />
+        <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
+            <FilePlus2 className="h-4 w-4 text-[var(--accent)]" />
             Registrar factura nueva
           </h2>
           <button type="button" onClick={onCerrar} aria-label="Cerrar"
-            className="rounded p-1 text-[#5a5a6e] transition-colors hover:bg-white/5 hover:text-[#e1e1eb]">
+            className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
             <X className="h-4 w-4" />
           </button>
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto p-5">
-          <div className="space-y-3 rounded-lg border border-red-500/20 bg-red-500/5 p-4">
+          <div className="space-y-3 rounded-none border border-red-500/20 bg-red-500/5 p-4">
             <h3 className="flex items-center gap-2 text-sm font-semibold text-red-400">
               <FileText className="h-4 w-4" /> Factura original — quedará anulada
             </h3>
@@ -863,19 +863,19 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar }) {
               </div>
             </div>
             {op.items?.length > 0 && (
-              <div className="max-h-40 overflow-y-auto border border-white/5">
+              <div className="max-h-40 overflow-y-auto border border-white/10 bg-[#0c0c0e]">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-white/10 text-left text-white/40">
-                      <th className="px-3 py-2 font-medium">Producto</th>
-                      <th className="px-3 py-2 text-center font-medium">Cantidad</th>
+                    <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                      <th className="px-4 py-3 font-medium">Producto</th>
+                      <th className="px-4 py-3 text-center font-medium">Cantidad</th>
                     </tr>
                   </thead>
                   <tbody>
                     {op.items.map((it, i) => (
-                      <tr key={i} className="border-b border-white/5 last:border-0">
-                        <td className="px-3 py-2 text-white/80">{it.producto}</td>
-                        <td className="px-3 py-2 text-center tabular-nums text-white/70">{it.cantidad}</td>
+                      <tr key={i} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
+                        <td className="px-4 py-3 text-white/80">{it.producto}</td>
+                        <td className="px-4 py-3 text-center tabular-nums text-white/70">{it.cantidad}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -909,7 +909,7 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar }) {
               Timbrado <span className="text-rose-400">*</span>
             </label>
             {!op.proveedorId ? (
-              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-300">
+              <div className="rounded-none border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
                 Esta devolución no tiene un proveedor asociado, por lo que no se puede registrar la factura nueva.
               </div>
             ) : (
@@ -945,11 +945,11 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar }) {
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-[#1e1e24] px-5 py-3.5">
+        <div className="flex justify-end gap-2 border-t border-white/10 px-5 py-3.5">
           <button
             type="button"
             onClick={onCerrar}
-            className="rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-4 py-2.5 text-sm text-[#9a9aac] transition-colors hover:text-[#e1e1eb]"
+            className="rounded-none border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/70 transition-colors hover:text-white"
           >
             Volver
           </button>
@@ -957,7 +957,7 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar }) {
             type="button"
             onClick={() => onConfirmar(op, { numero: numeroNueva, idTimbrado: timbradoId, fecha: fechaNueva })}
             disabled={!puedeGuardar}
-            className="flex items-center gap-2 rounded-lg bg-[#22c55e] px-4 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex items-center gap-2 rounded-none bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Save className="h-4 w-4" /> Registrar factura nueva
           </button>
@@ -1013,12 +1013,12 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion
         className={`${modalShell} max-w-3xl max-h-[90vh]`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-[#1e1e24] px-5 py-3.5">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-[#f1f1f3]">
+        <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
             <FileText className="h-4 w-4 text-sky-400" /> {tituloOp} {numeroFactura || factura?.numeroFactura || ""}
           </h2>
           <button type="button" onClick={onCerrar} aria-label="Cerrar"
-            className="rounded p-1 text-[#5a5a6e] transition-colors hover:bg-white/5 hover:text-[#e1e1eb]">
+            className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -1036,7 +1036,7 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion
             <p className="py-8 text-center text-white/50">La factura no pudo cargarse.</p>
           ) : (
             <div className="space-y-4">
-<div className="grid grid-cols-2 gap-4 rounded-lg border border-[#1e1e24] bg-white/[0.02] p-4 text-sm lg:grid-cols-4">
+<div className="grid grid-cols-2 gap-4 rounded-none border border-white/10 bg-white/[0.02] p-4 text-sm lg:grid-cols-4">
                 <div>
                   <p className="text-xs text-white/40">N° factura</p>
                   <p className="tabular-nums text-white">{factura.numeroFactura}</p>
@@ -1055,33 +1055,33 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion
                 </div>
               </div>
 
-<div className="overflow-hidden border border-[#1e1e24]">
+<div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-[#1e1e24] bg-white/[0.02] text-left text-white/40">
-                      <th className="px-3 py-2.5 font-medium">Producto</th>
-                      <th className="px-3 py-2.5 text-center font-medium">Cantidad</th>
+                    <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                      <th className="px-4 py-3 font-medium">Producto</th>
+                      <th className="px-4 py-3 text-center font-medium">Cantidad</th>
                       {esIntercambio && (
-                        <th className="px-3 py-2.5 text-center font-medium">Intercambio</th>
+                        <th className="px-4 py-3 text-center font-medium">Intercambio</th>
                       )}
-                      <th className="px-3 py-2.5 text-right font-medium">P. unitario</th>
-                      <th className="px-3 py-2.5 text-right font-medium">Importe</th>
+                      <th className="px-4 py-3 text-right font-medium">P. unitario</th>
+                      <th className="px-4 py-3 text-right font-medium">Importe</th>
                     </tr>
                   </thead>
                   <tbody>
                     {detalles.map((d) => {
                       const cambiado = cantIntercambio[String(d.idProducto)] ?? null;
                       return (
-                        <tr key={d.idProducto ?? d.idDetalle} className="border-b border-[#1e1e24] last:border-0">
-                          <td className="px-3 py-2.5 text-white/80">{d.nombreProducto}</td>
-                          <td className="px-3 py-2.5 text-center tabular-nums text-white/70">{d.cantidad}</td>
+                        <tr key={d.idProducto ?? d.idDetalle} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
+                          <td className="px-4 py-3 text-white/80">{d.nombreProducto}</td>
+                          <td className="px-4 py-3 text-center tabular-nums text-white/70">{d.cantidad}</td>
                           {esIntercambio && (
-                            <td className={`px-3 py-2.5 text-center tabular-nums ${cambiado != null ? "font-medium text-amber-300" : "text-white/20"}`}>
+                            <td className={`px-4 py-3 text-center tabular-nums ${cambiado != null ? "font-medium text-amber-300" : "text-white/20"}`}>
                               {cambiado != null ? cambiado : "—"}
                             </td>
                           )}
-                          <td className="px-3 py-2.5 text-right tabular-nums text-white/70">{fmtMoneda(d.precioUnitario)}</td>
-                          <td className="px-3 py-2.5 text-right font-medium tabular-nums text-white">{fmtMoneda(Number(d.cantidad) * Number(d.precioUnitario))}</td>
+                          <td className="px-4 py-3 text-right tabular-nums text-white/70">{fmtMoneda(d.precioUnitario)}</td>
+                          <td className="px-4 py-3 text-right font-medium tabular-nums text-white">{fmtMoneda(Number(d.cantidad) * Number(d.precioUnitario))}</td>
                         </tr>
                       );
                     })}
@@ -1094,8 +1094,8 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion
                 </table>
               </div>
 
-              <div className="flex justify-end border-t border-[#1e1e24] pt-3">
-                <p className="text-sm text-white">{totalTexto}: <span className={`text-lg font-bold tabular-nums ${esAnulacion ? "text-red-400" : "text-[#22c55e]"}`}>{fmtMoneda(total)}</span></p>
+              <div className="flex justify-end border-t border-white/10 pt-3">
+                <p className="text-sm text-white">{totalTexto}: <span className={`text-lg font-bold tabular-nums ${esAnulacion ? "text-red-400" : "text-[var(--accent)]"}`}>{fmtMoneda(total)}</span></p>
               </div>
             </div>
           )}
@@ -1123,18 +1123,18 @@ function VerDevolucionModal({ op, onCerrar }) {
         className={`${modalShell} max-w-3xl max-h-[90vh]`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-[#1e1e24] px-5 py-3.5">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-[#f1f1f3]">
+        <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
             <PackageOpen className="h-4 w-4 text-sky-400" /> Devolución a registrar
           </h2>
           <button type="button" onClick={onCerrar} aria-label="Cerrar"
-            className="rounded p-1 text-[#5a5a6e] transition-colors hover:bg-white/5 hover:text-[#e1e1eb]">
+            className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
             <X className="h-4 w-4" />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5">
-          <div className="grid grid-cols-2 gap-4 rounded-lg border border-[#1e1e24] bg-white/[0.02] p-4 text-sm lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 rounded-none border border-white/10 bg-white/[0.02] p-4 text-sm lg:grid-cols-4">
             <div>
               <p className="text-xs text-white/40">Factura original</p>
               <p className="tabular-nums text-white">{op.facturaOriginal || "—"}</p>
@@ -1153,23 +1153,23 @@ function VerDevolucionModal({ op, onCerrar }) {
             </div>
           </div>
 
-          <div className="overflow-hidden border border-[#1e1e24]">
+          <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#1e1e24] bg-white/[0.02] text-left text-white/40">
-                  <th className="px-3 py-2.5 font-medium">Producto</th>
-                  <th className="px-3 py-2.5 text-center font-medium">Cantidad</th>
-                  <th className="px-3 py-2.5 text-right font-medium">P. unitario</th>
-                  <th className="px-3 py-2.5 text-right font-medium">Importe</th>
+                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                  <th className="px-4 py-3 font-medium">Producto</th>
+                  <th className="px-4 py-3 text-center font-medium">Cantidad</th>
+                  <th className="px-4 py-3 text-right font-medium">P. unitario</th>
+                  <th className="px-4 py-3 text-right font-medium">Importe</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((it) => (
-                  <tr key={it.idProducto ?? it.producto} className="border-b border-[#1e1e24] last:border-0">
-                    <td className="px-3 py-2.5 text-white/80">{it.producto}</td>
-                    <td className="px-3 py-2.5 text-center tabular-nums text-white/70">{it.cantidad}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-white/70">{fmtMoneda(it.precioUnitario)}</td>
-                    <td className="px-3 py-2.5 text-right font-medium tabular-nums text-white">{fmtMoneda(Number(it.cantidad) * Number(it.precioUnitario) || 0)}</td>
+                  <tr key={it.idProducto ?? it.producto} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
+                    <td className="px-4 py-3 text-white/80">{it.producto}</td>
+                    <td className="px-4 py-3 text-center tabular-nums text-white/70">{it.cantidad}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-white/70">{fmtMoneda(it.precioUnitario)}</td>
+                    <td className="px-4 py-3 text-right font-medium tabular-nums text-white">{fmtMoneda(Number(it.cantidad) * Number(it.precioUnitario) || 0)}</td>
                   </tr>
                 ))}
                 {items.length === 0 && (
@@ -1178,8 +1178,8 @@ function VerDevolucionModal({ op, onCerrar }) {
                   </tr>
                 )}
                 {items.some((it) => it.motivoDevolucion) && (
-                  <tr className="border-t border-[#1e1e24] bg-white/[0.01]">
-                    <td colSpan={4} className="px-3 py-2.5 text-xs text-white/60">
+                  <tr className="border-t border-white/10 bg-white/[0.01]">
+                    <td colSpan={4} className="px-4 py-3 text-xs text-white/60">
                       {items.map((it) => it.motivoDevolucion ? (
                         <p key={it.idProducto ?? it.producto}>
                           <span className="text-white/40">{it.producto}:</span> {it.motivoDevolucion}
@@ -1191,21 +1191,21 @@ function VerDevolucionModal({ op, onCerrar }) {
               </tbody>
             </table>
             {op.motivo && (
-              <div className="border-t border-[#1e1e24] px-4 py-2.5 text-sm">
+              <div className="border-t border-white/10 px-4 py-3 text-sm">
                 <span className="text-xs text-white/40">Motivo global: </span>
                 <span className="text-white/70">{op.motivo}</span>
               </div>
             )}
             {op.observaciones && (
-              <div className="border-t border-[#1e1e24] px-4 py-2.5 text-sm">
+              <div className="border-t border-white/10 px-4 py-3 text-sm">
                 <span className="text-xs text-white/40">Observaciones: </span>
                 <span className="text-white/70">{op.observaciones}</span>
               </div>
             )}
           </div>
 
-          <div className="flex justify-end border-t border-[#1e1e24] pt-3">
-            <p className="text-sm text-white">Total a devolver: <span className="text-lg font-bold tabular-nums text-[#22c55e]">{fmtMoneda(total)}</span></p>
+          <div className="flex justify-end border-t border-white/10 pt-3">
+            <p className="text-sm text-white">Total a devolver: <span className="text-lg font-bold tabular-nums text-[var(--accent)]">{fmtMoneda(total)}</span></p>
           </div>
         </div>
       </div>
@@ -1246,17 +1246,17 @@ function ConfirmarAccionModal({ tipo, op, onCerrar, onConfirmar }) {
         className={`${modalShell} max-w-md`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-[#1e1e24] px-5 py-3.5">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-[#f1f1f3]">
+        <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
             {esCierre ? (
-              <CheckCircle className="h-4 w-4 text-[#22c55e]" />
+              <CheckCircle className="h-4 w-4 text-[var(--accent)]" />
             ) : (
               <XCircle className="h-4 w-4 text-red-400" />
             )}
             {titulo}
           </h2>
           <button type="button" onClick={onCerrar} aria-label="Cerrar"
-            className="rounded p-1 text-[#5a5a6e] transition-colors hover:bg-white/5 hover:text-[#e1e1eb]">
+            className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -1265,19 +1265,19 @@ function ConfirmarAccionModal({ tipo, op, onCerrar, onConfirmar }) {
           <p className="text-sm leading-relaxed text-white/70">{textoAviso}</p>
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-[#1e1e24] px-5 py-3.5">
+        <div className="flex justify-end gap-2 border-t border-white/10 px-5 py-3.5">
           <button
             type="button"
             onClick={onCerrar}
-            className="rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-4 py-2.5 text-sm text-[#9a9aac] transition-colors hover:text-[#e1e1eb]"
+            className="rounded-none border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/70 transition-colors hover:text-white"
           >
             Volver
           </button>
           <button
             type="button"
             onClick={() => onConfirmar(op)}
-            className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${
-              esDestructiva ? "bg-red-500 text-white hover:bg-red-400" : "bg-[#22c55e] text-black hover:opacity-90"
+            className={`rounded-none px-4 py-3 text-sm font-semibold transition-colors ${
+              esDestructiva ? "bg-red-500 text-white hover:bg-red-400" : "bg-[var(--accent)] text-black hover:opacity-90"
             }`}
           >
             {labelBoton}
@@ -1649,32 +1649,32 @@ const puedeRegistrar = tipo === "ANULACION"
         </div>
 
         <div className="flex items-center justify-between gap-3 text-xs">
-          <p className="text-[#5a5a6e]">
+          <p className="text-white/40">
             {loadingFacturas ? "Cargando facturas…" : ""}
           </p>
           {hayFiltros && (
-            <button type="button" onClick={limpiarFiltros} className="flex items-center gap-1 text-[#22c55e] transition-colors hover:text-green-400">
+            <button type="button" onClick={limpiarFiltros} className="flex items-center gap-1 text-[var(--accent)] transition-colors hover:text-green-400">
               <X className="h-3.5 w-3.5" /> Limpiar filtros
             </button>
           )}
         </div>
 
-        <div className="overflow-hidden rounded-lg border border-[#1e1e24]">
+        <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
           <div className="max-h-[45vh] overflow-y-auto [color-scheme:dark] [scrollbar-color:#2a2a32_transparent] [scrollbar-width:thin]">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 z-10 bg-[#111114]">
-                <tr className="border-b border-[#1e1e24] bg-white/[0.02] text-left text-[11px] uppercase tracking-[0.14em] text-white/40">
-                  <th className="w-[24%] px-4 py-2.5 font-medium">N° factura</th>
-                  <th className="w-[13%] px-4 py-2.5 font-medium">Fecha</th>
-                  <th className="w-[22%] px-4 py-2.5 font-medium">Estado</th>
-                  <th className="px-4 py-2.5 font-medium">Proveedor</th>
-                  <th className="px-4 py-2.5 text-right font-medium">Total</th>
+              <thead className="sticky top-0 z-10 bg-[#0c0c0e]">
+                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                  <th className="w-[24%] px-4 py-3 font-medium">N° factura</th>
+                  <th className="w-[13%] px-4 py-3 font-medium">Fecha</th>
+                  <th className="w-[22%] px-4 py-3 font-medium">Estado</th>
+                  <th className="px-4 py-3 font-medium">Proveedor</th>
+                  <th className="px-4 py-3 text-right font-medium">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {loadingFacturas && (
                   Array.from({ length: 4 }).map((_, i) => (
-                    <tr key={i} className="border-b border-[#1e1e24] last:border-0">
+                    <tr key={i} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                       {Array.from({ length: 5 }).map((__, j) => (
                         <td key={j} className="px-4 py-3">
                           <div className="h-4 w-3/4 animate-pulse rounded bg-white/10" />
@@ -1708,18 +1708,18 @@ const puedeRegistrar = tipo === "ANULACION"
                       aria-disabled={bloqueada || undefined}
                       onClick={bloqueada ? undefined : () => handleSeleccionarFactura(f)}
                       onKeyDown={bloqueada ? undefined : (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleSeleccionarFactura(f); } }}
-                      className={`border-b border-[#1e1e24] border-l-2 transition-colors last:border-b-0 focus:outline-none focus-visible:bg-white/[0.06] ${
+                      className={`border-b border-white/10 border-l-2 transition-colors last:border-b-0 focus:outline-none focus-visible:bg-white/[0.06] ${
                         bloqueada
                           ? "cursor-not-allowed border-l-transparent"
                           : seleccionada
-                            ? "cursor-pointer border-l-[#22c55e] bg-[#22c55e]/[0.08]"
+                            ? "cursor-pointer border-l-[#22c55e] bg-[var(--accent)]/[0.08]"
                             : "cursor-pointer border-l-transparent hover:bg-white/[0.04]"
                       }`}
                     >
                       <td className={`px-4 py-3 align-top font-medium tabular-nums ${bloqueada ? "text-white/45" : "text-white"}`}>
                         <span className="flex items-center gap-1.5">
                           {f.numeroFactura}
-                          {seleccionada && <CheckCircle className="h-3.5 w-3.5 text-[#22c55e]" aria-hidden />}
+                          {seleccionada && <CheckCircle className="h-3.5 w-3.5 text-[var(--accent)]" aria-hidden />}
                         </span>
                       </td>
                       <td className={`whitespace-nowrap px-4 py-3 align-top ${textoClase}`}>{fmtFecha(f.fechaEmision)}</td>
@@ -1741,10 +1741,10 @@ const puedeRegistrar = tipo === "ANULACION"
         </div>
 
         {facturaSel && cargandoDetalle && (
-          <p className="text-xs text-[#5a5a6e]">Cargando detalle de la factura…</p>
+          <p className="text-xs text-white/40">Cargando detalle de la factura…</p>
         )}
         {tipo === "ANULACION" && facturaSel && !cargandoDetalle && avisosAnulacion.length > 0 && (
-          <ul className="space-y-1 rounded-lg border border-red-500/20 bg-red-500/5 p-3 text-xs text-red-300">
+          <ul className="space-y-1 rounded-none border border-red-500/20 bg-red-500/5 p-3 text-xs text-red-300">
             {avisosAnulacion.map((a) => (
               <li key={a} className="flex items-center gap-1.5">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {a}
@@ -1760,8 +1760,8 @@ const puedeRegistrar = tipo === "ANULACION"
     if (cargandoDetalle || !facturaDetalle) {
       return (
         <div className="space-y-3 p-5">
-          <div className="h-20 animate-pulse rounded-lg border border-[#1e1e24] bg-white/5" />
-          <div className="h-40 animate-pulse rounded-lg border border-[#1e1e24] bg-white/5" />
+          <div className="h-20 animate-pulse rounded-none border border-white/10 bg-white/5" />
+          <div className="h-40 animate-pulse rounded-none border border-white/10 bg-white/5" />
         </div>
       );
     }
@@ -1769,7 +1769,7 @@ const puedeRegistrar = tipo === "ANULACION"
     if (tipo === "ANULACION") {
       return (
         <div className="space-y-4 p-5">
-          <div className="space-y-2 rounded-lg border border-red-500/20 bg-red-500/5 p-4">
+          <div className="space-y-2 rounded-none border border-red-500/20 bg-red-500/5 p-4">
             <h3 className="flex items-center gap-2 text-sm font-semibold text-red-400">
               <Ban className="h-4 w-4" /> Anulación de factura
             </h3>
@@ -1789,13 +1789,13 @@ const puedeRegistrar = tipo === "ANULACION"
               </ul>
             )}
             {(facturaDetalle.detalles?.length || 0) > 0 && (
-              <div className="mt-3 max-h-40 overflow-y-auto rounded-lg border border-[#1e1e24]">
+              <div className="mt-3 max-h-40 overflow-y-auto rounded-none border border-white/10">
                 <table className="w-full text-xs">
-                  <thead className="sticky top-0 bg-[#111114]">
-                    <tr className="border-b border-[#1e1e24] bg-white/[0.02] text-left text-white/40">
-                      <th className="px-3 py-2 font-medium">Producto</th>
-                      <th className="px-2 py-2 text-center font-medium">Comprado</th>
-                      <th className="px-2 py-2 text-center font-medium">Stock</th>
+                  <thead className="sticky top-0 bg-[#0c0c0e]">
+                    <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                      <th className="px-4 py-3 font-medium">Producto</th>
+                      <th className="px-4 py-3 text-center font-medium">Comprado</th>
+                      <th className="px-4 py-3 text-center font-medium">Stock</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1805,10 +1805,10 @@ const puedeRegistrar = tipo === "ANULACION"
                         : null;
                       const falta = stock !== null && stock < (Number(d.cantidad) || 0);
                       return (
-                        <tr key={d.idProducto} className={`border-b border-[#1e1e24] last:border-0 ${falta ? "bg-red-500/[0.07]" : ""}`}>
-                          <td className="px-3 py-2 text-white">{d.nombreProducto}</td>
-                          <td className="px-2 py-2 text-center tabular-nums text-white/60">{d.cantidad}</td>
-                          <td className={`px-2 py-2 text-center tabular-nums ${falta ? "font-semibold text-red-400" : "text-white/60"}`}>
+                        <tr key={d.idProducto} className={`border-b border-white/10 last:border-0 ${falta ? "bg-red-500/[0.07]" : ""}`}>
+                          <td className="px-4 py-3 text-white">{d.nombreProducto}</td>
+                          <td className="px-4 py-3 text-center tabular-nums text-white/60">{d.cantidad}</td>
+                          <td className={`px-4 py-3 text-center tabular-nums ${falta ? "font-semibold text-red-400" : "text-white/60"}`}>
                             {stock === null ? "—" : stock}
                           </td>
                         </tr>
@@ -1840,15 +1840,15 @@ const puedeRegistrar = tipo === "ANULACION"
 
     return (
       <div className="space-y-4 p-5">
-        <div className="space-y-3 rounded-lg border border-[#1e1e24] bg-white/[0.02] p-4">
+        <div className="space-y-3 rounded-none border border-white/10 bg-white/[0.02] p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className={`flex items-center gap-2 text-sm font-semibold ${tipo === "DEVOLUCION" ? "text-red-400" : "text-emerald-400"}`}>
               {tipo === "DEVOLUCION" ? <FileText className="h-4 w-4" /> : <ArrowLeftRight className="h-4 w-4" />}
               {tipo === "DEVOLUCION" ? "Productos a devolver" : "Productos a intercambiar"}
             </h3>
             <div className="flex items-center gap-3 text-xs">
-              <span className="text-[#5a5a6e]">{seleccionados} seleccionado{seleccionados === 1 ? "" : "s"}</span>
-              <button type="button" onClick={marcarTodoElMaximo} className="flex items-center gap-1 font-medium text-[#22c55e] transition-colors hover:text-green-400">
+              <span className="text-white/40">{seleccionados} seleccionado{seleccionados === 1 ? "" : "s"}</span>
+              <button type="button" onClick={marcarTodoElMaximo} className="flex items-center gap-1 font-medium text-[var(--accent)] transition-colors hover:text-green-400">
                 <ListChecks className="h-3.5 w-3.5" /> Todo
               </button>
               {seleccionados > 0 && (
@@ -1859,15 +1859,15 @@ const puedeRegistrar = tipo === "ANULACION"
             </div>
           </div>
 
-          <div className="max-h-64 overflow-y-auto border border-[#1e1e24]">
+          <div className="max-h-64 overflow-y-auto border border-white/10">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-[#111114]">
-                <tr className="border-b border-[#1e1e24] bg-white/[0.02] text-left text-white/40">
-                  <th className="px-4 py-2.5 font-medium">Producto</th>
-                  <th className="px-2 py-2.5 text-center font-medium">Comprado</th>
-                  <th className="px-2 py-2.5 text-center font-medium">Stock</th>
-                  <th className="w-32 px-2 py-2.5 text-center font-medium">{tipo === "DEVOLUCION" ? "Devolver" : "Intercambiar"}</th>
-                  <th className="px-2 py-2.5 text-right font-medium">Importe</th>
+              <thead className="sticky top-0 bg-[#0c0c0e]">
+                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                  <th className="px-4 py-3 font-medium">Producto</th>
+                  <th className="px-4 py-3 text-center font-medium">Comprado</th>
+                  <th className="px-4 py-3 text-center font-medium">Stock</th>
+                  <th className="w-32 px-4 py-3 text-center font-medium">{tipo === "DEVOLUCION" ? "Devolver" : "Intercambiar"}</th>
+                  <th className="px-4 py-3 text-right font-medium">Importe</th>
                 </tr>
               </thead>
               <tbody>
@@ -1881,14 +1881,14 @@ const puedeRegistrar = tipo === "ANULACION"
                   const sinStock = stock !== null && stock <= 0;
                   const stockLimita = stock !== null && max < maxPorFactura(d, tipo);
                   return (
-                    <tr key={d.idProducto} className={`border-b border-[#1e1e24] last:border-0 transition-colors ${activo ? "bg-[#22c55e]/[0.04]" : "hover:bg-white/[0.03]"}`}>
-                      <td className="px-4 py-2.5 text-white">{d.nombreProducto}</td>
-                      <td className="px-2 py-2.5 text-center tabular-nums text-white/60">{d.cantidad}</td>
-                      <td className={`px-2 py-2.5 text-center tabular-nums ${sinStock ? "text-red-400/80" : stockLimita ? "text-amber-400/80" : "text-white/60"}`}
+                    <tr key={d.idProducto} className={`border-b border-white/10 last:border-0 transition-colors ${activo ? "bg-[var(--accent)]/[0.04]" : "hover:bg-white/[0.03]"}`}>
+                      <td className="px-4 py-3 text-white">{d.nombreProducto}</td>
+                      <td className="px-4 py-3 text-center tabular-nums text-white/60">{d.cantidad}</td>
+                      <td className={`px-4 py-3 text-center tabular-nums ${sinStock ? "text-red-400/80" : stockLimita ? "text-amber-400/80" : "text-white/60"}`}
                         title={stockLimita ? `Stock insuficiente: máximo ${max}` : undefined}>
                         {stock === null ? "—" : stock}
                       </td>
-                      <td className="px-2 py-2.5">
+                      <td className="px-4 py-3">
                         <div className="mx-auto flex w-28 items-center gap-1">
                           <CantidadInput
                             unidadMedida={esKG({ unidadMedida: unidadesById[Number(d.idProducto)] }) ? "KG" : "UN"}
@@ -1904,13 +1904,13 @@ const puedeRegistrar = tipo === "ANULACION"
                             onClick={() => handleCambiarCantidad(d.idProducto, max)}
                             disabled={max <= 0}
                             title={max > 0 ? `Usar máximo permitido (${max})` : "No hay stock disponible"}
-                            className="shrink-0 rounded-md border border-[#2a2a32] px-1.5 py-1.5 text-[10px] text-white/40 transition-colors hover:border-[#22c55e]/40 hover:text-[#22c55e] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-[#2a2a32] disabled:hover:text-white/40"
+                            className="shrink-0 rounded-none border border-white/10 px-1.5 py-1.5 text-[10px] text-white/40 transition-colors hover:border-[#22c55e]/40 hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-white/10 disabled:hover:text-white/40"
                           >
                             Máx
                           </button>
                         </div>
                       </td>
-                      <td className="px-2 py-2.5 text-right font-medium tabular-nums text-white">{fmtMoneda(cant * (d.precioUnitario || 0))}</td>
+                      <td className="px-4 py-3 text-right font-medium tabular-nums text-white">{fmtMoneda(cant * (d.precioUnitario || 0))}</td>
                     </tr>
                   );
                 })}
@@ -1919,7 +1919,7 @@ const puedeRegistrar = tipo === "ANULACION"
           </div>
         </div>
 
-        <div className="flex flex-wrap items-end gap-4 border-t border-[#1e1e24] pt-3">
+        <div className="flex flex-wrap items-end gap-4 border-t border-white/10 pt-3">
           <div className="min-w-[14rem] flex-1">
             <label htmlFor="motivo-operacion" className={labelClass}>Motivo (opcional)</label>
             <input
@@ -1935,7 +1935,7 @@ const puedeRegistrar = tipo === "ANULACION"
           </div>
           <p className="whitespace-nowrap pb-2 text-sm text-white">
             Total {tipo === "DEVOLUCION" ? "a devolver" : "a intercambiar"}:{" "}
-            <span className="text-lg font-bold tabular-nums text-[#22c55e]">{fmtMoneda(totalOperacion)}</span>
+            <span className="text-lg font-bold tabular-nums text-[var(--accent)]">{fmtMoneda(totalOperacion)}</span>
           </p>
         </div>
       </div>
@@ -1966,13 +1966,13 @@ const puedeRegistrar = tipo === "ANULACION"
             className={`${modalShell} max-w-4xl max-h-[90vh]`}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-[#1e1e24] px-5 py-3.5">
+            <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
               <div>
-                <h2 className="text-sm font-semibold text-[#f1f1f3]">Nueva {labelTipo.toLowerCase()}</h2>
-                <p className="mt-0.5 text-xs text-[#7a7a8c]">Seleccioná la factura de compra.</p>
+                <h2 className="text-sm font-semibold text-white">Nueva {labelTipo.toLowerCase()}</h2>
+                <p className="mt-0.5 text-xs text-white/50">Seleccioná la factura de compra.</p>
               </div>
               <button type="button" onClick={onCerrar} aria-label="Cerrar"
-                className="rounded p-1 text-[#5a5a6e] transition-colors hover:bg-white/5 hover:text-[#e1e1eb]">
+                className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -1993,20 +1993,20 @@ const puedeRegistrar = tipo === "ANULACION"
             className={`${modalShell} max-w-4xl max-h-[90vh]`}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-[#1e1e24] px-5 py-3.5">
+            <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
               <div>
-                <h2 className="text-sm font-semibold text-[#f1f1f3]">{tituloDetalle}</h2>
-                <p className="mt-0.5 text-xs text-[#7a7a8c]">{subtituloDetalle}</p>
+                <h2 className="text-sm font-semibold text-white">{tituloDetalle}</h2>
+                <p className="mt-0.5 text-xs text-white/50">{subtituloDetalle}</p>
               </div>
               <button type="button" onClick={() => setVerDetalle(false)} aria-label="Cerrar"
-                className="rounded p-1 text-[#5a5a6e] transition-colors hover:bg-white/5 hover:text-[#e1e1eb]">
+                className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <div className="flex-1 overflow-y-auto">{renderPasoDetalle()}</div>
 
-            <div className="flex items-center justify-between gap-3 border-t border-[#1e1e24] px-5 py-3.5">
+            <div className="flex items-center justify-between gap-3 border-t border-white/10 px-5 py-3.5">
               <div className="flex flex-1 items-start gap-2 text-xs">
                 {esDevolucionTotal ? (
                   <p className="flex items-center gap-1.5 text-amber-400" role="alert">
@@ -2028,7 +2028,7 @@ const puedeRegistrar = tipo === "ANULACION"
                 <button
                   type="button"
                   onClick={() => setVerDetalle(false)}
-                  className="flex items-center gap-1 rounded-lg border border-[#2a2a32] bg-[#0d0d0f] px-4 py-2.5 text-sm text-[#9a9aac] transition-colors hover:text-[#e1e1eb]"
+                  className="flex items-center gap-1 rounded-none border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/70 transition-colors hover:text-white"
                 >
                   <ChevronLeft className="h-4 w-4" /> Volver
                 </button>
@@ -2036,7 +2036,7 @@ const puedeRegistrar = tipo === "ANULACION"
                   type="button"
                   onClick={handleRegistrar}
                   disabled={!puedeRegistrar || registrando}
-                  className="flex items-center gap-2 rounded-lg bg-[#22c55e] px-6 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex items-center gap-2 rounded-none bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Save className="h-4 w-4" />
                   {registrando

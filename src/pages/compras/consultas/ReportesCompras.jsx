@@ -40,9 +40,9 @@ const fmtMes = (ym) => {
 
 const S = {
   field:
-    "w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-sm text-white " +
-    "placeholder:text-white/30 outline-none transition-colors duration-150 focus:border-[#22c55e]/50",
-  eyebrow: "text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]",
+    "w-full bg-white/5 border border-white/10 rounded-none px-2.5 py-1.5 text-sm text-white " +
+    "placeholder:text-white/30 outline-none transition-colors duration-150 focus:border-[var(--accent)]",
+  eyebrow: "text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40",
 };
 
 const REPORTES = [
@@ -261,23 +261,23 @@ export default function ReportesCompras() {
     return () => window.removeEventListener("click", cerrar);
   }, []);
 
-  const th = "px-4 py-2.5 font-medium text-white/40 text-left whitespace-nowrap";
-  const thR = "px-4 py-2.5 font-medium text-white/40 text-right whitespace-nowrap";
+  const th = "px-4 py-3 font-medium whitespace-nowrap";
+  const thR = "px-4 py-3 font-medium text-right whitespace-nowrap";
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4 space-y-6">
       <div className="flex items-center gap-3">
-        <Link to="/compras" className="p-2 rounded-lg hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
+        <Link to="/compras" className="p-2 rounded-none hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
           <ArrowLeft size={18} />
         </Link>
         <div>
-          <h1 className="text-2xl font-semibold text-[#f1f1f3] tracking-tight">Reporte de Compras</h1>
-          <p className="text-sm text-[#5a5a6e]">Consulta de compras por período, proveedor y producto</p>
+          <h1 className="text-2xl font-semibold text-white tracking-tight">Reporte de Compras</h1>
+          <p className="text-sm text-white/40">Consulta de compras por período, proveedor y producto</p>
         </div>
       </div>
 
       {/* Filtros */}
-      <div className="bg-[var(--bg-card)] border border-white/5 rounded-xl p-4 space-y-4">
+      <div className="bg-white/[0.02] border border-white/5 rounded-none p-4 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
           <div>
             <label className={S.eyebrow} htmlFor="desde">Desde</label>
@@ -303,7 +303,7 @@ export default function ReportesCompras() {
               <ChevronDown size={14} className="shrink-0 text-white/40" />
             </button>
             {abiertoProveedores && (
-              <div className="absolute z-20 mt-1 w-full max-h-52 overflow-y-auto bg-[#17171b] border border-white/10 rounded-lg p-1.5 space-y-0.5 shadow-xl">
+              <div className="absolute z-20 mt-1 w-full max-h-52 overflow-y-auto bg-[#0c0c0e] border border-white/10 rounded-none p-1.5 space-y-0.5 shadow-xl">
                 <label className="flex items-center gap-2 px-2 py-1.5 rounded text-sm text-white hover:bg-white/5 cursor-pointer">
                   <input type="checkbox" checked={selProveedores.size === 0} onChange={() => setSelProveedores(new Set())} />
                   Todos los proveedores
@@ -336,7 +336,7 @@ export default function ReportesCompras() {
               <ChevronDown size={14} className="shrink-0 text-white/40" />
             </button>
             {abiertoProductos && (
-              <div className="absolute z-20 mt-1 w-full max-h-52 overflow-y-auto bg-[#17171b] border border-white/10 rounded-lg p-1.5 space-y-0.5 shadow-xl">
+              <div className="absolute z-20 mt-1 w-full max-h-52 overflow-y-auto bg-[#0c0c0e] border border-white/10 rounded-none p-1.5 space-y-0.5 shadow-xl">
                 <label className="flex items-center gap-2 px-2 py-1.5 rounded text-sm text-white hover:bg-white/5 cursor-pointer">
                   <input type="checkbox" checked={selProductos.size === 0} onChange={() => setSelProductos(new Set())} />
                   Todos los productos
@@ -356,14 +356,14 @@ export default function ReportesCompras() {
         </div>
 
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <p className="text-xs text-[#5a5a6e]">
+          <p className="text-xs text-white/40">
             {filtradas.length} compra{filtradas.length !== 1 ? "s" : ""} según los filtros seleccionados
           </p>
           <button
             type="button"
             onClick={limpiarFiltros}
             title="Limpiar los filtros y realizar una nueva consulta"
-            className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-xs text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+            className="px-3 py-1.5 rounded-none border border-white/10 bg-white/5 text-xs text-white/70 hover:bg-white/10 hover:text-white transition-colors"
           >
             Limpiar filtros
           </button>
@@ -371,11 +371,11 @@ export default function ReportesCompras() {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 text-sm px-4 py-3">{error}</div>
+        <div className="rounded-none border border-red-500/30 bg-red-500/10 text-red-400 text-sm px-4 py-3">{error}</div>
       )}
 
       {/* Encabezado del reporte: nombre + rango + parámetros usados */}
-      <div className="bg-[var(--bg-card)] border border-white/5 rounded-xl px-4 py-3 text-xs text-[#8b8b9e] flex flex-col sm:flex-row gap-1.5 sm:gap-6">
+      <div className="bg-white/[0.02] border border-white/5 rounded-none px-4 py-3 text-xs text-[#8b8b9e] flex flex-col sm:flex-row gap-1.5 sm:gap-6">
         <span>
           <span className="font-medium text-white/70">Reporte:</span> {REPORTES.find((r) => r.id === reporte)?.label}
         </span>
@@ -402,11 +402,11 @@ export default function ReportesCompras() {
               disabled={r.disabled}
               onClick={() => setReporte(r.id)}
               title={r.motivo}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-colors ${
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-none text-sm font-medium border transition-colors ${
                 r.disabled
                   ? "text-white/25 border-white/5 cursor-not-allowed"
                   : activo
-                    ? "bg-[#22c55e]/15 border-[#22c55e]/40 text-[#22c55e]"
+                    ? "bg-[var(--accent)]/15 border-[#22c55e]/40 text-[var(--accent)]"
                     : "text-white/70 border-white/10 bg-white/5 hover:bg-white/10 hover:text-white"
               }`}
             >
@@ -420,7 +420,7 @@ export default function ReportesCompras() {
 
       {/* Contenido del reporte */}
       {cargando ? (
-        <div className="bg-[var(--bg-card)] border border-white/5 rounded-xl p-4 space-y-3">
+        <div className="bg-white/[0.02] border border-white/5 rounded-none p-4 space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="h-8 bg-white/10 rounded animate-pulse w-full" />
           ))}
@@ -440,15 +440,15 @@ export default function ReportesCompras() {
           thR={thR}
         />
       ) : reporte === "proveedor" ? (
-        <div className="bg-[var(--bg-card)] border border-white/5 rounded-xl overflow-hidden">
+        <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
           <div className="px-4 py-3 border-b border-white/10">
             <h2 className="text-sm font-semibold text-white">Compras por proveedor</h2>
-            <p className="text-xs text-[#5a5a6e]">Totales por proveedor en el rango seleccionado</p>
+            <p className="text-xs text-white/40">Totales por proveedor en el rango seleccionado</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10">
+                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
                   <th className={th}>Proveedor</th>
                   <th className={thR}>Cant. Facturas</th>
                   <th className={thR}>Cant. Productos</th>
@@ -461,40 +461,40 @@ export default function ReportesCompras() {
                   <tr><td colSpan={5} className="px-4 py-8 text-center text-white/30">No hay compras en el rango seleccionado.</td></tr>
                 )}
                 {porProveedor.map((r) => (
-                  <tr key={r.idProveedor ?? r.nombre} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                    <td className="px-4 py-2.5 text-white">{r.nombre}</td>
-                    <td className="px-4 py-2.5 text-white/70 text-right tabular-nums">{r.cantFacturas}</td>
-                    <td className="px-4 py-2.5 text-white/70 text-right tabular-nums">{r.cantProductos}</td>
-                    <td className="px-4 py-2.5 text-white font-medium text-right tabular-nums">{money(r.importe)}</td>
-                    <td className="px-4 py-2.5 text-white/30 text-right">—</td>
+                  <tr key={r.idProveedor ?? r.nombre} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
+                    <td className="px-4 py-3 text-white">{r.nombre}</td>
+                    <td className="px-4 py-3 text-white/70 text-right tabular-nums">{r.cantFacturas}</td>
+                    <td className="px-4 py-3 text-white/70 text-right tabular-nums">{r.cantProductos}</td>
+                    <td className="px-4 py-3 text-white font-medium text-right tabular-nums">{money(r.importe)}</td>
+                    <td className="px-4 py-3 text-white/30 text-right">—</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr className="border-t border-white/10 bg-white/5">
-                  <td className="px-4 py-2.5 font-semibold text-white">Totales</td>
-                  <td className="px-4 py-2.5 text-right font-semibold text-white tabular-nums">{kpis.volumen}</td>
-                  <td className="px-4 py-2.5 text-right font-semibold text-white tabular-nums">{totalUnidades}</td>
-                  <td className="px-4 py-2.5 text-right font-semibold text-[#22c55e] tabular-nums">{money(kpis.montoTotal)}</td>
-                  <td className="px-4 py-2.5" />
+                  <td className="px-4 py-3 font-semibold text-white">Totales</td>
+                  <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">{kpis.volumen}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">{totalUnidades}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-[var(--accent)] tabular-nums">{money(kpis.montoTotal)}</td>
+                  <td className="px-4 py-3" />
                 </tr>
               </tfoot>
             </table>
           </div>
-          <p className="px-4 py-2.5 text-[11px] text-white/30 border-t border-white/5">
+          <p className="px-4 py-3 text-[11px] text-white/30 border-t border-white/5">
             Saldo pendiente no disponible: requiere el módulo de pagos (no implementado en el backend).
           </p>
         </div>
       ) : reporte === "producto" ? (
-        <div className="bg-[var(--bg-card)] border border-white/5 rounded-xl overflow-hidden">
+        <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
           <div className="px-4 py-3 border-b border-white/10">
             <h2 className="text-sm font-semibold text-white">Compras por producto</h2>
-            <p className="text-xs text-[#5a5a6e]">Cantidades y montos comprados en el rango seleccionado</p>
+            <p className="text-xs text-white/40">Cantidades y montos comprados en el rango seleccionado</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10">
+                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
                   <th className={th}>Producto</th>
                   <th className={thR}>Cantidad</th>
                   <th className={thR}>Monto Comprado</th>
@@ -505,33 +505,33 @@ export default function ReportesCompras() {
                   <tr><td colSpan={3} className="px-4 py-8 text-center text-white/30">No hay productos en el rango seleccionado.</td></tr>
                 )}
                 {porProducto.map((r) => (
-                  <tr key={r.idProducto ?? r.nombre} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                    <td className="px-4 py-2.5 text-white">{r.nombre}</td>
-                    <td className="px-4 py-2.5 text-white/70 text-right tabular-nums">{Number(r.cantidad)}</td>
-                    <td className="px-4 py-2.5 text-white font-medium text-right tabular-nums">{money(r.monto)}</td>
+                  <tr key={r.idProducto ?? r.nombre} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
+                    <td className="px-4 py-3 text-white">{r.nombre}</td>
+                    <td className="px-4 py-3 text-white/70 text-right tabular-nums">{Number(r.cantidad)}</td>
+                    <td className="px-4 py-3 text-white font-medium text-right tabular-nums">{money(r.monto)}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr className="border-t border-white/10 bg-white/5">
-                  <td className="px-4 py-2.5 font-semibold text-white">Totales</td>
-                  <td className="px-4 py-2.5 text-right font-semibold text-white tabular-nums">{totalUnidades}</td>
-                  <td className="px-4 py-2.5 text-right font-semibold text-[#22c55e] tabular-nums">{money(montoProductos)}</td>
+                  <td className="px-4 py-3 font-semibold text-white">Totales</td>
+                  <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">{totalUnidades}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-[var(--accent)] tabular-nums">{money(montoProductos)}</td>
                 </tr>
               </tfoot>
             </table>
           </div>
         </div>
       ) : reporte === "iva" ? (
-        <div className="bg-[var(--bg-card)] border border-white/5 rounded-xl overflow-hidden">
+        <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
           <div className="px-4 py-3 border-b border-white/10">
             <h2 className="text-sm font-semibold text-white">Resumen de impuestos (IVA)</h2>
-            <p className="text-xs text-[#5a5a6e]">Desglose del IVA de las compras en el rango seleccionado</p>
+            <p className="text-xs text-white/40">Desglose del IVA de las compras en el rango seleccionado</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10">
+                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
                   <th className={th}>Concepto</th>
                   <th className={thR}>Base Imponible</th>
                   <th className={thR}>IVA</th>
@@ -543,39 +543,39 @@ export default function ReportesCompras() {
                 )}
                 {filtradas.length > 0 && (
                   <>
-                    <tr className="border-b border-white/5">
-                      <td className="px-4 py-2.5 text-white/80">Exentas</td>
-                      <td className="px-4 py-2.5 text-right text-white/70 tabular-nums">{money(resumenIva.exento)}</td>
-                      <td className="px-4 py-2.5 text-right text-white/70 tabular-nums">{money(resumenIva.ivaE)}</td>
+                    <tr className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
+                      <td className="px-4 py-3 text-white/80">Exentas</td>
+                      <td className="px-4 py-3 text-right text-white/70 tabular-nums">{money(resumenIva.exento)}</td>
+                      <td className="px-4 py-3 text-right text-white/70 tabular-nums">{money(resumenIva.ivaE)}</td>
                     </tr>
-                    <tr className="border-b border-white/5">
-                      <td className="px-4 py-2.5 text-white/80">IVA 5%</td>
-                      <td className="px-4 py-2.5 text-right text-white/70 tabular-nums">{money(resumenIva.s5)}</td>
-                      <td className="px-4 py-2.5 text-right text-white/70 tabular-nums">{money(resumenIva.iva5)}</td>
+                    <tr className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
+                      <td className="px-4 py-3 text-white/80">IVA 5%</td>
+                      <td className="px-4 py-3 text-right text-white/70 tabular-nums">{money(resumenIva.s5)}</td>
+                      <td className="px-4 py-3 text-right text-white/70 tabular-nums">{money(resumenIva.iva5)}</td>
                     </tr>
-                    <tr className="border-b border-white/5">
-                      <td className="px-4 py-2.5 text-white/80">IVA 10%</td>
-                      <td className="px-4 py-2.5 text-right text-white/70 tabular-nums">{money(resumenIva.s10)}</td>
-                      <td className="px-4 py-2.5 text-right text-white/70 tabular-nums">{money(resumenIva.iva10)}</td>
+                    <tr className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
+                      <td className="px-4 py-3 text-white/80">IVA 10%</td>
+                      <td className="px-4 py-3 text-right text-white/70 tabular-nums">{money(resumenIva.s10)}</td>
+                      <td className="px-4 py-3 text-right text-white/70 tabular-nums">{money(resumenIva.iva10)}</td>
                     </tr>
-                    <tr className="border-b border-white/5">
-                      <td className="px-4 py-2.5 text-white/80">Subtotal general</td>
-                      <td className="px-4 py-2.5 text-right text-white tabular-nums">{money(resumenIva.subtotal)}</td>
-                      <td className="px-4 py-2.5 text-right text-white/70 tabular-nums">—</td>
+                    <tr className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
+                      <td className="px-4 py-3 text-white/80">Subtotal general</td>
+                      <td className="px-4 py-3 text-right text-white tabular-nums">{money(resumenIva.subtotal)}</td>
+                      <td className="px-4 py-3 text-right text-white/70 tabular-nums">—</td>
                     </tr>
                   </>
                 )}
               </tbody>
               <tfoot>
                 <tr className="border-t border-white/10 bg-white/5">
-                  <td className="px-4 py-2.5 font-semibold text-white">Total IVA</td>
-                  <td className="px-4 py-2.5" />
-                  <td className="px-4 py-2.5 text-right font-semibold text-amber-400 tabular-nums">{money(resumenIva.ivaT)}</td>
+                  <td className="px-4 py-3 font-semibold text-white">Total IVA</td>
+                  <td className="px-4 py-3" />
+                  <td className="px-4 py-3 text-right font-semibold text-amber-400 tabular-nums">{money(resumenIva.ivaT)}</td>
                 </tr>
                 <tr className="bg-white/5">
-                  <td className="px-4 py-2.5 font-semibold text-white">Total Compras</td>
-                  <td className="px-4 py-2.5" />
-                  <td className="px-4 py-2.5 text-right font-semibold text-[#22c55e] tabular-nums">{money(resumenIva.tot)}</td>
+                  <td className="px-4 py-3 font-semibold text-white">Total Compras</td>
+                  <td className="px-4 py-3" />
+                  <td className="px-4 py-3 text-right font-semibold text-[var(--accent)] tabular-nums">{money(resumenIva.tot)}</td>
                 </tr>
               </tfoot>
             </table>
@@ -602,13 +602,13 @@ function ReportePeriodo({ agrupFecha, setAgrupFecha, filtradas, porFecha, kpis, 
         <KpiCard label="Cantidad Total de Productos" value={String(totalUnidades)} accent="#f59e0b" />
       </div>
 
-      <div className="bg-[var(--bg-card)] border border-white/5 rounded-xl overflow-hidden">
+      <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
         <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h2 className="text-sm font-semibold text-white">
               {agrupado ? "Compras agrupadas por fecha" : "Listado de Compras"}
             </h2>
-            <p className="text-xs text-[#5a5a6e]">
+            <p className="text-xs text-white/40">
               {filtradas.length} compra{filtradas.length !== 1 ? "s" : ""} según los filtros seleccionados
             </p>
           </div>
@@ -631,7 +631,7 @@ function ReportePeriodo({ agrupFecha, setAgrupFecha, filtradas, porFecha, kpis, 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10">
+                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
                   <th className={th}>{agrupFecha === "dia" ? "Fecha" : "Mes"}</th>
                   <th className={thR}>Cant. Facturas</th>
                   <th className={thR}>Cant. Productos</th>
@@ -643,22 +643,22 @@ function ReportePeriodo({ agrupFecha, setAgrupFecha, filtradas, porFecha, kpis, 
                   <tr><td colSpan={4} className="px-4 py-8 text-center text-white/30">No hay compras en el rango seleccionado.</td></tr>
                 )}
                 {porFecha.map((r) => (
-                  <tr key={r.fecha} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                    <td className="px-4 py-2.5 text-white whitespace-nowrap">
+                  <tr key={r.fecha} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
+                    <td className="px-4 py-3 text-white whitespace-nowrap">
                       {agrupFecha === "dia" ? fmtFecha(r.fecha) : fmtMes(r.fecha)}
                     </td>
-                    <td className="px-4 py-2.5 text-white/70 text-right tabular-nums">{r.cant}</td>
-                    <td className="px-4 py-2.5 text-white/70 text-right tabular-nums">{Number(r.unidades)}</td>
-                    <td className="px-4 py-2.5 text-white font-medium text-right tabular-nums">{money(r.importe)}</td>
+                    <td className="px-4 py-3 text-white/70 text-right tabular-nums">{r.cant}</td>
+                    <td className="px-4 py-3 text-white/70 text-right tabular-nums">{Number(r.unidades)}</td>
+                    <td className="px-4 py-3 text-white font-medium text-right tabular-nums">{money(r.importe)}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr className="border-t border-white/10 bg-white/5">
-                  <td className="px-4 py-2.5 font-semibold text-white">Totales</td>
-                  <td className="px-4 py-2.5 text-right font-semibold text-white tabular-nums">{kpis.volumen}</td>
-                  <td className="px-4 py-2.5 text-right font-semibold text-white tabular-nums">{totalUnidades}</td>
-                  <td className="px-4 py-2.5 text-right font-semibold text-[#22c55e] tabular-nums">{money(kpis.montoTotal)}</td>
+                  <td className="px-4 py-3 font-semibold text-white">Totales</td>
+                  <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">{kpis.volumen}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">{totalUnidades}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-[var(--accent)] tabular-nums">{money(kpis.montoTotal)}</td>
                 </tr>
               </tfoot>
             </table>
@@ -667,7 +667,7 @@ function ReportePeriodo({ agrupFecha, setAgrupFecha, filtradas, porFecha, kpis, 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10">
+                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
                   <th className={th}>Fecha</th>
                   <th className={th}>N° Factura</th>
                   <th className={th}>Proveedor</th>
@@ -685,21 +685,21 @@ function ReportePeriodo({ agrupFecha, setAgrupFecha, filtradas, porFecha, kpis, 
                   </tr>
                 )}
                 {filtradas.map((f) => (
-                  <tr key={f.idFactura} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                    <td className="px-4 py-2.5 text-white whitespace-nowrap">{fmtFecha(f.fechaEmision)}</td>
-                    <td className="px-4 py-2.5 text-white/70 whitespace-nowrap">{f.numeroFactura || "—"}</td>
-                    <td className="px-4 py-2.5 text-white">{f.nombreProveedor || "—"}</td>
-                    <td className="px-4 py-2.5 text-white/70 text-right whitespace-nowrap">
+                  <tr key={f.idFactura} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
+                    <td className="px-4 py-3 text-white whitespace-nowrap">{fmtFecha(f.fechaEmision)}</td>
+                    <td className="px-4 py-3 text-white/70 whitespace-nowrap">{f.numeroFactura || "—"}</td>
+                    <td className="px-4 py-3 text-white">{f.nombreProveedor || "—"}</td>
+                    <td className="px-4 py-3 text-white/70 text-right whitespace-nowrap">
                       {Number.isFinite(Number(f.cantidadProductos)) ? Number(f.cantidadProductos) : "—"}
                     </td>
-                    <td className="px-4 py-2.5 text-white font-medium text-right whitespace-nowrap">{money(f.totalGeneral)}</td>
-                    <td className="px-4 py-2.5 text-right">
+                    <td className="px-4 py-3 text-white font-medium text-right whitespace-nowrap">{money(f.totalGeneral)}</td>
+                    <td className="px-4 py-3 text-right">
                       <button
                         type="button"
                         onClick={() => onVer(f)}
                         title="Ver detalle de la compra"
                         aria-label="Ver detalle de la compra"
-                        className="p-1.5 rounded text-white/40 hover:text-[var(--accent-green)] hover:bg-[var(--accent-green)]/10 transition-colors"
+                        className="p-1.5 rounded text-white/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors"
                       >
                         <Eye size={16} />
                       </button>
@@ -709,9 +709,9 @@ function ReportePeriodo({ agrupFecha, setAgrupFecha, filtradas, porFecha, kpis, 
               </tbody>
               <tfoot>
                 <tr className="border-t border-white/10 bg-white/5">
-                  <td colSpan={3} className="px-4 py-2.5 font-semibold text-white">Totales</td>
-                  <td className="px-4 py-2.5 text-right font-semibold text-white tabular-nums">{totalUnidades}</td>
-                  <td className="px-4 py-2.5 text-right font-semibold text-[#22c55e] tabular-nums">{money(kpis.montoTotal)}</td>
+                  <td colSpan={3} className="px-4 py-3 font-semibold text-white">Totales</td>
+                  <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">{totalUnidades}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-[var(--accent)] tabular-nums">{money(kpis.montoTotal)}</td>
                   <td />
                 </tr>
               </tfoot>
@@ -729,46 +729,46 @@ function DetalleCompra({ factura, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4" onClick={onClose}>
       <div
-        className="w-full max-w-3xl my-4 bg-[#17171b] border border-white/10 rounded-2xl p-6 space-y-5 shadow-2xl"
+        className="w-full max-w-3xl my-4 bg-[#0c0c0e] border border-white/10 rounded-none p-6 space-y-5 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <h2 className="text-lg font-semibold text-white">Factura {factura.numeroFactura || "—"}</h2>
-            <p className="text-sm text-[#5a5a6e]">{factura.nombreProveedor || "Proveedor desconocido"}</p>
+            <p className="text-sm text-white/40">{factura.nombreProveedor || "Proveedor desconocido"}</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 text-white/50 transition-colors" aria-label="Cerrar">
+          <button onClick={onClose} className="p-2 rounded-none hover:bg-white/10 text-white/50 transition-colors" aria-label="Cerrar">
             <X size={18} />
           </button>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
           <div className="space-y-0.5">
-            <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Fecha emisión</p>
+            <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40">Fecha emisión</p>
             <p className="text-white">{fmtFecha(factura.fechaEmision)}</p>
           </div>
           <div className="space-y-0.5">
-            <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">N° Timbrado</p>
+            <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40">N° Timbrado</p>
             <p className="text-white">{factura.numeroTimbrado || "—"}</p>
           </div>
           <div className="space-y-0.5">
-            <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Condición</p>
+            <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40">Condición</p>
             <p className="text-white">{factura.condicionPago || "—"}</p>
           </div>
           <div className="space-y-0.5">
-            <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">Proveedor</p>
+            <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40">Proveedor</p>
             <p className="text-white">{factura.nombreProveedor || "—"}</p>
           </div>
         </div>
 
-        <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+        <div className="bg-white/5 border border-white/10 rounded-none overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10 text-white/40 text-left">
-                  <th className="px-4 py-2.5 font-medium">Producto</th>
-<th className="px-4 py-2.5 font-medium text-right">Cantidad</th>
-                  <th className="px-4 py-2.5 font-medium text-right">Importe</th>
+                  <th className="px-4 py-3 font-medium">Producto</th>
+<th className="px-4 py-3 font-medium text-right">Cantidad</th>
+                  <th className="px-4 py-3 font-medium text-right">Importe</th>
                 </tr>
               </thead>
               <tbody>
@@ -778,11 +778,11 @@ function DetalleCompra({ factura, onClose }) {
                   </tr>
                 )}
                 {detalles.map((d) => (
-                  <tr key={d.idDetalle ?? `${d.idProducto}-${d.nombreProducto}`} className="border-b border-white/5">
-                    <td className="px-4 py-2.5 text-white">{d.nombreProducto || `Producto #${d.idProducto}`}</td>
-                    <td className="px-4 py-2.5 text-white/70 text-right whitespace-nowrap">{Number(d.cantidad)}</td>
-                    <td className="px-4 py-2.5 text-white/70 text-right whitespace-nowrap">{money(d.precioUnitario)}</td>
-                    <td className="px-4 py-2.5 text-white text-right whitespace-nowrap">{money(Math.round(Number(d.cantidad) * Number(d.precioUnitario)))}</td>
+                  <tr key={d.idDetalle ?? `${d.idProducto}-${d.nombreProducto}`} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
+                    <td className="px-4 py-3 text-white">{d.nombreProducto || `Producto #${d.idProducto}`}</td>
+                    <td className="px-4 py-3 text-white/70 text-right whitespace-nowrap">{Number(d.cantidad)}</td>
+                    <td className="px-4 py-3 text-white/70 text-right whitespace-nowrap">{money(d.precioUnitario)}</td>
+                    <td className="px-4 py-3 text-white text-right whitespace-nowrap">{money(Math.round(Number(d.cantidad) * Number(d.precioUnitario)))}</td>
                   </tr>
                 ))}
               </tbody>
@@ -793,17 +793,17 @@ function DetalleCompra({ factura, onClose }) {
         <div className="pt-3 border-t border-white/10 flex items-end justify-between gap-3 flex-wrap">
           <div className="max-w-xs w-full space-y-1 font-mono text-sm">
             <div className="flex items-center justify-between text-white/70">
-              <span className="text-[#5a5a6e]">Cant. Productos</span>
+              <span className="text-white/40">Cant. Productos</span>
               <span>{Number(detalles.length)}</span>
             </div>
             <div className="flex items-center justify-between text-white/70">
-              <span className="text-[#5a5a6e]">Total IVA</span>
+              <span className="text-white/40">Total IVA</span>
               <span>{money(factura.ivaTotal)}</span>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-xs text-[#5a5a6e] uppercase tracking-[0.12em]">Importe total de la compra</p>
-            <p className="font-mono text-3xl font-bold tracking-tight text-[#22c55e]">{money(factura.totalGeneral)}</p>
+            <p className="text-xs text-white/40 uppercase tracking-[0.12em]">Importe total de la compra</p>
+            <p className="font-mono text-3xl font-bold tracking-tight text-[var(--accent)]">{money(factura.totalGeneral)}</p>
           </div>
         </div>
       </div>
@@ -813,8 +813,8 @@ function DetalleCompra({ factura, onClose }) {
 
 function KpiCard({ label, value, accent }) {
   return (
-    <div className="bg-[var(--bg-card)] border border-white/5 rounded-xl p-4 space-y-2">
-      <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]">{label}</p>
+    <div className="bg-white/[0.02] border border-white/5 rounded-none p-4 space-y-2">
+      <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40">{label}</p>
       <p className="text-xl font-semibold text-white truncate" style={{ color: accent }}>{value}</p>
     </div>
   );

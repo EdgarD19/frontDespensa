@@ -232,7 +232,7 @@ export default function CantidadInput({
             emit(e.target.value);
           }}
           onKeyDown={onKeyDown}
-          className={`w-full bg-white/5 border rounded px-2 py-1 text-right text-sm font-mono text-white placeholder:text-white/25 outline-none transition-colors focus:border-[#22c55e]/50 ${
+          className={`w-full bg-white/5 border rounded px-2 py-1 text-right text-sm font-mono text-white placeholder:text-white/25 outline-none transition-colors focus:border-[var(--accent)] ${
             error ? "border-red-500/60" : "border-white/10"
           } ${!esKG ? "pr-7" : ""}`}
         />
@@ -245,7 +245,7 @@ export default function CantidadInput({
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => aplicarInt(1)}
               aria-label="Aumentar cantidad"
-              className="rounded-sm p-0.5 leading-none text-[#5a5a6e] transition-colors hover:text-[#22c55e] disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-none p-0.5 leading-none text-white/40 transition-colors hover:text-[#22c55e] disabled:cursor-not-allowed disabled:opacity-40"
             >
               <ChevronUp className="h-3 w-3" />
             </button>
@@ -256,7 +256,7 @@ export default function CantidadInput({
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => aplicarInt(-1)}
               aria-label="Disminuir cantidad"
-              className="rounded-sm p-0.5 leading-none text-[#5a5a6e] transition-colors hover:text-[#22c55e] disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-none p-0.5 leading-none text-white/40 transition-colors hover:text-[#22c55e] disabled:cursor-not-allowed disabled:opacity-40"
             >
               <ChevronDown className="h-3 w-3" />
             </button>

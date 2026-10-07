@@ -184,11 +184,11 @@ const [estado, setEstado] = useState("");
   return (
     <div className="max-w-6xl mx-auto py-8 px-4 space-y-6">
       <div className="flex items-center gap-3">
-        <Link to="/compras" className="p-2 rounded-lg hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
+        <Link to="/compras" className="p-2 rounded-none hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
           <ArrowLeft size={18} />
         </Link>
         <div>
-          <h1 className="text-2xl font-semibold text-[#f1f1f3] tracking-tight">Lista de Facturas Registradas</h1>
+          <h1 className="text-2xl font-semibold text-white tracking-tight">Lista de Facturas Registradas</h1>
         </div>
       </div>
 
@@ -202,7 +202,7 @@ const [estado, setEstado] = useState("");
             onChange={(e) => setTexto(e.target.value)}
             placeholder="Buscar por N° factura"
             aria-label="Buscar por número de factura"
-            className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-10 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#22c55e]/50 transition-colors"
+            className="w-full bg-white/5 border border-white/10 rounded-none pl-9 pr-10 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent)] transition-colors"
           />
           {texto && (
             <button
@@ -217,7 +217,7 @@ const [estado, setEstado] = useState("");
           )}
         </div>
         <div className="w-full sm:w-44">
-          <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]" htmlFor="filtro-desde">
+          <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40" htmlFor="filtro-desde">
             Desde
           </label>
           <input
@@ -225,11 +225,11 @@ const [estado, setEstado] = useState("");
             type="date"
             value={desde}
             onChange={(e) => setDesde(e.target.value)}
-            className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#22c55e]/50 transition-colors"
+            className="w-full mt-1 bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors"
           />
         </div>
         <div className="w-full sm:w-44">
-          <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]" htmlFor="filtro-hasta">
+          <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40" htmlFor="filtro-hasta">
             Hasta
           </label>
           <input
@@ -237,18 +237,18 @@ const [estado, setEstado] = useState("");
             type="date"
             value={hasta}
             onChange={(e) => setHasta(e.target.value)}
-            className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#22c55e]/50 transition-colors"
+            className="w-full mt-1 bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors"
           />
         </div>
         <div className="w-full sm:w-44">
-          <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]" htmlFor="filtro-condicion">
+          <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40" htmlFor="filtro-condicion">
             Condición de Pago
           </label>
           <select
             id="filtro-condicion"
             value={condicion}
             onChange={(e) => setCondicion(e.target.value)}
-            className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#22c55e]/50 transition-colors"
+            className="w-full mt-1 bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors"
           >
             <option value="">Todas</option>
             <option value="CONTADO">Contado</option>
@@ -256,14 +256,14 @@ const [estado, setEstado] = useState("");
           </select>
         </div>
         <div className="w-full sm:w-44">
-          <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]" htmlFor="filtro-estado">
+          <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40" htmlFor="filtro-estado">
             Estado
           </label>
           <select
             id="filtro-estado"
             value={estado}
             onChange={(e) => setEstado(e.target.value)}
-            className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#22c55e]/50 transition-colors"
+            className="w-full mt-1 bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors"
           >
             <option value="">Todos</option>
             <option value="VIGENTES">Vigentes</option>
@@ -271,14 +271,14 @@ const [estado, setEstado] = useState("");
           </select>
         </div>
         <div className="w-full sm:w-64">
-          <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-[#5a5a6e]" htmlFor="filtro-proveedor">
+          <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40" htmlFor="filtro-proveedor">
             Proveedor
           </label>
           <select
             id="filtro-proveedor"
             value={idProveedor}
             onChange={(e) => setIdProveedor(e.target.value)}
-            className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#22c55e]/50 transition-colors"
+            className="w-full mt-1 bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors"
           >
             <option value="">Todos los proveedores</option>
             {proveedores.map((p) => (
@@ -289,15 +289,15 @@ const [estado, setEstado] = useState("");
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 text-sm px-4 py-3">{error}</div>
+        <div className="rounded-none border border-red-500/30 bg-red-500/10 text-red-400 text-sm px-4 py-3">{error}</div>
       )}
 
       {/* Tabla */}
-      <div className="bg-[var(--bg-card)] border border-white/5 rounded-xl overflow-hidden">
+      <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/10 text-white/40 text-left whitespace-nowrap">
+              <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300 whitespace-nowrap">
                 <th className="px-4 py-3 font-medium">Fecha Registro</th>
                 <th className="px-4 py-3 font-medium">Proveedor</th>
                 <th className="px-4 py-3 font-medium">N° Factura</th>
@@ -309,7 +309,7 @@ const [estado, setEstado] = useState("");
             </thead>
             <tbody>
               {loading && Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i} className="border-b border-white/5">
+                <tr key={i} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                   {Array.from({ length: columns }).map((_, j) => (
                     <td key={j} className="px-4 py-3"><div className="h-4 bg-white/10 rounded animate-pulse w-3/4" /></td>
                   ))}
@@ -325,7 +325,7 @@ const [estado, setEstado] = useState("");
               {!loading && paginadas.map((f) => {
                 const cancelada = esAnulada(f);
                 return (
-                  <tr key={f.idFactura} className={`border-b border-white/5 hover:bg-white/5 transition-colors ${cancelada ? "opacity-60" : ""}`}>
+                  <tr key={f.idFactura} className={`border-b border-white/10 last:border-0 hover:bg-white/[0.04] transition-colors ${cancelada ? "opacity-60" : ""}`}>
                     <td className="px-4 py-3 text-white/70 whitespace-nowrap">{fmtFechaHora(f.fechaCreacion)}</td>
                     <td className="px-4 py-3 text-white">{f.nombreProveedor || "—"}</td>
                     <td className="px-4 py-3 text-white/70 whitespace-nowrap">{f.numeroFactura || "—"}</td>
@@ -336,7 +336,7 @@ const [estado, setEstado] = useState("");
                       <button
                         type="button"
                         onClick={() => verDetalle(f)}
-                        className="p-1.5 rounded text-white/40 hover:text-[var(--accent-green)] hover:bg-[var(--accent-green)]/10 transition-colors"
+                        className="p-1.5 rounded text-white/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors"
                         title="Ver detalle" aria-label="Ver detalle"
                       >
                         <Eye size={16} />
@@ -367,7 +367,7 @@ const [estado, setEstado] = useState("");
   );
 }
 
-const TH = "sticky top-0 z-10 bg-[#17171b] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-white/80 border-b border-white/10";
+const TH = "sticky top-0 z-10 bg-[#0c0c0e] border-b border-white/10 px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-300";
 
 function Dato({ titulo, children }) {
   return (
@@ -382,7 +382,7 @@ function TasaBadge({ tasa }) {
   const t = Number(tasa) || 0;
   return (
     <span
-      className={`inline-flex min-w-14 justify-center rounded-md px-2 py-0.5 text-xs font-medium ${
+      className={`inline-flex min-w-14 justify-center rounded-none px-2 py-0.5 text-xs font-medium ${
         t ? "bg-white/10 text-white/90" : "border border-white/20 text-white/70"
       }`}
     >
@@ -428,7 +428,7 @@ function DetalleFactura({ factura, cargando = false, onClose }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="factura-detalle-titulo"
-        className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden border border-white/10 bg-[#111114] shadow-2xl"
+        className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden border border-white/10 bg-[#0c0c0e] shadow-2xl"
       >
         {/* Cabecera */}
         <header className="flex items-start justify-between gap-4 px-6 pt-6">
@@ -436,12 +436,12 @@ function DetalleFactura({ factura, cargando = false, onClose }) {
             Factura {factura.numeroFactura || "—"}
           </h2>
           <div className="flex items-center gap-3">
-            <p className="rounded-sm border border-white/15 bg-white/5 px-2.5 py-1 text-sm font-medium text-white/80">{factura.nombreProveedor || "Proveedor desconocido"}</p>
+            <p className="rounded-none border border-white/15 bg-white/5 px-2.5 py-1 text-sm font-medium text-white/80">{factura.nombreProveedor || "Proveedor desconocido"}</p>
             <button
               type="button"
               onClick={onClose}
               aria-label="Cerrar"
-              className="-mr-2 -mt-1 rounded-lg p-2 text-white/50 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#22c55e]/60"
+              className="-mr-2 -mt-1 rounded-none p-2 text-white/50 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#22c55e]/60"
             >
               <X size={20} />
             </button>
@@ -461,7 +461,7 @@ function DetalleFactura({ factura, cargando = false, onClose }) {
             <p className="text-xs text-white/50">Montos con IVA incluido</p>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-auto border border-white/10 bg-[#17171b]">
+          <div className="min-h-0 flex-1 overflow-auto border border-white/10 bg-[#0c0c0e]">
             <table className="w-full min-w-[34rem] text-sm">
               <thead>
                 <tr>
@@ -486,7 +486,7 @@ function DetalleFactura({ factura, cargando = false, onClose }) {
                   <tr><td colSpan={6} className="px-4 py-6 text-center text-white/30">Sin productos.</td></tr>
                 )}
                 {detalles.map((d) => (
-                  <tr key={d.idDetalle ?? `${d.idProducto}-${d.nombreProducto}`} className="transition hover:bg-white/[0.02]">
+                  <tr key={d.idDetalle ?? `${d.idProducto}-${d.nombreProducto}`} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                     <td className="px-4 py-3 font-medium text-white">{d.nombreProducto || `Producto #${d.idProducto}`}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white/80">{Number(d.cantidad)}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white/80">{money(d.precioUnitario)}</td>
@@ -513,22 +513,22 @@ function DetalleFactura({ factura, cargando = false, onClose }) {
               <span className="border border-white/15 bg-white/5 px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-white/80">Liquidación IVA</span>
               {desglose[5].iva > 0 && (
                 <span className="text-white/70">
-                  <span className="text-[#5a5a6e]">5%: </span>{money(desglose[5].iva)}
+                  <span className="text-white/40">5%: </span>{money(desglose[5].iva)}
                 </span>
               )}
               {desglose[10].iva > 0 && (
                 <span className="text-white/70">
-                  <span className="text-[#5a5a6e]">10%: </span>{money(desglose[10].iva)}
+                  <span className="text-white/40">10%: </span>{money(desglose[10].iva)}
                 </span>
               )}
               <span className="text-white/90 font-semibold">
-                <span className="text-[#5a5a6e]">Total IVA: </span>{money(desglose.totales.iva)}
+                <span className="text-white/40">Total IVA: </span>{money(desglose.totales.iva)}
               </span>
             </div>
 
             <div className="shrink-0 text-right">
               <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/50">Total factura</p>
-              <p className="text-xl font-semibold tabular-nums text-[#22c55e]">{money(totalDesdeDetalles(factura))}</p>
+              <p className="text-xl font-semibold tabular-nums text-[var(--accent)]">{money(totalDesdeDetalles(factura))}</p>
             </div>
           </div>
         </footer>
