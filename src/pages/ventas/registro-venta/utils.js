@@ -1,5 +1,7 @@
 export function esProductoPesable(producto) {
-  return producto?.productoPesable === "si";
+  if (producto?.productoPesable === "si" || producto?.productoPesable === true) return true;
+  const u = String(producto?.unidadMedida || producto?.unitAbbreviation || producto?.nombreUnidadMedida || "").toUpperCase().trim();
+  return u === "KG" || u === "KILOGRAMO" || u === "KILOGRAMOS" || u === "KG." || u === "KILO";
 }
 
 export function parsePrecioVenta(producto) {

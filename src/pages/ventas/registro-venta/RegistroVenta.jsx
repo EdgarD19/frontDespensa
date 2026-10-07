@@ -9,6 +9,7 @@ import { getProductos, getProductoByCodigo } from "../../../api/productosApi";
 import { registrarVentaFactura } from "../../../api/ventasApi";
 import { apiErrorMessage } from "../../../api/errors";
 import ComprobanteImpresion from "./ComprobanteImpresion";
+import CantidadInput from "../../../components/ui/CantidadInput";
 import {
   parsePrecioVenta, parseStockDisponible, esProductoPesable, formatMoney,
   labelCliente, labelFormaPago, numeroFacturaPreview, hoyISO,
@@ -27,6 +28,8 @@ function construirLineaCarrito(producto) {
     cantidad: esProductoPesable(producto) ? 1.0 : 1,
     stockDisponible: parseStockDisponible(producto),
     productoPesable: producto.productoPesable,
+    unidadMedida: producto.unidadMedida ?? producto.nombreUnidadMedida ?? "",
+    unitAbbreviation: producto.unitAbbreviation ?? "",
   };
 }
 
@@ -78,7 +81,13 @@ export default function RegistroVenta() {
   }, [datosImpresion?.idComprobante]);
   useEffect(() => {
     if (editandoCantidad !== null) {
-      setTimeout(() => { qtyInputRef.current?.focus(); qtyInputRef.current?.select(); }, 0);
+      setTimeout(() => {
+        const el = qtyInputRef.current?.tagName === "INPUT"
+          ? qtyInputRef.current
+          : qtyInputRef.current?.querySelector("input");
+        el?.focus();
+        el?.select();
+      }, 0);
     }
   }, [editandoCantidad]);
 
@@ -444,15 +453,22 @@ export default function RegistroVenta() {
                           <span className="text-base font-semibold truncate" style={{ color: 'var(--text-1)' }}>{line.nombre}</span>
                         </div>
                         {editando ? (
-                          <div className="w-28 text-center">
-                            <input ref={qtyInputRef} type="number"
-                              min={pesable ? 0.001 : 1} max={line.stockDisponible} step={pesable ? 0.1 : 1}
+                          <div
+                            ref={qtyInputRef}
+                            className="w-28 text-center"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === "Tab") setEditandoCantidad(null);
+                              e.stopPropagation();
+                            }}
+                          >
+                            <CantidadInput
+                              unidadMedida={pesable ? "KG" : "UN"}
                               value={line.cantidad}
-                              onChange={(e) => handleCambiarCantidad(line.productoId, e.target.value)}
+                              max={line.stockDisponible}
+                              onChange={(v) => handleCambiarCantidad(line.productoId, v)}
                               onBlur={() => setEditandoCantidad(null)}
-                              onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Tab") setEditandoCantidad(null); e.stopPropagation(); }}
-                              className="w-20 rounded px-2 py-1.5 text-base text-center outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              style={{ border: '1px solid var(--border-accent)', background: 'var(--surface-0)', color: 'var(--text-1)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}
+                              ariaLabel={`Cantidad de ${line.nombre}`}
+                              className="w-20 mx-auto"
                             />
                           </div>
                         ) : (

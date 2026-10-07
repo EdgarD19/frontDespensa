@@ -17,6 +17,7 @@ export default function CantidadInput({
   name,
   ariaLabel,
   className = "",
+  onBlur,
 }) {
   const esKG = unidadMedida === "KG";
   const maxDec = esKG ? Math.max(0, maxDecimales | 0) : 0;
@@ -110,32 +111,32 @@ export default function CantidadInput({
 
     // KG
     if (/^\d$/.test(k)) {
-      // bloquear decimales extra mientras se escribe
+      // bloquear decimales extra considerando la selección
       const cur = textRef.current;
-      const sel = e.target.selectionStart;
-      const before = cur.slice(0, sel);
-      const sep = separador(before + (before.includes(".") || before.includes(",") ? "" : ""));
-      const decCount = before.includes(".") || before.includes(",")
-        ? before.split(/[.,]/).pop().length
-        : 0;
-      if (decCount >= maxDec && maxDec > 0 && (before.includes(".") || before.includes(","))) {
+      const sel = e.target.selectionStart ?? cur.length;
+      const fin = e.target.selectionEnd ?? sel;
+      const replaced = cur.slice(0, sel) + k + cur.slice(fin);
+      const sepIdx = replaced.search(/[.,]/);
+      const decCount = sepIdx !== -1 ? replaced.slice(sepIdx + 1).length : 0;
+      if (sepIdx !== -1 && decCount > maxDec) {
         e.preventDefault();
         return;
       }
-      if (hayMax) {
-        const fin = e.target.selectionEnd ?? sel;
-        const previo = cur.slice(0, sel) + k + cur.slice(fin);
-        if (excedeMax(previo)) {
-          e.preventDefault();
-          return;
-        }
+      if (hayMax && excedeMax(replaced)) {
+        e.preventDefault();
+        return;
       }
       return;
     }
 
     if (k === "-") { e.preventDefault(); return; }
     if (k === "," || k === ".") {
-      if (separador(textRef.current) !== null) {
+      const cur = textRef.current;
+      const sel = e.target.selectionStart ?? cur.length;
+      const fin = e.target.selectionEnd ?? sel;
+      const replaced = cur.slice(0, sel) + k + cur.slice(fin);
+      const separadores = replaced.match(/[.,]/g) || [];
+      if (separadores.length > 1) {
         e.preventDefault();
       }
     }
@@ -221,9 +222,10 @@ export default function CantidadInput({
           placeholder={placeholder}
           value={text}
           onFocus={() => (focusedRef.current = true)}
-          onBlur={() => {
+          onBlur={(e) => {
             focusedRef.current = false;
             handleCommit();
+            onBlur?.(e);
           }}
           onChange={(e) => {
             if (!focusedRef.current) focusedRef.current = true;
@@ -240,6 +242,7 @@ export default function CantidadInput({
               type="button"
               tabIndex={-1}
               disabled={disabled || (hayMax && Number(textRef.current) >= maxNum)}
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => aplicarInt(1)}
               aria-label="Aumentar cantidad"
               className="rounded-sm p-0.5 leading-none text-[#5a5a6e] transition-colors hover:text-[#22c55e] disabled:cursor-not-allowed disabled:opacity-40"
@@ -250,6 +253,7 @@ export default function CantidadInput({
               type="button"
               tabIndex={-1}
               disabled={disabled}
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => aplicarInt(-1)}
               aria-label="Disminuir cantidad"
               className="rounded-sm p-0.5 leading-none text-[#5a5a6e] transition-colors hover:text-[#22c55e] disabled:cursor-not-allowed disabled:opacity-40"
