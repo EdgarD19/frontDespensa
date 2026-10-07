@@ -9,7 +9,7 @@ import { getProductos, getProductoByCodigo } from "../../../api/productosApi";
 import { registrarVentaFactura } from "../../../api/ventasApi";
 import { apiErrorMessage } from "../../../api/errors";
 import {
-  seleccionarComprobante, proximoNumero, numeroCompleto, emitirYConsumir,
+  seleccionarComprobante, emitirYConsumir,
 } from "../../../api/comprobantesApi";
 import ComprobanteImpresion from "./ComprobanteImpresion";
 import CantidadInput from "../../../components/ui/CantidadInput";
@@ -83,7 +83,6 @@ export default function RegistroVenta() {
   const [comprobanteSel, setComprobanteSel] = useState(() => seleccionarComprobante());
   const timbrado = comprobanteSel.comprobante;
   const ventaBloqueada = comprobanteSel.estado !== "vigente" || !timbrado;
-  const proximoNro = timbrado ? numeroCompleto(timbrado, proximoNumero(timbrado)) : null;
 
   const searchRef = useRef(null);
   const qtyInputRef = useRef(null);
@@ -359,15 +358,6 @@ export default function RegistroVenta() {
           <span className="rounded-full border border-white/10 bg-white/[0.06] px-2.5 py-0.5 text-xs text-white/70">
             Contado
           </span>
-          {timbrado && (
-            <>
-              <span className="hidden rounded-full border border-[var(--border-accent)] bg-[var(--accent-dim)] px-2.5 py-0.5 text-xs text-[var(--accent)] lg:inline-flex">
-                Timbre <span className="mx-1 font-semibold" style={MONO}>{timbrado.numeroTimbrado}</span>
-                · Nº sig. <span className="mx-1 font-semibold" style={MONO}>{proximoNro}</span>
-                · vence <span className="ml-1">{timbrado.fechaVencimiento}</span>
-              </span>
-            </>
-          )}
         </div>
 
         {datosImpresion && (
@@ -588,17 +578,6 @@ export default function RegistroVenta() {
               {formatMoney(totalConIva)}
             </p>
           </div>
-
-          {timbrado && (
-            <div className="border-t border-white/10 px-4 py-3">
-              <p className={LABEL}>Comprobante a emitir</p>
-              <p className="mt-1 text-lg font-semibold leading-none text-white" style={MONO}>{proximoNro}</p>
-              <p className="mt-1.5 text-xs text-white/45">
-                Timbre <span className="text-white/70" style={MONO}>{timbrado.numeroTimbrado}</span>
-                {" · "}vigente hasta {timbrado.fechaVencimiento}
-              </p>
-            </div>
-          )}
 
           <div className="border-t border-white/10 px-4 py-3">
             <p className={`${LABEL} mb-3`}>Forma de pago</p>
