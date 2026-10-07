@@ -561,7 +561,7 @@ function PedidoModal({
                   </option>
                 )}
                 {proveedores.map((p) => (
-                  <option key={p.id ?? p.idProveedor} value={p.id ?? p.idProveedor} className="bg-[#111114]">{p.nombre}</option>
+                  <option key={p.id ?? p.idProveedor} value={p.id ?? p.idProveedor} className="bg-[#111114]">{p.tipoPersona === "FISICA" ? [p.nombre, p.apellido].filter(Boolean).join(" ") : p.nombre}</option>
                 ))}
               </select>
             </label>

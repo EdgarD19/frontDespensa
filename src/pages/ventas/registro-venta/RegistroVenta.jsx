@@ -47,6 +47,8 @@ export default function RegistroVenta() {
   const searchRef = useRef(null);
   const qtyInputRef = useRef(null);
   const dropdownRef = useRef(null);
+  const [mostrarDropdown, setMostrarDropdown] = useState(false);
+  const seleccionJustoAhoraRef = useRef(false);
   const confirmarRef = useRef(null);
   const carritoRef = useRef(null);
   const totalRef = useRef(null);
@@ -82,13 +84,24 @@ export default function RegistroVenta() {
 
   const isBarcode = useMemo(() => /^\d{8,14}$/.test(search.trim()), [search]);
 
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setMostrarDropdown(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
   const productosFiltrados = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q || isBarcode) return [];
+    if (!q) {
+      return mostrarDropdown && !isBarcode ? productos.slice(0, 8) : [];
+    }
+    if (isBarcode) return [];
     return productos
       .filter((p) => (p.nombre || "").toLowerCase().includes(q))
       .slice(0, 8);
-  }, [productos, search, isBarcode]);
+  }, [productos, search, isBarcode, mostrarDropdown]);
 
   const { subtotal, iva, totalConIva } = useMemo(() => {
     const sub = carrito.reduce((a, l) => a + l.precioUnitario * l.cantidad, 0);
@@ -172,15 +185,17 @@ export default function RegistroVenta() {
     if (parsed) {
       try {
         const p = await getProductoByCodigo(parsed.barcode);
-        if (p) { agregarProducto(p, parsed.quantity); setSearch(""); focusSearch(); }
+        if (p) { seleccionJustoAhoraRef.current = true; agregarProducto(p, parsed.quantity); setSearch(""); setMostrarDropdown(false); focusSearch(); }
         else { setErrorGlobal(`No se encontró producto con código "${parsed.barcode}".`); }
       } catch (err) { setErrorGlobal(apiErrorMessage(err) || "Error al buscar por código."); }
       return;
     }
 
     if (productosFiltrados.length === 1) {
+      seleccionJustoAhoraRef.current = true;
       agregarProducto(productosFiltrados[0], 1);
       setSearch("");
+      setMostrarDropdown(false);
       focusSearch();
     }
   }, [search, productosFiltrados, agregarProducto, focusSearch]);
@@ -315,7 +330,16 @@ export default function RegistroVenta() {
                   fontFamily: 'var(--font-mono)',
                   border: '2px solid var(--border-accent)',
                 }}
-                onFocus={(e) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 16px var(--accent-glow)'; }}
+                onFocus={(e) => {
+                  if (seleccionJustoAhoraRef.current) {
+                    seleccionJustoAhoraRef.current = false;
+                    setMostrarDropdown(false);
+                  } else {
+                    setMostrarDropdown(true);
+                  }
+                  e.target.style.borderColor = 'var(--accent)';
+                  e.target.style.boxShadow = '0 0 16px var(--accent-glow)';
+                }}
                 onBlur={(e) => { e.target.style.borderColor = 'var(--border-accent)'; e.target.style.boxShadow = 'none'; }}
               />
               <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-[10px]">
@@ -329,7 +353,7 @@ export default function RegistroVenta() {
             </div>
 
             {/* Live search dropdown */}
-            {productosFiltrados.length > 0 && (
+            {mostrarDropdown && productosFiltrados.length > 0 && (
               <div className="absolute left-0 right-0 mt-1 rounded-xl shadow-2xl shadow-black/50 z-50 max-h-64 overflow-y-auto"
                 style={{ background: 'var(--surface-1)', border: '1px solid var(--border)' }}>
                 {productosFiltrados.map((p) => {
@@ -342,7 +366,7 @@ export default function RegistroVenta() {
                       key={p.id}
                       type="button"
                       disabled={sinStock}
-                      onClick={() => { agregarProducto(p, 1); setSearch(""); focusSearch(); }}
+                      onClick={() => { seleccionJustoAhoraRef.current = true; agregarProducto(p, 1); setSearch(""); setMostrarDropdown(false); focusSearch(); }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left disabled:opacity-40 disabled:pointer-events-none"
                       style={{ borderBottom: '1px solid var(--border)' }}
                       onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-2)'}

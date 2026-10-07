@@ -325,7 +325,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
               </div>
               <div>
                 <dt className={S.eyebrow}>Razón social</dt>
-                <dd className="text-[0.8125rem] font-medium text-white">{proveedor?.nombreRazonSocial || proveedor?.nombre || pedido?.nombreProveedor || "—"}</dd>
+                <dd className="text-[0.8125rem] font-medium text-white">{proveedor?.tipoPersona === "FISICA" ? [proveedor?.nombre, proveedor?.apellido].filter(Boolean).join(" ") : (proveedor?.nombreRazonSocial || proveedor?.nombre || pedido?.nombreProveedor || "—")}</dd>
               </div>
               <div>
                 <dt className={S.eyebrow}>Dirección</dt>

@@ -146,7 +146,7 @@ export default function TimbradosModal({ proveedor, onClose, onCambio }) {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-lg font-semibold text-white">Timbrados del proveedor</h3>
-            <p className="text-sm text-[#5a5a6e]">{proveedor?.nombre || ""}</p>
+            <p className="text-sm text-[#5a5a6e]">{proveedor?.tipoPersona === "FISICA" ? [proveedor?.nombre, proveedor?.apellido].filter(Boolean).join(" ") : proveedor?.nombre || ""}</p>
           </div>
           <button
             onClick={onClose}

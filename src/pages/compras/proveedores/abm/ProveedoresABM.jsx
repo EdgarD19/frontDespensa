@@ -130,7 +130,9 @@ export default function ProveedoresABM() {
   function handleToggleActivo(proveedor) {
     const id = getProveedorId(proveedor);
     if (id == null) return;
-    const nombre = proveedor.nombre || `proveedor #${id}`;
+    const nombre = proveedor.tipoPersona === "FISICA"
+        ? [proveedor.nombre, proveedor.apellido].filter(Boolean).join(" ")
+        : proveedor.nombre || `proveedor #${id}`;
     setConfirmarProveedor({ id, nombre, activar: proveedor.activo === false });
   }
 

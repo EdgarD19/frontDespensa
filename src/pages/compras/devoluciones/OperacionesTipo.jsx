@@ -192,7 +192,7 @@ function formatearDevolucion(d) {
     facturaOriginal: d.facturaOriginal?.numeroFactura,
     facturaNueva: d.facturaNueva?.numeroFactura ?? null,
     facturaId: d.facturaOriginal?.idFactura ?? null,
-    proveedor: d.proveedor?.nombre,
+    proveedor: d.proveedor?.tipoPersona === "FISICA" ? [d.proveedor?.nombre, d.proveedor?.apellido].filter(Boolean).join(" ") : d.proveedor?.nombre,
     proveedorId: d.proveedor?.idProveedor,
     motivo: d.motivo,
     observaciones: d.observaciones,

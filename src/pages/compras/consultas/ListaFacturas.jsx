@@ -282,7 +282,7 @@ const [estado, setEstado] = useState("");
           >
             <option value="">Todos los proveedores</option>
             {proveedores.map((p) => (
-              <option key={p.id ?? p.idProveedor} value={p.id ?? p.idProveedor}>{p.nombre}</option>
+              <option key={p.id ?? p.idProveedor} value={p.id ?? p.idProveedor}>{p.tipoPersona === "FISICA" ? [p.nombre, p.apellido].filter(Boolean).join(" ") : p.nombre}</option>
             ))}
           </select>
         </div>
