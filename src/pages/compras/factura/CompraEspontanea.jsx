@@ -351,10 +351,10 @@ export default function CompraEspontanea({ onVolver }) {
                 return (
                   <button
                     key={id} type="button"
-                    onClick={() => { setProveedorSel(p); setProveedorSearch(p.nombre || ""); setShowProveedores(false); }}
+                    onClick={() => { setProveedorSel(p); setProveedorSearch(p.tipoPersona === "FISICA" ? [p.nombre, p.apellido].filter(Boolean).join(" ") : (p.nombre || "")); setShowProveedores(false); }}
                     className={S.dropdownItem}
                   >
-                    {p.nombre}
+                    {p.tipoPersona === "FISICA" ? [p.nombre, p.apellido].filter(Boolean).join(" ") : p.nombre}
                   </button>
                 );
               })}
@@ -371,7 +371,7 @@ export default function CompraEspontanea({ onVolver }) {
             </div>
             <div>
               <dt className={S.eyebrow}>Razón social</dt>
-              <dd className="text-[0.8125rem] font-medium text-white">{proveedorSel.nombreRazonSocial || proveedorSel.nombre || "—"}</dd>
+              <dd className="text-[0.8125rem] font-medium text-white">{proveedorSel.tipoPersona !== "JURIDICA" ? [proveedorSel.nombre, proveedorSel.apellido].filter(Boolean).join(" ") : (proveedorSel.nombreRazonSocial || proveedorSel.nombre || "—")}</dd>
             </div>
             <div>
               <dt className={S.eyebrow}>Dirección</dt>

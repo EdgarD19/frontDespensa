@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react"
 import ClientesTabla from "./ClientesTabla"
 import ClientesModal from "./ClientesModal"
+import { getPaises, getCiudades } from "../../../../api/maestrosApi"
 import {
     getClientes,
     createCliente,
@@ -27,6 +28,20 @@ export default function ClientesABM() {
     const [clienteEdit, setClienteEdit] = useState(null);
     const [guardando, setGuardando] = useState(false);
     const [toggleModal, setToggleModal] = useState(null);
+    const [paises, setPaises] = useState([]);
+    const [ciudades, setCiudades] = useState([]);
+
+    useEffect(() => {
+        async function load() {
+            try {
+                const p = await getPaises();
+                setPaises(p);
+            } catch {
+                setPaises([]);
+            }
+        }
+        load();
+    }, []);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -76,12 +91,24 @@ export default function ClientesABM() {
 
     function handleNuevo() {
         setClienteEdit(null);
+        setCiudades([]);
         setModalAbierto(true);
     }
 
     function handleSeleccionar(cliente) {
         setClienteEdit(cliente);
+        if (cliente.idPais) handlePaisChange(cliente.idPais);
         setModalAbierto(true);
+    }
+
+    async function handlePaisChange(idPais) {
+        if (!idPais) { setCiudades([]); return; }
+        try {
+            const c = await getCiudades(Number(idPais));
+            setCiudades(c);
+        } catch {
+            setCiudades([]);
+        }
     }
 
     function handleCerrarModal() {
@@ -121,7 +148,7 @@ export default function ClientesABM() {
         if (id == null) return;
 
         const nombre = cliente.razonSocial ||
-            [cliente.name ?? cliente.firstName, cliente.lastName].filter(Boolean).join(" ").trim() ||
+            [cliente.nombre ?? cliente.firstName ?? cliente.name, cliente.apellido ?? cliente.lastName].filter(Boolean).join(" ").trim() ||
             `cliente #${id}`;
 
         setToggleModal({ id, nombre, activo: cliente.activo !== false });
@@ -176,8 +203,11 @@ export default function ClientesABM() {
                 abierto={modalAbierto}
                 clienteEdit={clienteEdit}
                 guardando={guardando}
+                paises={paises}
+                ciudades={ciudades}
                 onGuardar={handleGuardar}
                 onCerrar={handleCerrarModal}
+                onPaisChange={handlePaisChange}
             />
 
             {/* Modal confirmar toggle activo/inactivo */}

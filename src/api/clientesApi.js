@@ -1,6 +1,6 @@
 import { api } from "./client";
 
-const BASE = "/api/client";
+const BASE = "/api/clientes";
 
 export function getClienteId(cliente) {
     const raw = cliente?.id ?? cliente?.idCliente;
@@ -73,43 +73,24 @@ function buildClientBody(clienteData) {
 
     const esJuridica = tipoCliente === "JURIDICA";
     const body = {
-        firstName: String((esJuridica ? razonSocial || firstName : firstName) ?? "").trim(),
-        lastName: String(lastName ?? "").trim(),
-        tipoCliente: tipoCliente || "FISICA",
-        id_ciudad: resolveIdCiudad(),
-        nationality_id_pais: resolveNationalityIdPais(),
+        nombre: String((esJuridica ? razonSocial || firstName : firstName) ?? "").trim(),
+        apellido: String(lastName ?? "").trim() || (esJuridica ? String(razonSocial ?? "").trim() : ""),
+        tipoDocumento: esJuridica ? "RUC" : "CI",
+        idCiudad: clienteData.idCiudad ? Number(clienteData.idCiudad) : resolveIdCiudad(),
+        idPais: clienteData.idPais ? Number(clienteData.idPais) : resolveNationalityIdPais(),
     };
 
-    if (tipoCliente === "JURIDICA") {
-        body.razonSocial = String(razonSocial ?? "").trim();
-        body.ruc = String(ruc ?? "").trim() || null;
-        body.descripcionEmpresa = String(descripcionEmpresa ?? "").trim() || null;
-        body.contactoNombre = String(contactoNombre ?? "").trim() || null;
-        body.contactoCelular = String(contactoCelular ?? "").trim() || null;
-    }
-
     const iso = birthDateToIso8601(birthDate);
-    if (iso) body.birthDate = iso;
+    if (iso) body.fechaNacimiento = iso;
 
-    if (documentType) body.documentType = documentType;
-    if (documentNumber != null && String(documentNumber).trim() !== "") {
-        body.documentNumber = String(documentNumber).trim();
+    if (esJuridica && ruc != null && String(ruc).trim() !== "") {
+        body.numeroDocumento = String(ruc).trim();
+    } else if (documentNumber != null && String(documentNumber).trim() !== "") {
+        body.numeroDocumento = String(documentNumber).trim();
     }
-    if (gender) body.gender = gender;
+    if (gender) body.genero = gender;
     if (phoneNumber != null && String(phoneNumber).trim() !== "") {
-        body.phoneNumber = String(phoneNumber).trim();
-    }
-    if (celular != null && String(celular).trim() !== "") {
-        body.celular = String(celular).trim();
-    }
-    if (email != null && String(email).trim() !== "") {
-        body.email = String(email).trim();
-    }
-    if (direccion != null && String(direccion).trim() !== "") {
-        body.direccion = String(direccion).trim();
-    }
-    if (observaciones != null && String(observaciones).trim() !== "") {
-        body.observaciones = String(observaciones).trim();
+        body.telefono = String(phoneNumber).trim();
     }
     if (activo != null) {
         body.activo = activo;

@@ -28,56 +28,91 @@ const FORM_INICIAL = {
   email: "",
   direccion: "",
   observaciones: "",
+  idPais: "",
+  idCiudad: "",
 };
 
 export default function ClientesModal({
   abierto,
   clienteEdit = null,
   guardando = false,
+  paises = [],
+  ciudades = [],
   onGuardar,
   onCerrar,
+  onPaisChange,
 }) {
   const [form, setForm] = useState(FORM_INICIAL);
   const [errores, setErrores] = useState({});
+  const [ciudadPendiente, setCiudadPendiente] = useState(null);
 
   useEffect(() => {
     if (!abierto) return;
 
     if (clienteEdit) {
-      const rawBirth = clienteEdit.dateBirth ?? clienteEdit.birthDate ?? null;
-      const rawDoc = clienteEdit.documentNumber ?? "";
-      // El back no devuelve tipoCliente; se infiere por el formato de RUC (80XXXXXX-X)
+      const rawBirth = clienteEdit.fechaNacimiento ?? clienteEdit.dateBirth ?? clienteEdit.birthDate ?? null;
+      const rawDoc = clienteEdit.numeroDocumento ?? clienteEdit.documentNumber ?? "";
+      // El back no devuelve tipoCliente; se infiere desde tipoDocumento (RUC = Jurídica)
       const esJuridicaInferida =
-        clienteEdit.tipoCliente === "JURIDICA" || /^80\d{6}-?\d?$/.test(rawDoc.trim());
+        clienteEdit.tipoCliente === "JURIDICA" ||
+        clienteEdit.tipoDocumento === "RUC" ||
+        /^80\d{6}-?\d?$/.test(String(rawDoc).trim());
+      const paisId = clienteEdit.idPais ?? (paises.find(
+        (p) => String(p.nombre ?? "").toLowerCase() === String(clienteEdit.pais ?? "").toLowerCase()
+      )?.id ?? "");
       setForm({
-        firstName: clienteEdit.firstName ?? clienteEdit.name ?? "",
-        lastName: clienteEdit.lastName ?? "",
+        firstName: clienteEdit.nombre ?? clienteEdit.firstName ?? clienteEdit.name ?? "",
+        lastName: clienteEdit.apellido ?? clienteEdit.lastName ?? "",
         tipoCliente: clienteEdit.tipoCliente ?? (esJuridicaInferida ? "JURIDICA" : "FISICA"),
-        razonSocial: clienteEdit.razonSocial ?? (esJuridicaInferida ? (clienteEdit.firstName ?? clienteEdit.name ?? "") : ""),
+        razonSocial: clienteEdit.razonSocial ?? (esJuridicaInferida ? (clienteEdit.nombre ?? clienteEdit.firstName ?? clienteEdit.name ?? "") : ""),
         ruc: clienteEdit.ruc ?? (esJuridicaInferida ? rawDoc : ""),
-        descripcionEmpresa: clienteEdit.descripcionEmpresa ?? "",
-        contactoNombre: clienteEdit.contactoNombre ?? "",
+        descripcionEmpresa: clienteEdit.descripcionEmpresa ?? clienteEdit.descripcion ?? "",
+        contactoNombre: clienteEdit.contactoNombre ?? (Array.isArray(clienteEdit.contactos) && clienteEdit.contactos.length > 0 ? clienteEdit.contactos[0] : ""),
         contactoCelular: clienteEdit.contactoCelular ?? "",
         documentNumber: esJuridicaInferida ? "" : rawDoc,
         birthDate: rawBirth ? new Date(rawBirth).toISOString().split("T")[0] : "",
-        gender: clienteEdit.gender ?? "",
-        phoneNumber: clienteEdit.phoneNumber ?? clienteEdit.phone ?? "",
+        gender: clienteEdit.genero ?? clienteEdit.gender ?? "",
+        phoneNumber: clienteEdit.telefono ?? clienteEdit.phoneNumber ?? clienteEdit.phone ?? "",
         celular: clienteEdit.celular ?? "",
         email: clienteEdit.email ?? "",
         direccion: clienteEdit.direccion ?? "",
         observaciones: clienteEdit.observaciones ?? "",
+        idPais: paisId,
+        idCiudad: "",
       });
+      setCiudadPendiente(clienteEdit.ciudad ?? clienteEdit.nombreCiudad ?? null);
+      if (paisId) onPaisChange?.(paisId);
       setErrores({});
     } else {
       setForm(FORM_INICIAL);
+      setCiudadPendiente(null);
       setErrores({});
     }
   }, [abierto, clienteEdit]);
+
+  // Cuando llegan las ciudades del país seleccionado, emparejar la ciudad guardada por nombre
+  useEffect(() => {
+    if (!ciudadPendiente || !Array.isArray(ciudades) || ciudades.length === 0) return;
+    const match = ciudades.find(
+      (c) => String(c.nombre ?? "").toLowerCase() === String(ciudadPendiente).toLowerCase()
+    );
+    if (match) {
+      setForm((prev) => ({ ...prev, idCiudad: match.id ?? match.idCiudad ?? prev.idCiudad }));
+    }
+    setCiudadPendiente(null);
+  }, [ciudades, ciudadPendiente]);
 
   function handleChange(e) {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     if (errores[name]) setErrores((prev) => ({ ...prev, [name]: null }));
+  }
+
+  function handlePaisChange(e) {
+    const val = e.target.value;
+    setForm((prev) => ({ ...prev, idPais: val, idCiudad: "" }));
+    onPaisChange?.(val);
+    if (errores.idPais) setErrores((prev) => ({ ...prev, idPais: null }));
   }
 
   const docDocument = form.documentNumber ?? "";
@@ -146,15 +181,25 @@ export default function ClientesModal({
 
   function validar() {
     const errs = {};
-    if (!esJuridica && form.documentNumber.trim() && !/^\d{6,8}(-\d)?$/.test(form.documentNumber.trim())) {
-      errs.documentNumber = "El documento debe tener de 6 a 8 dígitos y opcionalmente 1 dígito verificador";
-    }
     if (esJuridica) {
+      if (!form.razonSocial.trim()) errs.razonSocial = "Requerido";
       const ruc = form.ruc?.trim() ?? "";
-      if (ruc && !/^80\d{6}-\d$/.test(ruc)) {
+      if (!ruc) {
+        errs.ruc = "El número de documento (RUC) es obligatorio";
+      } else if (!/^80\d{6}-\d$/.test(ruc)) {
         errs.ruc = "El RUC debe empezar con 80, tener 8 dígitos y 1 dígito verificador (80XXXXXX-X)";
       }
+    } else {
+      if (!form.firstName.trim()) errs.firstName = "El nombre es obligatorio";
+      if (!form.lastName.trim()) errs.lastName = "El apellido es obligatorio";
+      if (!form.documentNumber.trim()) {
+        errs.documentNumber = "El número de documento es obligatorio";
+      } else if (!/^\d{6,8}(-\d)?$/.test(form.documentNumber.trim())) {
+        errs.documentNumber = "El documento debe tener de 6 a 8 dígitos y opcionalmente 1 dígito verificador";
+      }
     }
+    if (!form.idPais) errs.idPais = "El país es obligatorio";
+    if (!form.idCiudad) errs.idCiudad = "La ciudad es obligatoria";
     if (form.phoneNumber && !/^021\d{6}$/.test(form.phoneNumber.trim())) {
       errs.phoneNumber = "Debés ingresar los 6 números del teléfono (formato 021 XXXXXX)";
     }
@@ -269,6 +314,7 @@ export default function ClientesModal({
                     placeholder="Razón social"
                     className={inputClass}
                   />
+                  {errores.razonSocial && <span className="text-[11px] text-rose-400">{errores.razonSocial}</span>}
                 </label>
                 <label className={labelClass}>
                   <span className={labelText}>RUC / Documento</span>
@@ -314,6 +360,7 @@ export default function ClientesModal({
                     placeholder="Nombre"
                     className={inputClass}
                   />
+                  {errores.firstName && <span className="text-[11px] text-rose-400">{errores.firstName}</span>}
                 </label>
                 <label className={labelClass}>
                   <span className={labelText}>Apellido</span>
@@ -325,6 +372,7 @@ export default function ClientesModal({
                     placeholder="Apellido"
                     className={inputClass}
                   />
+                  {errores.lastName && <span className="text-[11px] text-rose-400">{errores.lastName}</span>}
                 </label>
               </div>
 
@@ -572,6 +620,43 @@ export default function ClientesModal({
               </label>
             </div>
           )}
+
+          {/* Pais + Ciudad */}
+          <div className="grid grid-cols-2 gap-3">
+            <label className={labelClass}>
+              <span className={labelText}>País <span className="text-rose-400">*</span></span>
+              <select
+                name="idPais"
+                value={form.idPais ?? ""}
+                onChange={handlePaisChange}
+                required
+                className={selectClass}
+              >
+                <option value="">Seleccionar...</option>
+                {paises.map((p) => (
+                  <option key={p.id} value={p.id}>{p.nombre}</option>
+                ))}
+              </select>
+              {errores.idPais && <span className="text-[11px] text-rose-400">{errores.idPais}</span>}
+            </label>
+
+            <label className={labelClass}>
+              <span className={labelText}>Ciudad <span className="text-rose-400">*</span></span>
+              <select
+                name="idCiudad"
+                value={form.idCiudad ?? ""}
+                onChange={handleChange}
+                required
+                className={selectClass}
+              >
+                <option value="">Seleccionar...</option>
+                {ciudades.map((c) => (
+                  <option key={c.id} value={c.id}>{c.nombre}</option>
+                ))}
+              </select>
+              {errores.idCiudad && <span className="text-[11px] text-rose-400">{errores.idCiudad}</span>}
+            </label>
+          </div>
 
           {/* Observaciones */}
           <label className={labelClass}>

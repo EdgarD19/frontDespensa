@@ -77,11 +77,11 @@ export default function ClientesTabla({
             )}
 
             {!loading && clientes.map((c) => {
-              const esJuridica = c.tipoCliente === "JURIDICA";
-              const nombre = esJuridica
-                ? (c.razonSocial || "—")
-                : ([c.name ?? c.firstName, c.lastName].filter(Boolean).join(" ") || "—");
-              const doc = c.documentNumber || "—";
+              const esJuridica = c.tipoCliente === "JURIDICA" || c.tipoDocumento === "RUC";
+              const nombre = [c.nombre ?? c.firstName ?? c.name ?? c.razonSocial, c.apellido ?? c.lastName]
+                .filter(Boolean)
+                .join(" ") || "—";
+              const doc = c.numeroDocumento || c.documentNumber || "—";
               const activo = c.activo !== false;
 
               return (

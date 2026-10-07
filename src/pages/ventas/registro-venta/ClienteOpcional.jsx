@@ -122,7 +122,7 @@ export default function ClienteOpcional({ cliente, onSeleccionar, onQuitar, abie
         const lista = await getClientes({ search: busqueda, page: 0, pageSize: 20, sortBy: "idCliente", sortDir: "ASC" });
         const content = lista.data?.content;
         if (Array.isArray(content) && content.length > 0) {
-          creado = content.find((c) => !!doc && String(c.documentNumber ?? c.document_number ?? "") === doc) ?? content[0];
+          creado = content.find((c) => !!doc && String(c.numeroDocumento ?? c.documentNumber ?? "") === doc) ?? content[0];
         }
       } catch { /* si falla la lista, se selecciona el objeto local */ }
       onSeleccionar(creado || {
