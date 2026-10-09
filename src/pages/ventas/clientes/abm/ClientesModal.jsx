@@ -17,17 +17,11 @@ const FORM_INICIAL = {
   tipoCliente: "FISICA",
   razonSocial: "",
   ruc: "",
-  descripcionEmpresa: "",
-  contactoNombre: "",
-  contactoCelular: "",
   documentNumber: "",
-  birthDate: "",
   gender: "",
-  phoneNumber: "",
   celular: "",
   email: "",
   direccion: "",
-  observaciones: "",
   idPais: "",
   idCiudad: "",
 };
@@ -50,7 +44,6 @@ export default function ClientesModal({
     if (!abierto) return;
 
     if (clienteEdit) {
-      const rawBirth = clienteEdit.fechaNacimiento ?? clienteEdit.dateBirth ?? clienteEdit.birthDate ?? null;
       const rawDoc = clienteEdit.numeroDocumento ?? clienteEdit.documentNumber ?? "";
       // El back no devuelve tipoCliente; se infiere desde tipoDocumento (RUC = Jurídica)
       const esJuridicaInferida =
@@ -66,17 +59,11 @@ export default function ClientesModal({
         tipoCliente: clienteEdit.tipoCliente ?? (esJuridicaInferida ? "JURIDICA" : "FISICA"),
         razonSocial: clienteEdit.razonSocial ?? (esJuridicaInferida ? (clienteEdit.nombre ?? clienteEdit.firstName ?? clienteEdit.name ?? "") : ""),
         ruc: clienteEdit.ruc ?? (esJuridicaInferida ? rawDoc : ""),
-        descripcionEmpresa: clienteEdit.descripcionEmpresa ?? clienteEdit.descripcion ?? "",
-        contactoNombre: clienteEdit.contactoNombre ?? (Array.isArray(clienteEdit.contactos) && clienteEdit.contactos.length > 0 ? clienteEdit.contactos[0] : ""),
-        contactoCelular: clienteEdit.contactoCelular ?? "",
         documentNumber: esJuridicaInferida ? "" : rawDoc,
-        birthDate: rawBirth ? new Date(rawBirth).toISOString().split("T")[0] : "",
         gender: clienteEdit.genero ?? clienteEdit.gender ?? "",
-        phoneNumber: clienteEdit.telefono ?? clienteEdit.phoneNumber ?? clienteEdit.phone ?? "",
         celular: clienteEdit.celular ?? "",
         email: clienteEdit.email ?? "",
         direccion: clienteEdit.direccion ?? "",
-        observaciones: clienteEdit.observaciones ?? "",
         idPais: paisId,
         idCiudad: "",
       });
@@ -159,26 +146,6 @@ export default function ClientesModal({
     if (errores.celular) setErrores((prev) => ({ ...prev, celular: null }));
   }
 
-  const contactoCelularResto = form.contactoCelular?.startsWith("+595")
-    ? form.contactoCelular.slice(4)
-    : form.contactoCelular ?? "";
-
-  function handleContactoCelularChange(e) {
-    const solo = e.target.value.replace(/\D/g, "").slice(0, 9);
-    setForm((prev) => ({ ...prev, contactoCelular: solo ? `+595${solo}` : "" }));
-    if (errores.contactoCelular) setErrores((prev) => ({ ...prev, contactoCelular: null }));
-  }
-
-  const telefonoResto = form.phoneNumber?.startsWith("021")
-    ? form.phoneNumber.slice(3)
-    : form.phoneNumber ?? "";
-
-  function handleTelefonoChange(e) {
-    const solo = e.target.value.replace(/\D/g, "").slice(0, 6);
-    setForm((prev) => ({ ...prev, phoneNumber: solo ? `021${solo}` : "" }));
-    if (errores.phoneNumber) setErrores((prev) => ({ ...prev, phoneNumber: null }));
-  }
-
   function validar() {
     const errs = {};
     if (esJuridica) {
@@ -200,14 +167,8 @@ export default function ClientesModal({
     }
     if (!form.idPais) errs.idPais = "El país es obligatorio";
     if (!form.idCiudad) errs.idCiudad = "La ciudad es obligatoria";
-    if (form.phoneNumber && !/^021\d{6}$/.test(form.phoneNumber.trim())) {
-      errs.phoneNumber = "Debés ingresar los 6 números del teléfono (formato 021 XXXXXX)";
-    }
     if (form.celular && !/^\+5959\d{8}$/.test(form.celular.trim())) {
       errs.celular = "Debés ingresar los 9 números del celular (formato +5959XXXXXXXX)";
-    }
-    if (esJuridica && form.contactoCelular && !/^\+5959\d{8}$/.test(form.contactoCelular.trim())) {
-      errs.contactoCelular = "Debés ingresar los 9 números del celular (formato +5959XXXXXXXX)";
     }
     return errs;
   }
@@ -224,21 +185,15 @@ export default function ClientesModal({
       firstName: form.firstName.trim(),
       lastName: form.lastName.trim(),
       documentNumber: form.documentNumber?.trim() || null,
-      birthDate: form.birthDate || null,
       gender: form.gender || null,
-      phoneNumber: form.phoneNumber?.trim() || null,
       celular: form.celular?.trim() || null,
       email: form.email?.trim() || null,
       direccion: form.direccion?.trim() || null,
-      observaciones: form.observaciones?.trim() || null,
     };
     if (form.tipoCliente === "JURIDICA") {
       payload.razonSocial = form.razonSocial.trim();
       payload.ruc = form.ruc?.trim() || null;
       payload.documentNumber = form.ruc?.trim() || null;
-      payload.descripcionEmpresa = form.descripcionEmpresa?.trim() || null;
-      payload.contactoNombre = form.contactoNombre?.trim() || null;
-      payload.contactoCelular = form.contactoCelular?.trim() || null;
     }
     onGuardar(payload);
   }
@@ -317,7 +272,7 @@ export default function ClientesModal({
                   {errores.razonSocial && <span className="text-[11px] text-rose-400">{errores.razonSocial}</span>}
                 </label>
                 <label className={labelClass}>
-                  <span className={labelText}>RUC / Documento</span>
+                  <span className={labelText}>RUC <span className="text-rose-400">*</span></span>
                   <div className="flex items-center gap-1">
                     <input
                       type="text"
@@ -363,7 +318,7 @@ export default function ClientesModal({
                   {errores.firstName && <span className="text-[11px] text-rose-400">{errores.firstName}</span>}
                 </label>
                 <label className={labelClass}>
-                  <span className={labelText}>Apellido</span>
+                  <span className={labelText}>Apellido <span className="text-rose-400">*</span></span>
                   <input
                     type="text"
                     name="lastName"
@@ -376,10 +331,10 @@ export default function ClientesModal({
                 </label>
               </div>
 
-              {/* Número de documento + Fecha nacimiento */}
+              {/* C.I. / R.U.C. + Celular */}
               <div className="grid grid-cols-2 gap-3">
                 <label className={labelClass}>
-                  <span className={labelText}>C.I. / R.U.C.</span>
+                  <span className={labelText}>C.I. / R.U.C. <span className="text-rose-400">*</span></span>
                   <div className="flex items-center gap-1">
                     <input
                       type="text"
@@ -406,70 +361,32 @@ export default function ClientesModal({
                   {errores.documentNumber && <span className="text-[11px] text-rose-400">{errores.documentNumber}</span>}
                 </label>
                 <label className={labelClass}>
-                  <span className={labelText}>Fecha de nacimiento</span>
-                  <input
-                    type="date"
-                    name="birthDate"
-                    value={form.birthDate}
-                    onChange={handleChange}
-                    className={inputClass}
-                  />
+                  <span className={labelText}>Celular</span>
+                  <div className="flex items-center gap-1">
+                    <span className="rounded-l-none border border-r-0 border-white/10 bg-white/[0.06] px-2.5 py-1.5 text-sm text-white select-none">
+                      +595
+                    </span>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      name="celular"
+                      value={celularResto}
+                      onChange={handleCelularChange}
+                      maxLength={9}
+                      placeholder="961000000"
+                      className={`${inputClass} !rounded-l-none`}
+                    />
+                  </div>
+                  {errores.celular && <span className="text-[11px] text-rose-400">{errores.celular}</span>}
                 </label>
               </div>
             </>
           )}
 
-          {/* Contacto + Descripción (solo jurídica) */}
+          {/* Celular + Email (solo jurídica) */}
           {esJuridica && (
             <div className="grid grid-cols-2 gap-3">
               <label className={labelClass}>
-                <span className={labelText}>Nombre del contacto</span>
-                <input
-                  type="text"
-                  name="contactoNombre"
-                  value={form.contactoNombre}
-                  onChange={handleChange}
-                  placeholder="Nombre del contacto"
-                  className={inputClass}
-                />
-              </label>
-              <label className={labelClass}>
-                <span className={labelText}>Descripción de la empresa</span>
-                <input
-                  type="text"
-                  name="descripcionEmpresa"
-                  value={form.descripcionEmpresa}
-                  onChange={handleChange}
-                  placeholder="Descripción de la empresa"
-                  className={inputClass}
-                />
-              </label>
-            </div>
-          )}
-
-          {/* Teléfono + Celular (física) / + Celular del contacto (jurídica) */}
-          {!esJuridica ? (
-            <div className="grid grid-cols-2 gap-3">
-              <label className={labelClass}>
-                <span className={labelText}>Teléfono</span>
-                <div className="flex items-center gap-1">
-                  <span className="rounded-l-none border border-r-0 border-white/10 bg-white/[0.06] px-2.5 py-1.5 text-sm text-white select-none">
-                    021
-                  </span>
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    name="phoneNumber"
-                    value={telefonoResto}
-                    onChange={handleTelefonoChange}
-                    maxLength={6}
-                    placeholder="123456"
-                    className={`${inputClass} !rounded-l-none`}
-                  />
-                </div>
-                {errores.phoneNumber && <span className="text-[11px] text-rose-400">{errores.phoneNumber}</span>}
-              </label>
-              <label className={labelClass}>
                 <span className={labelText}>Celular</span>
                 <div className="flex items-center gap-1">
                   <span className="rounded-l-none border border-r-0 border-white/10 bg-white/[0.06] px-2.5 py-1.5 text-sm text-white select-none">
@@ -488,72 +405,6 @@ export default function ClientesModal({
                 </div>
                 {errores.celular && <span className="text-[11px] text-rose-400">{errores.celular}</span>}
               </label>
-            </div>
-          ) : (
-            <div className="grid grid-cols-3 gap-3">
-              <label className={labelClass}>
-                <span className={labelText}>Teléfono</span>
-                <div className="flex items-center gap-1">
-                  <span className="rounded-l-none border border-r-0 border-white/10 bg-white/[0.06] px-2.5 py-1.5 text-sm text-white select-none">
-                    021
-                  </span>
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    name="phoneNumber"
-                    value={telefonoResto}
-                    onChange={handleTelefonoChange}
-                    maxLength={6}
-                    placeholder="123456"
-                    className={`${inputClass} !rounded-l-none`}
-                  />
-                </div>
-                {errores.phoneNumber && <span className="text-[11px] text-rose-400">{errores.phoneNumber}</span>}
-              </label>
-              <label className={labelClass}>
-                <span className={labelText}>Celular</span>
-                <div className="flex items-center gap-1">
-                  <span className="rounded-l-none border border-r-0 border-white/10 bg-white/[0.06] px-2.5 py-1.5 text-sm text-white select-none">
-                    +595
-                  </span>
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    name="celular"
-                    value={celularResto}
-                    onChange={handleCelularChange}
-                    maxLength={9}
-                    placeholder="961000000"
-                    className={`${inputClass} !rounded-l-none`}
-                  />
-                </div>
-                {errores.celular && <span className="text-[11px] text-rose-400">{errores.celular}</span>}
-              </label>
-              <label className={labelClass}>
-                <span className={labelText}>Celular del contacto</span>
-                <div className="flex items-center gap-1">
-                  <span className="rounded-l-none border border-r-0 border-white/10 bg-white/[0.06] px-2.5 py-1.5 text-sm text-white select-none">
-                    +595
-                  </span>
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    name="contactoCelular"
-                    value={contactoCelularResto}
-                    onChange={handleContactoCelularChange}
-                    maxLength={9}
-                    placeholder="961000000"
-                    className={`${inputClass} !rounded-l-none`}
-                  />
-                </div>
-                {errores.contactoCelular && <span className="text-[11px] text-rose-400">{errores.contactoCelular}</span>}
-              </label>
-            </div>
-          )}
-
-          {/* Dirección (+ Email en jurídica) */}
-          {esJuridica ? (
-            <div className="grid grid-cols-2 gap-3">
               <label className={labelClass}>
                 <span className={labelText}>Email</span>
                 <input
@@ -565,31 +416,21 @@ export default function ClientesModal({
                   className={inputClass}
                 />
               </label>
-              <label className={labelClass}>
-                <span className={labelText}>Dirección</span>
-                <input
-                  type="text"
-                  name="direccion"
-                  value={form.direccion}
-                  onChange={handleChange}
-                  placeholder="Calle, número y barrio"
-                  className={inputClass}
-                />
-              </label>
             </div>
-          ) : (
-            <label className={labelClass}>
-              <span className={labelText}>Dirección</span>
-              <input
-                type="text"
-                name="direccion"
-                value={form.direccion}
-                onChange={handleChange}
-                placeholder="Calle, número y barrio"
-                className={inputClass}
-              />
-            </label>
           )}
+
+          {/* Dirección */}
+          <label className={labelClass}>
+            <span className={labelText}>Dirección</span>
+            <input
+              type="text"
+              name="direccion"
+              value={form.direccion}
+              onChange={handleChange}
+              placeholder="Calle, número y barrio"
+              className={inputClass}
+            />
+          </label>
 
           {/* Email + Sexo (solo física) */}
           {!esJuridica && (
@@ -657,19 +498,6 @@ export default function ClientesModal({
               {errores.idCiudad && <span className="text-[11px] text-rose-400">{errores.idCiudad}</span>}
             </label>
           </div>
-
-          {/* Observaciones */}
-          <label className={labelClass}>
-            <span className={labelText}>Observaciones</span>
-            <textarea
-              name="observaciones"
-              value={form.observaciones}
-              onChange={handleChange}
-              rows={2}
-              placeholder="Observaciones"
-              className={`${inputClass} resize-none`}
-            />
-          </label>
 
           {/* Botones */}
           <div className="flex gap-2 pt-1">

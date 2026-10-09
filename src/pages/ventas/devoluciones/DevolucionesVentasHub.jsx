@@ -4,9 +4,8 @@ import { hubCardClass as cardClass, hubIconClass } from "../../../components/ui/
 
 const SUB_MODULOS = [
   {
-    to: null,
+    to: "/ventas/devoluciones/intercambios",
     label: "Intercambio",
-    descripcion: "Gestión de intercambios de ventas. Próximamente.",
     icon: ArrowLeftRight,
   },
   {
@@ -39,7 +38,9 @@ export default function DevolucionesVentasHub() {
               </div>
               <div className="text-center space-y-1">
                 <p className="text-base font-semibold text-white leading-tight">{m.label}</p>
-                <p className="text-xs text-white/40 leading-relaxed line-clamp-2">{m.descripcion}</p>
+                {m.descripcion && (
+                  <p className="text-xs text-white/40 leading-relaxed line-clamp-2">{m.descripcion}</p>
+                )}
               </div>
             </div>
           );

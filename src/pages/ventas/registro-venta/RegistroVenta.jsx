@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { getProductos, getProductoByCodigo } from "../../../api/productosApi";
 import { registrarVentaFactura } from "../../../api/ventasApi";
+import { guardarVentaLocal } from "../../../api/ventasLocalApi";
 import { apiErrorMessage } from "../../../api/errors";
 import {
   seleccionarComprobante, emitirYConsumir,
@@ -74,6 +75,7 @@ export default function RegistroVenta() {
   const [montoPagado, setMontoPagado] = useState("");
   const [formaPago, setFormaPago] = useState(FORMA_PAGO_EFECTIVO);
   const [errorGlobal, setErrorGlobal] = useState(null);
+  const [avisoLocal, setAvisoLocal] = useState(null);
   const [confirmando, setConfirmando] = useState(false);
   const [editandoCantidad, setEditandoCantidad] = useState(null);
   const [numeroPreview] = useState(() => numeroFacturaPreview());
@@ -301,10 +303,46 @@ export default function RegistroVenta() {
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
   }, [handleGlobalKeyDown]);
 
+  // Cierre de una venta, compartido por el registro normal (back OK) y el modo local
+  // (back sin endpoint): limpia el carrito, guarda el ticket como historial local
+  // (lo usa el módulo de Intercambio para buscarlo), emite el comprobante y reenumera.
+  const finalizarVenta = useCallback(async ({ numFactura, consumido, sincronizado }) => {
+    const snap = carrito.map((l) => ({ ...l }));
+    const cliSnap = cliente;
+    setCarrito([]); setMontoPagado(""); setCliente(null); setEditandoCantidad(null);
+    guardarVentaLocal({
+      numero: numFactura,
+      fecha: new Date().toISOString(),
+      cliente: cliSnap ? labelCliente(cliSnap) : "Sin nombre",
+      lineas: snap.map((l) => ({
+        productoId: l.productoId,
+        nombre: l.nombre,
+        cantidad: l.cantidad,
+        precioUnitario: l.precioUnitario,
+        subtotal: l.precioUnitario * l.cantidad,
+      })),
+      total: totalConIva, montoPagado: montoNum, cambio, formaPago,
+      formaPagoLabel: labelFormaPago(formaPago),
+      sincronizado,
+    });
+    await cargarProductos();
+    setDatosImpresion({
+      idComprobante: `${Date.now()}-${numFactura}`, fecha: hoyISO(), numero: numFactura,
+      cliente: cliSnap, lineas: snap, total: totalConIva, montoPagado: montoNum,
+      cambio, tipo: "CONTADO", formaPago, formaPagoLabel: labelFormaPago(formaPago),
+      timbrado: consumido?.record
+        ? { numeroTimbrado: consumido.record.numeroTimbrado, vigenciaHasta: consumido.record.fechaVencimiento }
+        : null,
+    });
+    setComprobanteSel(seleccionarComprobante());
+    focusSearch();
+  }, [carrito, cliente, totalConIva, montoNum, cambio, formaPago, cargarProductos, focusSearch]);
+
   const handleConfirmar = useCallback(async () => {
     if (!puedeConfirmar) return;
     setConfirmando(true);
     setErrorGlobal(null);
+    setAvisoLocal(null);
     const payload = {
       fechaFactura: hoyISO(), tipoFactura: "CONTADO", estado: "PENDIENTE",
       idCliente: cliente?.idCliente ?? cliente?.id ?? null,
@@ -317,30 +355,29 @@ export default function RegistroVenta() {
       // Consume el número correlativo del timbrado vigente (persistido en el front).
       const consumido = timbrado ? emitirYConsumir(timbrado.id) : null;
       const numFactura = consumido?.numero ?? data?.numeroFactura ?? data?.numero_factura ?? numeroPreview;
-      const snap = carrito.map((l) => ({ ...l }));
-      const cliSnap = cliente;
-      setCarrito([]); setMontoPagado(""); setCliente(null); setEditandoCantidad(null);
-      await cargarProductos();
-      setDatosImpresion({
-        idComprobante: `${Date.now()}-${numFactura}`, fecha: hoyISO(), numero: numFactura,
-        cliente: cliSnap, lineas: snap, total: totalConIva, montoPagado: montoNum,
-        cambio, tipo: "CONTADO", formaPago, formaPagoLabel: labelFormaPago(formaPago),
-        timbrado: consumido?.record
-          ? { numeroTimbrado: consumido.record.numeroTimbrado, vigenciaHasta: consumido.record.fechaVencimiento }
-          : null,
-      });
-      setComprobanteSel(seleccionarComprobante());
-      focusSearch();
+      await finalizarVenta({ numFactura, consumido, sincronizado: true });
     } catch (err) {
       const status = err?.response?.status;
       const base = apiErrorMessage(err) || "No se pudo registrar la venta.";
-      if (status === 404 || (status === 500 && base.includes("error_NO_ESPERADO"))) {
-        setErrorGlobal(`${base} — El backend aún no expone el endpoint de ventas (/api/ventas/facturas).`);
+      // Ruta inexistente: este back responde 500 con error "error_NO_ESPERADO"
+      // (o 404). Mientras no exista /api/ventas/facturas la venta se completa
+      // en modo local. El código va en data.error; data.mensaje es el texto legible.
+      const codigoError = err?.response?.data?.error;
+      const backNoDisponible =
+        status === 404 ||
+        (status === 500 && (codigoError === "error_NO_ESPERADO" || base.includes("error_NO_ESPERADO")));
+      if (backNoDisponible && timbrado) {
+        const consumido = emitirYConsumir(timbrado.id);
+        const numFactura = consumido?.numero ?? numeroPreview;
+        await finalizarVenta({ numFactura, consumido, sincronizado: false });
+        setAvisoLocal(
+          "Venta registrada en modo local: el backend aún no expone /api/ventas/facturas. El ticket queda pendiente de sincronizar."
+        );
       } else {
         setErrorGlobal(base);
       }
     } finally { setConfirmando(false); }
-  }, [puedeConfirmar, cliente, carrito, subtotal, montoNum, cambio, formaPago, totalConIva, cargarProductos, numeroPreview, focusSearch, timbrado]);
+  }, [puedeConfirmar, cliente, carrito, subtotal, montoNum, cambio, formaPago, numeroPreview, finalizarVenta, timbrado]);
 
   confirmarRef.current = handleConfirmar;
 
@@ -379,6 +416,18 @@ export default function RegistroVenta() {
           <span className="flex-1">{errorGlobal}</span>
           <button type="button" onClick={() => setErrorGlobal(null)} aria-label="Cerrar aviso"
             className="rounded p-0.5 text-red-300/70 transition-colors hover:text-red-200">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {avisoLocal && (
+        <div role="status"
+          className="mb-3 flex shrink-0 items-start gap-2 rounded-none border border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-sm text-amber-300">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span className="flex-1">{avisoLocal}</span>
+          <button type="button" onClick={() => setAvisoLocal(null)} aria-label="Cerrar aviso"
+            className="rounded p-0.5 text-amber-300/70 transition-colors hover:text-amber-200">
             <X className="h-4 w-4" />
           </button>
         </div>

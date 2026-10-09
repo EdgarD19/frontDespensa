@@ -89,8 +89,17 @@ function buildClientBody(clienteData) {
         body.numeroDocumento = String(documentNumber).trim();
     }
     if (gender) body.genero = gender;
-    if (phoneNumber != null && String(phoneNumber).trim() !== "") {
-        body.telefono = String(phoneNumber).trim();
+    if (celular != null && String(celular).trim() !== "") {
+        body.celular = String(celular).trim();
+    } else if (phoneNumber != null && String(phoneNumber).trim() !== "") {
+        // Compatibilidad: dato viejo que venía como "phoneNumber"/telefono → celular.
+        body.celular = String(phoneNumber).trim();
+    }
+    if (email != null && String(email).trim() !== "") {
+        body.email = String(email).trim();
+    }
+    if (direccion != null && String(direccion).trim() !== "") {
+        body.direccion = String(direccion).trim();
     }
     if (activo != null) {
         body.activo = activo;
@@ -109,8 +118,4 @@ export function updateCliente(id, clienteData) {
 
 export function toggleActivoCliente(id) {
     return api.patch(`${BASE}/${id}/toggle-activo`);
-}
-
-export function deleteCliente(id) {
-    return api.delete(`${BASE}/${id}`);
 }
