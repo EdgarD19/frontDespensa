@@ -16,8 +16,10 @@ import MaestrosABM from './pages/inventario/maestros/MaestrosABM'
 import VentasHub from './pages/ventas/VentasHub'
 import DevolucionesVentasHub from './pages/ventas/devoluciones/DevolucionesVentasHub'
 import IntercambioVentas from './pages/ventas/devoluciones/IntercambioVentas'
+import AnulacionVentas from './pages/ventas/devoluciones/AnulacionVentas'
 import ClientesABM from './pages/ventas/clientes/abm/ClientesABM'
 import RegistroVenta from './pages/ventas/registro-venta/RegistroVenta'
+import HistorialVentas from './pages/ventas/consultas/HistorialVentas'
 
 import ComprasHub from './pages/compras/ComprasHub'
 import RegistroFactura from './pages/compras/factura/RegistroFactura'
@@ -45,9 +47,12 @@ export default function App() {
           <Route path="ventas"> 
             <Route index element={<VentasHub />} />
             <Route path="registro" element={<RegistroVenta />} />
+            <Route path="consultas/historial" element={<HistorialVentas />} />
             <Route path="clientes" element={<ClientesABM />} />
             <Route path="devoluciones" element={<DevolucionesVentasHub />} />
             <Route path="devoluciones/intercambios" element={<IntercambioVentas />} />
+            {/* Anulación parcial / refacturación rápida */}
+            <Route path="devoluciones/anulaciones" element={<AnulacionVentas />} />
           </Route>
     
           <Route path="inventario">

@@ -3,20 +3,16 @@ import { Link } from "react-router-dom";
 import {
   Search, ShoppingCart, Trash2, Scale,
   Banknote, Landmark, AlertTriangle, RotateCcw, Check,
-  ArrowLeft, Barcode, X, Ban, Settings,
+  ArrowLeft, Barcode, X,
 } from "lucide-react";
 import { getProductos, getProductoByCodigo } from "../../../api/productosApi";
 import { registrarVentaFactura } from "../../../api/ventasApi";
-import { guardarVentaLocal } from "../../../api/ventasLocalApi";
 import { apiErrorMessage } from "../../../api/errors";
-import {
-  seleccionarComprobante, emitirYConsumir,
-} from "../../../api/comprobantesApi";
 import ComprobanteImpresion from "./ComprobanteImpresion";
 import CantidadInput from "../../../components/ui/CantidadInput";
 import {
   parsePrecioVenta, parseStockDisponible, esProductoPesable, formatMoney,
-  labelCliente, labelFormaPago, numeroFacturaPreview, hoyISO,
+  labelFormaPago, hoyISO,
   FORMA_PAGO_EFECTIVO, FORMA_PAGO_TRANSFERENCIA,
   parseBarcodeInput,
 } from "./utils";
@@ -63,6 +59,8 @@ function construirLineaCarrito(producto) {
     productoPesable: producto.productoPesable,
     unidadMedida: producto.unidadMedida ?? producto.nombreUnidadMedida ?? "",
     unitAbbreviation: producto.unitAbbreviation ?? "",
+    // Tasa de IVA del producto (5 / 10 / 0). El precio de venta ya la incluye.
+    tasaIva: Number.isFinite(Number(producto.iva)) ? Number(producto.iva) : 10,
   };
 }
 
@@ -75,16 +73,12 @@ export default function RegistroVenta() {
   const [montoPagado, setMontoPagado] = useState("");
   const [formaPago, setFormaPago] = useState(FORMA_PAGO_EFECTIVO);
   const [errorGlobal, setErrorGlobal] = useState(null);
-  const [avisoLocal, setAvisoLocal] = useState(null);
   const [confirmando, setConfirmando] = useState(false);
   const [editandoCantidad, setEditandoCantidad] = useState(null);
-  const [numeroPreview] = useState(() => numeroFacturaPreview());
   const [datosImpresion, setDatosImpresion] = useState(null);
 
-  // Timbrado vigente + próximo correlativo (configurado en Configuración > Comprobantes).
-  const [comprobanteSel, setComprobanteSel] = useState(() => seleccionarComprobante());
-  const timbrado = comprobanteSel.comprobante;
-  const ventaBloqueada = comprobanteSel.estado !== "vigente" || !timbrado;
+  // Sin dependencias locales: el habilitado del cobro, el número de factura y
+  // el timbrado los resuelve el backend (POST /api/facturas-venta).
 
   const searchRef = useRef(null);
   const qtyInputRef = useRef(null);
@@ -151,10 +145,19 @@ export default function RegistroVenta() {
       .slice(0, 8);
   }, [productos, search, isBarcode, mostrarDropdown]);
 
-  const { subtotal, totalConIva } = useMemo(() => {
-    const sub = carrito.reduce((a, l) => a + l.precioUnitario * l.cantidad, 0);
-    const iv = Math.round(sub * 0.1);
-    return { subtotal: sub, iva: iv, totalConIva: sub + iv };
+  // El precio de venta del back es IVA incluido y la tasa depende de cada
+  // producto (5% / 10% / exento). Se replica el cálculo del back (CalculoIvaUtil)
+  // para que el total a cobrar coincida con el total de la factura emitida.
+  const totalConIva = useMemo(() => {
+    const r2 = (n) => Math.round(n * 100) / 100;
+    const total = carrito.reduce((a, l) => {
+      const tasa = Number.isFinite(Number(l.tasaIva)) ? Number(l.tasaIva) : 10;
+      const baseUnit = Math.round((l.precioUnitario / (1 + tasa / 100)) * 1e6) / 1e6;
+      const base = r2(baseUnit * l.cantidad);
+      const iva = r2((base * tasa) / 100);
+      return a + base + iva;
+    }, 0);
+    return r2(total);
   }, [carrito]);
 
   carritoRef.current = carrito;
@@ -168,7 +171,7 @@ export default function RegistroVenta() {
   const montoOk = esEfectivo ? Number.isFinite(montoIngresado) && montoIngresado >= 0 : true;
   const cambio = esEfectivo && montoOk ? Math.max(0, montoIngresado - totalConIva) : 0;
 
-  const puedeConfirmar = !ventaBloqueada && carrito.length > 0 && totalConIva > 0 &&
+  const puedeConfirmar = carrito.length > 0 && totalConIva > 0 &&
     (esEfectivo ? montoOk && montoIngresado >= totalConIva : true);
 
   // Solo presentación: cuánto falta para cubrir el total y por qué está deshabilitado "Cobrar".
@@ -206,6 +209,11 @@ export default function RegistroVenta() {
       return next;
     });
   }, []);
+
+  // Pase automático desde Anulación (refacturación rápida): antes se leía de
+  // localStorage (despensa_refacturacion_v1) y se precargaba el carrito. Con la
+  // Caja 100% contra el back ese puente queda fuera; la búsqueda de tickets y la
+  // refacturación pasarán a /api/facturas-venta/buscar cuando exista contrato.
 
   const handleCambiarCantidad = useCallback((productoId, raw) => {
     setCarrito((prev) => prev.map((line) => {
@@ -303,38 +311,20 @@ export default function RegistroVenta() {
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
   }, [handleGlobalKeyDown]);
 
-  // Cierre de una venta, compartido por el registro normal (back OK) y el modo local
-  // (back sin endpoint): limpia el carrito, guarda el ticket como historial local
-  // (lo usa el módulo de Intercambio para buscarlo), emite el comprobante y reenumera.
-  const finalizarVenta = useCallback(async ({ numFactura, consumido, sincronizado }) => {
+  // Cierre de una venta registrada contra el backend: limpia el carrito, arma el
+  // comprobante imprimible y refresca el catálogo. El número de factura y el
+  // timbrado vienen del back; acá no se persiste nada en el navegador.
+  const finalizarVenta = useCallback(async ({ numFactura, timbradoInfo }) => {
     const snap = carrito.map((l) => ({ ...l }));
     const cliSnap = cliente;
     setCarrito([]); setMontoPagado(""); setCliente(null); setEditandoCantidad(null);
-    guardarVentaLocal({
-      numero: numFactura,
-      fecha: new Date().toISOString(),
-      cliente: cliSnap ? labelCliente(cliSnap) : "Sin nombre",
-      lineas: snap.map((l) => ({
-        productoId: l.productoId,
-        nombre: l.nombre,
-        cantidad: l.cantidad,
-        precioUnitario: l.precioUnitario,
-        subtotal: l.precioUnitario * l.cantidad,
-      })),
-      total: totalConIva, montoPagado: montoNum, cambio, formaPago,
-      formaPagoLabel: labelFormaPago(formaPago),
-      sincronizado,
-    });
     await cargarProductos();
     setDatosImpresion({
       idComprobante: `${Date.now()}-${numFactura}`, fecha: hoyISO(), numero: numFactura,
       cliente: cliSnap, lineas: snap, total: totalConIva, montoPagado: montoNum,
       cambio, tipo: "CONTADO", formaPago, formaPagoLabel: labelFormaPago(formaPago),
-      timbrado: consumido?.record
-        ? { numeroTimbrado: consumido.record.numeroTimbrado, vigenciaHasta: consumido.record.fechaVencimiento }
-        : null,
+      timbrado: timbradoInfo ?? null,
     });
-    setComprobanteSel(seleccionarComprobante());
     focusSearch();
   }, [carrito, cliente, totalConIva, montoNum, cambio, formaPago, cargarProductos, focusSearch]);
 
@@ -342,42 +332,25 @@ export default function RegistroVenta() {
     if (!puedeConfirmar) return;
     setConfirmando(true);
     setErrorGlobal(null);
-    setAvisoLocal(null);
+    // El back toma el precio vigente de cada producto (IVA incluido) y calcula
+    // el IVA por tasa; sólo se le envían producto + cantidad.
     const payload = {
-      fechaFactura: hoyISO(), tipoFactura: "CONTADO", estado: "PENDIENTE",
-      idCliente: cliente?.idCliente ?? cliente?.id ?? null,
-      etiquetaCliente: cliente ? labelCliente(cliente) : "Sin nombre",
-      lineas: carrito.map((l) => ({ idProducto: l.productoId, cantidad: l.cantidad, precioUnitario: l.precioUnitario, subtotal: l.precioUnitario * l.cantidad })),
-      total: subtotal, montoPagado: montoNum, cambio, formaPago,
+      fechaEmision: hoyISO(),
+      idCliente: cliente?.idCliente ?? cliente?.id ?? undefined,
+      detalles: carrito.map((l) => ({ idProducto: l.productoId, cantidad: l.cantidad })),
     };
     try {
       const data = await registrarVentaFactura(payload);
-      // Consume el número correlativo del timbrado vigente (persistido en el front).
-      const consumido = timbrado ? emitirYConsumir(timbrado.id) : null;
-      const numFactura = consumido?.numero ?? data?.numeroFactura ?? data?.numero_factura ?? numeroPreview;
-      await finalizarVenta({ numFactura, consumido, sincronizado: true });
+      // El back asigna el número de factura y el timbrado de venta vigente.
+      const numFactura = data?.numeroFactura ?? data?.numero_factura;
+      const timbradoInfo = data?.numeroTimbrado ? { numeroTimbrado: data.numeroTimbrado } : null;
+      await finalizarVenta({ numFactura, timbradoInfo });
     } catch (err) {
-      const status = err?.response?.status;
-      const base = apiErrorMessage(err) || "No se pudo registrar la venta.";
-      // Ruta inexistente: este back responde 500 con error "error_NO_ESPERADO"
-      // (o 404). Mientras no exista /api/ventas/facturas la venta se completa
-      // en modo local. El código va en data.error; data.mensaje es el texto legible.
-      const codigoError = err?.response?.data?.error;
-      const backNoDisponible =
-        status === 404 ||
-        (status === 500 && (codigoError === "error_NO_ESPERADO" || base.includes("error_NO_ESPERADO")));
-      if (backNoDisponible && timbrado) {
-        const consumido = emitirYConsumir(timbrado.id);
-        const numFactura = consumido?.numero ?? numeroPreview;
-        await finalizarVenta({ numFactura, consumido, sincronizado: false });
-        setAvisoLocal(
-          "Venta registrada en modo local: el backend aún no expone /api/ventas/facturas. El ticket queda pendiente de sincronizar."
-        );
-      } else {
-        setErrorGlobal(base);
-      }
+      // Sin fallback local: se muestra el error tal cual lo responde el back
+      // (p. ej. 409 TIMBRADO_VENTA_NO_VIGENTE si no hay timbrado de venta).
+      setErrorGlobal(apiErrorMessage(err) || "No se pudo registrar la venta.");
     } finally { setConfirmando(false); }
-  }, [puedeConfirmar, cliente, carrito, subtotal, montoNum, cambio, formaPago, numeroPreview, finalizarVenta, timbrado]);
+  }, [puedeConfirmar, cliente, carrito, finalizarVenta]);
 
   confirmarRef.current = handleConfirmar;
 
@@ -421,21 +394,6 @@ export default function RegistroVenta() {
         </div>
       )}
 
-      {avisoLocal && (
-        <div role="status"
-          className="mb-3 flex shrink-0 items-start gap-2 rounded-none border border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-sm text-amber-300">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span className="flex-1">{avisoLocal}</span>
-          <button type="button" onClick={() => setAvisoLocal(null)} aria-label="Cerrar aviso"
-            className="rounded p-0.5 text-amber-300/70 transition-colors hover:text-amber-200">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
-
-      {ventaBloqueada ? (
-        <PantallaVentaBloqueada estado={comprobanteSel.estado} motivo={comprobanteSel.motivo} />
-      ) : (
       <div className="flex min-h-0 flex-1 gap-5 pb-5">
         {/* ───────── Columna izquierda: búsqueda + carrito ───────── */}
         <section className="flex min-w-0 flex-1 flex-col gap-4">
@@ -721,59 +679,10 @@ export default function RegistroVenta() {
           </div>
         </aside>
       </div>
-      )}
 
       <ComprobanteImpresion datos={datosImpresion} />
     </div>
   );
 }
 
-const MOTIVO_BLOQUEO = {
-  sin_configuracion: {
-    titulo: "Ventas bloqueadas",
-    detalle: "Todavía no se configuró ningún timbrado.",
-    accion: "Configurá los datos del comprobante (nº de timbrado, vigencia, establecimiento y rango) para habilitar la venta.",
-  },
-  vencido: {
-    titulo: "Timbrado vencido",
-    detalle: "El timbrado configurado superó su fecha de vigencia.",
-    accion: "Registrá un nuevo timbrado con vigencia vigente o desactivá el vencido.",
-  },
-  sin_iniciar: {
-    titulo: "Timbrado aún no vigente",
-    detalle: "La fecha actual es anterior al inicio de vigencia del timbrado.",
-    accion: "Revisá la fecha de inicio o activá otro timbrado.",
-  },
-  agotado: {
-    titulo: "Rango de numeración agotado",
-    detalle: "Se alcanzaron los números límite autorizados por la DNIT.",
-    accion: "Registrá un timbrado nuevo con un rango disponible.",
-  },
-};
 
-function PantallaVentaBloqueada({ estado, motivo }) {
-  const info = MOTIVO_BLOQUEO[estado] || MOTIVO_BLOQUEO.sin_configuracion;
-  return (
-    <div className="flex min-h-0 flex-1 flex-col items-center justify-center pb-5">
-      <div className="w-full max-w-xl rounded-none border border-red-500/30 bg-red-500/[0.06] p-6">
-        <div className="flex items-center gap-3 border-b border-red-500/20 pb-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-none border border-red-500/40 bg-red-500/10">
-            <Ban className="h-5 w-5 text-red-400" />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold text-white">{info.titulo}</h2>
-            <p className="text-sm text-red-300">{info.detalle}</p>
-          </div>
-        </div>
-        <p className="mt-3 text-sm text-white/60">{motivo}</p>
-        <p className="mt-1 text-xs text-white/45">{info.accion}</p>
-        <Link
-          to="/configuracion/comprobantes"
-          className="mt-4 inline-flex items-center gap-2 rounded-none bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[var(--accent-hover)]">
-          <Settings className="h-4 w-4" />
-          Ir a Configuración de comprobantes
-        </Link>
-      </div>
-    </div>
-  );
-}

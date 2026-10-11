@@ -152,7 +152,7 @@ export default function CantidadInput({
       if (isNaN(num)) {
         return { error: "Ingrese una cantidad válida.", emit: false };
       }
-      if (num <= 0) {
+      if (num < 0 || (num === 0 && !permitirCero)) {
         return { error: "La cantidad debe ser mayor que 0.", emit: false };
       }
       if (hayMax && num > maxNum) {

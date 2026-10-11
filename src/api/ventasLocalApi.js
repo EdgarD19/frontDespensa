@@ -5,6 +5,8 @@
 
 const VENTAS_KEY = "despensa_ventas_local_v1";
 const INTERCAMBIOS_KEY = "despensa_intercambios_venta_v1";
+const ANULACIONES_KEY = "despensa_anulaciones_venta_v1";
+const PRECARGA_KEY = "despensa_refacturacion_v1";
 
 function leer(key) {
   try {
@@ -66,7 +68,8 @@ export function guardarVentaLocal(venta) {
 export function buscarTicketsLocal(consulta = "", limite = 25) {
   const q = String(consulta || "").trim().toLowerCase();
   const qDigitos = q.replace(/\D/g, "");
-  const list = getVentasLocal();
+  // Los tickets anulados ya no se pueden usar (intercambios ni anulaciones).
+  const list = getVentasLocal().filter((t) => !t.anulado);
   if (!q) return list.slice(0, limite);
 
   const encontrados = list.filter((t) => {
@@ -152,4 +155,72 @@ export function crearIntercambioVenta(datos) {
   list.push(registro);
   escribir(INTERCAMBIOS_KEY, list);
   return registro;
+}
+
+/* ───────────── Anulación parcial / refacturación rápida de ventas ───────────── */
+
+/** Todas las anulaciones registradas, más recientes primero. */
+export function getAnulacionesVenta() {
+  return leer(ANULACIONES_KEY)
+    .slice()
+    .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")));
+}
+
+/**
+ * Registra una anulación por modificación de venta / refacturación.
+ * datos: { ticketId, ticketNumero, cliente, totalOriginal,
+ *          lineasDevueltas: [{ productoId, producto, cantidad, destino, destinoLabel }],
+ *          lineasConservadas: [{ productoId, nombre, cantidad, precioUnitario }] }
+ * La reversión de stock (destino merma / inventario) se aplicará al sincronizar
+ * contra el backend (pendiente de endpoint); este registro es local por ahora.
+ */
+export function crearAnulacionVenta(datos) {
+  const list = leer(ANULACIONES_KEY);
+  const registro = {
+    id: nuevoId(),
+    numero: `AN-${pad4(list.length + 1)}`,
+    fecha: datos?.fecha ?? new Date().toISOString(),
+    ticketId: datos?.ticketId ?? null,
+    ticketNumero: datos?.ticketNumero ?? null,
+    cliente: datos?.cliente ?? "Sin nombre",
+    motivo: datos?.motivo ?? "ANULACION_REFACTURACION",
+    motivoLabel: datos?.motivoLabel ?? "Anulación por modificación de venta / refacturación",
+    totalOriginal: Number(datos?.totalOriginal) || 0,
+    lineasDevueltas: Array.isArray(datos?.lineasDevueltas) ? datos.lineasDevueltas : [],
+    lineasConservadas: Array.isArray(datos?.lineasConservadas) ? datos.lineasConservadas : [],
+    sincronizado: false,
+  };
+  list.push(registro);
+  escribir(ANULACIONES_KEY, list);
+  return registro;
+}
+
+/** Marca un ticket local como anulado (cambia el estado del comprobante original). */
+export function marcarVentaAnulada(ticketId, motivoLabel) {
+  const list = leer(VENTAS_KEY).map((t) =>
+    t.id === ticketId
+      ? { ...t, anulado: true, anuladoFecha: new Date().toISOString(), motivoAnulacion: motivoLabel ?? "Refacturación" }
+      : t
+  );
+  escribir(VENTAS_KEY, list);
+}
+
+/* ───────────── Precarga del carrito (pase automático a la Caja) ───────────── */
+
+/** Deja listo el carrito de refacturación para que RegistroVenta lo consuma una sola vez. */
+export function guardarPrecargaVenta(payload) {
+  localStorage.setItem(PRECARGA_KEY, JSON.stringify(payload || null));
+}
+
+export function getPrecargaVenta() {
+  try {
+    const raw = localStorage.getItem(PRECARGA_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function limpiarPrecargaVenta() {
+  localStorage.removeItem(PRECARGA_KEY);
 }

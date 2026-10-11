@@ -16,11 +16,10 @@ const MODULOS = [
     icon: Users,
   },
   {
-    to: null,
+    to: "/ventas/consultas/historial",
     label: "Historial de Ventas",
-    descripcion: "Consulta de ventas anteriores. Próximamente.",
+    descripcion: "Consulta de facturas de venta emitidas.",
     icon: History,
-    pronto: true,
   },
   {
     to: null,

@@ -9,9 +9,8 @@ const SUB_MODULOS = [
     icon: ArrowLeftRight,
   },
   {
-    to: null,
+    to: "/ventas/devoluciones/anulaciones",
     label: "Anulación",
-    descripcion: "Gestión de anulaciones de ventas. Próximamente.",
     icon: Ban,
   },
 ];

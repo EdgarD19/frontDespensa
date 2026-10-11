@@ -20,9 +20,11 @@ export default function ComprobanteImpresion({ datos }) {
             <p className="mb-1">
               <strong>Timbrado:</strong> {timbrado.numeroTimbrado}
             </p>
-            <p className="mb-1">
-              <strong>Vigencia:</strong> hasta el {timbrado.vigenciaHasta}
-            </p>
+            {timbrado.vigenciaHasta ? (
+              <p className="mb-1">
+                <strong>Vigencia:</strong> hasta el {timbrado.vigenciaHasta}
+              </p>
+            ) : null}
           </>
         ) : null}
         <p className="mb-1">
