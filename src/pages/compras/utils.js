@@ -18,10 +18,6 @@ export function esKG(prod) {
   return u === "KG" || u === "KILOGRAMO" || u === "KILOGRAMOS";
 }
 
-export function stepCant(prod) {
-  return esKG(prod) ? "0.001" : "1";
-}
-
 export function parseCant(val, prod) {
   const n = parseFloat(String(val).replace(",", "."));
   if (!Number.isFinite(n) || n <= 0) return esKG(prod) ? 0.001 : 1;

@@ -61,6 +61,7 @@ export default function ProveedoresModal({
       setForm(FORM_INICIAL);
     }
     setErrores({});
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onPaisChange es un callback del padre; incluirlo reiniciaría el form en cada render
   }, [abierto, proveedorEdit]);
 
   function handleChange(e) {

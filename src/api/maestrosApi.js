@@ -118,16 +118,6 @@ export async function getProveedores() {
   return loadProveedores();
 }
 
-async function loadRubros() {
-  const env = parseMaestrosEnv();
-  if (env?.rubros?.length) return normalizeList(env.rubros);
-  return fetchFirst(PATHS.rubros);
-}
-
-export async function getRubros() {
-  return loadRubros();
-}
-
 async function loadPaises() {
   const env = parseMaestrosEnv();
   if (env?.paises?.length) return normalizeList(env.paises);

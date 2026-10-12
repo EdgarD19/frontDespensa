@@ -6,13 +6,14 @@ import {
   ArrowLeft, Barcode, X,
 } from "lucide-react";
 import { getProductos, getProductoByCodigo } from "../../../api/productosApi";
+import { getClientes } from "../../../api/clientesApi";
 import { registrarVentaFactura } from "../../../api/ventasApi";
 import { apiErrorMessage } from "../../../api/errors";
 import ComprobanteImpresion from "./ComprobanteImpresion";
 import CantidadInput from "../../../components/ui/CantidadInput";
 import {
   parsePrecioVenta, parseStockDisponible, esProductoPesable, formatMoney,
-  labelFormaPago, hoyISO,
+  labelCliente, docCliente, labelFormaPago, hoyISO,
   FORMA_PAGO_EFECTIVO, FORMA_PAGO_TRANSFERENCIA,
   parseBarcodeInput,
 } from "./utils";
@@ -76,6 +77,10 @@ export default function RegistroVenta() {
   const [confirmando, setConfirmando] = useState(false);
   const [editandoCantidad, setEditandoCantidad] = useState(null);
   const [datosImpresion, setDatosImpresion] = useState(null);
+  const [clienteQuery, setClienteQuery] = useState("");
+  const [clientesOpciones, setClientesOpciones] = useState([]);
+  const [mostrarClientes, setMostrarClientes] = useState(false);
+  const [cargandoClientes, setCargandoClientes] = useState(false);
 
   // Sin dependencias locales: el habilitado del cobro, el número de factura y
   // el timbrado los resuelve el backend (POST /api/facturas-venta).
@@ -83,6 +88,7 @@ export default function RegistroVenta() {
   const searchRef = useRef(null);
   const qtyInputRef = useRef(null);
   const dropdownRef = useRef(null);
+  const clienteDropdownRef = useRef(null);
   const [mostrarDropdown, setMostrarDropdown] = useState(false);
   const seleccionJustoAhoraRef = useRef(false);
   const confirmarRef = useRef(null);
@@ -110,7 +116,17 @@ export default function RegistroVenta() {
   useEffect(() => { cargarProductos(); }, [cargarProductos]);
   useEffect(() => {
     if (!datosImpresion?.idComprobante) return;
-    setTimeout(() => window.print(), 300);
+    let raf1, raf2;
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        window.print();
+        setDatosImpresion(null);
+      });
+    });
+    return () => {
+      if (raf1) cancelAnimationFrame(raf1);
+      if (raf2) cancelAnimationFrame(raf2);
+    };
   }, [datosImpresion?.idComprobante]);
   useEffect(() => {
     if (editandoCantidad !== null) {
@@ -133,6 +149,33 @@ export default function RegistroVenta() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (clienteDropdownRef.current && !clienteDropdownRef.current.contains(e.target)) setMostrarClientes(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Búsqueda de clientes (server-side) con debounce mientras el selector está abierto.
+  useEffect(() => {
+    if (cliente || !mostrarClientes) return;
+    let activo = true;
+    const t = setTimeout(async () => {
+      setCargandoClientes(true);
+      try {
+        const res = await getClientes({ search: clienteQuery.trim(), pageSize: 8 });
+        const body = res?.data ?? {};
+        if (activo) setClientesOpciones(Array.isArray(body.content) ? body.content : []);
+      } catch {
+        if (activo) setClientesOpciones([]);
+      } finally {
+        if (activo) setCargandoClientes(false);
+      }
+    }, 250);
+    return () => { activo = false; clearTimeout(t); };
+  }, [cliente, clienteQuery, mostrarClientes]);
 
   const productosFiltrados = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -239,6 +282,17 @@ export default function RegistroVenta() {
     setEditandoCantidad(null);
     focusSearch();
   }, [focusSearch]);
+
+  const seleccionarCliente = useCallback((c) => {
+    setCliente(c);
+    setClienteQuery("");
+    setMostrarClientes(false);
+  }, []);
+
+  const quitarCliente = useCallback(() => {
+    setCliente(null);
+    setClienteQuery("");
+  }, []);
 
   const handleSearchKeyDown = useCallback(async (e) => {
     if (e.key !== "Enter") return;
@@ -365,9 +419,6 @@ export default function RegistroVenta() {
             <ArrowLeft size={20} />
           </Link>
           <h1 className="text-2xl font-medium text-white">Registrar Venta</h1>
-          <span className="rounded-full border border-white/10 bg-white/[0.06] px-2.5 py-0.5 text-xs text-white/70">
-            Contado
-          </span>
         </div>
 
         {datosImpresion && (
@@ -397,69 +448,126 @@ export default function RegistroVenta() {
       <div className="flex min-h-0 flex-1 gap-5 pb-5">
         {/* ───────── Columna izquierda: búsqueda + carrito ───────── */}
         <section className="flex min-w-0 flex-1 flex-col gap-4">
-          <div className="relative shrink-0" ref={dropdownRef}>
-            <label htmlFor="venta-buscar" className={`${LABEL} mb-2 block`}>Productos</label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-white/40" />
-              <input
-                id="venta-buscar"
-                ref={searchRef}
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={handleSearchKeyDown}
-                placeholder={loading ? "Cargando productos…" : "Escanear código de barras o buscar por nombre…"}
-                disabled={loading}
-                autoFocus
-                autoComplete="off"
-                className="h-12 w-full rounded-none border border-white/10 bg-white/[0.03] pl-11 pr-24 text-base text-white outline-none transition-colors placeholder:text-white/35 focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-dim)] disabled:opacity-50"
-                onFocus={() => {
-                  if (seleccionJustoAhoraRef.current) {
-                    seleccionJustoAhoraRef.current = false;
-                    setMostrarDropdown(false);
-                  } else {
-                    setMostrarDropdown(true);
-                  }
-                }}
-              />
-              <div className="pointer-events-none absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1.5 text-xs text-white/40">
-                {search
-                  ? <><Kbd>Enter</Kbd> agrega</>
-                  : <Barcode className="h-5 w-5 text-white/35" />}
+          <div className="flex shrink-0 items-start gap-3">
+            <div className="relative min-w-0 flex-1" ref={dropdownRef}>
+              <label htmlFor="venta-buscar" className={`${LABEL} mb-2 block`}>Productos</label>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-white/40" />
+                <input
+                  id="venta-buscar"
+                  ref={searchRef}
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={handleSearchKeyDown}
+                  placeholder={loading ? "Cargando productos…" : "Escanear código de barras o buscar por nombre…"}
+                  disabled={loading}
+                  autoFocus
+                  autoComplete="off"
+                  className="h-12 w-full rounded-none border border-white/10 bg-white/[0.03] pl-11 pr-24 text-base text-white outline-none transition-colors placeholder:text-white/35 focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-dim)] disabled:opacity-50"
+                  onFocus={() => {
+                    if (seleccionJustoAhoraRef.current) {
+                      seleccionJustoAhoraRef.current = false;
+                      setMostrarDropdown(false);
+                    } else {
+                      setMostrarDropdown(true);
+                    }
+                  }}
+                />
+                <div className="pointer-events-none absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1.5 text-xs text-white/40">
+                  {search
+                    ? <><Kbd>Enter</Kbd> agrega</>
+                    : <Barcode className="h-5 w-5 text-white/35" />}
+                </div>
               </div>
+
+              {mostrarDropdown && productosFiltrados.length > 0 && (
+                <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-none border border-white/10 bg-[#0c0c0e] shadow-2xl shadow-black/60">
+                  {productosFiltrados.map((p) => {
+                    const precio = parsePrecioVenta(p);
+                    const stock = parseStockDisponible(p);
+                    const pesable = esProductoPesable(p);
+                    const sinStock = stock <= 0;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        disabled={sinStock}
+                        onClick={() => { seleccionJustoAhoraRef.current = true; agregarProducto(p, 1); setSearch(""); setMostrarDropdown(false); focusSearch(); }}
+                        className="flex w-full items-center gap-3 border-b border-white/5 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-white/[0.05] disabled:pointer-events-none disabled:opacity-40">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-none border border-white/10 bg-white/[0.04]">
+                          {pesable
+                            ? <Scale className="h-4 w-4 text-[var(--cyan)]" />
+                            : <ShoppingCart className="h-4 w-4 text-white/40" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-white first-letter:uppercase">{p.nombre}</p>
+                          <p className="text-xs text-white/50">{pesable ? `${formatMoney(precio)}/kg` : formatMoney(precio)}</p>
+                        </div>
+                        {sinStock
+                          ? <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs text-red-400">Sin stock</span>
+                          : <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-white/60" style={MONO}>{stock} {pesable ? "kg" : "u."}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
-            {mostrarDropdown && productosFiltrados.length > 0 && (
-              <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-none border border-white/10 bg-[#0c0c0e] shadow-2xl shadow-black/60">
-                {productosFiltrados.map((p) => {
-                  const precio = parsePrecioVenta(p);
-                  const stock = parseStockDisponible(p);
-                  const pesable = esProductoPesable(p);
-                  const sinStock = stock <= 0;
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      disabled={sinStock}
-                      onClick={() => { seleccionJustoAhoraRef.current = true; agregarProducto(p, 1); setSearch(""); setMostrarDropdown(false); focusSearch(); }}
-                      className="flex w-full items-center gap-3 border-b border-white/5 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-white/[0.05] disabled:pointer-events-none disabled:opacity-40">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-none border border-white/10 bg-white/[0.04]">
-                        {pesable
-                          ? <Scale className="h-4 w-4 text-[var(--cyan)]" />
-                          : <ShoppingCart className="h-4 w-4 text-white/40" />}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-white first-letter:uppercase">{p.nombre}</p>
-                        <p className="text-xs text-white/50">{pesable ? `${formatMoney(precio)}/kg` : formatMoney(precio)}</p>
-                      </div>
-                      {sinStock
-                        ? <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs text-red-400">Sin stock</span>
-                        : <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-white/60" style={MONO}>{stock} {pesable ? "kg" : "u."}</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            {/* Buscador de cliente: 30% de la fila; el sobrante queda para Productos */}
+            <div className="relative w-[30%] shrink-0" ref={clienteDropdownRef}>
+              <label htmlFor="venta-cliente" className={`${LABEL} mb-2 block`}>Cliente</label>
+              {cliente ? (
+                <div className="flex h-12 items-center justify-between gap-2 rounded-none border border-[var(--border-accent)] bg-[var(--accent-dim)] px-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-white">{labelCliente(cliente)}</p>
+                    {docCliente(cliente) && <p className="truncate text-xs text-white/50">{docCliente(cliente)}</p>}
+                  </div>
+                  <button type="button" onClick={quitarCliente} aria-label="Quitar cliente"
+                    className="rounded p-1 text-white/50 transition-colors hover:bg-white/10 hover:text-white">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+                    <input
+                      id="venta-cliente"
+                      type="text"
+                      value={clienteQuery}
+                      onChange={(e) => { setClienteQuery(e.target.value); setMostrarClientes(true); }}
+                      onFocus={() => setMostrarClientes(true)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") { e.stopPropagation(); setMostrarClientes(false); setClienteQuery(""); }
+                      }}
+                      placeholder="Buscar por nombre o documento…"
+                      autoComplete="off"
+                      className="h-12 w-full rounded-none border border-white/10 bg-white/[0.03] pl-9 pr-3 text-sm text-white outline-none transition-colors placeholder:text-white/35 focus:border-[var(--accent)]"
+                    />
+                  </div>
+                  {mostrarClientes && (
+                    <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-none border border-white/10 bg-[#0c0c0e] shadow-2xl shadow-black/60">
+                      {cargandoClientes && (
+                        <p className="px-4 py-3 text-sm text-white/40">Buscando…</p>
+                      )}
+                      {!cargandoClientes && clientesOpciones.length === 0 && (
+                        <p className="px-4 py-3 text-sm text-white/40">Sin resultados.</p>
+                      )}
+                      {!cargandoClientes && clientesOpciones.map((c) => (
+                        <button key={c.id ?? c.idCliente} type="button" onClick={() => seleccionarCliente(c)}
+                          className="flex w-full items-center justify-between gap-3 border-b border-white/5 px-4 py-2.5 text-left transition-colors last:border-b-0 hover:bg-white/[0.05]">
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm text-white">{labelCliente(c)}</span>
+                            {docCliente(c) && <span className="block truncate text-xs text-white/50">{docCliente(c)}</span>}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
           {/* Carrito */}
@@ -680,7 +788,11 @@ export default function RegistroVenta() {
         </aside>
       </div>
 
-      <ComprobanteImpresion datos={datosImpresion} />
+      {datosImpresion && (
+        <div className="print-only">
+          <ComprobanteImpresion datos={datosImpresion} />
+        </div>
+      )}
     </div>
   );
 }

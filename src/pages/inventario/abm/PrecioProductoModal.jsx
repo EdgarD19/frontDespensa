@@ -33,6 +33,7 @@ export default function PrecioProductoModal({ producto, onClose, onPrecioActuali
     setNuevoPrecio(producto.precio ?? producto.precioVenta ?? "");
     setFechaVigencia("");
     cargarHistorial();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- se reinicia solo al cambiar de producto; incluir precio/historial reiniciaría el input al tipear
   }, [producto?.id]);
 
   async function cargarHistorial() {

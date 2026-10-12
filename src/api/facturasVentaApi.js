@@ -34,22 +34,8 @@ export async function buscarFacturasVenta(q, { page = 0, pageSize = 20, sortBy, 
   return unwrap(data);
 }
 
-/** Facturas de un cliente (paginado). */
-export async function getFacturasVentaByCliente(idCliente, { page = 0, pageSize = 20, sortBy, sortDir = "DESC" } = {}) {
-  const { data } = await api.get(`${BASE}/cliente/${idCliente}`, {
-    params: { page, size: pageSize, sortBy: sortBy || undefined, sortDir },
-  });
-  return unwrap(data);
-}
-
 /** Detalle completo de una factura de venta. */
 export async function getFacturaVentaById(id) {
   const { data } = await api.get(`${BASE}/${id}`);
-  return data?.data ?? data;
-}
-
-/** Factura por número (p. ej. "001-001-000001"). */
-export async function getFacturaVentaByNumero(numeroFactura) {
-  const { data } = await api.get(`${BASE}/numero/${encodeURIComponent(numeroFactura)}`);
   return data?.data ?? data;
 }

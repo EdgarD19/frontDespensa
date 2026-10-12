@@ -104,6 +104,7 @@ export default function CompraEspontanea({ onVolver }) {
       .catch(() => { if (activo) setTimbrados([]); })
       .finally(() => { if (activo) setCargandoTimbrados(false); });
     return () => { activo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fechaEmision sólo elige el timbrado vigente; no re-consultar al cambiarla (evita pisar la selección manual)
   }, [proveedorSel, refrescoTimbrados]);
 
   useEffect(() => {

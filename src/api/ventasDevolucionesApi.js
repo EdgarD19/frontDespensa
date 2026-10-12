@@ -46,12 +46,6 @@ export async function getAnulacionesVenta({ page = 0, pageSize = 20, sortBy, sor
   return unwrapPage(data);
 }
 
-/** GET /api/anulaciones-venta/{id} — detalle de una anulación. */
-export async function getAnulacionVentaById(id) {
-  const { data } = await api.get(`${ANULACIONES}/${id}`);
-  return unwrapSingle(data);
-}
-
 /* ─────────────────────────── Intercambios de venta ─────────────────────────── */
 
 /**
@@ -73,10 +67,4 @@ export async function getIntercambiosVenta({ page = 0, pageSize = 20, sortBy, so
     params: { page, size: pageSize, sortBy: sortBy || undefined, sortDir },
   });
   return unwrapPage(data);
-}
-
-/** GET /api/intercambios-venta/{id} — detalle de un intercambio. */
-export async function getIntercambioVentaById(id) {
-  const { data } = await api.get(`${INTERCAMBIOS}/${id}`);
-  return unwrapSingle(data);
 }

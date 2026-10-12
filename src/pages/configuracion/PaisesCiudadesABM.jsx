@@ -16,7 +16,7 @@ function esCodigoValido(codigo) {
   return /^[A-Z]{2}$/.test(String(codigo || "").trim().toUpperCase());
 }
 
-export function SeccionPaises() {
+function SeccionPaises() {
   const [paises, setPaises] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -169,7 +169,7 @@ export function SeccionPaises() {
   );
 }
 
-export function SeccionCiudades() {
+function SeccionCiudades() {
   const [paises, setPaises] = useState([]);
   const [idPais, setIdPais] = useState("");
   const [ciudades, setCiudades] = useState([]);

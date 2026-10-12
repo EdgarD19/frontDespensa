@@ -977,6 +977,7 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion
 
   useEffect(() => {
     let activo = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- estado de carga al (re)abrir el modal
     setCargando(true);
     setError(null);
     getFacturaCompraById(facturaId)
@@ -1463,7 +1464,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
   // las facturas del proveedor en estado RECIBIDA o VIGENTE y activas. Si una
   // factura ANULADA más nueva participara en la comparación, el front rechazaría
   // facturas que el backend sí acepta.
-  const esMasRecienteEntreCargadas = (factura) => {
+  const esMasRecienteEntreCargadas = useCallback((factura) => {
     const otras = facturas.filter((f) => {
       const estado = String(f.estado || "").toUpperCase();
       return (
@@ -1478,7 +1479,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
       const b = String(factura.fechaEmision || "").slice(0, 10);
       return a <= b;
     });
-  };
+  }, [facturas]);
 
   const validarAnulacion = useCallback((factura) => {
     if (!factura) return [];
@@ -1511,7 +1512,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
       );
     }
     return avisos;
-  }, [facturas]);
+  }, [esMasRecienteEntreCargadas]);
 
   const avisosAnulacion = tipo === "ANULACION" && facturaDetalle ? validarAnulacion(facturaDetalle) : [];
   const bloqueaAnulacion = avisosAnulacion.length > 0;

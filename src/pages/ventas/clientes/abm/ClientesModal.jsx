@@ -75,6 +75,7 @@ export default function ClientesModal({
       setCiudadPendiente(null);
       setErrores({});
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onPaisChange/paises son props del padre; incluirlos reiniciaría el form en cada render
   }, [abierto, clienteEdit]);
 
   // Cuando llegan las ciudades del país seleccionado, emparejar la ciudad guardada por nombre

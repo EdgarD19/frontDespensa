@@ -25,7 +25,7 @@ function resolveBaseUrl() {
   return "http://localhost:8081/DespensaProyect";
 }
 
-export const API_BASE_URL = resolveBaseUrl();
+const API_BASE_URL = resolveBaseUrl();
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -34,15 +34,3 @@ export const api = axios.create({
     "ngrok-skip-browser-warning": "true",
   },
 });
-
-/** URL absoluta para enlaces en el navegador (Swagger, etc.) */
-export function absoluteApiOrigin() {
-  const base = API_BASE_URL;
-  if (base.startsWith("http")) {
-    return base;
-  }
-  if (typeof window !== "undefined") {
-    return `${window.location.origin}${base.startsWith("/") ? base : `/${base}`}`;
-  }
-  return base;
-}

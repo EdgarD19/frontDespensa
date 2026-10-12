@@ -29,12 +29,6 @@ export async function getDevoluciones({ page = 0, pageSize = 1000 } = {}) {
   return unwrap(data);
 }
 
-/** Obtener una devolución por ID. */
-export async function getDevolucionById(id) {
-  const { data } = await api.get(`${DEVOLUCIONES}/${id}`);
-  return data;
-}
-
 /** Crear una devolución PENDIENTE (descuenta stock). */
 export async function crearDevolucion(payload) {
   const { data } = await api.post(DEVOLUCIONES, payload);
@@ -60,20 +54,6 @@ export async function cancelarDevolucion(id) {
 export async function getIntercambios({ page = 0, pageSize = 1000 } = {}) {
   const { data } = await api.get(INTERCAMBIOS, { params: { page, size: pageSize } });
   return unwrap(data);
-}
-
-/** Listar órdenes de intercambio por estado (paginado). */
-export async function getIntercambiosPorEstado(estado, { page = 0, pageSize = 1000 } = {}) {
-  const { data } = await api.get(`${INTERCAMBIOS}/estado/${encodeURIComponent(estado)}`, {
-    params: { page, size: pageSize },
-  });
-  return unwrap(data);
-}
-
-/** Obtener una orden de intercambio por ID. */
-export async function getIntercambioById(id) {
-  const { data } = await api.get(`${INTERCAMBIOS}/${id}`);
-  return data;
 }
 
 /** Crear una orden de intercambio. */
@@ -109,12 +89,6 @@ export async function getAnulaciones({ page = 0, pageSize = 1000 } = {}) {
     params: { page, size: pageSize, sortBy: "fechaAnulacion", sortDirection: "desc" },
   });
   return unwrap(data);
-}
-
-/** Obtener una anulación por ID. */
-export async function getAnulacionById(id) {
-  const { data } = await api.get(`${ANULACIONES}/${id}`);
-  return data;
 }
 
 /** Anular una factura de compra. */

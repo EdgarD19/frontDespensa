@@ -46,7 +46,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
         const res = await getProveedorById(idProveedor);
         const prov = res?.data?.data ?? res?.data ?? {};
         if (activo) setProveedor(prov);
-      } catch {}
+      } catch { /* el proveedor es opcional: se ignora si falla */ }
     })();
 
     setTimbrados([]);
@@ -64,6 +64,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
       .finally(() => { if (activo) setCargandoTimbrados(false); });
 
     return () => { activo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fechaEmision sólo elige el timbrado vigente; no re-consultar al cambiarla
   }, [idProveedor, refrescoTimbrados]);
 
   // Líneas precargadas desde el pedido (GET /api/pedidos/{id}/para-recibir) + precio de costo vigente
@@ -102,6 +103,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
     })();
 
     return () => { activo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pedido.detalles no cambia sin cambiar el pedido; evita recargar en cada render
   }, [pedido?.idPedido]);
 
   useEffect(() => {

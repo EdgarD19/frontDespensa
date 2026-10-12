@@ -49,18 +49,23 @@ export function labelFormaPago(codigo) {
 export function labelCliente(c) {
   if (!c) return "Sin nombre";
   if (c.tipoCliente === "JURIDICA" && c.razonSocial) return c.razonSocial;
-  const fn = c.firstName ?? c.name ?? c.first_name ?? "";
-  const ln = c.lastName ?? c.last_name ?? "";
+  const fn = c.firstName ?? c.nombre ?? c.name ?? c.first_name ?? "";
+  const ln = c.lastName ?? c.apellido ?? c.last_name ?? "";
   const nombre = `${fn} ${ln}`.trim();
   if (nombre) return nombre;
-  const doc = c.documentNumber ?? c.document_number;
+  const doc = c.documentNumber ?? c.numeroDocumento ?? c.document_number;
   if (doc) return String(doc);
   const id = c.idCliente ?? c.id;
   return id != null ? `Cliente #${id}` : "Cliente";
 }
 
-export function numeroFacturaPreview() {
-  return `PREV-${Date.now().toString(36).toUpperCase()}`;
+export function docCliente(c) {
+  if (!c) return "";
+  const tipo = c.tipoDocumento ?? c.tipoCliente ?? "";
+  const num = c.numeroDocumento ?? c.documentNumber ?? c.document_number ?? c.ruc ?? "";
+  const s = String(num || "").trim();
+  if (!s) return "";
+  return tipo ? `${tipo} ${s}` : s;
 }
 
 export function hoyISO() {
@@ -71,7 +76,7 @@ export function hoyISO() {
   return local.toISOString().split("T")[0];
 }
 
-export function esSoloDigitosBarras(s) {
+function esSoloDigitosBarras(s) {
   const t = String(s || "").trim();
   return /^\d{8,14}$/.test(t);
 }

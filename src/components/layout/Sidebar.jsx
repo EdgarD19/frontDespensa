@@ -25,7 +25,7 @@ export default function Sidebar() {
 
   return (
     <aside
-      style={{ width: collapsed ? "64px" : "220px" }}
+      style={{ width: collapsed ? "64px" : "180px" }}
       className="min-h-screen bg-white/[0.03] text-white/50 flex flex-col border-r border-white/10 transition-all duration-300 ease-in-out flex-shrink-0"
     >
       {/* Logo */}

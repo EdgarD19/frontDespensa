@@ -9,7 +9,7 @@ export function pad3(n) {
   return String(Math.max(0, Math.trunc(Number(n) || 0))).padStart(3, "0");
 }
 
-export function pad6(n) {
+function pad6(n) {
   return String(Math.max(0, Math.trunc(Number(n) || 0))).padStart(6, "0");
 }
 
@@ -56,49 +56,4 @@ export function estadoComprobante(c, hoy) {
   if (proximoNumero(c) > Math.trunc(Number(c.numeroHasta)))
     return { estado: "agotado", label: "Rango agotado" };
   return { estado: "vigente", label: "Vigente" };
-}
-
-// El timbrado que corresponde usar: los marcados como activos primero,
-// y entre ellos el vigente para la fecha actual (con números disponibles).
-export function seleccionarComprobante(hoy) {
-  const list = getComprobantes();
-  if (!list.length) {
-    return {
-      comprobante: null,
-      estado: "sin_configuracion",
-      motivo: "Todavía no se configuró ningún timbrado.",
-    };
-  }
-  const actives = list.filter((c) => c.activo);
-  const pool = actives.length ? actives : list;
-  const dia = hoy || new Date().toISOString().split("T")[0];
-
-  for (const c of pool) {
-    const st = estadoComprobante(c, dia);
-    if (st.estado === "vigente") return { comprobante: c, estado: "vigente", motivo: null };
-  }
-
-  const c = pool[0];
-  const st = estadoComprobante(c, dia);
-  const motivo =
-    st.estado === "vencido"
-      ? `El timbrado ${c.numeroTimbrado} venció el ${c.fechaVencimiento}.`
-      : st.estado === "sin_iniciar"
-        ? `El timbrado ${c.numeroTimbrado} aún no está vigente (desde ${c.fechaInicio}).`
-        : `El timbrado ${c.numeroTimbrado} alcanzó el límite del rango autorizado (${rangoDisplay(c)}).`;
-  return { comprobante: null, estado: st.estado, motivo };
-}
-
-// Consume el siguiente número del timbrado indicado y lo persiste.
-export function emitirYConsumir(id) {
-  const list = getComprobantes();
-  const idx = list.findIndex((c) => c.id === id);
-  if (idx === -1) return null;
-  const c = list[idx];
-  const n = proximoNumero(c);
-  if (n > Math.trunc(Number(c.numeroHasta))) return null; // agotado
-  const next = { ...c, ultimoEmitido: n };
-  list[idx] = next;
-  persistComprobantes(list);
-  return { record: next, numero: numeroCompleto(next, n) };
 }

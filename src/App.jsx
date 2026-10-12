@@ -42,7 +42,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<MainLayout />}> 
-          <Route index element={<Navigate to="/compras" replace />} />
+          <Route index element={<Navigate to="/ventas" replace />} />
 
           <Route path="ventas"> 
             <Route index element={<VentasHub />} />

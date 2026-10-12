@@ -395,15 +395,16 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-10 bg-[#0c0c0e]">
               <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
-                <th className="w-[26%] px-4 py-3 font-medium">Fecha</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">Ticket</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">Fecha</th>
                 <th className="px-4 py-3 font-medium">Cliente</th>
-                <th className="w-[36%] px-4 py-3 font-medium">Ticket</th>
+                <th className="whitespace-nowrap px-4 py-3 text-right font-medium">Total factura</th>
               </tr>
             </thead>
             <tbody>
               {!cargandoFacturas && facturas.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="px-4 py-10 text-center text-white/30">
+                  <td colSpan={4} className="px-4 py-10 text-center text-white/30">
                     No hay tickets con esa búsqueda.
                   </td>
                 </tr>
@@ -417,9 +418,10 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
                   onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); elegirFactura(f); } }}
                   className="cursor-pointer border-b border-white/10 border-l-2 border-l-transparent transition-colors last:border-b-0 focus:outline-none focus-visible:bg-white/[0.06] hover:border-l-[#22c55e] hover:bg-white/[0.04]"
                 >
+                  <td className="whitespace-nowrap px-4 py-3 font-medium tabular-nums text-white">{f.numeroFactura || "—"}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-white/60">{fmtFechaHora(f.fechaEmision || f.fechaCreacion)}</td>
                   <td className="px-4 py-3 text-white/70">{f.nombreCliente || "Sin Nombre"}</td>
-                  <td className="px-4 py-3 font-medium tabular-nums text-white">{f.numeroFactura || "—"}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white">{fmtMoneda(f.totalGeneral)}</td>
                 </tr>
               ))}
             </tbody>

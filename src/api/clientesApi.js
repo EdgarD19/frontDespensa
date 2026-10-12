@@ -29,10 +29,6 @@ export function getClientes({
     });
 }
 
-export function getClienteById(id) {
-    return api.get(`${BASE}/${id}`);
-}
-
 function resolveIdCiudad() {
     const raw = import.meta.env.VITE_CLIENTE_ID_CIUDAD;
     if (raw != null && String(raw).trim() !== "") {

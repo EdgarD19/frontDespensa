@@ -287,12 +287,3 @@ export async function getHistorialPrecios(productoId) {
     };
   });
 }
-
-/**
- * PATCH /api/productos/{id}/desactivar
- * Soft delete del producto.
- */
-export async function deleteProducto(id) {
-  const { data } = await api.patch(`/api/productos/${id}/desactivar`);
-  return toFrontendProduct(data?.data ?? data);
-}
