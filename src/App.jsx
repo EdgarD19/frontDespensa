@@ -7,29 +7,83 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from './components/layout/MainLayout';
 
+import InventarioHub from './pages/inventario/InventarioHub'
 import InventarioABM from './pages/inventario/abm/Inventario'
 import ConsultaInventario from './pages/inventario/consulta/ConsultaInventario'
 import AjusteInventario from './pages/inventario/ajuste/AjusteInventario'
-import InventarioHub from './pages/inventario/InventarioHub'
-import Ventas from './pages/ventas/Ventas'
-import Compras from './pages/compras/Compras'
+import MaestrosABM from './pages/inventario/maestros/MaestrosABM'
+
+import VentasHub from './pages/ventas/VentasHub'
+import DevolucionesVentasHub from './pages/ventas/devoluciones/DevolucionesVentasHub'
+import IntercambioVentas from './pages/ventas/devoluciones/IntercambioVentas'
+import AnulacionVentas from './pages/ventas/devoluciones/AnulacionVentas'
+import ClientesABM from './pages/ventas/clientes/abm/ClientesABM'
+import RegistroVenta from './pages/ventas/registro-venta/RegistroVenta'
+import HistorialVentas from './pages/ventas/consultas/HistorialVentas'
+
+import ComprasHub from './pages/compras/ComprasHub'
+import RegistroFactura from './pages/compras/factura/RegistroFactura'
+import PedidosABM from './pages/compras/pedidos/abm/PedidosABM'
+import ProveedoresABM from './pages/compras/proveedores/abm/ProveedoresABM'
+import ListaFacturas from './pages/compras/consultas/ListaFacturas'
+import ReportesCompras from './pages/compras/consultas/ReportesCompras'
+import OperacionesTipo from './pages/compras/devoluciones/OperacionesTipo'
+import DevolucionesIntercambiosHub from './pages/compras/devoluciones/DevolucionesIntercambiosHub'
+
 import Caja from './pages/caja/Caja'
+
+import ConfiguracionHub from './pages/configuracion/ConfiguracionHub'
+import CategoriasABM from './pages/configuracion/CategoriasABM'
+import PaisesCiudadesABM from './pages/configuracion/PaisesCiudadesABM'
+import ComprobantesConfig from './pages/configuracion/ComprobantesConfig'
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<MainLayout />}> 
-          <Route index element={<Navigate to="/inventario" replace />} />
-          <Route path="ventas"     element={<Ventas />} />
+          <Route index element={<Navigate to="/compras" replace />} />
+
+          <Route path="ventas"> 
+            <Route index element={<VentasHub />} />
+            <Route path="registro" element={<RegistroVenta />} />
+            <Route path="consultas/historial" element={<HistorialVentas />} />
+            <Route path="clientes" element={<ClientesABM />} />
+            <Route path="devoluciones" element={<DevolucionesVentasHub />} />
+            <Route path="devoluciones/intercambios" element={<IntercambioVentas />} />
+            {/* Anulación parcial / refacturación rápida */}
+            <Route path="devoluciones/anulaciones" element={<AnulacionVentas />} />
+          </Route>
+    
           <Route path="inventario">
             <Route index element={<InventarioHub />} />
             <Route path="abm"      element={<InventarioABM />} />
             <Route path="consulta" element={<ConsultaInventario />} />
             <Route path="ajuste" element={<AjusteInventario />} />
+            <Route path="maestros" element={<MaestrosABM />} />
           </Route>
-          <Route path="compras"    element={<Compras />} />
+
+          <Route path="compras">
+            <Route index element={<ComprasHub />} />
+            <Route path="factura" element={<RegistroFactura />} />
+            <Route path="pedidos" element={<PedidosABM />} />
+            <Route path="proveedores" element={<ProveedoresABM />} />
+            <Route path="consultas/facturas" element={<ListaFacturas />} />
+            <Route path="consultas/reportes" element={<ReportesCompras />} />
+            <Route path="devoluciones-intercambios" element={<DevolucionesIntercambiosHub />} />
+            <Route path="devoluciones-intercambios/devoluciones" element={<OperacionesTipo tipo="DEVOLUCION" />} />
+            <Route path="devoluciones-intercambios/intercambios" element={<OperacionesTipo tipo="INTERCAMBIO" />} />
+            <Route path="devoluciones-intercambios/anulaciones" element={<OperacionesTipo tipo="ANULACION" />} />
+          </Route>
+
           <Route path="caja"       element={<Caja />} />
+
+          <Route path="configuracion">
+            <Route index element={<ConfiguracionHub />} />
+            <Route path="categorias" element={<CategoriasABM />} />
+            <Route path="paises" element={<PaisesCiudadesABM />} />
+            <Route path="comprobantes" element={<ComprobantesConfig />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>
