@@ -332,10 +332,10 @@ export default function RegistroVenta() {
     if (!puedeConfirmar) return;
     setConfirmando(true);
     setErrorGlobal(null);
-    // El back toma el precio vigente de cada producto (IVA incluido) y calcula
-    // el IVA por tasa; sólo se le envían producto + cantidad.
+    // El back toma el precio vigente de cada producto (IVA incluido), calcula el
+    // IVA por tasa, descuenta stock y asigna la fecha de emisión (no se envía:
+    // el back usa su fecha local, evitando desfases de zona horaria del navegador).
     const payload = {
-      fechaEmision: hoyISO(),
       idCliente: cliente?.idCliente ?? cliente?.id ?? undefined,
       detalles: carrito.map((l) => ({ idProducto: l.productoId, cantidad: l.cantidad })),
     };

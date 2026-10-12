@@ -65,10 +65,9 @@ function birthDateToIso8601(value) {
 
 function buildClientBody(clienteData) {
     const {
-        firstName, lastName, tipoCliente, razonSocial, ruc, descripcionEmpresa,
-        contactoNombre, contactoCelular,
-        documentType, documentNumber, birthDate, gender, phoneNumber, celular,
-        email, direccion, activo, observaciones,
+        firstName, lastName, tipoCliente, razonSocial, ruc,
+        documentNumber, birthDate, gender, phoneNumber, celular,
+        email, direccion, activo,
     } = clienteData ?? {};
 
     const esJuridica = tipoCliente === "JURIDICA";

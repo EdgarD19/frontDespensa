@@ -5,7 +5,7 @@ import { getProveedores, getProveedorId } from "../../../api/proveedoresApi";
 import { crearFacturaCompra, getTimbradosProveedor } from "../../../api/facturasCompraApi";
 import { apiErrorMessage } from "../../../api/errors";
 import TimbradosModal from "./TimbradosModal";
-import { money, hoyAsuncion, formatoFactura, esKG, stepCant, parseCant, estadoTimbrado, etiquetaTimbrado, S } from "../utils";
+import { money, hoyAsuncion, formatoFactura, esKG, parseCant, estadoTimbrado, etiquetaTimbrado, S } from "../utils";
 import CantidadInput from "../../../components/ui/CantidadInput";
 
 // Recalcula el desglose de IVA desde los detalles de la factura guardada.

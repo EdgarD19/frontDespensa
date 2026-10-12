@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import {
   getComprobantes, persistComprobantes, nuevoId,
-  estadoComprobante, numeroCompleto, rangoDisplay, proximoNumero, pad3, pad6,
+  estadoComprobante, numeroCompleto, rangoDisplay, proximoNumero, pad3,
 } from "../../api/comprobantesApi";
 
 const CARD = "rounded-none border border-white/10 bg-white/[0.02]";

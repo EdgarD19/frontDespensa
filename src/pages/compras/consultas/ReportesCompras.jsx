@@ -96,11 +96,6 @@ export default function ReportesCompras() {
     return () => { activo = false; };
   }, []);
 
-  const nombresProveedor = useMemo(
-    () => new Map(proveedores.map((p) => [Number(p.id ?? p.idProveedor), p.nombre])),
-    [proveedores]
-  );
-
   const productosDisponibles = useMemo(() => {
     const set = new Set();
     for (const f of todas) {

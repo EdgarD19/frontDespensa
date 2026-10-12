@@ -381,7 +381,7 @@ export default function OperacionesTipo({ tipo }) {
     setRegistrando(true);
     try {
       if (op.tipo === "INTERCAMBIO") {
-        const creada = await crearIntercambio({
+        await crearIntercambio({
           idProveedor: op.proveedorId,
           idFactura: op.facturaId ?? undefined,
           numeroFactura: op.facturaNumero ?? undefined,
@@ -1404,7 +1404,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
   // completa de vuelta). Lo que NO se permite es devolver el 100% de TODOS los
   // productos: eso equivale a anular la factura y corresponde al flujo de
   // Anulación, por eso se valida de forma cruzada en `esDevolucionTotal`.
-  const maxPorFactura = (d, tipoOp) => {
+  const maxPorFactura = (d, _tipoOp) => {
     const original = Number(d.cantidad) || 0;
     return Math.max(0, original);
   };
@@ -1590,8 +1590,6 @@ const puedeRegistrar = tipo === "ANULACION"
     const ordenadas = [...facturasFiltradas].sort(
       (a, b) => Number(Boolean(bloqueosPorFactura[Number(a.idFactura)])) - Number(Boolean(bloqueosPorFactura[Number(b.idFactura)]))
     );
-    const totalBloqueadas = ordenadas.filter((f) => bloqueosPorFactura[Number(f.idFactura)]).length;
-    const totalDisponibles = ordenadas.length - totalBloqueadas;
 
     return (
       <div className="space-y-4 p-5">

@@ -64,7 +64,11 @@ export function numeroFacturaPreview() {
 }
 
 export function hoyISO() {
-  return new Date().toISOString().split("T")[0];
+  // Fecha LOCAL (yyyy-MM-dd). Ojo: toISOString() es UTC y después de las ~21:00
+  // en UTC-3 ya devuelve el día siguiente, que el back rechaza por "futura".
+  const d = new Date();
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return local.toISOString().split("T")[0];
 }
 
 export function esSoloDigitosBarras(s) {

@@ -1,9 +1,6 @@
 ﻿import { useEffect, useRef, useState } from "react";
 import { ChevronUp, ChevronDown } from "lucide-react";
 
-const separador = (t) =>
-  t.indexOf(",") !== -1 ? "," : t.indexOf(".") !== -1 ? "." : null;
-
 export default function CantidadInput({
   unidadMedida = "UN",
   value,

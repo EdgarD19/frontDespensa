@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Search, X, Eye, ArrowLeft } from "lucide-react";
 import {
@@ -37,8 +37,11 @@ const ivaLineaDetalle = (d) => {
 
 const fmtFecha = (iso) => {
   if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return String(iso);
+  const s = String(iso);
+  // Fecha sin hora (yyyy-MM-dd): interpretarla como LOCAL para no correr el día
+  // (new Date("2026-10-11") es UTC y en America/Asuncion muestra 10/10/2026).
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T00:00:00`) : new Date(s);
+  if (Number.isNaN(d.getTime())) return s;
   return d.toLocaleDateString("es-PY", { day: "2-digit", month: "2-digit", year: "numeric" });
 };
 
@@ -90,22 +93,20 @@ export default function HistorialVentas() {
     return () => { activo = false; };
   }, []);
 
-  useEffect(() => {
-    let activo = true;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await getFacturasVenta({ page: 0, pageSize: 1000, sortDir: "DESC" });
-        if (activo) setTodas(Array.isArray(res.content) ? res.content : []);
-      } catch (err) {
-        if (activo) setError(apiErrorMessage(err) || "Error al cargar las facturas de venta");
-      } finally {
-        if (activo) setLoading(false);
-      }
-    })();
-    return () => { activo = false; };
+  const cargar = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await getFacturasVenta({ page: 0, pageSize: 1000, sortDir: "DESC" });
+      setTodas(Array.isArray(res.content) ? res.content : []);
+    } catch (err) {
+      setError(apiErrorMessage(err) || "Error al cargar las facturas de venta");
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { cargar(); }, [cargar]);
 
   const filtradas = useMemo(() => {
     const q = texto.trim().toLowerCase();
