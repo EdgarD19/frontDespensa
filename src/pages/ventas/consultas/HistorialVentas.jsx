@@ -58,10 +58,11 @@ const estadoVenta = (f) => {
       </span>
     );
   }
-  const raw = String(f?.estado || "").toUpperCase();
+  // El estado del back es "EMITIDA" para toda factura no anulada; en el historial
+  // se muestra "Vigente" para que coincida con el filtro (Vigentes / Anuladas).
   return (
     <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-emerald-500/15 text-emerald-400">
-      {raw ? raw.charAt(0) + raw.slice(1).toLowerCase() : "Vigente"}
+      Vigente
     </span>
   );
 };

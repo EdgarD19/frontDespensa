@@ -83,7 +83,7 @@ const CONFIG = {
     plural: "Anulaciones",
     accion: "anulación",
     empty: "Aún no hay anulaciones registradas",
-    subtitulo: "Anulá una factura de compra registrada por error",
+    subtitulo: "Anulá una factura de compra registrada",
   },
 };
 

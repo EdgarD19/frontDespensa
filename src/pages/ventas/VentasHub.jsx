@@ -30,8 +30,8 @@ const MODULOS = [
   },
   {
     to: "/ventas/devoluciones",
-    label: "Devoluciones de ventas",
-    descripcion: "Gestión de devoluciones, intercambios y anulaciones de ventas.",
+    label: "Intercambios y Anulaciones de Ventas",
+    descripcion: "Gestión de intercambios y anulaciones de ventas.",
     icon: Undo2,
   },
 ];

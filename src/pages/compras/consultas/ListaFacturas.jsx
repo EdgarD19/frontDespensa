@@ -64,31 +64,19 @@ const esAnulada = (f) => {
 };
 
 const estadoFactura = (f) => {
-  const raw = String(f?.estado || "").toUpperCase();
-  if (raw === "CANCELADA" || (!raw && f?.activo === false)) {
-    return (
-      <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-white/10 text-[#8b8b9e]">
-        Cancelada
-      </span>
-    );
-  }
-  if (raw === "ANULADO" || raw === "ANULADA") {
+  // El back marca "RECIBIDA" toda factura de compra no anulada y "ANULADO" al anular.
+  // En el historial se muestra "Vigente" / "Anulada" para coincidir con el filtro
+  // (Vigentes / Anuladas).
+  if (esAnulada(f)) {
     return (
       <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-rose-500/15 text-rose-400">
         Anulada
       </span>
     );
   }
-  if (raw === "RECIBIDA") {
-    return (
-      <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-sky-500/15 text-sky-400">
-        Recibida
-      </span>
-    );
-  }
   return (
     <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-emerald-500/15 text-emerald-400">
-      {raw ? raw.charAt(0) + raw.slice(1).toLowerCase() : "Vigente"}
+      Vigente
     </span>
   );
 };

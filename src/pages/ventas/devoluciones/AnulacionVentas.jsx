@@ -341,7 +341,7 @@ function NuevaAnulacionModal({ onCerrar, onAnulada }) {
                   tabIndex={0}
                   onClick={() => setFacturaSel(f)}
                   onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setFacturaSel(f); } }}
-                  className="cursor-pointer border-b border-white/10 border-l-2 border-l-transparent transition-colors last:border-b-0 focus:outline-none focus-visible:bg-white/[0.06] hover:border-l-[#f43f5e] hover:bg-white/[0.04]"
+                  className="cursor-pointer border-b border-white/10 transition-colors last:border-b-0 focus:outline-none focus-visible:bg-white/[0.06] hover:bg-white/[0.04]"
                 >
                   <td className="whitespace-nowrap px-4 py-3 font-medium tabular-nums text-white">{f.numeroFactura || "—"}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-white/60">{fmtFechaHora(f.fechaEmision || f.fechaCreacion)}</td>
@@ -597,7 +597,7 @@ function DetalleAnulacionModal({ anulacion, onCerrar }) {
               <div className="max-h-[38vh] overflow-y-auto [color-scheme:dark] [scrollbar-color:#2a2a32_transparent] [scrollbar-width:thin]">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 z-10 bg-[#0c0c0e]">
-                    <tr className="border-b border-white/10 bg-white/[0.04] text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-white/50">
+                    <tr className="border-b border-white/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-white/50">
                       <th className="px-3 py-2.5 font-medium">Producto</th>
                       <th className="whitespace-nowrap px-3 py-2.5 text-right font-medium">Cant.</th>
                       <th className="whitespace-nowrap px-3 py-2.5 text-right font-medium">Precio unit.</th>
