@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Users, ScanLine, History, LineChart, Undo2 } from "lucide-react";
+import { Users, ScanLine, History, LineChart, ArrowLeftRight, Ban } from "lucide-react";
 import { hubCardClass as cardClass, hubIconClass } from "../../components/ui/hubStyles";
 
 const MODULOS = [
@@ -29,10 +29,16 @@ const MODULOS = [
     pronto: true,
   },
   {
-    to: "/ventas/devoluciones",
-    label: "Intercambios y Anulaciones de Ventas",
-    descripcion: "Gestión de intercambios y anulaciones de ventas.",
-    icon: Undo2,
+    to: "/ventas/devoluciones/intercambios",
+    label: "Intercambio",
+    descripcion: "Intercambio de productos de una factura de venta.",
+    icon: ArrowLeftRight,
+  },
+  {
+    to: "/ventas/devoluciones/anulaciones",
+    label: "Anulación",
+    descripcion: "Anulación total de una factura de venta.",
+    icon: Ban,
   },
 ];
 

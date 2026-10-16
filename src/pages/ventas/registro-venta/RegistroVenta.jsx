@@ -759,7 +759,7 @@ export default function RegistroVenta() {
                   <button key={amt} type="button" onClick={() => setMontoPagado(String(amt))}
                     className="rounded-none border border-white/10 bg-white/[0.03] py-1.5 text-sm font-medium text-white/70 transition-colors hover:border-[var(--border-accent)] hover:text-white"
                     style={MONO}>
-                    {amt / 1000}k
+                    {amt / 1000}mil
                   </button>
                 ))}
               </div>

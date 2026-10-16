@@ -120,7 +120,7 @@ export default function IntercambioVentas() {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3">
-        <Link to="/ventas/devoluciones" className="rounded-none p-2 text-white/50 transition-colors hover:bg-white/10" aria-label="Volver">
+        <Link to="/ventas" className="rounded-none p-2 text-white/50 transition-colors hover:bg-white/10" aria-label="Volver">
           <ArrowLeft size={18} />
         </Link>
         <div className="flex-1 space-y-0.5">

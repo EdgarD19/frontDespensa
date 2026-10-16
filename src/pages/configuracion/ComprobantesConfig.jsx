@@ -1,13 +1,17 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft, Plus, FileText, Pencil, Trash2, Power, ShieldCheck,
-  AlertTriangle, Check, X, Hash, CalendarDays, LayoutGrid, ListOrdered, Lock,
+  AlertTriangle, Check, X, Hash, CalendarDays, LayoutGrid, ListOrdered, Lock, Loader2,
 } from "lucide-react";
 import {
-  getComprobantes, persistComprobantes, nuevoId,
-  estadoComprobante, numeroCompleto, rangoDisplay, proximoNumero, pad3,
+  EXTRAS_DEFAULT, extrasDe, guardarExtrasLocal, eliminarExtrasLocal,
+  estadoComprobante, numeroCompleto, rangoDisplay, proximoNumero, pad3, tieneRango,
 } from "../../api/comprobantesApi";
+import {
+  getTimbradosVenta, crearTimbradoVenta, actualizarTimbradoVenta,
+  toggleActivoTimbradoVenta, eliminarTimbradoVenta, apiErrorMessage,
+} from "../../api/timbradosVentaApi";
 
 const CARD = "rounded-none border border-white/10 bg-white/[0.02]";
 const LABEL = "text-[11px] font-medium uppercase tracking-[0.14em] text-white/50";
@@ -19,6 +23,7 @@ const CHIP_ESTADO = {
   vencido: "border-red-500/30 bg-red-500/10 text-red-400",
   sin_iniciar: "border-amber-400/30 bg-amber-400/10 text-amber-300",
   agotado: "border-red-500/30 bg-red-500/10 text-red-400",
+  inactivo: "border-white/10 bg-white/[0.06] text-white/50",
   sin_configuracion: "border-white/10 bg-white/[0.06] text-white/50",
 };
 
@@ -29,67 +34,146 @@ const MSJ = {
   rango: "Numeración autorizada, por ejemplo 000001 hasta 000500.",
 };
 
+const VACIO = {
+  numeroTimbrado: "",
+  fechaInicio: "",
+  fechaVencimiento: "",
+  activo: true,
+  establecimiento: EXTRAS_DEFAULT.establecimiento,
+  puntoExpedicion: EXTRAS_DEFAULT.puntoExpedicion,
+  numeroDesde: "1",
+  numeroHasta: "",
+  ultimoEmitido: 0,
+};
+
 function validar(d) {
   const e = {};
-  if (!/^\d{8}$/.test(String(d.numeroTimbrado).trim()))
+  if (!/^\d{8}$/.test(String(d.numeroTimbrado ?? "").trim()))
     e.numeroTimbrado = "Ingresá los 8 dígitos del timbrado.";
-  if (!/^\d{3}$/.test(String(d.establecimiento).trim()))
-    e.establecimiento = "3 dígitos (ej: 001).";
-  if (!/^\d{3}$/.test(String(d.puntoExpedicion).trim()))
-    e.puntoExpedicion = "3 dígitos (ej: 001).";
-  const desde = Math.trunc(Number(d.numeroDesde));
-  const hasta = Math.trunc(Number(d.numeroHasta));
-  if (!Number.isFinite(desde) || String(d.numeroDesde).trim() === "" || desde < 1)
-    e.numeroDesde = "Número inicial del rango.";
-  if (!Number.isFinite(hasta) || String(d.numeroHasta).trim() === "")
-    e.numeroHasta = "Número final del rango.";
-  else if (Number.isFinite(desde) && hasta < desde)
-    e.numeroHasta = "Debe ser mayor o igual al inicial.";
-  if (!d.fechaInicio) e.fechaInicio = "Requerida.";
-  if (!d.fechaVencimiento) e.fechaVencimiento = "Requerida.";
-  else if (d.fechaInicio && d.fechaVencimiento < d.fechaInicio)
-    e.fechaVencimiento = "Debe ser posterior a la fecha de inicio.";
   return e;
 }
 
-const VACIO = {
-  id: "", activo: true, numeroTimbrado: "", establecimiento: "001", puntoExpedicion: "001",
-  numeroDesde: 1, numeroHasta: "", fechaInicio: "", fechaVencimiento: "", ultimoEmitido: 0,
-};
+function validarFechas(d) {
+  const e = {};
+  if (!d.fechaInicio) e.fechaInicio = "Fecha de inicio requerida.";
+  if (!d.fechaVencimiento) e.fechaVencimiento = "Fecha de vencimiento requerida.";
+  if (d.fechaInicio && d.fechaVencimiento && d.fechaVencimiento < d.fechaInicio)
+    e.fechaVencimiento = "Debe ser posterior al inicio.";
+  return e;
+}
+
+function validarExtras(d) {
+  const e = {};
+  const est = String(d.establecimiento ?? "").trim();
+  if (est && !/^\d{3}$/.test(est)) e.establecimiento = "3 dígitos (ej: 001).";
+  const pun = String(d.puntoExpedicion ?? "").trim();
+  if (pun && !/^\d{3}$/.test(pun)) e.puntoExpedicion = "3 dígitos (ej: 001).";
+  const desdeVacio = String(d.numeroDesde ?? "").trim() === "";
+  const hastaVacio = String(d.numeroHasta ?? "").trim() === "";
+  const desde = Math.trunc(Number(d.numeroDesde));
+  const hasta = Math.trunc(Number(d.numeroHasta));
+  if (!desdeVacio && (!Number.isFinite(desde) || desde < 1)) e.numeroDesde = "Número inicial inválido.";
+  if (!hastaVacio && (!Number.isFinite(hasta) || hasta < 1)) e.numeroHasta = "Número final inválido.";
+  if (!desdeVacio && !hastaVacio && Number.isFinite(desde) && Number.isFinite(hasta) && hasta < desde)
+    e.numeroHasta = "Debe ser mayor o igual al inicial.";
+  return e;
+}
 
 export default function ComprobantesConfig() {
-  const [lista, setLista] = useState(() => getComprobantes());
+  const [timbrados, setTimbrados] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [ocupado, setOcupado] = useState(false);
+  const [error, setError] = useState(null);
+  const [aviso, setAviso] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [editando, setEditando] = useState(null);
-  const [aviso, setAviso] = useState(null);
 
+  const cargar = useCallback(async () => {
+    setCargando(true);
+    setError(null);
+    try {
+      const { content } = await getTimbradosVenta({ pageSize: 200 });
+      setTimbrados(content);
+    } catch (e) {
+      setError(apiErrorMessage(e));
+    } finally {
+      setCargando(false);
+    }
+  }, []);
+
+  useEffect(() => { cargar(); }, [cargar]);
+
+  // Mezcla el timbrado del back con los datos que el back no soporta (localStorage).
   const vivas = useMemo(
-    () => lista.map((c) => ({ ...c, st: estadoComprobante(c) })),
-    [lista]
+    () => timbrados.map((t) => {
+      const ex = extrasDe(t.idTimbradoVenta);
+      const c = {
+        ...t,
+        id: t.idTimbradoVenta,
+        establecimiento: ex.establecimiento,
+        puntoExpedicion: ex.puntoExpedicion,
+        numeroDesde: ex.numeroDesde,
+        numeroHasta: ex.numeroHasta,
+        ultimoEmitido: ex.ultimoEmitido,
+      };
+      return { ...c, st: estadoComprobante(c) };
+    }),
+    [timbrados]
   );
 
-  function guardar(d) {
-    const existe = lista.some((c) => c.id === d.id);
-    const next = existe ? lista.map((c) => (c.id === d.id ? d : c)) : [...lista, d];
-    persistComprobantes(next);
-    setLista(next);
+  async function guardar(form) {
+    const payload = {
+      numeroTimbrado: String(form.numeroTimbrado).trim(),
+      fechaInicio: form.fechaInicio || null,
+      fechaVencimiento: form.fechaVencimiento || null,
+      activo: !!form.activo,
+    };
+
+    const saved = form.id
+      ? await actualizarTimbradoVenta(form.id, payload)
+      : await crearTimbradoVenta(payload);
+
+    const id = saved?.idTimbradoVenta ?? form.id;
+    guardarExtrasLocal(id, {
+      establecimiento: String(form.establecimiento ?? "").trim() || EXTRAS_DEFAULT.establecimiento,
+      puntoExpedicion: String(form.puntoExpedicion ?? "").trim() || EXTRAS_DEFAULT.puntoExpedicion,
+      numeroDesde: String(form.numeroDesde ?? "").trim() === "" ? null : Math.trunc(Number(form.numeroDesde)),
+      numeroHasta: String(form.numeroHasta ?? "").trim() === "" ? null : Math.trunc(Number(form.numeroHasta)),
+      ultimoEmitido: form.ultimoEmitido ?? 0,
+    });
+
+    await cargar();
     setShowModal(false);
-    setEditando(null);
-    mostrarAviso(existe ? "Timbrado actualizado." : "Timbrado registrado.");
+    mostrarAviso(form.id ? "Timbrado actualizado." : "Timbrado registrado.");
   }
 
-  function eliminar(c) {
-    const next = lista.filter((x) => x.id !== c.id);
-    persistComprobantes(next);
-    setLista(next);
-    mostrarAviso(`Timbrado ${c.numeroTimbrado} eliminado.`);
+  async function eliminar(c) {
+    setOcupado(true);
+    setError(null);
+    try {
+      await eliminarTimbradoVenta(c.id);
+      eliminarExtrasLocal(c.id);
+      await cargar();
+      mostrarAviso(`Timbrado ${c.numeroTimbrado} dado de baja.`);
+    } catch (e) {
+      setError(apiErrorMessage(e));
+    } finally {
+      setOcupado(false);
+    }
   }
 
-  function toggleActivo(c) {
-    const next = lista.map((x) => (x.id === c.id ? { ...x, activo: !x.activo } : x));
-    persistComprobantes(next);
-    setLista(next);
-    mostrarAviso(c.activo ? "Timbrado desactivado." : "Timbrado activado.");
+  async function toggleActivo(c) {
+    setOcupado(true);
+    setError(null);
+    try {
+      await toggleActivoTimbradoVenta(c.id, !c.activo);
+      await cargar();
+      mostrarAviso(c.activo ? "Timbrado desactivado." : "Timbrado activado.");
+    } catch (e) {
+      setError(apiErrorMessage(e));
+    } finally {
+      setOcupado(false);
+    }
   }
 
   function mostrarAviso(msg) {
@@ -115,6 +199,12 @@ export default function ComprobantesConfig() {
       {aviso && (
         <div className={`${CARD} mb-4 flex items-center gap-2 p-3 text-sm text-[var(--accent)]`}>
           <Check className="h-4 w-4" /> {aviso}
+        </div>
+      )}
+
+      {error && (
+        <div className={`${CARD} mb-4 flex items-center gap-2 border-red-500/30 bg-red-500/[0.06] p-3 text-sm text-red-400`}>
+          <AlertTriangle className="h-4 w-4" /> {error}
         </div>
       )}
 
@@ -146,7 +236,11 @@ export default function ComprobantesConfig() {
         </button>
       </div>
 
-      {!hayDatos ? (
+      {cargando ? (
+        <div className={`${CARD} flex items-center justify-center gap-2 px-6 py-16 text-sm text-white/50`}>
+          <Loader2 className="h-4 w-4 animate-spin" /> Cargando timbrados…
+        </div>
+      ) : !hayDatos ? (
         <div className={`${CARD} flex flex-col items-center justify-center gap-2 px-6 py-16 text-center`}>
           <FileText className="h-10 w-10 text-white/15" />
           <p className="text-sm text-white/50">No hay comprobantes configurados.</p>
@@ -176,21 +270,22 @@ export default function ComprobantesConfig() {
                     <span>Estab.-punto: <span className="text-white/85" style={MONO}>{pad3(c.establecimiento)}-{pad3(c.puntoExpedicion)}</span></span>
                     <span>Vigencia: <span className="text-white/85">{c.fechaInicio} → {c.fechaVencimiento}</span></span>
                     <span>Rango: <span className="text-white/85" style={MONO}>{rangoDisplay(c)}</span></span>
-                    <span>Nº sig.: <span className="text-[var(--accent)]" style={MONO}>{numeroCompleto(c, proximoNumero(c))}</span></span>
+                    <span>Nº sig.: <span className="text-[var(--accent)]" style={MONO}>{tieneRango(c) ? numeroCompleto(c, proximoNumero(c)) : "—"}</span></span>
                   </div>
                 </div>
 
                 <div className="flex shrink-0 items-center gap-1.5">
-                  <button type="button" onClick={() => toggleActivo(c)} title={c.activo ? "Desactivar" : "Activar"}
-                    className={`rounded-none border p-2 transition-colors ${c.activo ? "border-[var(--border-accent)] bg-[var(--accent-dim)] text-[var(--accent)] hover:brightness-125" : "border-white/10 bg-white/[0.03] text-white/40 hover:bg-white/10 hover:text-white"}`}>
+                  <button type="button" onClick={() => toggleActivo(c)} disabled={ocupado}
+                    title={c.activo ? "Desactivar" : "Activar"}
+                    className={`rounded-none border p-2 transition-colors disabled:opacity-40 ${c.activo ? "border-[var(--border-accent)] bg-[var(--accent-dim)] text-[var(--accent)] hover:brightness-125" : "border-white/10 bg-white/[0.03] text-white/40 hover:bg-white/10 hover:text-white"}`}>
                     <Power className="h-4 w-4" />
                   </button>
-                  <button type="button" onClick={() => { setEditando(c); setShowModal(true); }} title="Editar"
-                    className="rounded-none border border-white/10 bg-white/[0.03] p-2 text-white/60 transition-colors hover:bg-white/10 hover:text-white">
+                  <button type="button" onClick={() => { setEditando(c); setShowModal(true); }} disabled={ocupado} title="Editar"
+                    className="rounded-none border border-white/10 bg-white/[0.03] p-2 text-white/60 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40">
                     <Pencil className="h-4 w-4" />
                   </button>
-                  <button type="button" onClick={() => eliminar(c)} title="Eliminar"
-                    className="rounded-none border border-white/10 bg-white/[0.03] p-2 text-white/40 transition-colors hover:bg-red-500/10 hover:text-red-400">
+                  <button type="button" onClick={() => eliminar(c)} disabled={ocupado} title="Eliminar"
+                    className="rounded-none border border-white/10 bg-white/[0.03] p-2 text-white/40 transition-colors hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
@@ -204,7 +299,7 @@ export default function ComprobantesConfig() {
         <Lock className="h-4 w-4 shrink-0 text-white/30" />
         <span>
           La venta asigna automáticamente el timbrado vigente y el número correlativo.
-          Si el timbrado vence o se agota el rango, la pantalla de ventas se bloquea.
+          Si el timbrado vence, la pantalla de ventas se bloquea.
         </span>
       </div>
 
@@ -221,32 +316,36 @@ export default function ComprobantesConfig() {
 
 function NuevoTimbradoModal({ inicial, onCerrar, onGuardar }) {
   const [form, setForm] = useState({
+    ...VACIO,
     ...inicial,
-    numeroDesde: inicial.numeroDesde ?? 1,
+    numeroDesde: inicial.numeroDesde ?? EXTRAS_DEFAULT.numeroDesde,
     numeroHasta: inicial.numeroHasta ?? "",
   });
   const [tocados, setTocados] = useState({});
-  const errores = validar(form);
-  const visible = (k) => tocados[k] ? errores[k] : null;
+  const [enviando, setEnviando] = useState(false);
+  const [errorServidor, setErrorServidor] = useState(null);
+
+  const errores = { ...validar(form), ...validarFechas(form), ...validarExtras(form) };
+  const visible = (k) => (tocados[k] ? errores[k] : null);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const puedeGuardar = Object.keys(errores).length === 0;
   const esNuevo = !form.id;
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
     if (!puedeGuardar) {
-      const todos = Object.fromEntries(Object.keys(errores).map((k) => [k, true]));
-      setTocados(todos);
+      setTocados(Object.fromEntries(Object.keys(errores).map((k) => [k, true])));
       return;
     }
-    onGuardar({
-      ...form,
-      id: form.id || nuevoId(),
-      numeroTimbrado: String(form.numeroTimbrado).trim(),
-      numeroDesde: Math.trunc(Number(form.numeroDesde)),
-      numeroHasta: Math.trunc(Number(form.numeroHasta)),
-      ultimoEmitido: esNuevo ? 0 : form.ultimoEmitido ?? 0,
-    });
+    setEnviando(true);
+    setErrorServidor(null);
+    try {
+      await onGuardar(form);
+    } catch (err) {
+      setErrorServidor(apiErrorMessage(err));
+    } finally {
+      setEnviando(false);
+    }
   }
 
   return (
@@ -280,37 +379,6 @@ function NuevoTimbradoModal({ inicial, onCerrar, onGuardar }) {
             {visible("numeroTimbrado") && <p className="mt-1 flex items-center gap-1 text-xs text-red-400"><AlertTriangle className="h-3.5 w-3.5" /> {visible("numeroTimbrado")}</p>}
           </div>
 
-          {/* Establecimiento y punto */}
-          <div>
-            <label className={`${LABEL} mb-1.5 block`}>Establecimiento y punto de expedición <span className="text-red-400">*</span></label>
-            <div className="flex items-center gap-2">
-              <input
-                value={form.establecimiento}
-                onChange={(e) => set("establecimiento", e.target.value.replace(/\D/g, "").slice(0, 3))}
-                onBlur={() => setTocados((t) => ({ ...t, establecimiento: true }))}
-                placeholder="001"
-                inputMode="numeric"
-                className={`${INPUT} text-center ${visible("establecimiento") ? "border-red-500/50" : ""}`}
-                style={MONO}
-              />
-              <span className="text-lg text-white/40">-</span>
-              <input
-                value={form.puntoExpedicion}
-                onChange={(e) => set("puntoExpedicion", e.target.value.replace(/\D/g, "").slice(0, 3))}
-                onBlur={() => setTocados((t) => ({ ...t, puntoExpedicion: true }))}
-                placeholder="001"
-                inputMode="numeric"
-                className={`${INPUT} text-center ${visible("puntoExpedicion") ? "border-red-500/50" : ""}`}
-                style={MONO}
-              />
-            </div>
-            {(visible("establecimiento") || visible("puntoExpedicion")) && (
-              <p className="mt-1 flex items-center gap-1 text-xs text-red-400">
-                <AlertTriangle className="h-3.5 w-3.5" /> {visible("establecimiento") || visible("puntoExpedicion")}
-              </p>
-            )}
-          </div>
-
           {/* Vigencia */}
           <div>
             <label className={`${LABEL} mb-1.5 block`}>Fecha de vigencia <span className="text-red-400">*</span></label>
@@ -337,42 +405,80 @@ function NuevoTimbradoModal({ inicial, onCerrar, onGuardar }) {
             </div>
           </div>
 
-          {/* Rango */}
-          <div>
-            <label className={`${LABEL} mb-1.5 block`}>Rango de numeración <span className="text-red-400">*</span></label>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className={`${INPUT} pointer-events-none w-16 text-center text-white/40`} style={MONO}>Desde</span>
-                  <input
-                    value={form.numeroDesde}
-                    onChange={(e) => set("numeroDesde", e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    onBlur={() => setTocados((t) => ({ ...t, numeroDesde: true }))}
-                    placeholder="000001"
-                    inputMode="numeric"
-                    className={`${INPUT} text-center ${visible("numeroDesde") ? "border-red-500/50" : ""}`}
-                    style={MONO}
-                  />
-                </div>
-                {visible("numeroDesde") && <p className="mt-1 text-xs text-red-400">{visible("numeroDesde")}</p>}
+          {/* Datos locales: el back todavía no los guarda */}
+          <div className="rounded-none border border-amber-400/20 bg-amber-400/[0.04] p-3">
+            <p className="mb-3 text-xs text-amber-300/90">
+              LocalStorage
+            </p>
+
+            {/* Establecimiento y punto */}
+            <div className="mb-4">
+              <label className={`${LABEL} mb-1.5 block`}>Establecimiento y punto de expedición</label>
+              <div className="flex items-center gap-2">
+                <input
+                  value={form.establecimiento}
+                  onChange={(e) => set("establecimiento", e.target.value.replace(/\D/g, "").slice(0, 3))}
+                  onBlur={() => setTocados((t) => ({ ...t, establecimiento: true }))}
+                  placeholder="001"
+                  inputMode="numeric"
+                  className={`${INPUT} text-center ${visible("establecimiento") ? "border-red-500/50" : ""}`}
+                  style={MONO}
+                />
+                <span className="text-lg text-white/40">-</span>
+                <input
+                  value={form.puntoExpedicion}
+                  onChange={(e) => set("puntoExpedicion", e.target.value.replace(/\D/g, "").slice(0, 3))}
+                  onBlur={() => setTocados((t) => ({ ...t, puntoExpedicion: true }))}
+                  placeholder="001"
+                  inputMode="numeric"
+                  className={`${INPUT} text-center ${visible("puntoExpedicion") ? "border-red-500/50" : ""}`}
+                  style={MONO}
+                />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className={`${INPUT} pointer-events-none w-14 text-center text-white/40`} style={MONO}>hasta</span>
-                  <input
-                    value={form.numeroHasta}
-                    onChange={(e) => set("numeroHasta", e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    onBlur={() => setTocados((t) => ({ ...t, numeroHasta: true }))}
-                    placeholder="000500"
-                    inputMode="numeric"
-                    className={`${INPUT} text-center ${visible("numeroHasta") ? "border-red-500/50" : ""}`}
-                    style={MONO}
-                  />
-                </div>
-                {visible("numeroHasta") && <p className="mt-1 text-xs text-red-400">{visible("numeroHasta")}</p>}
-              </div>
+              {(visible("establecimiento") || visible("puntoExpedicion")) && (
+                <p className="mt-1 flex items-center gap-1 text-xs text-red-400">
+                  <AlertTriangle className="h-3.5 w-3.5" /> {visible("establecimiento") || visible("puntoExpedicion")}
+                </p>
+              )}
             </div>
-            <p className="mt-1 text-xs text-white/40">{MSJ.rango}</p>
+
+            {/* Rango */}
+            <div>
+              <label className={`${LABEL} mb-1.5 block`}>Rango de numeración</label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className={`${INPUT} pointer-events-none w-16 text-center text-white/40`} style={MONO}>Desde</span>
+                    <input
+                      value={form.numeroDesde}
+                      onChange={(e) => set("numeroDesde", e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      onBlur={() => setTocados((t) => ({ ...t, numeroDesde: true }))}
+                      placeholder="000001"
+                      inputMode="numeric"
+                      className={`${INPUT} text-center ${visible("numeroDesde") ? "border-red-500/50" : ""}`}
+                      style={MONO}
+                    />
+                  </div>
+                  {visible("numeroDesde") && <p className="mt-1 text-xs text-red-400">{visible("numeroDesde")}</p>}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className={`${INPUT} pointer-events-none w-14 text-center text-white/40`} style={MONO}>hasta</span>
+                    <input
+                      value={form.numeroHasta}
+                      onChange={(e) => set("numeroHasta", e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      onBlur={() => setTocados((t) => ({ ...t, numeroHasta: true }))}
+                      placeholder="000500"
+                      inputMode="numeric"
+                      className={`${INPUT} text-center ${visible("numeroHasta") ? "border-red-500/50" : ""}`}
+                      style={MONO}
+                    />
+                  </div>
+                  {visible("numeroHasta") && <p className="mt-1 text-xs text-red-400">{visible("numeroHasta")}</p>}
+                </div>
+              </div>
+              <p className="mt-1 text-xs text-white/40">{MSJ.rango}</p>
+            </div>
           </div>
 
           {/* Activo */}
@@ -383,8 +489,12 @@ function NuevoTimbradoModal({ inicial, onCerrar, onGuardar }) {
               onChange={(e) => set("activo", e.target.checked)}
               className="accent-[var(--accent)]"
             />
-            Timbrado activo (lo usará la pantalla de ventas)
+            Timbrado activo
           </label>
+
+          {errorServidor && (
+            <p className="flex items-center gap-1 text-xs text-red-400"><AlertTriangle className="h-3.5 w-3.5" /> {errorServidor}</p>
+          )}
         </div>
 
         <div className="flex shrink-0 items-center justify-end gap-2 border-t border-white/10 px-4 py-3">
@@ -392,8 +502,9 @@ function NuevoTimbradoModal({ inicial, onCerrar, onGuardar }) {
             className="rounded-none border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white/70 transition-colors hover:text-white">
             Cancelar
           </button>
-          <button type="submit" disabled={!puedeGuardar}
-            className="rounded-none bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-40">
+          <button type="submit" disabled={!puedeGuardar || enviando}
+            className="flex items-center gap-2 rounded-none bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-40">
+            {enviando && <Loader2 className="h-4 w-4 animate-spin" />}
             {esNuevo ? "Registrar timbrado" : "Guardar cambios"}
           </button>
         </div>

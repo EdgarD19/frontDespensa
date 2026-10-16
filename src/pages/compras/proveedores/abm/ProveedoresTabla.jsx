@@ -35,6 +35,7 @@ export default function ProveedoresTabla({
             <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
               <th className="px-4 py-3 font-medium">Nombre / Razón Social</th>
               <th className="px-4 py-3 font-medium">Documento</th>
+              <th className="whitespace-nowrap px-4 py-3 font-medium">Tipo de persona</th>
               <th className="px-4 py-3 font-medium">Contacto</th>
               <th className="px-4 py-3 font-medium">Estado</th>
               <th className="w-24 px-4 py-3 text-right font-medium">Acciones</th>
@@ -43,16 +44,17 @@ export default function ProveedoresTabla({
           <tbody>
             {loading && Array.from({ length: 5 }).map((_, i) => (
               <tr key={i} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
-                {Array.from({ length: 5 }).map((_, j) => (
+                {Array.from({ length: 6 }).map((_, j) => (
                   <td key={j} className="px-4 py-3"><div className="h-4 w-3/4 animate-pulse rounded bg-white/10" /></td>
                 ))}
               </tr>
             ))}
             {!loading && proveedores.length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-12 text-center text-white/30">No se encontraron proveedores.</td></tr>
+              <tr><td colSpan={6} className="px-4 py-12 text-center text-white/30">No se encontraron proveedores.</td></tr>
             )}
             {!loading && proveedores.map((p) => {
               const activo = p.activo !== false;
+              const esJuridica = p.tipoPersona === "JURIDICA";
               const nombre = p.tipoPersona === "FISICA"
                 ? [p.nombre, p.apellido].filter(Boolean).join(" ") || "—"
                 : (p.nombre || "—");
@@ -61,6 +63,13 @@ export default function ProveedoresTabla({
                   className={`border-b border-white/10 cursor-pointer transition-colors hover:bg-white/[0.04] last:border-0 ${!activo ? "opacity-60" : ""}`}>
                   <td className="px-4 py-3 text-white">{nombre}</td>
                   <td className="px-4 py-3 text-white/70">{p.numeroDocumento || "—"}</td>
+                  <td className="px-4 py-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      esJuridica ? "bg-blue-500/10 text-blue-400" : "bg-green-500/10 text-green-400"
+                    }`}>
+                      {esJuridica ? "Jurídica" : "Física"}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-white/70">{p.personaContacto || "—"}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
