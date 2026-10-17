@@ -11,6 +11,7 @@ import {
 import { getFacturasVenta } from "../../../api/facturasVentaApi";
 import { getProductos } from "../../../api/productosApi";
 import CantidadInput from "../../../components/ui/CantidadInput";
+import Pagination from "../../../components/ui/Pagination";
 import { esProductoPesable } from "../registro-venta/utils";
 
 /* ───────────── Utilidades y estilos ───────────── */
@@ -70,6 +71,8 @@ const fieldClass =
 
 const iconBtn = "flex h-8 w-8 items-center justify-center rounded-none transition-colors";
 
+const PAGE_SIZE = 10;
+
 const modalShell = "w-full rounded-none border border-white/10 bg-[#0c0c0e] shadow-2xl flex flex-col";
 
 const esAnulada = (f) => {
@@ -94,6 +97,10 @@ export default function IntercambioVentas() {
   const [aviso, setAviso] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [detalleSel, setDetalleSel] = useState(null);
+  const [texto, setTexto] = useState("");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
+  const [page, setPage] = useState(0);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -110,6 +117,29 @@ export default function IntercambioVentas() {
   }, []);
 
   useEffect(() => { cargar(); }, [cargar]);
+
+  const intercambiosFiltrados = useMemo(() => {
+    const q = texto.trim().toLowerCase();
+    const desdeTs = desde ? new Date(`${desde}T00:00:00`).getTime() : null;
+    const hastaTs = hasta ? new Date(`${hasta}T23:59:59.999`).getTime() : null;
+    return intercambios.filter((it) => {
+      if (q && !String(it.nombreCliente || "").toLowerCase().includes(q)) return false;
+      const ts = new Date(it.fechaCreacion).getTime();
+      if (Number.isNaN(ts)) return false;
+      if (desdeTs != null && ts < desdeTs) return false;
+      if (hastaTs != null && ts > hastaTs) return false;
+      return true;
+    });
+  }, [intercambios, texto, desde, hasta]);
+
+  useEffect(() => { setPage(0); }, [texto, desde, hasta]);
+
+  const totalPaginas = Math.max(1, Math.ceil(intercambiosFiltrados.length / PAGE_SIZE));
+  const paginaActual = Math.min(page, Math.max(0, totalPaginas - 1));
+  const intercambiosPagina = intercambiosFiltrados.slice(
+    paginaActual * PAGE_SIZE,
+    paginaActual * PAGE_SIZE + PAGE_SIZE
+  );
 
   const handleCreado = (resp) => {
     setShowModal(false);
@@ -147,6 +177,65 @@ export default function IntercambioVentas() {
         </div>
       )}
 
+      {/* Filtros */}
+      <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
+        <div className="relative min-w-[200px] flex-1">
+          <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+          <input
+            type="text"
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            placeholder="Buscar por cliente"
+            aria-label="Buscar por cliente"
+            className="w-full rounded-none border border-white/10 bg-white/5 py-2 pl-9 pr-10 text-sm text-white placeholder:text-white/30 transition-colors focus:border-[var(--accent)] focus:outline-none"
+          />
+          {texto && (
+            <button
+              type="button"
+              onClick={() => setTexto("")}
+              title="Limpiar búsqueda"
+              aria-label="Limpiar búsqueda"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-white/40 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <X size={15} />
+            </button>
+          )}
+        </div>
+        <div className="w-full sm:w-44">
+          <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40" htmlFor="intercambio-desde">
+            Desde
+          </label>
+          <input
+            id="intercambio-desde"
+            type="date"
+            value={desde}
+            onChange={(e) => setDesde(e.target.value)}
+            className="mt-1 w-full rounded-none border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-[var(--accent)]"
+          />
+        </div>
+        <div className="w-full sm:w-44">
+          <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40" htmlFor="intercambio-hasta">
+            Hasta
+          </label>
+          <input
+            id="intercambio-hasta"
+            type="date"
+            value={hasta}
+            onChange={(e) => setHasta(e.target.value)}
+            className="mt-1 w-full rounded-none border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-[var(--accent)]"
+          />
+        </div>
+        {(texto || desde || hasta) && (
+          <button
+            type="button"
+            onClick={() => { setTexto(""); setDesde(""); setHasta(""); }}
+            className="flex items-center gap-1.5 whitespace-nowrap rounded-none border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white/70 transition-colors hover:text-white"
+          >
+            <X size={14} /> Limpiar
+          </button>
+        )}
+      </div>
+
       <div className="overflow-hidden border border-white/10 bg-[#0c0c0e] shadow-lg shadow-black/20">
         {loading ? (
           <div className="grid grid-cols-5 gap-4 px-4 py-6">
@@ -154,11 +243,20 @@ export default function IntercambioVentas() {
               <div key={i} className="h-4 bg-white/10 rounded animate-pulse" />
             ))}
           </div>
-        ) : intercambios.length === 0 ? (
+        ) : intercambiosFiltrados.length === 0 ? (
           <div className="space-y-2 px-4 py-14 text-center">
             <ArrowLeftRight className="mx-auto h-10 w-10 text-white/15" />
-            <p className="text-sm text-white/50">Aún no hay intercambios registrados</p>
-            <p className="text-xs text-white/40">Empezá con “Nuevo intercambio”.</p>
+            {intercambios.length === 0 ? (
+              <>
+                <p className="text-sm text-white/50">Aún no hay intercambios registrados</p>
+                <p className="text-xs text-white/40">Empezá con “Nuevo intercambio”.</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-white/50">No se encontraron intercambios con esos filtros</p>
+                <p className="text-xs text-white/40">Probá con otro cliente o rango de fechas.</p>
+              </>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto [color-scheme:dark]">
@@ -173,7 +271,7 @@ export default function IntercambioVentas() {
                 </tr>
               </thead>
               <tbody>
-                {intercambios.map((it) => (
+                {intercambiosPagina.map((it) => (
                   <tr key={it.idIntercambioVenta} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                     <td className="whitespace-nowrap px-4 py-3 text-white/60">{fmtFechaHora(it.fechaCreacion)}</td>
                     <td className="px-4 py-3 text-white/70">
@@ -203,6 +301,16 @@ export default function IntercambioVentas() {
           </div>
         )}
       </div>
+
+      {!loading && intercambiosFiltrados.length > 0 && (
+        <Pagination
+          page={paginaActual}
+          totalPages={totalPaginas}
+          onPageChange={setPage}
+          pageSize={PAGE_SIZE}
+          totalItems={intercambiosFiltrados.length}
+        />
+      )}
 
       {showModal && (
         <NuevoIntercambioModal

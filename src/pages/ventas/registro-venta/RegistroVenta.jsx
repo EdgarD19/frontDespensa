@@ -723,7 +723,7 @@ export default function RegistroVenta() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label htmlFor="venta-recibido" className={`${LABEL} mb-2 block`}>Recibido</label>
-                  <div className="flex h-11 items-center gap-2 rounded-none border border-white/10 bg-white/[0.03] px-3 transition-colors focus-within:border-[var(--accent)]">
+                  <div className="flex h-11 items-center gap-2 rounded-none border border-white/10 bg-white/[0.03] px-2 transition-colors focus-within:border-[var(--accent)]">
                     <span className="text-lg text-white/40">₲</span>
                     <input
                       id="venta-recibido"
@@ -733,9 +733,13 @@ export default function RegistroVenta() {
                       onChange={(e) => setMontoPagado(e.target.value)}
                       placeholder="0"
                       autoComplete="off"
-                      className="w-full min-w-0 bg-transparent text-xl font-semibold text-white outline-none placeholder:text-white/25"
+                      className="flex-1 min-w-0 bg-transparent text-xl font-semibold text-white outline-none placeholder:text-white/25"
                       style={MONO}
                     />
+                    <button type="button" onClick={() => setMontoPagado("")} title="Borrar recibido"
+                      className="rounded-none p-1.5 text-white/30 transition-colors hover:bg-white/10 hover:text-white">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
                 <div>

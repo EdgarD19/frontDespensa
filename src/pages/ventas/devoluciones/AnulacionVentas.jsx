@@ -9,6 +9,7 @@ import {
   anularFacturaVenta, getAnulacionesVenta, apiErrorMessage,
 } from "../../../api/ventasDevolucionesApi";
 import { getFacturasVenta, buscarFacturasVenta, getFacturaVentaById } from "../../../api/facturasVentaApi";
+import Pagination from "../../../components/ui/Pagination";
 
 /* ───────────── Utilidades y estilos ───────────── */
 
@@ -45,6 +46,8 @@ const fieldClass =
 
 const iconBtn = "flex h-8 w-8 items-center justify-center rounded-none transition-colors";
 
+const PAGE_SIZE = 10;
+
 const modalShell = "w-full rounded-none border border-white/10 bg-[#0c0c0e] shadow-2xl flex flex-col";
 
 const esAnulada = (f) => {
@@ -69,6 +72,10 @@ export default function AnulacionVentas() {
   const [aviso, setAviso] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [detalleSel, setDetalleSel] = useState(null);
+  const [texto, setTexto] = useState("");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
+  const [page, setPage] = useState(0);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -85,6 +92,34 @@ export default function AnulacionVentas() {
   }, []);
 
   useEffect(() => { cargar(); }, [cargar]);
+
+  const anulacionesFiltradas = useMemo(() => {
+    const q = texto.trim().toLowerCase();
+    const desdeTs = desde ? new Date(`${desde}T00:00:00`).getTime() : null;
+    const hastaTs = hasta ? new Date(`${hasta}T23:59:59.999`).getTime() : null;
+    return anulaciones.filter((an) => {
+      if (q) {
+        const coincide =
+          String(an.clienteNombre || "").toLowerCase().includes(q) ||
+          String(an.numeroFactura || "").toLowerCase().includes(q);
+        if (!coincide) return false;
+      }
+      const ts = new Date(an.fechaAnulacion).getTime();
+      if (Number.isNaN(ts)) return false;
+      if (desdeTs != null && ts < desdeTs) return false;
+      if (hastaTs != null && ts > hastaTs) return false;
+      return true;
+    });
+  }, [anulaciones, texto, desde, hasta]);
+
+  useEffect(() => { setPage(0); }, [texto, desde, hasta]);
+
+  const totalPaginas = Math.max(1, Math.ceil(anulacionesFiltradas.length / PAGE_SIZE));
+  const paginaActual = Math.min(page, Math.max(0, totalPaginas - 1));
+  const anulacionesPagina = anulacionesFiltradas.slice(
+    paginaActual * PAGE_SIZE,
+    paginaActual * PAGE_SIZE + PAGE_SIZE
+  );
 
   const handleAnulada = (resp, factura) => {
     setShowModal(false);
@@ -124,6 +159,65 @@ export default function AnulacionVentas() {
         </div>
       )}
 
+      {/* Filtros */}
+      <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
+        <div className="relative min-w-[200px] flex-1">
+          <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+          <input
+            type="text"
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            placeholder="Buscar por cliente o N° factura"
+            aria-label="Buscar por cliente o número de factura"
+            className="w-full rounded-none border border-white/10 bg-white/5 py-2 pl-9 pr-10 text-sm text-white placeholder:text-white/30 transition-colors focus:border-[var(--accent)] focus:outline-none"
+          />
+          {texto && (
+            <button
+              type="button"
+              onClick={() => setTexto("")}
+              title="Limpiar búsqueda"
+              aria-label="Limpiar búsqueda"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-white/40 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <X size={15} />
+            </button>
+          )}
+        </div>
+        <div className="w-full sm:w-44">
+          <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40" htmlFor="anulacion-desde">
+            Desde
+          </label>
+          <input
+            id="anulacion-desde"
+            type="date"
+            value={desde}
+            onChange={(e) => setDesde(e.target.value)}
+            className="mt-1 w-full rounded-none border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-[var(--accent)]"
+          />
+        </div>
+        <div className="w-full sm:w-44">
+          <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40" htmlFor="anulacion-hasta">
+            Hasta
+          </label>
+          <input
+            id="anulacion-hasta"
+            type="date"
+            value={hasta}
+            onChange={(e) => setHasta(e.target.value)}
+            className="mt-1 w-full rounded-none border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-[var(--accent)]"
+          />
+        </div>
+        {(texto || desde || hasta) && (
+          <button
+            type="button"
+            onClick={() => { setTexto(""); setDesde(""); setHasta(""); }}
+            className="flex items-center gap-1.5 whitespace-nowrap rounded-none border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white/70 transition-colors hover:text-white"
+          >
+            <X size={14} /> Limpiar
+          </button>
+        )}
+      </div>
+
       <div className="overflow-hidden border border-white/10 bg-[#0c0c0e] shadow-lg shadow-black/20">
         {loading ? (
           <div className="grid grid-cols-6 gap-4 px-4 py-6">
@@ -131,11 +225,20 @@ export default function AnulacionVentas() {
               <div key={i} className="h-4 bg-white/10 rounded animate-pulse" />
             ))}
           </div>
-        ) : anulaciones.length === 0 ? (
+        ) : anulacionesFiltradas.length === 0 ? (
           <div className="space-y-2 px-4 py-14 text-center">
             <Ban className="mx-auto h-10 w-10 text-white/15" />
-            <p className="text-sm text-white/50">Aún no hay anulaciones registradas</p>
-            <p className="text-xs text-white/40">Empezá con “Nueva anulación”.</p>
+            {anulaciones.length === 0 ? (
+              <>
+                <p className="text-sm text-white/50">Aún no hay anulaciones registradas</p>
+                <p className="text-xs text-white/40">Empezá con “Nueva anulación”.</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-white/50">No se encontraron anulaciones con esos filtros</p>
+                <p className="text-xs text-white/40">Probá con otro cliente, N° factura o rango de fechas.</p>
+              </>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto [color-scheme:dark]">
@@ -151,7 +254,7 @@ export default function AnulacionVentas() {
                 </tr>
               </thead>
               <tbody>
-                {anulaciones.map((an) => (
+                {anulacionesPagina.map((an) => (
                   <tr key={an.idAnulacion} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                     <td className="whitespace-nowrap px-4 py-3 text-white/60">{fmtFechaHora(an.fechaAnulacion)}</td>
                     <td className="whitespace-nowrap px-4 py-3 tabular-nums text-white">{an.numeroFactura || "—"}</td>
@@ -178,6 +281,16 @@ export default function AnulacionVentas() {
           </div>
         )}
       </div>
+
+      {!loading && anulacionesFiltradas.length > 0 && (
+        <Pagination
+          page={paginaActual}
+          totalPages={totalPaginas}
+          onPageChange={setPage}
+          pageSize={PAGE_SIZE}
+          totalItems={anulacionesFiltradas.length}
+        />
+      )}
 
       {showModal && (
         <NuevaAnulacionModal

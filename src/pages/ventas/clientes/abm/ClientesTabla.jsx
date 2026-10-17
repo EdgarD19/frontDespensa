@@ -1,4 +1,4 @@
-import { Search, ToggleLeft, ToggleRight, Pencil } from "lucide-react";
+import { Search, ToggleLeft, ToggleRight, Pencil, Trash2 } from "lucide-react";
 import Pagination from "../../../../components/ui/Pagination";
 
 export default function ClientesTabla({
@@ -21,15 +21,24 @@ export default function ClientesTabla({
       <div className="flex items-center gap-3 py-3">
         <div className="relative flex-1">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40"/>
-          <input 
-            type="text" 
+          <input
+            type="text"
             value={search}
             onChange={(e) => onSearch(e.target.value)}
-            placeholder="Buscar por nombre, apellido, razón social, RUC o documento"
+            placeholder="Buscar por Nombre / Razón Social, apellido o CI / RUC"
             className="w-full bg-white/5 border border-white/10 rounded-none
-                      pl-9 pr-4 py-2 text-sm text-white placeholder:text-white/30
+                      pl-9 pr-10 py-2 text-sm text-white placeholder:text-white/30
                       focus:outline-none focus:border-[var(--accent)] transition-colors"
           />
+          <button
+            type="button"
+            onClick={() => onSearch("")}
+            title="Limpiar búsqueda"
+            aria-label="Limpiar búsqueda"
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-white/30 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            <Trash2 size={16} />
+          </button>
         </div>
 
         <button
@@ -48,7 +57,8 @@ export default function ClientesTabla({
           <thead>
             <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
               <th className="px-4 py-3 font-medium">Nombre / Razón Social</th>
-              <th className="px-4 py-3 font-medium">Documento</th>
+              <th className="px-4 py-3 font-medium">Celular</th>
+              <th className="px-4 py-3 font-medium">CI / RUC</th>
               <th className="px-4 py-3 font-medium">Tipo</th>
               <th className="px-4 py-3 font-medium">Estado</th>
               <th className="px-4 py-3 font-medium w-20" aria-label="Acciones" />
@@ -59,7 +69,7 @@ export default function ClientesTabla({
             {loading && (
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
-                  {Array.from({ length: 5 }).map((_, j) => (
+                  {Array.from({ length: 6 }).map((_, j) => (
                     <td key={j} className="px-4 py-3">
                       <div className="h-4 bg-white/10 rounded animate-pulse w-3/4" />
                     </td>
@@ -70,7 +80,7 @@ export default function ClientesTabla({
 
             {!loading && clientes.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-white/30">
+                <td colSpan={6} className="px-4 py-8 text-center text-white/30">
                   No se encontraron clientes.
                 </td>
               </tr>
@@ -94,6 +104,7 @@ export default function ClientesTabla({
                   }`}
                 >
                   <td className="px-4 py-3 text-white">{nombre}</td>
+                  <td className="px-4 py-3 text-white/70">{c.celular || "—"}</td>
                   <td className="px-4 py-3 text-white/70">{doc}</td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
