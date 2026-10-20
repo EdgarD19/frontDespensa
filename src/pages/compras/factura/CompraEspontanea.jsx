@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Truck, Search, Barcode, Trash2, ShoppingCart, Check, Calendar, FileText, Plus, Settings2 } from "lucide-react";
 import { getProductos, getProductoByCodigo, getPrecioCompraVigente } from "../../../api/productosApi";
-import { getProveedores, getProveedorId } from "../../../api/proveedoresApi";
+import { getProveedores, getProveedorId, getProveedorNombre } from "../../../api/proveedoresApi";
 import { crearFacturaCompra, getTimbradosProveedor } from "../../../api/facturasCompraApi";
 import { apiErrorMessage } from "../../../api/errors";
 import TimbradosModal from "./TimbradosModal";
@@ -222,6 +222,8 @@ export default function CompraEspontanea({ onVolver }) {
   if (exito) {
     const f = exito;
     const dg = desgloseFactura(f);
+    // El back sólo manda `nombre` en nombreProveedor; para FISICA mostramos nombre + apellido.
+    const nombreProveedorMostrar = getProveedorNombre(proveedorSel) || f.nombreProveedor || "—";
     const detalle = (tasa) => (f.detalles || []).filter((d) => Number(d.tasaIva) === tasa);
     const filasIva = [
       { etiqueta: "Exentas", tasa: 0, subtotal: dg.subtotalExento, iva: null },
@@ -276,7 +278,7 @@ export default function CompraEspontanea({ onVolver }) {
         <dl className="mx-auto mt-6 max-w-2xl grid grid-cols-1 gap-x-6 gap-y-4 border-y border-white/10 py-5 sm:grid-cols-2">
           <div>
             <dt className="text-xs font-medium uppercase tracking-wide text-white/50">Proveedor</dt>
-            <dd className="mt-1 text-sm font-medium text-white">{f.nombreProveedor || "—"}</dd>
+            <dd className="mt-1 text-sm font-medium text-white">{nombreProveedorMostrar}</dd>
           </div>
           <div>
             <dt className="text-xs font-medium uppercase tracking-wide text-white/50">N° de factura</dt>

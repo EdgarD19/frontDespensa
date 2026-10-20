@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft, Plus, FileText, Pencil, Trash2, Power, ShieldCheck,
-  AlertTriangle, Check, X, Hash, CalendarDays, LayoutGrid, ListOrdered, Lock, Loader2,
+  AlertTriangle, Check, X, Hash, LayoutGrid, ListOrdered, Lock, Loader2,
 } from "lucide-react";
 import {
   EXTRAS_DEFAULT, extrasDe, guardarExtrasLocal, eliminarExtrasLocal,
@@ -16,7 +16,9 @@ import {
 const CARD = "rounded-none border border-white/10 bg-white/[0.02]";
 const LABEL = "text-[11px] font-medium uppercase tracking-[0.14em] text-white/50";
 const MONO = { fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums" };
-const INPUT = "h-11 w-full rounded-none border border-white/10 bg-white/[0.03] px-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-[var(--accent)]";
+const INPUT = "h-11 w-full rounded-none border border-white/10 bg-white/[0.03] px-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50";
+const BTN_PRIMARIO = "flex items-center gap-2 rounded-none bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-40";
+const BTN_SECUNDARIO = "rounded-none border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white/70 transition-colors hover:text-white";
 
 const CHIP_ESTADO = {
   vigente: "border-[var(--border-accent)] bg-[var(--accent-dim)] text-[var(--accent)]",
@@ -28,33 +30,25 @@ const CHIP_ESTADO = {
 };
 
 const MSJ = {
-  numeroTimbrado: "El número de timbrado es el código único de 8 dígitos otorgado por la DNIT.",
+  numeroTimbrado: "Código único de 8 dígitos otorgado por la DNIT.",
   fechas: "Período de vigencia del timbrado autorizado.",
   establecimiento: "Formato 001-001: establecimiento y punto de expedición.",
-  rango: "Numeración autorizada, por ejemplo 000001 hasta 000500.",
+  rango: "Numeración autorizada, por ejemplo 1 hasta 500.",
 };
 
-const VACIO = {
+const TIMBRADO_VACIO = {
   numeroTimbrado: "",
   fechaInicio: "",
   fechaVencimiento: "",
   activo: true,
-  establecimiento: EXTRAS_DEFAULT.establecimiento,
-  puntoExpedicion: EXTRAS_DEFAULT.puntoExpedicion,
-  numeroDesde: "1",
-  numeroHasta: "",
-  ultimoEmitido: 0,
 };
 
-function validar(d) {
+/* ───────────────────────── Validaciones ───────────────────────── */
+
+function validarTimbrado(d) {
   const e = {};
   if (!/^\d{8}$/.test(String(d.numeroTimbrado ?? "").trim()))
     e.numeroTimbrado = "Ingresá los 8 dígitos del timbrado.";
-  return e;
-}
-
-function validarFechas(d) {
-  const e = {};
   if (!d.fechaInicio) e.fechaInicio = "Fecha de inicio requerida.";
   if (!d.fechaVencimiento) e.fechaVencimiento = "Fecha de vencimiento requerida.";
   if (d.fechaInicio && d.fechaVencimiento && d.fechaVencimiento < d.fechaInicio)
@@ -62,34 +56,49 @@ function validarFechas(d) {
   return e;
 }
 
-function validarExtras(d) {
+function validarFactura(d, ultimoEmitido) {
   const e = {};
-  const est = String(d.establecimiento ?? "").trim();
-  if (est && !/^\d{3}$/.test(est)) e.establecimiento = "3 dígitos (ej: 001).";
-  const pun = String(d.puntoExpedicion ?? "").trim();
-  if (pun && !/^\d{3}$/.test(pun)) e.puntoExpedicion = "3 dígitos (ej: 001).";
-  const desdeVacio = String(d.numeroDesde ?? "").trim() === "";
-  const hastaVacio = String(d.numeroHasta ?? "").trim() === "";
-  const desde = Math.trunc(Number(d.numeroDesde));
-  const hasta = Math.trunc(Number(d.numeroHasta));
-  if (!desdeVacio && (!Number.isFinite(desde) || desde < 1)) e.numeroDesde = "Número inicial inválido.";
-  if (!hastaVacio && (!Number.isFinite(hasta) || hasta < 1)) e.numeroHasta = "Número final inválido.";
-  if (!desdeVacio && !hastaVacio && Number.isFinite(desde) && Number.isFinite(hasta) && hasta < desde)
-    e.numeroHasta = "Debe ser mayor o igual al inicial.";
+  if (!/^\d{3}$/.test(String(d.establecimiento ?? "").trim())) e.establecimiento = "3 dígitos (ej: 001).";
+  if (!/^\d{3}$/.test(String(d.puntoExpedicion ?? "").trim())) e.puntoExpedicion = "3 dígitos (ej: 001).";
+
+  const desde = Number(d.numeroDesde);
+  const hasta = Number(d.numeroHasta);
+  const desdeOk = String(d.numeroDesde ?? "").trim() !== "" && Number.isInteger(desde) && desde >= 1;
+  const hastaOk = String(d.numeroHasta ?? "").trim() !== "" && Number.isInteger(hasta) && hasta >= 1;
+
+  if (!desdeOk) e.numeroDesde = "Número inicial inválido.";
+  if (!hastaOk) e.numeroHasta = "Número final inválido.";
+  else if (desdeOk && hasta < desde) e.numeroHasta = "Debe ser mayor o igual al inicial.";
+  else if (hasta < ultimoEmitido) e.numeroHasta = `Ya se emitió hasta el Nº ${ultimoEmitido}.`;
   return e;
 }
 
+/* ───────────────────────── Página ───────────────────────── */
+
 export default function ComprobantesConfig() {
   const [timbrados, setTimbrados] = useState([]);
+  const [extrasVersion, setExtrasVersion] = useState(0); // fuerza releer localStorage
   const [cargando, setCargando] = useState(true);
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState(null);
   const [aviso, setAviso] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [editando, setEditando] = useState(null);
 
-  const cargar = useCallback(async () => {
-    setCargando(true);
+  // Modales independientes: uno para el timbrado, otro para la factura, otro para confirmar baja.
+  const [modalTimbrado, setModalTimbrado] = useState(null); // null | { inicial }
+  const [facturaId, setFacturaId] = useState(null);         // id del timbrado cuya factura se configura
+  const [aEliminar, setAEliminar] = useState(null);
+
+  const avisoTimer = useRef(null);
+  useEffect(() => () => clearTimeout(avisoTimer.current), []);
+
+  function mostrarAviso(msg) {
+    clearTimeout(avisoTimer.current);
+    setAviso(msg);
+    avisoTimer.current = setTimeout(() => setAviso(null), 4000);
+  }
+
+  const cargar = useCallback(async ({ silencioso = false } = {}) => {
+    if (!silencioso) setCargando(true);
     setError(null);
     try {
       const { content } = await getTimbradosVenta({ pageSize: 200 });
@@ -103,7 +112,7 @@ export default function ComprobantesConfig() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  // Mezcla el timbrado del back con los datos que el back no soporta (localStorage).
+  // Mezcla el timbrado del back con la configuración de factura (localStorage).
   const vivas = useMemo(
     () => timbrados.map((t) => {
       const ex = extrasDe(t.idTimbradoVenta);
@@ -118,10 +127,13 @@ export default function ComprobantesConfig() {
       };
       return { ...c, st: estadoComprobante(c) };
     }),
-    [timbrados]
+    [timbrados, extrasVersion]
   );
 
-  async function guardar(form) {
+  const timbradoFactura = facturaId != null ? vivas.find((v) => v.id === facturaId) : null;
+
+  /* ── Paso 1: timbrado (solo back) ── */
+  async function guardarTimbrado(form) {
     const payload = {
       numeroTimbrado: String(form.numeroTimbrado).trim(),
       fechaInicio: form.fechaInicio || null,
@@ -133,27 +145,40 @@ export default function ComprobantesConfig() {
       ? await actualizarTimbradoVenta(form.id, payload)
       : await crearTimbradoVenta(payload);
 
-    const id = saved?.idTimbradoVenta ?? form.id;
-    guardarExtrasLocal(id, {
-      establecimiento: String(form.establecimiento ?? "").trim() || EXTRAS_DEFAULT.establecimiento,
-      puntoExpedicion: String(form.puntoExpedicion ?? "").trim() || EXTRAS_DEFAULT.puntoExpedicion,
-      numeroDesde: String(form.numeroDesde ?? "").trim() === "" ? null : Math.trunc(Number(form.numeroDesde)),
-      numeroHasta: String(form.numeroHasta ?? "").trim() === "" ? null : Math.trunc(Number(form.numeroHasta)),
-      ultimoEmitido: form.ultimoEmitido ?? 0,
-    });
+    await cargar({ silencioso: true });
+    setModalTimbrado(null);
 
-    await cargar();
-    setShowModal(false);
-    mostrarAviso(form.id ? "Timbrado actualizado." : "Timbrado registrado.");
+    if (form.id) {
+      mostrarAviso("Timbrado actualizado.");
+    } else {
+      mostrarAviso("Timbrado registrado. Falta configurar la factura.");
+      setFacturaId(saved?.idTimbradoVenta ?? null); // continúa el flujo con el paso 2
+    }
   }
 
-  async function eliminar(c) {
+  /* ── Paso 2: factura (solo local) ── */
+  function guardarFactura(c, datos) {
+    guardarExtrasLocal(c.id, {
+      establecimiento: String(datos.establecimiento).trim(),
+      puntoExpedicion: String(datos.puntoExpedicion).trim(),
+      numeroDesde: Math.trunc(Number(datos.numeroDesde)),
+      numeroHasta: Math.trunc(Number(datos.numeroHasta)),
+      ultimoEmitido: c.ultimoEmitido ?? 0, // nunca se pisa el correlativo
+    });
+    setExtrasVersion((v) => v + 1);
+    setFacturaId(null);
+    mostrarAviso("Configuración de factura guardada.");
+  }
+
+  async function confirmarEliminar() {
+    const c = aEliminar;
+    setAEliminar(null);
     setOcupado(true);
     setError(null);
     try {
       await eliminarTimbradoVenta(c.id);
       eliminarExtrasLocal(c.id);
-      await cargar();
+      await cargar({ silencioso: true });
       mostrarAviso(`Timbrado ${c.numeroTimbrado} dado de baja.`);
     } catch (e) {
       setError(apiErrorMessage(e));
@@ -167,7 +192,7 @@ export default function ComprobantesConfig() {
     setError(null);
     try {
       await toggleActivoTimbradoVenta(c.id, !c.activo);
-      await cargar();
+      await cargar({ silencioso: true });
       mostrarAviso(c.activo ? "Timbrado desactivado." : "Timbrado activado.");
     } catch (e) {
       setError(apiErrorMessage(e));
@@ -176,12 +201,8 @@ export default function ComprobantesConfig() {
     }
   }
 
-  function mostrarAviso(msg) {
-    setAviso(msg);
-    setTimeout(() => setAviso(null), 4000);
-  }
-
   const hayDatos = vivas.length > 0;
+  const pendientes = vivas.filter((c) => !tieneRango(c)).length;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
@@ -208,35 +229,17 @@ export default function ComprobantesConfig() {
         </div>
       )}
 
-      {/* Ayuda */}
-      <div className={`${CARD} mb-5 grid grid-cols-1 gap-3 p-4 md:grid-cols-2 lg:grid-cols-4`} style={{ fontSize: "12px" }}>
-        <div className="flex items-start gap-2 text-white/55">
-          <Hash className="mt-0.5 h-4 w-4 shrink-0 text-white/35" />
-          <span><strong className="text-white/80">Nº de timbrado:</strong> {MSJ.numeroTimbrado}</span>
-        </div>
-        <div className="flex items-start gap-2 text-white/55">
-          <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-white/35" />
-          <span><strong className="text-white/80">Vigencia:</strong> {MSJ.fechas}</span>
-        </div>
-        <div className="flex items-start gap-2 text-white/55">
-          <LayoutGrid className="mt-0.5 h-4 w-4 shrink-0 text-white/35" />
-          <span><strong className="text-white/80">Establecimiento:</strong> {MSJ.establecimiento}</span>
-        </div>
-        <div className="flex items-start gap-2 text-white/55">
-          <ListOrdered className="mt-0.5 h-4 w-4 shrink-0 text-white/35" />
-          <span><strong className="text-white/80">Rango:</strong> {MSJ.rango}</span>
-        </div>
-      </div>
+      {/* Cómo funciona */}
 
       <div className="mb-4 flex items-center justify-between">
-        <p className={`${LABEL}`}>{hayDatos ? `${vivas.length} timbrado(s) registrado(s)` : "Sin timbrados registrados"}</p>
-        <button type="button" onClick={() => { setEditando(null); setShowModal(true); }}
-          className="flex items-center gap-2 rounded-none bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[var(--accent-hover)]">
+        <p className={LABEL}>
+          {hayDatos ? `${vivas.length} timbrado(s) registrado(s)` : "Sin timbrados registrados"}
+          {pendientes > 0 && <span className="ml-2 text-amber-300">· {pendientes} sin configurar factura</span>}
+        </p>
+        <button type="button" onClick={() => setModalTimbrado({ inicial: TIMBRADO_VACIO })} className={BTN_PRIMARIO}>
           <Plus className="h-4 w-4" /> Nuevo timbrado
         </button>
-      </div>
-
-      {cargando ? (
+      </div>      {cargando ? (
         <div className={`${CARD} flex items-center justify-center gap-2 px-6 py-16 text-sm text-white/50`}>
           <Loader2 className="h-4 w-4 animate-spin" /> Cargando timbrados…
         </div>
@@ -245,52 +248,32 @@ export default function ComprobantesConfig() {
           <FileText className="h-10 w-10 text-white/15" />
           <p className="text-sm text-white/50">No hay comprobantes configurados.</p>
           <p className="max-w-md text-xs text-white/35">
-            Registrá el timbrado otorgado por la DNIT para habilitar la pantalla de ventas.
+            Registrá el timbrado otorgado por la DNIT y luego configurá su factura para habilitar la pantalla de ventas.
             Sin esta configuración, la venta queda bloqueada.
           </p>
         </div>
       ) : (
         <div className="space-y-3">
           {vivas.map((c) => (
-            <div key={c.id} className={`${CARD} overflow-hidden`}>
-              <div className="flex flex-wrap items-start justify-between gap-4 px-4 py-4">
-                <div className="min-w-0 space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-lg font-semibold text-white" style={MONO}>{c.numeroTimbrado}</span>
-                    <span className={`rounded-none border px-2 py-0.5 text-xs ${CHIP_ESTADO[c.st.estado]}`}>
-                      {c.st.label}
-                    </span>
-                    {c.activo && (
-                      <span className="flex items-center gap-1 rounded-none border border-[var(--border-accent)] bg-[var(--accent-dim)] px-2 py-0.5 text-xs text-[var(--accent)]">
-                        <ShieldCheck className="h-3.5 w-3.5" /> Activo
-                      </span>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-1 gap-x-8 gap-y-1 text-xs text-white/55 sm:grid-cols-2 lg:grid-cols-4">
-                    <span>Estab.-punto: <span className="text-white/85" style={MONO}>{pad3(c.establecimiento)}-{pad3(c.puntoExpedicion)}</span></span>
-                    <span>Vigencia: <span className="text-white/85">{c.fechaInicio} → {c.fechaVencimiento}</span></span>
-                    <span>Rango: <span className="text-white/85" style={MONO}>{rangoDisplay(c)}</span></span>
-                    <span>Nº sig.: <span className="text-[var(--accent)]" style={MONO}>{tieneRango(c) ? numeroCompleto(c, proximoNumero(c)) : "—"}</span></span>
-                  </div>
-                </div>
-
-                <div className="flex shrink-0 items-center gap-1.5">
-                  <button type="button" onClick={() => toggleActivo(c)} disabled={ocupado}
-                    title={c.activo ? "Desactivar" : "Activar"}
-                    className={`rounded-none border p-2 transition-colors disabled:opacity-40 ${c.activo ? "border-[var(--border-accent)] bg-[var(--accent-dim)] text-[var(--accent)] hover:brightness-125" : "border-white/10 bg-white/[0.03] text-white/40 hover:bg-white/10 hover:text-white"}`}>
-                    <Power className="h-4 w-4" />
-                  </button>
-                  <button type="button" onClick={() => { setEditando(c); setShowModal(true); }} disabled={ocupado} title="Editar"
-                    className="rounded-none border border-white/10 bg-white/[0.03] p-2 text-white/60 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40">
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                  <button type="button" onClick={() => eliminar(c)} disabled={ocupado} title="Eliminar"
-                    className="rounded-none border border-white/10 bg-white/[0.03] p-2 text-white/40 transition-colors hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
+            <TarjetaTimbrado
+              key={c.id}
+              c={c}
+              ocupado={ocupado}
+              onToggle={() => toggleActivo(c)}
+              onEditarTimbrado={() =>
+                setModalTimbrado({
+                  inicial: {
+                    id: c.id,
+                    numeroTimbrado: c.numeroTimbrado,
+                    fechaInicio: c.fechaInicio ?? "",
+                    fechaVencimiento: c.fechaVencimiento ?? "",
+                    activo: !!c.activo,
+                  },
+                })
+              }
+              onConfigurarFactura={() => setFacturaId(c.id)}
+              onEliminar={() => setAEliminar(c)}
+            />
           ))}
         </div>
       )}
@@ -299,41 +282,195 @@ export default function ComprobantesConfig() {
         <Lock className="h-4 w-4 shrink-0 text-white/30" />
         <span>
           La venta asigna automáticamente el timbrado vigente y el número correlativo.
-          Si el timbrado vence, la pantalla de ventas se bloquea.
+          Si el timbrado vence o no tiene factura configurada, la pantalla de ventas se bloquea.
         </span>
       </div>
 
-      {showModal && (
-        <NuevoTimbradoModal
-          inicial={editando ? { ...editando } : VACIO}
-          onCerrar={() => setShowModal(false)}
-          onGuardar={guardar}
+      {modalTimbrado && (
+        <TimbradoModal
+          inicial={modalTimbrado.inicial}
+          onCerrar={() => setModalTimbrado(null)}
+          onGuardar={guardarTimbrado}
+        />
+      )}
+
+      {timbradoFactura && (
+        <FacturaModal
+          timbrado={timbradoFactura}
+          onCerrar={() => setFacturaId(null)}
+          onGuardar={(datos) => guardarFactura(timbradoFactura, datos)}
+        />
+      )}
+
+      {aEliminar && (
+        <ConfirmarBajaModal
+          timbrado={aEliminar}
+          onCerrar={() => setAEliminar(null)}
+          onConfirmar={confirmarEliminar}
         />
       )}
     </div>
   );
 }
 
-function NuevoTimbradoModal({ inicial, onCerrar, onGuardar }) {
-  const [form, setForm] = useState({
-    ...VACIO,
-    ...inicial,
-    numeroDesde: inicial.numeroDesde ?? EXTRAS_DEFAULT.numeroDesde,
-    numeroHasta: inicial.numeroHasta ?? "",
-  });
+/* ───────────────────────── Tarjeta ───────────────────────── */
+
+function formatFechaEs(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  const dia = String(d.getDate()).padStart(2, "0");
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  const anio = d.getFullYear();
+  return `${dia}-${mes}-${anio}`;
+}
+
+function TarjetaTimbrado({ c, ocupado, onToggle, onEditarTimbrado, onConfigurarFactura, onEliminar }) {
+  const configurado = tieneRango(c);
+
+  return (
+    <div className={`${CARD} overflow-hidden`}>
+      {/* Timbrado */}
+      <div className="flex flex-wrap items-start justify-between gap-4 px-4 py-4">
+        <div className="min-w-0 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-lg font-semibold text-white" style={MONO}>{c.numeroTimbrado}</span>
+            <span className={`rounded-none border px-2 py-0.5 text-xs ${CHIP_ESTADO[c.st.estado]}`}>
+              {c.st.label}
+            </span>
+            {c.activo && (
+              <span className="flex items-center gap-1 rounded-none border border-[var(--border-accent)] bg-[var(--accent-dim)] px-2 py-0.5 text-xs text-[var(--accent)]">
+                <ShieldCheck className="h-3.5 w-3.5" /> Activo
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-white/55">
+            Vigencia: <span className="text-white/85">{formatFechaEs(c.fechaInicio)} → {formatFechaEs(c.fechaVencimiento)}</span>
+          </p>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button type="button" onClick={onToggle} disabled={ocupado}
+            title={c.activo ? "Desactivar" : "Activar"}
+            className={`rounded-none border p-2 transition-colors disabled:opacity-40 ${c.activo ? "border-[var(--border-accent)] bg-[var(--accent-dim)] text-[var(--accent)] hover:brightness-125" : "border-white/10 bg-white/[0.03] text-white/40 hover:bg-white/10 hover:text-white"}`}>
+            <Power className="h-4 w-4" />
+          </button>
+          <button type="button" onClick={onEditarTimbrado} disabled={ocupado} title="Editar timbrado"
+            className="rounded-none border border-white/10 bg-white/[0.03] p-2 text-white/60 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40">
+            <Pencil className="h-4 w-4" />
+          </button>
+          <button type="button" onClick={onEliminar} disabled={ocupado} title="Dar de baja"
+            className="rounded-none border border-white/10 bg-white/[0.03] p-2 text-white/40 transition-colors hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40">
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Factura */}
+      <div className={`flex flex-wrap items-center justify-between gap-4 border-t px-4 py-3 ${configurado ? "border-white/10 bg-white/[0.015]" : "border-amber-400/20 bg-amber-400/[0.04]"}`}>
+        {configurado ? (
+          <div className="grid min-w-0 flex-1 grid-cols-1 gap-x-8 gap-y-1 text-xs text-white/55 sm:grid-cols-3">
+            <span>Estab.-punto: <span className="text-white/85" style={MONO}>{pad3(c.establecimiento)}-{pad3(c.puntoExpedicion)}</span></span>
+            <span>Rango: <span className="text-white/85" style={MONO}>{rangoDisplay(c)}</span></span>
+            <span>Nº sig.: <span className="text-[var(--accent)]" style={MONO}>{numeroCompleto(c, proximoNumero(c))}</span></span>
+          </div>
+        ) : (
+          <p className="flex items-center gap-2 text-xs text-amber-300/90">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            Falta configurar la factura: establecimiento, punto de expedición y rango.
+          </p>
+        )}
+
+        <button type="button" onClick={onConfigurarFactura} disabled={ocupado}
+          className={configurado ? `${BTN_SECUNDARIO} flex items-center gap-2 !py-2` : `${BTN_PRIMARIO} !py-2`}>
+          <LayoutGrid className="h-4 w-4" />
+          {configurado ? "Editar factura" : "Configurar factura"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────────────── Piezas compartidas de modal ───────────────────────── */
+
+function useEscape(fn) {
+  useEffect(() => {
+    const h = (e) => { if (e.key === "Escape") fn(); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [fn]);
+}
+
+function ModalShell({ titulo, onCerrar, onSubmit, children, textoOk, deshabilitado, enviando }) {
+  useEscape(onCerrar);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <form onSubmit={onSubmit} className="flex w-full max-w-lg flex-col overflow-hidden rounded-none border border-white/10 bg-[#0c0c0e] shadow-2xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3">
+          <h2 className="text-base font-semibold text-white">{titulo}</h2>
+          <button type="button" onClick={onCerrar} aria-label="Cerrar"
+            className="rounded-none p-1.5 text-white/50 transition-colors hover:bg-white/10 hover:text-white">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="max-h-[70vh] space-y-4 overflow-y-auto px-4 py-4">{children}</div>
+
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-white/10 px-4 py-3">
+          <button type="button" onClick={onCerrar} className={BTN_SECUNDARIO}>Cancelar</button>
+          <button type="submit" disabled={deshabilitado || enviando} className={BTN_PRIMARIO}>
+            {enviando && <Loader2 className="h-4 w-4 animate-spin" />}
+            {textoOk}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function Campo({ label, requerido, ayuda, error, children }) {
+  return (
+    <div>
+      <label className={`${LABEL} mb-1.5 block`}>
+        {label} {requerido && <span className="text-red-400">*</span>}
+      </label>
+      {children}
+      {ayuda && !error && <p className="mt-1 text-xs text-white/40">{ayuda}</p>}
+      {error && (
+        <p className="mt-1 flex items-center gap-1 text-xs text-red-400">
+          <AlertTriangle className="h-3.5 w-3.5" /> {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ErrorServidor({ msg }) {
+  if (!msg) return null;
+  return (
+    <p className="flex items-center gap-1 text-xs text-red-400">
+      <AlertTriangle className="h-3.5 w-3.5" /> {msg}
+    </p>
+  );
+}
+
+/* ───────────────────────── Modal 1: timbrado ───────────────────────── */
+
+function TimbradoModal({ inicial, onCerrar, onGuardar }) {
+  const [form, setForm] = useState({ ...TIMBRADO_VACIO, ...inicial });
   const [tocados, setTocados] = useState({});
   const [enviando, setEnviando] = useState(false);
   const [errorServidor, setErrorServidor] = useState(null);
 
-  const errores = { ...validar(form), ...validarFechas(form), ...validarExtras(form) };
+  const errores = validarTimbrado(form);
   const visible = (k) => (tocados[k] ? errores[k] : null);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const puedeGuardar = Object.keys(errores).length === 0;
+  const tocar = (k) => setTocados((t) => ({ ...t, [k]: true }));
   const esNuevo = !form.id;
 
   async function submit(e) {
     e.preventDefault();
-    if (!puedeGuardar) {
+    if (Object.keys(errores).length > 0) {
       setTocados(Object.fromEntries(Object.keys(errores).map((k) => [k, true])));
       return;
     }
@@ -349,166 +486,236 @@ function NuevoTimbradoModal({ inicial, onCerrar, onGuardar }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <form onSubmit={submit} className="flex w-full max-w-lg flex-col overflow-hidden rounded-none border border-white/10 bg-[#0c0c0e] shadow-2xl">
-        <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3">
-          <h2 className="text-base font-semibold text-white">
-            {esNuevo ? "Nuevo timbrado" : `Editar timbrado ${form.numeroTimbrado}`}
-          </h2>
-          <button type="button" onClick={onCerrar} aria-label="Cerrar"
-            className="rounded-none p-1.5 text-white/50 transition-colors hover:bg-white/10 hover:text-white">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+    <ModalShell
+      titulo={esNuevo ? "Nuevo timbrado" : `Editar timbrado ${inicial.numeroTimbrado}`}
+      onCerrar={onCerrar}
+      onSubmit={submit}
+      textoOk={esNuevo ? "Registrar timbrado" : "Guardar cambios"}
+      enviando={enviando}
+    >
+      <Campo label="Nº de timbrado" requerido ayuda={MSJ.numeroTimbrado} error={visible("numeroTimbrado")}>
+        <input
+          value={form.numeroTimbrado}
+          onChange={(e) => set("numeroTimbrado", e.target.value.replace(/\D/g, "").slice(0, 8))}
+          onBlur={() => tocar("numeroTimbrado")}
+          placeholder="12345678"
+          inputMode="numeric"
+          maxLength={8}
+          autoFocus
+          className={`${INPUT} ${visible("numeroTimbrado") ? "border-red-500/50" : ""}`}
+          style={MONO}
+        />
+      </Campo>
 
-        <div className="max-h-[70vh] space-y-4 overflow-y-auto px-4 py-4">
-          {/* Número de timbrado */}
+      <div>
+        <label className={`${LABEL} mb-1.5 block`}>Vigencia <span className="text-red-400">*</span></label>
+        <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={`${LABEL} mb-1.5 block`}>Nº de timbrado <span className="text-red-400">*</span></label>
+            <input type="date"
+              value={form.fechaInicio}
+              onChange={(e) => set("fechaInicio", e.target.value)}
+              onBlur={() => tocar("fechaInicio")}
+              className={`${INPUT} ${visible("fechaInicio") ? "border-red-500/50" : ""}`} />
+            <p className="mt-1 text-xs text-white/40">Inicio</p>
+            {visible("fechaInicio") && <p className="mt-1 text-xs text-red-400">{visible("fechaInicio")}</p>}
+          </div>
+          <div>
+            <input type="date"
+              value={form.fechaVencimiento}
+              min={form.fechaInicio || undefined}
+              onChange={(e) => set("fechaVencimiento", e.target.value)}
+              onBlur={() => tocar("fechaVencimiento")}
+              className={`${INPUT} ${visible("fechaVencimiento") ? "border-red-500/50" : ""}`} />
+            <p className="mt-1 text-xs text-white/40">Vencimiento</p>
+            {visible("fechaVencimiento") && <p className="mt-1 text-xs text-red-400">{visible("fechaVencimiento")}</p>}
+          </div>
+        </div>
+      </div>
+
+      <label className="flex cursor-pointer items-center gap-2 text-sm text-white/70">
+        <input
+          type="checkbox"
+          checked={form.activo}
+          onChange={(e) => set("activo", e.target.checked)}
+          className="accent-[var(--accent)]"
+        />
+        Timbrado activo
+      </label>
+
+      {esNuevo && (
+        <p className="text-xs text-white/40">
+          Después de registrarlo vas a configurar la factura (establecimiento, punto y rango).
+        </p>
+      )}
+
+      <ErrorServidor msg={errorServidor} />
+    </ModalShell>
+  );
+}
+
+/* ───────────────────────── Modal 2: configuración de factura ───────────────────────── */
+
+function FacturaModal({ timbrado, onCerrar, onGuardar }) {
+  const ultimoEmitido = timbrado.ultimoEmitido ?? 0;
+  const bloqueado = ultimoEmitido > 0; // ya hay comprobantes emitidos: no se toca la base de la numeración
+
+  const [form, setForm] = useState({
+    establecimiento: String(timbrado.establecimiento ?? EXTRAS_DEFAULT.establecimiento ?? "001"),
+    puntoExpedicion: String(timbrado.puntoExpedicion ?? EXTRAS_DEFAULT.puntoExpedicion ?? "001"),
+    numeroDesde: String(timbrado.numeroDesde ?? EXTRAS_DEFAULT.numeroDesde ?? "1"),
+    numeroHasta: timbrado.numeroHasta == null ? "" : String(timbrado.numeroHasta),
+  });
+  const [tocados, setTocados] = useState({});
+  const [enviando, setEnviando] = useState(false);
+  const [errorServidor, setErrorServidor] = useState(null);
+
+  const errores = validarFactura(form, ultimoEmitido);
+  const visible = (k) => (tocados[k] ? errores[k] : null);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const tocar = (k) => setTocados((t) => ({ ...t, [k]: true }));
+  const valido = Object.keys(errores).length === 0;
+
+  async function submit(e) {
+    e.preventDefault();
+    if (!valido) {
+      setTocados(Object.fromEntries(Object.keys(errores).map((k) => [k, true])));
+      return;
+    }
+    setEnviando(true);
+    setErrorServidor(null);
+    try {
+      await onGuardar(form);
+    } catch (err) {
+      setErrorServidor(apiErrorMessage(err));
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  const cantidad = valido ? Number(form.numeroHasta) - Number(form.numeroDesde) + 1 : 0;
+
+  return (
+    <ModalShell
+      titulo={`Factura del timbrado ${timbrado.numeroTimbrado}`}
+      onCerrar={onCerrar}
+      onSubmit={submit}
+      textoOk="Guardar configuración"
+      enviando={enviando}
+    >
+      {bloqueado && (
+        <p className="flex items-start gap-2 border border-white/10 bg-white/[0.03] p-3 text-xs text-white/55">
+          <Lock className="mt-0.5 h-4 w-4 shrink-0 text-white/35" />
+          <span>
+            Ya se emitieron comprobantes hasta el Nº {ultimoEmitido}. Establecimiento, punto y número inicial
+            quedan fijos; podés ampliar el número final.
+          </span>
+        </p>
+      )}
+
+      <Campo
+        label="Establecimiento y punto de expedición"
+        requerido
+        ayuda={MSJ.establecimiento}
+        error={visible("establecimiento") || visible("puntoExpedicion")}
+      >
+        <div className="flex items-center gap-2">
+          <input
+            value={form.establecimiento}
+            onChange={(e) => set("establecimiento", e.target.value.replace(/\D/g, "").slice(0, 3))}
+            onBlur={() => tocar("establecimiento")}
+            placeholder="001"
+            inputMode="numeric"
+            disabled={bloqueado}
+            autoFocus={!bloqueado}
+            className={`${INPUT} text-center ${visible("establecimiento") ? "border-red-500/50" : ""}`}
+            style={MONO}
+          />
+          <span className="text-lg text-white/40">-</span>
+          <input
+            value={form.puntoExpedicion}
+            onChange={(e) => set("puntoExpedicion", e.target.value.replace(/\D/g, "").slice(0, 3))}
+            onBlur={() => tocar("puntoExpedicion")}
+            placeholder="001"
+            inputMode="numeric"
+            disabled={bloqueado}
+            className={`${INPUT} text-center ${visible("puntoExpedicion") ? "border-red-500/50" : ""}`}
+            style={MONO}
+          />
+        </div>
+      </Campo>
+
+      <div>
+        <label className={`${LABEL} mb-1.5 block`}>Rango de numeración <span className="text-red-400">*</span></label>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
             <input
-              value={form.numeroTimbrado}
-              onChange={(e) => set("numeroTimbrado", e.target.value.replace(/\D/g, "").slice(0, 8))}
-              onBlur={() => setTocados((t) => ({ ...t, numeroTimbrado: true }))}
-              placeholder="12345678"
+              value={form.numeroDesde}
+              onChange={(e) => set("numeroDesde", e.target.value.replace(/\D/g, "").slice(0, 6))}
+              onBlur={() => tocar("numeroDesde")}
+              placeholder="1"
               inputMode="numeric"
-              maxLength={8}
-              className={`${INPUT} ${visible("numeroTimbrado") ? "border-red-500/50" : ""}`}
+              disabled={bloqueado}
+              className={`${INPUT} text-center ${visible("numeroDesde") ? "border-red-500/50" : ""}`}
               style={MONO}
             />
-            <p className="mt-1 text-xs text-white/40">{MSJ.numeroTimbrado}</p>
-            {visible("numeroTimbrado") && <p className="mt-1 flex items-center gap-1 text-xs text-red-400"><AlertTriangle className="h-3.5 w-3.5" /> {visible("numeroTimbrado")}</p>}
+            <p className="mt-1 text-xs text-white/40">Desde</p>
+            {visible("numeroDesde") && <p className="mt-1 text-xs text-red-400">{visible("numeroDesde")}</p>}
           </div>
-
-          {/* Vigencia */}
           <div>
-            <label className={`${LABEL} mb-1.5 block`}>Fecha de vigencia <span className="text-red-400">*</span></label>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <input type="date"
-                  value={form.fechaInicio}
-                  onChange={(e) => set("fechaInicio", e.target.value)}
-                  onBlur={() => setTocados((t) => ({ ...t, fechaInicio: true }))}
-                  className={`${INPUT} ${visible("fechaInicio") ? "border-red-500/50" : ""}`} />
-                <p className="mt-1 text-xs text-white/40">Inicio</p>
-                {visible("fechaInicio") && <p className="mt-1 text-xs text-red-400">{visible("fechaInicio")}</p>}
-              </div>
-              <div>
-                <input type="date"
-                  value={form.fechaVencimiento}
-                  min={form.fechaInicio || undefined}
-                  onChange={(e) => set("fechaVencimiento", e.target.value)}
-                  onBlur={() => setTocados((t) => ({ ...t, fechaVencimiento: true }))}
-                  className={`${INPUT} ${visible("fechaVencimiento") ? "border-red-500/50" : ""}`} />
-                <p className="mt-1 text-xs text-white/40">Vencimiento</p>
-                {visible("fechaVencimiento") && <p className="mt-1 text-xs text-red-400">{visible("fechaVencimiento")}</p>}
-              </div>
-            </div>
-          </div>
-
-          {/* Datos locales: el back todavía no los guarda */}
-          <div className="rounded-none border border-amber-400/20 bg-amber-400/[0.04] p-3">
-            <p className="mb-3 text-xs text-amber-300/90">
-              LocalStorage
-            </p>
-
-            {/* Establecimiento y punto */}
-            <div className="mb-4">
-              <label className={`${LABEL} mb-1.5 block`}>Establecimiento y punto de expedición</label>
-              <div className="flex items-center gap-2">
-                <input
-                  value={form.establecimiento}
-                  onChange={(e) => set("establecimiento", e.target.value.replace(/\D/g, "").slice(0, 3))}
-                  onBlur={() => setTocados((t) => ({ ...t, establecimiento: true }))}
-                  placeholder="001"
-                  inputMode="numeric"
-                  className={`${INPUT} text-center ${visible("establecimiento") ? "border-red-500/50" : ""}`}
-                  style={MONO}
-                />
-                <span className="text-lg text-white/40">-</span>
-                <input
-                  value={form.puntoExpedicion}
-                  onChange={(e) => set("puntoExpedicion", e.target.value.replace(/\D/g, "").slice(0, 3))}
-                  onBlur={() => setTocados((t) => ({ ...t, puntoExpedicion: true }))}
-                  placeholder="001"
-                  inputMode="numeric"
-                  className={`${INPUT} text-center ${visible("puntoExpedicion") ? "border-red-500/50" : ""}`}
-                  style={MONO}
-                />
-              </div>
-              {(visible("establecimiento") || visible("puntoExpedicion")) && (
-                <p className="mt-1 flex items-center gap-1 text-xs text-red-400">
-                  <AlertTriangle className="h-3.5 w-3.5" /> {visible("establecimiento") || visible("puntoExpedicion")}
-                </p>
-              )}
-            </div>
-
-            {/* Rango */}
-            <div>
-              <label className={`${LABEL} mb-1.5 block`}>Rango de numeración</label>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className={`${INPUT} pointer-events-none w-16 text-center text-white/40`} style={MONO}>Desde</span>
-                    <input
-                      value={form.numeroDesde}
-                      onChange={(e) => set("numeroDesde", e.target.value.replace(/\D/g, "").slice(0, 6))}
-                      onBlur={() => setTocados((t) => ({ ...t, numeroDesde: true }))}
-                      placeholder="000001"
-                      inputMode="numeric"
-                      className={`${INPUT} text-center ${visible("numeroDesde") ? "border-red-500/50" : ""}`}
-                      style={MONO}
-                    />
-                  </div>
-                  {visible("numeroDesde") && <p className="mt-1 text-xs text-red-400">{visible("numeroDesde")}</p>}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className={`${INPUT} pointer-events-none w-14 text-center text-white/40`} style={MONO}>hasta</span>
-                    <input
-                      value={form.numeroHasta}
-                      onChange={(e) => set("numeroHasta", e.target.value.replace(/\D/g, "").slice(0, 6))}
-                      onBlur={() => setTocados((t) => ({ ...t, numeroHasta: true }))}
-                      placeholder="000500"
-                      inputMode="numeric"
-                      className={`${INPUT} text-center ${visible("numeroHasta") ? "border-red-500/50" : ""}`}
-                      style={MONO}
-                    />
-                  </div>
-                  {visible("numeroHasta") && <p className="mt-1 text-xs text-red-400">{visible("numeroHasta")}</p>}
-                </div>
-              </div>
-              <p className="mt-1 text-xs text-white/40">{MSJ.rango}</p>
-            </div>
-          </div>
-
-          {/* Activo */}
-          <label className="flex cursor-pointer items-center gap-2 text-sm text-white/70">
             <input
-              type="checkbox"
-              checked={form.activo}
-              onChange={(e) => set("activo", e.target.checked)}
-              className="accent-[var(--accent)]"
+              value={form.numeroHasta}
+              onChange={(e) => set("numeroHasta", e.target.value.replace(/\D/g, "").slice(0, 6))}
+              onBlur={() => tocar("numeroHasta")}
+              placeholder="500"
+              inputMode="numeric"
+              autoFocus={bloqueado}
+              className={`${INPUT} text-center ${visible("numeroHasta") ? "border-red-500/50" : ""}`}
+              style={MONO}
             />
-            Timbrado activo
-          </label>
-
-          {errorServidor && (
-            <p className="flex items-center gap-1 text-xs text-red-400"><AlertTriangle className="h-3.5 w-3.5" /> {errorServidor}</p>
-          )}
+            <p className="mt-1 text-xs text-white/40">Hasta</p>
+            {visible("numeroHasta") && <p className="mt-1 text-xs text-red-400">{visible("numeroHasta")}</p>}
+          </div>
         </div>
+        <p className="mt-1 text-xs text-white/40">{MSJ.rango}</p>
+      </div>
 
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-white/10 px-4 py-3">
-          <button type="button" onClick={onCerrar}
-            className="rounded-none border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white/70 transition-colors hover:text-white">
-            Cancelar
-          </button>
-          <button type="submit" disabled={!puedeGuardar || enviando}
-            className="flex items-center gap-2 rounded-none bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-40">
-            {enviando && <Loader2 className="h-4 w-4 animate-spin" />}
-            {esNuevo ? "Registrar timbrado" : "Guardar cambios"}
-          </button>
+      {/* Vista previa de la numeración resultante */}
+      {valido && (
+        <div className="border border-[var(--border-accent)] bg-[var(--accent-dim)] p-3 text-xs text-white/70">
+          <p>
+            Se emitirá de{" "}
+            <span className="text-[var(--accent)]" style={MONO}>{numeroCompleto(form, Number(form.numeroDesde))}</span>
+            {" "}a{" "}
+            <span className="text-[var(--accent)]" style={MONO}>{numeroCompleto(form, Number(form.numeroHasta))}</span>
+            {" "}({cantidad} comprobante{cantidad === 1 ? "" : "s"}).
+          </p>
         </div>
-      </form>
-    </div>
+      )}
+
+      <ErrorServidor msg={errorServidor} />
+    </ModalShell>
+  );
+}
+
+/* ───────────────────────── Modal 3: confirmar baja ───────────────────────── */
+
+function ConfirmarBajaModal({ timbrado, onCerrar, onConfirmar }) {
+  return (
+    <ModalShell
+      titulo="Dar de baja el timbrado"
+      onCerrar={onCerrar}
+      onSubmit={(e) => { e.preventDefault(); onConfirmar(); }}
+      textoOk="Dar de baja"
+    >
+      <p className="text-sm text-white/70">
+        Vas a dar de baja el timbrado{" "}
+        <span className="text-white" style={MONO}>{timbrado.numeroTimbrado}</span> y borrar su configuración de factura.
+      </p>
+      {(timbrado.ultimoEmitido ?? 0) > 0 && (
+        <p className="flex items-center gap-1 text-xs text-amber-300">
+          <AlertTriangle className="h-3.5 w-3.5" /> Ya emitió comprobantes hasta el Nº {timbrado.ultimoEmitido}.
+        </p>
+      )}
+    </ModalShell>
   );
 }

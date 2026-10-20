@@ -334,8 +334,8 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
                 <dd className="text-[0.8125rem] font-medium text-white">{proveedor?.direccion || "—"}</dd>
               </div>
               <div>
-                <dt className={S.eyebrow}>Teléfono</dt>
-                <dd className="text-[0.8125rem] font-medium text-white">{proveedor?.telefono || proveedor?.celular || "—"}</dd>
+                <dt className={S.eyebrow}>Celular</dt>
+                <dd className="text-[0.8125rem] font-medium text-white">{proveedor?.celular || proveedor?.telefono || "—"}</dd>
               </div>
             </dl>
           </div>

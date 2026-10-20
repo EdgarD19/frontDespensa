@@ -21,6 +21,7 @@ import {
 } from "../../../api/operacionesCompraApi";
 import { apiErrorMessage } from "../../../api/errors";
 import { getProductos } from "../../../api/productosApi";
+import { getProveedores, getProveedorId, getProveedorNombre } from "../../../api/proveedoresApi";
 import { formatoFactura, hoyAsuncion, estadoTimbrado, etiquetaTimbrado, esKG } from "../utils";
 import CantidadInput from "../../../components/ui/CantidadInput";
 
@@ -250,6 +251,39 @@ export default function OperacionesTipo({ tipo }) {
   const [facturasBloqueadas, setFacturasBloqueadas] = useState([]);
   // Sets cacheados de operaciones PENDIENTES (se cargan una sola vez por tipo).
   const [pendientes, setPendientes] = useState({ devFacturas: [], intFacturas: [], intProveedores: [] });
+  const [proveedores, setProveedores] = useState([]);
+
+  // El backend solo manda el nombre del proveedor en varias respuestas (intercambios,
+  // anulaciones, facturas). Cargamos el listado completo para poder mostrar
+  // "Nombre Apellido" en persona física.
+  useEffect(() => {
+    let activo = true;
+    (async () => {
+      try {
+        const res = await getProveedores({ pageSize: 500, sortBy: "nombre", sortDir: "ASC" });
+        if (activo) setProveedores(Array.isArray(res.content) ? res.content : []);
+      } catch { /* sin proveedores */ }
+    })();
+    return () => { activo = false; };
+  }, []);
+
+  const proveedoresMap = useMemo(() => {
+    const m = {};
+    for (const pr of proveedores) {
+      const id = getProveedorId(pr);
+      if (id != null) m[id] = pr;
+    }
+    return m;
+  }, [proveedores]);
+
+  // Nombre a mostrar: usa el proveedor completo (nombre + apellido) cuando está
+  // disponible; si no, cae al texto que mandó el backend.
+  const nombreProv = useCallback((id, fallback) => {
+    const key = Number(id);
+    const pr = id != null && Number.isFinite(key) ? proveedoresMap[key] : null;
+    if (pr) return getProveedorNombre(pr) || fallback || "—";
+    return fallback || "—";
+  }, [proveedoresMap]);
 
   const cargarFacturas = useCallback(async () => {
     setLoadingFacturas(true);
@@ -608,7 +642,7 @@ export default function OperacionesTipo({ tipo }) {
                       {tipo === "DEVOLUCION" && (
                         <td className="px-4 py-3 tabular-nums text-white/50">{op.facturaNueva ? op.facturaOriginal : "—"}</td>
                       )}
-                      <td className="px-4 py-3 text-white/70">{op.proveedor}</td>
+                      <td className="px-4 py-3 text-white/70">{nombreProv(op.proveedorId, op.proveedor)}</td>
                       <td className="px-4 py-3 text-right font-semibold tabular-nums text-zinc-100">
                         {tipo === "ANULACION" ? (
                           totalAnulacion != null
@@ -727,6 +761,7 @@ export default function OperacionesTipo({ tipo }) {
           onCerrar={() => setShowModal(false)}
           onRegistrar={handleRegistrar}
           registrando={registrando}
+          nombreProv={nombreProv}
         />
       )}
 
@@ -736,6 +771,7 @@ export default function OperacionesTipo({ tipo }) {
           facturas={facturas}
           onCerrar={() => setModalFacturaNueva(null)}
           onConfirmar={handleRegistrarFacturaNueva}
+          nombreProv={nombreProv}
         />
       )}
 
@@ -764,6 +800,7 @@ export default function OperacionesTipo({ tipo }) {
           items={modalVerFactura.items}
           estadoOperacion={modalVerFactura.estadoOperacion}
           tipoOp={tipo}
+          nombreProv={nombreProv}
           onCerrar={() => setModalVerFactura(null)}
         />
       )}
@@ -772,6 +809,7 @@ export default function OperacionesTipo({ tipo }) {
         <VerDevolucionModal
           op={modalVerDevolucion}
           onCerrar={() => setModalVerDevolucion(null)}
+          nombreProv={nombreProv}
         />
       )}
     </div>
@@ -780,9 +818,8 @@ export default function OperacionesTipo({ tipo }) {
 
 /* ───────────── Registrar factura nueva (reemplazo de devolución) ───────────── */
 
-function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar }) {
-  const [numeroNueva, setNumeroNueva] = useState("");
-  const [tocado, setTocado] = useState(false);
+function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar, nombreProv }) {
+  const [numeroNueva, setNumeroNueva] = useState("");  const [tocado, setTocado] = useState(false);
   const [timbrados, setTimbrados] = useState([]);
   const [cargandoTimbrados, setCargandoTimbrados] = useState(Boolean(op.proveedorId));
   const [timbradoId, setTimbradoId] = useState("");
@@ -855,7 +892,7 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar }) {
               </div>
               <div>
                 <p className="text-xs text-white/40">Proveedor</p>
-                <p className="text-white">{op.proveedor}</p>
+                <p className="text-white">{nombreProv(op.proveedorId, op.proveedor)}</p>
               </div>
               <div>
                 <p className="text-xs text-white/40">Total</p>
@@ -970,7 +1007,7 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar }) {
 
 /* ───────────── Ver factura vinculada a un intercambio ───────────── */
 
-function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion, tipoOp, onCerrar }) {
+function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion, tipoOp, nombreProv, onCerrar }) {
   const [factura, setFactura] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
@@ -1048,7 +1085,7 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion
                 </div>
                 <div>
                   <p className="text-xs text-white/40">Proveedor</p>
-                  <p className="text-white">{factura.nombreProveedor}</p>
+                  <p className="text-white">{nombreProv(factura.idProveedor, factura.nombreProveedor)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-white/40">{etiquetaEstado}</p>
@@ -1109,7 +1146,7 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion
 
 /* ───────────── Ver lo que se va a devolver (devolución pendiente) ───────────── */
 
-function VerDevolucionModal({ op, onCerrar }) {
+function VerDevolucionModal({ op, onCerrar, nombreProv }) {
   useEscape(onCerrar);
 
   const items = op.items || [];
@@ -1146,7 +1183,7 @@ function VerDevolucionModal({ op, onCerrar }) {
             </div>
             <div>
               <p className="text-xs text-white/40">Proveedor</p>
-              <p className="text-white">{op.proveedor || "—"}</p>
+              <p className="text-white">{nombreProv(op.proveedorId, op.proveedor)}</p>
             </div>
             <div>
               <p className="text-xs text-white/40">Estado</p>
@@ -1292,7 +1329,7 @@ function ConfirmarAccionModal({ tipo, op, onCerrar, onConfirmar }) {
 
 /* ───────────── Wizard: nueva devolución / intercambio / anulación ───────────── */
 
-function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloqueadas = [], onCerrar, onRegistrar, registrando = false }) {
+function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloqueadas = [], onCerrar, onRegistrar, registrando = false, nombreProv }) {
   const labelTipo = CONFIG[tipo].label;
   const [verDetalle, setVerDetalle] = useState(false);
   const [facturaSel, setFacturaSel] = useState(null);
@@ -1351,14 +1388,14 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
       .filter((f) => f.activo !== false
         && !["CANCELADA", "ANULADO"].includes(String(f.estado || "").toUpperCase()))
       .filter((f) => !numero || String(f.numeroFactura || "").toLowerCase().includes(numero))
-      .filter((f) => !proveedor || String(f.nombreProveedor || "").toLowerCase().includes(proveedor))
+      .filter((f) => !proveedor || String(nombreProv(f.idProveedor, f.nombreProveedor) || "").toLowerCase().includes(proveedor))
       .filter((f) => {
         const fecha = String(f.fechaEmision || "").slice(0, 10);
         if (filtroFechaDesde && fecha < filtroFechaDesde) return false;
         if (filtroFechaHasta && fecha > filtroFechaHasta) return false;
         return true;
       });
-  }, [facturas, filtroNumero, filtroProveedor, filtroFechaDesde, filtroFechaHasta]);
+  }, [facturas, filtroNumero, filtroProveedor, filtroFechaDesde, filtroFechaHasta, nombreProv]);
 
   // Escape cierra solo la capa superior: si el detalle está abierto vuelve al
 // selector de facturas, si no cierra el modal completo.
@@ -1525,7 +1562,7 @@ const puedeRegistrar = tipo === "ANULACION"
     const base = {
       fecha: new Date().toISOString(),
       facturaNumero: facturaDetalle.numeroFactura,
-      proveedor: facturaDetalle.nombreProveedor,
+      proveedor: nombreProv(facturaDetalle.idProveedor, facturaDetalle.nombreProveedor),
       proveedorId: facturaDetalle.idProveedor ?? null,
       // Mismo nombre que usan los formateadores de fila (facturaId) para que el
       // objeto que llega a onRegistrar sea idéntico al de la tabla.
@@ -1729,7 +1766,7 @@ const puedeRegistrar = tipo === "ANULACION"
                           motivo={bloqueo?.motivo}
                         />
                       </td>
-                      <td className={`px-4 py-3 align-top ${textoClase}`}>{f.nombreProveedor}</td>
+                      <td className={`px-4 py-3 align-top ${textoClase}`}>{nombreProv(f.idProveedor, f.nombreProveedor)}</td>
                       <td className={`whitespace-nowrap px-4 py-3 text-right align-top tabular-nums ${bloqueada ? "text-white/45" : "text-white"}`}>{fmtMoneda(f.totalGeneral)}</td>
                     </tr>
                   );
@@ -1774,7 +1811,7 @@ const puedeRegistrar = tipo === "ANULACION"
             </h3>
             <p className="text-sm text-white/70">
               Se anulará la factura <span className="tabular-nums">{facturaDetalle.numeroFactura}</span> de{" "}
-              <span className="font-medium">{facturaDetalle.nombreProveedor}</span> por{" "}
+              <span className="font-medium">{nombreProv(facturaDetalle.idProveedor, facturaDetalle.nombreProveedor)}</span> por{" "}
               <span className="font-semibold tabular-nums text-red-400">{fmtMoneda(facturaDetalle.totalGeneral)}</span>{" "}
               (emitida el {fmtFecha(facturaDetalle.fechaEmision)}).
             </p>

@@ -10,13 +10,14 @@ import {
   cancelarPedido,
   apiErrorMessage,
 } from "../../../../api/comprasApi";
-import { getProveedores } from "../../../../api/proveedoresApi";
+import { getProveedores, getProveedorId, getProveedorNombre } from "../../../../api/proveedoresApi";
 import { getProductos } from "../../../../api/productosApi";
 import RecepcionPedidoModal from "../recepcion/RecepcionPedidoModal";
 import Pagination from "../../../../components/ui/Pagination";
 import CantidadInput from "../../../../components/ui/CantidadInput";
 import { esKG } from "../../utils";
-
+import { useMemo } from "react";
+ 
 const ESTADOS = ["solicitado", "recibido", "cancelado"];
 
 /* ───────────── Helpers ───────────── */
@@ -82,6 +83,22 @@ export default function PedidosABM() {
   const [guardando, setGuardando] = useState(false);
 
   const [proveedores, setProveedores] = useState([]);
+  const proveedoresMap = useMemo(() => {
+    const m = {};
+    for (const pr of proveedores) {
+      const id = getProveedorId(pr) ?? pr.idProveedor;
+      if (id != null) m[id] = pr;
+    }
+    return m;
+  }, [proveedores]);
+
+  function nombrePedidoProveedor(p) {
+    if (!p) return "—";
+    const id = p.idProveedor ?? p.id;
+    const fromMap = id != null ? proveedoresMap[id] : null;
+    if (fromMap) return getProveedorNombre(fromMap) || p.nombreProveedor || "—";
+    return p.nombreProveedor || "—";
+  }
   const [prodSearch, setProdSearch] = useState("");
   const [prodResults, setProdResults] = useState([]);
   const [prodPage, setProdPage] = useState(0);
@@ -299,7 +316,7 @@ export default function PedidosABM() {
                     }`}
                   >
                     <td className="px-4 py-3 font-mono text-xs text-white/50">#{p.idPedido}</td>
-                    <td className="px-4 py-3 font-medium text-white">{p.nombreProveedor || "—"}</td>
+                    <td className="px-4 py-3 font-medium text-white">{nombrePedidoProveedor(p)}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-white/60">{fmtFecha(p.fechaCreacion)}</td>
                     <td className="px-4 py-3">
                       <EstadoBadge estado={p.estado} />
@@ -422,12 +439,12 @@ export default function PedidosABM() {
               <div>
                 <h3 className="text-base font-semibold text-white">Cancelar pedido</h3>
                 <p className="text-sm text-white/50">
-                  {cancelarSel.nombreProveedor || `Pedido #${cancelarSel.idPedido}`}
+                  {nombrePedidoProveedor(cancelarSel) || `Pedido #${cancelarSel.idPedido}`}
                 </p>
               </div>
             </div>
             <p className="text-sm text-white/70">
-              ¿Cancelar el pedido a {cancelarSel.nombreProveedor || `#${cancelarSel.idPedido}`}?
+              ¿Cancelar el pedido a {nombrePedidoProveedor(cancelarSel) || `#${cancelarSel.idPedido}`}?
               No se modificará el stock.
             </p>
             <div className="flex justify-end gap-2">
@@ -557,7 +574,7 @@ function PedidoModal({
                 <option value="" className="bg-[#0c0c0e]">Seleccionar proveedor</option>
                 {(esEditar && pedido?.idProveedor && !proveedores.some((x) => String(x.id ?? x.idProveedor) === String(pedido.idProveedor))) && (
                   <option value={pedido.idProveedor} className="bg-[#0c0c0e]">
-                    {pedido.nombreProveedor || `Proveedor #${pedido.idProveedor}`} (inactivo)
+                    {getProveedorNombre(pedido) || pedido.nombreProveedor || `Proveedor #${pedido.idProveedor}`} (inactivo)
                   </option>
                 )}
                 {proveedores.map((p) => (

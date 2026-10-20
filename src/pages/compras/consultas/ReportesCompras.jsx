@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, ChevronDown, Eye, X, Receipt, Building2, Package, Percent } from "lucide-react";
 import { getFacturasCompra, apiErrorMessage } from "../../../api/facturasCompraApi";
-import { getProveedores } from "../../../api/proveedoresApi";
+import { getProveedores, getProveedorId, getProveedorNombre } from "../../../api/proveedoresApi";
 
 const money = (n) => {
   const v = Number(n);
@@ -67,6 +67,23 @@ export default function ReportesCompras() {
   const [reporte, setReporte] = useState("periodo");
   const [agrupFecha, setAgrupFecha] = useState("none");
   const [detalle, setDetalle] = useState(null);
+
+  const proveedoresMap = useMemo(() => {
+    const m = {};
+    for (const pr of proveedores) {
+      const id = getProveedorId(pr) ?? pr.idProveedor;
+      if (id != null) m[id] = pr;
+    }
+    return m;
+  }, [proveedores]);
+
+  const nombreProv = useCallback((f) => {
+    if (!f) return "—";
+    const id = f.idProveedor ?? f.id;
+    const fromMap = id != null ? proveedoresMap[id] : null;
+    if (fromMap) return getProveedorNombre(fromMap) || f.nombreProveedor || "—";
+    return f.nombreProveedor || "—";
+  }, [proveedoresMap]);
 
   useEffect(() => {
     let activo = true;
@@ -169,7 +186,7 @@ export default function ReportesCompras() {
       const key = f.idProveedor != null ? String(f.idProveedor) : "?";
       const row = map.get(key) || {
         idProveedor: f.idProveedor,
-        nombre: f.nombreProveedor || "Sin proveedor",
+        nombre: nombreProv(f) || "Sin proveedor",
         cantFacturas: 0,
         cantProductos: 0,
         importe: 0,
@@ -182,7 +199,7 @@ export default function ReportesCompras() {
       map.set(key, row);
     }
     return [...map.values()].sort((a, b) => b.importe - a.importe);
-  }, [filtradas]);
+  }, [filtradas, nombreProv]);
 
   const porProducto = useMemo(() => {
     const map = new Map();
@@ -433,6 +450,7 @@ export default function ReportesCompras() {
           onVer={(f) => setDetalle(f)}
           th={th}
           thR={thR}
+          nombreProv={nombreProv}
         />
       ) : reporte === "proveedor" ? (
         <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
@@ -579,13 +597,13 @@ export default function ReportesCompras() {
       ) : null}
 
       {detalle && (
-        <DetalleCompra factura={detalle} onClose={() => setDetalle(null)} />
+        <DetalleCompra factura={detalle} onClose={() => setDetalle(null)} nombreProv={nombreProv} />
       )}
     </div>
   );
 }
 
-function ReportePeriodo({ agrupFecha, setAgrupFecha, filtradas, porFecha, kpis, totalUnidades, onVer, th, thR }) {
+function ReportePeriodo({ agrupFecha, setAgrupFecha, filtradas, porFecha, kpis, totalUnidades, onVer, th, thR, nombreProv }) {
   const agrupado = agrupFecha !== "none";
 
   return (
@@ -683,7 +701,7 @@ function ReportePeriodo({ agrupFecha, setAgrupFecha, filtradas, porFecha, kpis, 
                   <tr key={f.idFactura} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                     <td className="px-4 py-3 text-white whitespace-nowrap">{fmtFecha(f.fechaEmision)}</td>
                     <td className="px-4 py-3 text-white/70 whitespace-nowrap">{f.numeroFactura || "—"}</td>
-                    <td className="px-4 py-3 text-white">{f.nombreProveedor || "—"}</td>
+                    <td className="px-4 py-3 text-white">{nombreProv(f)}</td>
                     <td className="px-4 py-3 text-white/70 text-right whitespace-nowrap">
                       {Number.isFinite(Number(f.cantidadProductos)) ? Number(f.cantidadProductos) : "—"}
                     </td>
@@ -718,7 +736,7 @@ function ReportePeriodo({ agrupFecha, setAgrupFecha, filtradas, porFecha, kpis, 
   );
 }
 
-function DetalleCompra({ factura, onClose }) {
+function DetalleCompra({ factura, onClose, nombreProv }) {
   const detalles = Array.isArray(factura.detalles) ? factura.detalles : [];
 
   return (
@@ -730,7 +748,7 @@ function DetalleCompra({ factura, onClose }) {
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <h2 className="text-lg font-semibold text-white">Factura {factura.numeroFactura || "—"}</h2>
-            <p className="text-sm text-white/40">{factura.nombreProveedor || "Proveedor desconocido"}</p>
+            <p className="text-sm text-white/40">{nombreProv(factura) || "Proveedor desconocido"}</p>
           </div>
           <button onClick={onClose} className="p-2 rounded-none hover:bg-white/10 text-white/50 transition-colors" aria-label="Cerrar">
             <X size={18} />
@@ -752,7 +770,7 @@ function DetalleCompra({ factura, onClose }) {
           </div>
           <div className="space-y-0.5">
             <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40">Proveedor</p>
-            <p className="text-white">{factura.nombreProveedor || "—"}</p>
+            <p className="text-white">{nombreProv(factura)}</p>
           </div>
         </div>
 

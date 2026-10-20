@@ -12,6 +12,18 @@ export function getProveedorId(proveedor) {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * Nombre para mostrar de un proveedor:
+ * persona FISICA → "Nombre Apellido"; JURIDICA → razón social (o nombre).
+ */
+export function getProveedorNombre(proveedor) {
+  if (!proveedor) return "";
+  if (String(proveedor.tipoPersona || "").toUpperCase() === "FISICA") {
+    return [proveedor.nombre, proveedor.apellido].filter(Boolean).join(" ");
+  }
+  return proveedor.razonSocial || proveedor.nombre || "";
+}
+
 // Desenvuelve la respuesta paginada del contrato:
 //   ProveedoresResponse = { data: PageWrapperProveedorResponse, mensaje }
 //   PageWrapper = { content, page, size, totalElements, totalPages }

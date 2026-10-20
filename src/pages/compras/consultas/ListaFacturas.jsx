@@ -6,7 +6,7 @@ import {
   getFacturaCompraById,
   apiErrorMessage,
 } from "../../../api/facturasCompraApi";
-import { getProveedores } from "../../../api/proveedoresApi";
+import { getProveedores, getProveedorId, getProveedorNombre } from "../../../api/proveedoresApi";
 import Pagination from "../../../components/ui/Pagination";
 
 const money = (n) => {
@@ -94,9 +94,26 @@ export default function ListaFacturas() {
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [condicion, setCondicion] = useState("");
-const [estado, setEstado] = useState("");
+  const [estado, setEstado] = useState("");
   const [seleccionada, setSeleccionada] = useState(null);
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
+
+  const proveedoresMap = useMemo(() => {
+    const m = {};
+    for (const pr of proveedores) {
+      const id = getProveedorId(pr) ?? pr.idProveedor;
+      if (id != null) m[id] = pr;
+    }
+    return m;
+  }, [proveedores]);
+
+  function nombreProv(f) {
+    if (!f) return "—";
+    const id = f.idProveedor ?? f.id;
+    const fromMap = id != null ? proveedoresMap[id] : null;
+    if (fromMap) return getProveedorNombre(fromMap) || f.nombreProveedor || "—";
+    return f.nombreProveedor || "—";
+  }
 
   useEffect(() => {
     let activo = true;
@@ -315,7 +332,7 @@ const [estado, setEstado] = useState("");
                 return (
                   <tr key={f.idFactura} className={`border-b border-white/10 last:border-0 hover:bg-white/[0.04] transition-colors ${cancelada ? "opacity-60" : ""}`}>
                     <td className="px-4 py-3 text-white/70 whitespace-nowrap">{fmtFechaHora(f.fechaCreacion)}</td>
-                    <td className="px-4 py-3 text-white">{f.nombreProveedor || "—"}</td>
+                    <td className="px-4 py-3 text-white">{nombreProv(f)}</td>
                     <td className="px-4 py-3 text-white/70 whitespace-nowrap">{f.numeroFactura || "—"}</td>
                     <td className="px-4 py-3">{condicionPago(f.condicionPago)}</td>
                     <td className="px-4 py-3">{estadoFactura(f)}</td>
@@ -349,7 +366,7 @@ const [estado, setEstado] = useState("");
       )}
 
       {seleccionada && (
-        <DetalleFactura factura={seleccionada} cargando={cargandoDetalle} onClose={() => setSeleccionada(null)} />
+        <DetalleFactura factura={seleccionada} cargando={cargandoDetalle} onClose={() => setSeleccionada(null)} proveedoresMap={proveedoresMap} getProveedorNombre={getProveedorNombre} />
       )}
     </div>
   );
@@ -379,8 +396,16 @@ function TasaBadge({ tasa }) {
   );
 }
 
-function DetalleFactura({ factura, cargando = false, onClose }) {
+function DetalleFactura({ factura, cargando = false, onClose, proveedoresMap, getProveedorNombre }) {
   const detalles = Array.isArray(factura.detalles) ? factura.detalles : [];
+
+  function nombreProvDet(f) {
+    if (!f) return "—";
+    const id = f.idProveedor ?? f.id;
+    const fromMap = id != null ? proveedoresMap[id] : null;
+    if (fromMap) return getProveedorNombre(fromMap) || f.nombreProveedor || "—";
+    return f.nombreProveedor || "—";
+  }
 
   const desglose = detalles.reduce(
     (acc, d) => {
@@ -424,7 +449,7 @@ function DetalleFactura({ factura, cargando = false, onClose }) {
             Factura {factura.numeroFactura || "—"}
           </h2>
           <div className="flex items-center gap-3">
-            <p className="rounded-none border border-white/15 bg-white/5 px-2.5 py-1 text-sm font-medium text-white/80">{factura.nombreProveedor || "Proveedor desconocido"}</p>
+            <p className="rounded-none border border-white/15 bg-white/5 px-2.5 py-1 text-sm font-medium text-white/80">{nombreProvDet(factura) || "Proveedor desconocido"}</p>
             <button
               type="button"
               onClick={onClose}
