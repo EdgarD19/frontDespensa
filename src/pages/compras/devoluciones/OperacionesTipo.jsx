@@ -1405,10 +1405,16 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
   }, [verDetalle, onCerrar]));
 
   const handleSeleccionarFactura = async (factura) => {
-    setFacturaSel(factura);
+    if (tipo === "ANULACION") {
+      // En anulaciones no hay selección múltiple: al volver del detalle
+      // mantenemos la tabla limpia para evitar el resaltado persistente.
+      setFacturaSel(null);
+      setFacturaDetalle(null);
+    } else {
+      setFacturaSel(factura);
+    }
     setProductosDevueltos({});
     setProductosEntregar({});
-    setFacturaDetalle(null);
     setCargandoDetalle(true);
     setMotivo(""); // el motivo debe reiniciarse al cambiar de factura
     setVerDetalle(true);
@@ -1417,10 +1423,12 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
       const res = await getFacturaCompraById(factura.idFactura);
       if (seleccionSeq.current !== miSeq) return; // respuesta fuera de orden
       setFacturaDetalle(res);
+      if (tipo !== "ANULACION") setFacturaSel(factura);
     } catch (err) {
       if (seleccionSeq.current !== miSeq) return;
       console.error("Error al cargar detalle:", err);
       setFacturaDetalle(null);
+      if (tipo !== "ANULACION") setFacturaSel(null);
     } finally {
       if (seleccionSeq.current === miSeq) setCargandoDetalle(false);
     }
@@ -1501,31 +1509,11 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
   // las facturas del proveedor en estado RECIBIDA o VIGENTE y activas. Si una
   // factura ANULADA más nueva participara en la comparación, el front rechazaría
   // facturas que el backend sí acepta.
-  const esMasRecienteEntreCargadas = useCallback((factura) => {
-    const otras = facturas.filter((f) => {
-      const estado = String(f.estado || "").toUpperCase();
-      return (
-        f.activo !== false &&
-        (estado === "RECIBIDA" || estado === "VIGENTE") &&
-        f.idProveedor === factura.idProveedor &&
-        f.idFactura !== factura.idFactura
-      );
-    });
-    return otras.length === 0 || otras.every((f) => {
-      const a = String(f.fechaEmision || "").slice(0, 10);
-      const b = String(factura.fechaEmision || "").slice(0, 10);
-      return a <= b;
-    });
-  }, [facturas]);
-
   const validarAnulacion = useCallback((factura) => {
     if (!factura) return [];
     const avisos = [];
     if (String(factura.estado || "").toUpperCase() !== "RECIBIDA") {
       avisos.push("Solo se pueden anular facturas en estado RECIBIDA.");
-    }
-    if (!esMasRecienteEntreCargadas(factura)) {
-      avisos.push("Debe ser la factura más reciente del proveedor.");
     }
     const diaEmision = String(factura.fechaEmision || "").slice(0, 10);
     if (/^\d{4}-\d{2}-\d{2}$/.test(diaEmision)) {
@@ -1543,17 +1531,18 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
         && Number(d.stockActual) < (Number(d.cantidad) || 0)
     );
     for (const d of sinStock) {
+      const stock = Number(d.stockActual);
+      const req = Number(d.cantidad) || 0;
       avisos.push(
-        `Stock insuficiente para anular ${d.nombreProducto}: hay ${d.stockActual} en stock ` +
-        `y la factura requiere ${d.cantidad}.`
+        `Stock insuficiente para anular la factura: Producto '${d.nombreProducto}', Stock actual: ${stock.toFixed(2)}, Cantidad requerida: ${req.toFixed(2)}.`
       );
     }
     return avisos;
-  }, [esMasRecienteEntreCargadas]);
+  }, []);
 
   const avisosAnulacion = tipo === "ANULACION" && facturaDetalle ? validarAnulacion(facturaDetalle) : [];
   const bloqueaAnulacion = avisosAnulacion.length > 0;
-const puedeRegistrar = tipo === "ANULACION"
+  const puedeRegistrar = tipo === "ANULACION"
     ? !bloqueaAnulacion
     : tieneProductos && !esDevolucionTotal;
 
@@ -1696,8 +1685,8 @@ const puedeRegistrar = tipo === "ANULACION"
         </div>
 
         <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
-          <div className="max-h-[45vh] overflow-y-auto [color-scheme:dark] [scrollbar-color:#2a2a32_transparent] [scrollbar-width:thin]">
-            <table className="w-full text-sm">
+          <div className="max-h-[45vh] overflow-x-auto overflow-y-auto [color-scheme:dark] [scrollbar-color:#2a2a32_transparent] [scrollbar-width:thin]">
+            <table className="w-full min-w-[640px] text-sm">
               <thead className="sticky top-0 z-10 bg-[#0c0c0e]">
                 <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
                   <th className="w-[24%] px-4 py-3 font-medium">N° factura</th>
@@ -1731,7 +1720,7 @@ const puedeRegistrar = tipo === "ANULACION"
                 )}
 
                 {!loadingFacturas && ordenadas.map((f) => {
-                  const seleccionada = facturaSel?.idFactura === f.idFactura;
+                  const seleccionada = tipo !== "ANULACION" && facturaSel?.idFactura === f.idFactura;
                   const bloqueo = bloqueosPorFactura[Number(f.idFactura)];
                   const bloqueada = Boolean(bloqueo);
                   const textoClase = bloqueada ? "text-white/35" : "text-white/70";
@@ -1836,8 +1825,11 @@ const puedeRegistrar = tipo === "ANULACION"
                   </thead>
                   <tbody>
                     {facturaDetalle.detalles.map((d) => {
-                      const stock = d?.stockActual !== undefined && d?.stockActual !== null
-                        ? Number(d.stockActual)
+                      const baseFactura = facturas.find((f) => f.idFactura === facturaDetalle.idFactura);
+                      const baseDet = baseFactura?.detalles?.find((x) => x.idProducto === d.idProducto);
+                      const stockRaw = d?.stockActual ?? baseDet?.stockActual ?? d?.stock ?? baseDet?.stock ?? d?.cantidadDisponible ?? d?.existencia ?? d?.stockDisponible ?? null;
+                      const stock = stockRaw !== undefined && stockRaw !== null && stockRaw !== ""
+                        ? Number(stockRaw)
                         : null;
                       const falta = stock !== null && stock < (Number(d.cantidad) || 0);
                       return (
@@ -1845,7 +1837,7 @@ const puedeRegistrar = tipo === "ANULACION"
                           <td className="px-4 py-3 text-white">{d.nombreProducto}</td>
                           <td className="px-4 py-3 text-center tabular-nums text-white/60">{d.cantidad}</td>
                           <td className={`px-4 py-3 text-center tabular-nums ${falta ? "font-semibold text-red-400" : "text-white/60"}`}>
-                            {stock === null ? "—" : stock}
+                            {stock === null || Number.isNaN(stock) ? "—" : stock}
                           </td>
                         </tr>
                       );
@@ -1895,8 +1887,8 @@ const puedeRegistrar = tipo === "ANULACION"
             </div>
           </div>
 
-          <div className="max-h-64 overflow-y-auto border border-white/10">
-            <table className="w-full text-sm">
+          <div className="max-h-64 overflow-x-auto overflow-y-auto border border-white/10">
+            <table className="w-full min-w-[560px] text-sm">
               <thead className="sticky top-0 bg-[#0c0c0e]">
                 <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
                   <th className="px-4 py-3 font-medium">Producto</th>
@@ -1911,8 +1903,9 @@ const puedeRegistrar = tipo === "ANULACION"
                   const cant = cantidades[d.idProducto] || 0;
                   const max = limitesCantidad(d, tipo);
                   const activo = cant > 0;
-                  const stock = d?.stockActual !== undefined && d?.stockActual !== null
-                    ? Number(d.stockActual)
+                  const stockRaw = d?.stockActual ?? d?.stock ?? d?.cantidadDisponible ?? d?.existencia ?? d?.stockDisponible ?? null;
+                  const stock = stockRaw !== undefined && stockRaw !== null && stockRaw !== ""
+                    ? Number(stockRaw)
                     : null;
                   const sinStock = stock !== null && stock <= 0;
                   const stockLimita = stock !== null && max < maxPorFactura(d, tipo);
@@ -2034,7 +2027,7 @@ const puedeRegistrar = tipo === "ANULACION"
                 <h2 className="text-sm font-semibold text-white">{tituloDetalle}</h2>
                 <p className="mt-0.5 text-xs text-white/50">{subtituloDetalle}</p>
               </div>
-              <button type="button" onClick={() => setVerDetalle(false)} aria-label="Cerrar"
+              <button type="button" onClick={() => { setVerDetalle(false); if (tipo === "ANULACION") { setFacturaSel(null); setFacturaDetalle(null); } }} aria-label="Cerrar"
                 className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
                 <X className="h-4 w-4" />
               </button>
@@ -2044,7 +2037,9 @@ const puedeRegistrar = tipo === "ANULACION"
 
             <div className="flex items-center justify-between gap-3 border-t border-white/10 px-5 py-3.5">
               <div className="flex flex-1 items-start gap-2 text-xs">
-                {esDevolucionTotal ? (
+                {tipo === "ANULACION" ? (
+                  <p className="text-white/40">Revisá los datos antes de confirmar la anulación.</p>
+                ) : esDevolucionTotal ? (
                   <p className="flex items-center gap-1.5 text-amber-400" role="alert">
                     <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                     Estás devuyendo el total de la factura. Para eso usá la sección
@@ -2063,7 +2058,7 @@ const puedeRegistrar = tipo === "ANULACION"
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setVerDetalle(false)}
+                  onClick={() => { setVerDetalle(false); if (tipo === "ANULACION") { setFacturaSel(null); setFacturaDetalle(null); } }}
                   className="flex items-center gap-1 rounded-none border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/70 transition-colors hover:text-white"
                 >
                   <ChevronLeft className="h-4 w-4" /> Volver
