@@ -9,7 +9,8 @@ import { getProductos, getProductoByCodigo } from "../../../api/productosApi";
 import { getClientes } from "../../../api/clientesApi";
 import { registrarVentaFactura } from "../../../api/ventasApi";
 import { apiErrorMessage } from "../../../api/errors";
-import ComprobanteImpresion from "./ComprobanteImpresion";
+import TicketVenta from "./TicketVenta";
+import { printVenta } from "../../../services/printer";
 import CantidadInput from "../../../components/ui/CantidadInput";
 import {
   parsePrecioVenta, parseStockDisponible, esProductoPesable, formatMoney,
@@ -114,20 +115,7 @@ export default function RegistroVenta() {
   }, []);
 
   useEffect(() => { cargarProductos(); }, [cargarProductos]);
-  useEffect(() => {
-    if (!datosImpresion?.idComprobante) return;
-    let raf1, raf2;
-    raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(() => {
-        window.print();
-        setDatosImpresion(null);
-      });
-    });
-    return () => {
-      if (raf1) cancelAnimationFrame(raf1);
-      if (raf2) cancelAnimationFrame(raf2);
-    };
-  }, [datosImpresion?.idComprobante]);
+  // Impresión directa por impresora térmica/mock; no usar window.print() del navegador.
   useEffect(() => {
     if (editandoCantidad !== null) {
       setTimeout(() => {
@@ -373,12 +361,26 @@ export default function RegistroVenta() {
     const cliSnap = cliente;
     setCarrito([]); setMontoPagado(""); setCliente(null); setEditandoCantidad(null);
     await cargarProductos();
-    setDatosImpresion({
-      idComprobante: `${Date.now()}-${numFactura}`, fecha: hoyISO(), numero: numFactura,
-      cliente: cliSnap, lineas: snap, total: totalConIva, montoPagado: montoNum,
-      cambio, tipo: "CONTADO", formaPago, formaPagoLabel: labelFormaPago(formaPago),
+    const datosTicket = {
+      idComprobante: `${Date.now()}-${numFactura}`,
+      fecha: hoyISO(),
+      numero: numFactura,
+      cliente: cliSnap,
+      lineas: snap,
+      total: totalConIva,
+      montoPagado: montoNum,
+      cambio,
+      tipo: "CONTADO",
+      formaPago,
+      formaPagoLabel: labelFormaPago(formaPago),
       timbrado: timbradoInfo ?? null,
-    });
+    };
+    setDatosImpresion(datosTicket);
+    try {
+      await printVenta(datosTicket);
+    } catch (e) {
+      console.warn("[VENTA] No se pudo imprimir directamente:", e);
+    }
     focusSearch();
   }, [carrito, cliente, totalConIva, montoNum, cambio, formaPago, cargarProductos, focusSearch]);
 
@@ -793,9 +795,13 @@ export default function RegistroVenta() {
       </div>
 
       {datosImpresion && (
-        <div className="print-only">
-          <ComprobanteImpresion datos={datosImpresion} />
-        </div>
+        <TicketVenta
+          datos={datosImpresion}
+          onCerrar={() => {
+            setDatosImpresion(null);
+            focusSearch();
+          }}
+        />
       )}
     </div>
   );
