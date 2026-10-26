@@ -54,8 +54,9 @@ function toFrontendProduct(backend) {
 
     activo: backend.activo !== false,
 
-    precioFuturo: backend.precioFuturo ?? null,
-    fechaVigencia: backend.fechaVigencia ?? null,
+    // ProductoResponse expone precioVentaFuturo / fechaPrecioVentaFuturo
+    precioFuturo: backend.precioVentaFuturo ?? null,
+    fechaVigencia: backend.fechaPrecioVentaFuturo ?? null,
   };
 }
 

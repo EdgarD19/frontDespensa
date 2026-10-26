@@ -20,7 +20,7 @@ import {
   cancelarDevolucion,
 } from "../../../api/operacionesCompraApi";
 import { apiErrorMessage } from "../../../api/errors";
-import { getProductos } from "../../../api/productosApi";
+import { getProductos, getProductoById } from "../../../api/productosApi";
 import { getProveedores, getProveedorId, getProveedorNombre } from "../../../api/proveedoresApi";
 import { formatoFactura, hoyAsuncion, estadoTimbrado, etiquetaTimbrado, esKG } from "../utils";
 import CantidadInput from "../../../components/ui/CantidadInput";
@@ -522,7 +522,13 @@ export default function OperacionesTipo({ tipo }) {
       setAviso(`Esta ${cfg.accion} no tiene una factura vinculada.`);
       return;
     }
-    setModalVerFactura({ idFactura: op.facturaId, numeroFactura: op.facturaVinculada, items: op.items || [], estadoOperacion: op.estado });
+    setModalVerFactura({
+      idFactura: op.facturaId,
+      numeroFactura: op.facturaVinculada,
+      items: op.items || [],
+      estadoOperacion: op.estado,
+      motivo: op.motivo || "",
+    });
   };
 
 // Facturas que no se pueden operar: se muestran atenuadas con su motivo y no clickeables.
@@ -799,6 +805,7 @@ export default function OperacionesTipo({ tipo }) {
           numeroFactura={modalVerFactura.numeroFactura}
           items={modalVerFactura.items}
           estadoOperacion={modalVerFactura.estadoOperacion}
+          motivo={modalVerFactura.motivo}
           tipoOp={tipo}
           nombreProv={nombreProv}
           onCerrar={() => setModalVerFactura(null)}
@@ -1007,7 +1014,7 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar, nombr
 
 /* ───────────── Ver factura vinculada a un intercambio ───────────── */
 
-function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion, tipoOp, nombreProv, onCerrar }) {
+function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion, motivo = "", tipoOp, nombreProv, onCerrar }) {
   const [factura, setFactura] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
@@ -1036,6 +1043,7 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion
 
   const esIntercambio = tipoOp === "INTERCAMBIO";
   const esAnulacion = tipoOp === "ANULACION";
+  const itemsConMotivo = items.filter((it) => it.motivoIntercambio?.trim());
   const tituloOp = esAnulacion ? "Factura anulada" : esIntercambio ? "Factura del intercambio" : "Factura de la devolución";
   const etiquetaEstado = esAnulacion
     ? "Estado de la factura"
@@ -1135,6 +1143,33 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion
               <div className="flex justify-end border-t border-white/10 pt-3">
                 <p className="text-sm text-white">{totalTexto}: <span className={`text-lg font-bold tabular-nums ${esAnulacion ? "text-red-400" : "text-[var(--accent)]"}`}>{fmtMoneda(total)}</span></p>
               </div>
+
+              {esAnulacion && (
+                <div className="rounded-none border border-white/10 bg-white/[0.02] p-4">
+                  <p className="text-xs text-white/40">Motivo de la anulación</p>
+                  <p className="mt-1 whitespace-pre-wrap break-words text-sm text-white/80">
+                    {motivo?.trim() ? motivo : "Sin motivo registrado."}
+                  </p>
+                </div>
+              )}
+
+              {esIntercambio && (
+                <div className="rounded-none border border-white/10 bg-white/[0.02] p-4">
+                  <p className="text-xs text-white/40">Motivo del intercambio</p>
+                  {itemsConMotivo.length > 0 ? (
+                    <div className="mt-1 space-y-1 text-sm text-white/80">
+                      {itemsConMotivo.map((it, idx) => (
+                        <p key={`${it.idProducto ?? "it"}-${idx}`} className="whitespace-pre-wrap break-words">
+                          {it.producto ? <span className="text-white/40">{it.producto}: </span> : null}
+                          {it.motivoIntercambio}
+                        </p>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-sm text-white/80">Sin motivo registrado.</p>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1150,6 +1185,8 @@ function VerDevolucionModal({ op, onCerrar, nombreProv }) {
   useEscape(onCerrar);
 
   const items = op.items || [];
+  const itemsConMotivo = items.filter((it) => it.motivoDevolucion?.trim());
+  const motivoGlobal = op.motivo?.trim() || "";
   const total = items.reduce((sum, it) => sum + (Number(it.cantidad) * Number(it.precioUnitario) || 0), 0);
 
   return createPortal(
@@ -1215,25 +1252,8 @@ function VerDevolucionModal({ op, onCerrar, nombreProv }) {
                     <td colSpan={4} className="px-3 py-8 text-center text-white/30">Esta devolución no tiene productos registrados.</td>
                   </tr>
                 )}
-                {items.some((it) => it.motivoDevolucion) && (
-                  <tr className="border-t border-white/10 bg-white/[0.01]">
-                    <td colSpan={4} className="px-4 py-3 text-xs text-white/60">
-                      {items.map((it) => it.motivoDevolucion ? (
-                        <p key={it.idProducto ?? it.producto}>
-                          <span className="text-white/40">{it.producto}:</span> {it.motivoDevolucion}
-                        </p>
-                      ) : null)}
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
-            {op.motivo && (
-              <div className="border-t border-white/10 px-4 py-3 text-sm">
-                <span className="text-xs text-white/40">Motivo global: </span>
-                <span className="text-white/70">{op.motivo}</span>
-              </div>
-            )}
             {op.observaciones && (
               <div className="border-t border-white/10 px-4 py-3 text-sm">
                 <span className="text-xs text-white/40">Observaciones: </span>
@@ -1244,6 +1264,24 @@ function VerDevolucionModal({ op, onCerrar, nombreProv }) {
 
           <div className="flex justify-end border-t border-white/10 pt-3">
             <p className="text-sm text-white">Total a devolver: <span className="text-lg font-bold tabular-nums text-[var(--accent)]">{fmtMoneda(total)}</span></p>
+          </div>
+
+          <div className="rounded-none border border-white/10 bg-white/[0.02] p-4">
+            <p className="text-xs text-white/40">Motivo de la devolución</p>
+            {motivoGlobal ? (
+              <p className="mt-1 whitespace-pre-wrap break-words text-sm text-white/80">{motivoGlobal}</p>
+            ) : itemsConMotivo.length > 0 ? (
+              <div className="mt-1 space-y-1 text-sm text-white/80">
+                {itemsConMotivo.map((it, idx) => (
+                  <p key={`${it.idProducto ?? "it"}-${idx}`} className="whitespace-pre-wrap break-words">
+                    {it.producto ? <span className="text-white/40">{it.producto}: </span> : null}
+                    {it.motivoDevolucion}
+                  </p>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-1 text-sm text-white/80">Sin motivo registrado.</p>
+            )}
           </div>
         </div>
       </div>
@@ -1346,6 +1384,19 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
 
   // Catálogo de productos: map idProducto → unidad, para saber si la cantidad admite decimales (KG).
   const [unidadesById, setUnidadesById] = useState({});
+  // El backend NO incluye stock en el detalle de la factura (DetalleFacturaResponse).
+  // El stock real vive en ProductoResponse, así que se cachea por idProducto y se
+  // inyecta en el detalle al abrir cada factura.
+  const stockByIdRef = useRef({});
+
+  const registrarStock = (producto) => {
+    if (!producto || producto.id == null) return;
+    const { stockActual } = producto;
+    if (stockActual === "" || stockActual === null || stockActual === undefined) return;
+    const stock = Number(stockActual);
+    if (!Number.isFinite(stock)) return;
+    stockByIdRef.current[Number(producto.id)] = stock;
+  };
 
   useEffect(() => {
     let activo = true;
@@ -1353,15 +1404,57 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
       .then((res) => {
         if (!activo) return;
         const m = {};
-        (res.content || []).forEach((p) => { if (p.id != null) m[Number(p.id)] = p.unidadMedida || ""; });
+        (res.content || []).forEach((p) => {
+          if (p.id != null) m[Number(p.id)] = p.unidadMedida || "";
+          registrarStock(p);
+        });
         setUnidadesById(m);
       })
       .catch(() => {});
     return () => { activo = false; };
   }, []);
 
+  // Completa el stock de los productos que no estén en el catálogo cacheado
+  // (catálogo truncado por paginación, producto nuevo o inactivo).
+  const asegurarStocks = async (detalles = []) => {
+    const ids = [...new Set(
+      detalles
+        .map((d) => Number(d?.idProducto))
+        .filter((id) => Number.isFinite(id) && stockByIdRef.current[id] === undefined)
+    )];
+    if (ids.length === 0) return;
+    const productos = await Promise.all(
+      ids.map((id) => getProductoById(id).catch(() => null))
+    );
+    productos.forEach(registrarStock);
+  };
+
+  const conStock = (factura, detalles) => ({
+    ...factura,
+    detalles: (detalles || []).map((d) => {
+      const stock = stockByIdRef.current[Number(d.idProducto)];
+      return {
+        ...d,
+        stockActual: stock !== undefined ? stock : (d.stockActual ?? null),
+      };
+    }),
+  });
+
   // Contador de selección para descartar respuestas fuera de orden (race condition).
   const seleccionSeq = useRef(0);
+
+  // Vuelve al selector de facturas dejando la tabla igual que al abrir el modal:
+  // sin fila seleccionada, sin detalle cargado y sin cantidades pendientes.
+  const volverAlSelector = useCallback(() => {
+    seleccionSeq.current += 1; // descarta respuestas de detalle aún en vuelo
+    setVerDetalle(false);
+    setFacturaSel(null);
+    setFacturaDetalle(null);
+    setCargandoDetalle(false);
+    setProductosDevueltos({});
+    setProductosEntregar({});
+    setMotivo("");
+  }, []);
 
   const hayFiltros = Boolean(filtroNumero || filtroProveedor || filtroFechaDesde || filtroFechaHasta);
 
@@ -1400,9 +1493,9 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
   // Escape cierra solo la capa superior: si el detalle está abierto vuelve al
 // selector de facturas, si no cierra el modal completo.
   useEscape(useCallback(() => {
-    if (verDetalle) setVerDetalle(false);
+    if (verDetalle) volverAlSelector();
     else onCerrar();
-  }, [verDetalle, onCerrar]));
+  }, [verDetalle, volverAlSelector, onCerrar]));
 
   const handleSeleccionarFactura = async (factura) => {
     if (tipo === "ANULACION") {
@@ -1422,7 +1515,9 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
     try {
       const res = await getFacturaCompraById(factura.idFactura);
       if (seleccionSeq.current !== miSeq) return; // respuesta fuera de orden
-      setFacturaDetalle(res);
+      await asegurarStocks(res?.detalles || []);
+      if (seleccionSeq.current !== miSeq) return;
+      setFacturaDetalle(conStock(res, res?.detalles));
       if (tipo !== "ANULACION") setFacturaSel(factura);
     } catch (err) {
       if (seleccionSeq.current !== miSeq) return;
@@ -1501,14 +1596,10 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
 
   // ----- Prevalidación de anulación (espejo de las reglas del backend) -----
   // Espejo de AnulacionFacturaService.anular: estado RECIBIDA (esto cubre de
-  // paso que ya esté anulada, porque una anulada queda en estado ANULADO), ser la
-  // factura más reciente del proveedor y no superar los días permitidos.
+  // paso que ya esté anulada, porque una anulada queda en estado ANULADO), no
+  // superar los días permitidos y tener stock suficiente para revertirlo.
   const DIAS_PERMITIDOS_ANULACION = 15;
 
-  // Espejo de FacturaCompraRepository.findMasRecienteDeProveedor: sólo cuentan
-  // las facturas del proveedor en estado RECIBIDA o VIGENTE y activas. Si una
-  // factura ANULADA más nueva participara en la comparación, el front rechazaría
-  // facturas que el backend sí acepta.
   const validarAnulacion = useCallback((factura) => {
     if (!factura) return [];
     const avisos = [];
@@ -1720,7 +1811,9 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                 )}
 
                 {!loadingFacturas && ordenadas.map((f) => {
-                  const seleccionada = tipo !== "ANULACION" && facturaSel?.idFactura === f.idFactura;
+                  // No resaltar la fila mientras el detalle está abierto: al volver,
+                  // el selector se revela y el cambio de color se vería como un flash verde.
+                  const seleccionada = tipo !== "ANULACION" && !verDetalle && facturaSel?.idFactura === f.idFactura;
                   const bloqueo = bloqueosPorFactura[Number(f.idFactura)];
                   const bloqueada = Boolean(bloqueo);
                   const textoClase = bloqueada ? "text-white/35" : "text-white/70";
@@ -2014,7 +2107,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
 
       {/* Capa 2: detalle de la factura, superpuesto al selector */}
       {verDetalle && createPortal(
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => setVerDetalle(false)}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={volverAlSelector}>
           <div
             role="dialog"
             aria-modal="true"
@@ -2027,7 +2120,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                 <h2 className="text-sm font-semibold text-white">{tituloDetalle}</h2>
                 <p className="mt-0.5 text-xs text-white/50">{subtituloDetalle}</p>
               </div>
-              <button type="button" onClick={() => { setVerDetalle(false); if (tipo === "ANULACION") { setFacturaSel(null); setFacturaDetalle(null); } }} aria-label="Cerrar"
+              <button type="button" onClick={volverAlSelector} aria-label="Cerrar"
                 className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
                 <X className="h-4 w-4" />
               </button>
@@ -2058,7 +2151,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => { setVerDetalle(false); if (tipo === "ANULACION") { setFacturaSel(null); setFacturaDetalle(null); } }}
+                  onClick={volverAlSelector}
                   className="flex items-center gap-1 rounded-none border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/70 transition-colors hover:text-white"
                 >
                   <ChevronLeft className="h-4 w-4" /> Volver
