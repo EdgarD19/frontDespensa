@@ -208,7 +208,7 @@ export function buildVentaEscPos(datos = {}) {
     const pu = getPU(l);
     const sub = cant * pu;
     const tasa = Number(l.iva ?? l.tasaIva ?? 10);
-    const ivaTxt = tasa === 0 ? "E" : `${tasa}%`;
+    const ivaTxt = tasa === 0 ? "-" : `${tasa}%`;
     const cod = String(l.codigoBarras || l.codigo || l.codigoBarra || "").substring(0, COD_W);
     const nombre = getNombre(l).substring(0, DESC_W);
     parts.push(
@@ -234,6 +234,47 @@ export function buildVentaEscPos(datos = {}) {
   parts.push(boldOff());
   if (montoPagado != null) parts.push(line(`${pagoLabel}:`.padEnd(LABEL_W) + money(montoPagado).padStart(AMOUNT_W)));
   if (montoPagado != null) parts.push(line("VUELTO:".padEnd(LABEL_W) + money(cambio || 0).padStart(AMOUNT_W)));
+  parts.push(separator());
+
+  // Desglose de IVA por tasa (replica CalculoIvaUtil del back)
+  const r2 = (n) => Math.round(n * 100) / 100;
+  let iva5 = 0;
+  let iva10 = 0;
+  for (const l of lineas) {
+    const cant = getCant(l);
+    const pu = getPU(l);
+    const t = Number(l.iva ?? l.tasaIva ?? 10);
+    if (t === 0) continue;
+    const base = r2(r2(pu / (1 + t / 100)) * cant);
+    const iva = r2((base * t) / 100);
+    if (t === 5) iva5 += iva;
+    else iva10 += iva;
+  }
+  iva5 = r2(iva5);
+  iva10 = r2(iva10);
+  parts.push(line("IVA 5%:".padEnd(LABEL_W) + money(iva5).padStart(AMOUNT_W)));
+  parts.push(line("IVA 10%:".padEnd(LABEL_W) + money(iva10).padStart(AMOUNT_W)));
+  parts.push(boldOn());
+  parts.push(line("TOTAL IVA:".padEnd(LABEL_W) + money(r2(iva5 + iva10)).padStart(AMOUNT_W)));
+  parts.push(boldOff());
+  parts.push(separator());
+
+  // Apartado: Gravadas / Exentas (montos con IVA incluido por tasa)
+  let g5 = 0;
+  let g10 = 0;
+  let ex = 0;
+  for (const l of lineas) {
+    const cant = getCant(l);
+    const pu = getPU(l);
+    const t = Number(l.iva ?? l.tasaIva ?? 10);
+    const monto = r2(pu * cant);
+    if (t === 0) ex += monto;
+    else if (t === 5) g5 += monto;
+    else g10 += monto;
+  }
+  parts.push(line("GRAVADAS 5%:".padEnd(LABEL_W) + money(r2(g5)).padStart(AMOUNT_W)));
+  parts.push(line("GRAVADAS 10%:".padEnd(LABEL_W) + money(r2(g10)).padStart(AMOUNT_W)));
+  parts.push(line("EXENTAS:".padEnd(LABEL_W) + money(r2(ex)).padStart(AMOUNT_W)));
   parts.push(separator());
 
   // Footer

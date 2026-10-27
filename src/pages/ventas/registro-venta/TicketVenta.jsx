@@ -77,23 +77,23 @@ export default function TicketVenta({ datos, onCerrar }) {
         <div className="relative flex min-h-0 w-full flex-col items-center">
           <div className="relative z-20 w-full shrink-0 rounded-2xl border border-[#1F1F1F] bg-gradient-to-b from-[#141414] via-[#0E0E0E] to-[#0B0B0B] p-3.5 shadow-[0_12px_28px_rgba(0,0,0,0.7)]">
             <div className="absolute inset-x-3 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-            <div className="mb-2 flex items-center justify-between border-b border-[#1F1F1F] pb-2">
+            <div className="mb-2 grid grid-cols-[1fr_auto_1fr] items-center border-b border-[#1F1F1F] pb-2">
               <div className="flex items-center gap-2">
                 <div className="flex h-5 w-5 items-center justify-center rounded-md border border-[#1F1F1F] bg-[#0E0E0E] text-[#A1A1A1]">
                   <Printer className="h-3 w-3" />
                 </div>
                 <span className="font-mono text-[11px] font-medium tracking-tight text-[#FAFAFA]">POS-TICKET</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
+                <span className={`h-2 w-2 rounded-full ${isPrinting ? "animate-ping bg-amber-400" : "bg-emerald-400"}`} />
+                <span className="font-mono text-[10px] text-[#6B6B6B]">{isPrinting ? "IMPRIMIENDO" : "LISTO"}</span>
+              </div>
+              <div className="flex h-5 justify-end">
                 {isCompleted && (
                   <button type="button" onClick={onCerrar} className="rounded-md bg-white px-2 py-0.5 text-[10px] font-semibold text-black transition-all hover:bg-white/90">
                     Nueva compra
                   </button>
                 )}
-                <div className="flex items-center gap-1.5">
-                  <span className={`h-2 w-2 rounded-full ${isPrinting ? "animate-ping bg-amber-400" : "bg-emerald-400"}`} />
-                  <span className="font-mono text-[10px] text-[#6B6B6B]">{isPrinting ? "IMPRIMIENDO" : "LISTO"}</span>
-                </div>
               </div>
             </div>
             <div className="relative flex h-3 w-full items-center justify-center overflow-hidden rounded-full border border-[#1F1F1F] bg-[#050505] shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)]">
@@ -173,7 +173,7 @@ export default function TicketVenta({ datos, onCerrar }) {
                       const pu = getPU(l);
                       const sub = cant * pu;
                       const tasa = Number(l.iva ?? l.tasaIva ?? 10);
-                      const ivaTxt = tasa === 0 ? "E" : `${tasa}%`;
+                      const ivaTxt = tasa === 0 ? "—" : `${tasa}%`;
                       return (
                         <tr key={l.productoId ?? idx}>
                           <td className="pr-1 align-top">
@@ -213,6 +213,61 @@ export default function TicketVenta({ datos, onCerrar }) {
                     <span>{formatMoney(cambio || 0)}</span>
                   </div>
                 )}
+              </div>
+
+              <div className="space-y-0.5 py-2 text-[10px]">
+                {(() => {
+                  // Desglose de IVA por tasa, replicando CalculoIvaUtil del back
+                  const r2 = (n) => Math.round(n * 100) / 100;
+                  let iva5 = 0;
+                  let iva10 = 0;
+                  for (const l of lineas) {
+                    const cant = getCantidad(l);
+                    const pu = getPU(l);
+                    const t = Number(l.iva ?? l.tasaIva ?? 10);
+                    if (t === 0) continue;
+                    const base = r2(r2(pu / (1 + t / 100)) * cant);
+                    const iva = r2((base * t) / 100);
+                    if (t === 5) iva5 += iva;
+                    else iva10 += iva;
+                  }
+                  iva5 = r2(iva5);
+                  iva10 = r2(iva10);
+                  const totalIva = r2(iva5 + iva10);
+                  return (
+                    <>
+                      <div className="flex justify-between opacity-70"><span>IVA 5%:</span><span>{formatMoney(iva5)}</span></div>
+                      <div className="flex justify-between opacity-70"><span>IVA 10%:</span><span>{formatMoney(iva10)}</span></div>
+                      <div className="flex justify-between font-semibold"><span>TOTAL IVA:</span><span>{formatMoney(totalIva)}</span></div>
+                    </>
+                  );
+                })()}
+              </div>
+
+              <div className="space-y-0.5 border-y border-dashed border-current/25 py-2 text-[10px]">
+                {(() => {
+                  // Gravadas / Exentas: montos con IVA incluido por tasa (liq. DNIT)
+                  const r2 = (n) => Math.round(n * 100) / 100;
+                  let g5 = 0;
+                  let g10 = 0;
+                  let ex = 0;
+                  for (const l of lineas) {
+                    const cant = getCantidad(l);
+                    const pu = getPU(l);
+                    const t = Number(l.iva ?? l.tasaIva ?? 10);
+                    const monto = r2(pu * cant);
+                    if (t === 0) ex += monto;
+                    else if (t === 5) g5 += monto;
+                    else g10 += monto;
+                  }
+                  return (
+                    <>
+                      <div className="flex justify-between opacity-70"><span>GRAVADAS 5%:</span><span>{formatMoney(r2(g5))}</span></div>
+                      <div className="flex justify-between opacity-70"><span>GRAVADAS 10%:</span><span>{formatMoney(r2(g10))}</span></div>
+                      <div className="flex justify-between opacity-70"><span>EXENTAS:</span><span>{formatMoney(r2(ex))}</span></div>
+                    </>
+                  );
+                })()}
               </div>
 
               <div className="pb-1 pt-3 text-center">
