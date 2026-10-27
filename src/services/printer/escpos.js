@@ -1,6 +1,12 @@
 const ESC = 0x1B;
 const GS = 0x1D;
 
+// Papel térmico de 80 mm (área imprimible ~72 mm) = 48 caracteres
+// en Font A de 12x24. Todas las líneas se alinean a este ancho.
+const WIDTH = 48;
+// Ancho reservado a la columna de importes (derecha, negrita).
+const AMOUNT_W = 11;
+
 function concat(arrays) {
   const total = arrays.reduce((sum, a) => sum + (a?.length || 0), 0);
   const out = new Uint8Array(total);
@@ -67,7 +73,7 @@ function init() {
 }
 
 function separator() {
-  return line("--------------------------------");
+  return line("-".repeat(WIDTH));
 }
 
 function money(v) {
@@ -77,19 +83,32 @@ function money(v) {
   return num.toLocaleString("es-PY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// Monto compacto para la tabla de productos: enteros sin decimales;
+// pesables/cortes decimales con 2 decimales.
+function compMoney(v) {
+  const num = Number(v) || 0;
+  const esEntero = Math.abs(num % 1) < 0.005;
+  return num.toLocaleString("es-PY", { minimumFractionDigits: esEntero ? 0 : 2, maximumFractionDigits: 2 });
+}
+
 function fmtFecha(valor) {
   if (!valor) return "—";
-  try {
-    const d = new Date(String(valor));
-    if (Number.isNaN(d.getTime())) {
-      const d2 = new Date(String(valor) + "T00:00:00");
-      if (Number.isNaN(d2.getTime())) return String(valor);
-      return d2.toLocaleDateString("es-PY") + " " + d2.toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit" });
-    }
-    return d.toLocaleDateString("es-PY") + " " + d.toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit" });
-  } catch {
-    return String(valor);
-  }
+  // Fechas sin hora (LocalDate del back) se parsean como medianoche LOCAL para
+  // no retroceder un día en zonas UTC-3; sin hora se muestra solo la fecha.
+  const s = String(valor);
+  const esSoloFecha = /^\d{4}-\d{2}-\d{2}$/.test(s);
+  const d = esSoloFecha ? new Date(s + "T00:00:00") : new Date(s);
+  if (Number.isNaN(d.getTime())) return s;
+  if (esSoloFecha) return d.toLocaleDateString("es-PY");
+  return d.toLocaleDateString("es-PY") + " " + d.toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit" });
+}
+
+function fmtFechaSolo(valor) {
+  if (!valor) return "—";
+  const s = String(valor);
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(s + "T00:00:00") : new Date(s);
+  if (Number.isNaN(d.getTime())) return s;
+  return d.toLocaleDateString("es-PY");
 }
 
 function getNombre(l) {
@@ -117,58 +136,116 @@ export function buildVentaEscPos(datos = {}) {
     timbrado,
   } = datos;
 
+  const empName = datos?.empresaNombreComercial || datos?.nombreComercial || "DESPENSA SANDRA Y CARLOS";
+  const empRuc = datos?.empresaRuc || datos?.ruc;
+  const empDir = datos?.empresaDireccion || datos?.direccion;
+  const empTel = datos?.empresaTelefono || datos?.telefono;
+  const footerText = datos?.empresaPieTicket || datos?.pieTicket || "¡GRACIAS POR SU COMPRA!";
+  // Cabecera compacta: RUC y teléfono comparten línea (si existen ambos).
+  const headerL1 = [empRuc ? `RUC: ${empRuc}` : null, empTel ? `Tel: ${empTel}` : null]
+    .filter(Boolean)
+    .join(" ");
+  // Vigencia del timbrado: solo la parte fecha (dd/mm/yyyy).
+  const vigInicio = fmtFechaSolo(timbrado?.fechaInicio);
+  const vigFin = fmtFechaSolo(timbrado?.fechaVencimiento);
+  const tieneVigencia = Boolean(timbrado?.fechaInicio || timbrado?.fechaVencimiento);
+
   const parts = [];
   parts.push(init());
 
-  // Header
+  // Header: nombre centrado, resto y bloque de datos también centrados
   parts.push(center());
   parts.push(boldOn());
   parts.push(sizeDouble());
-  parts.push(line("DESPENSA SANDRA Y CARLOS"));
+  parts.push(line(empName));
   parts.push(sizeNormal());
   parts.push(boldOff());
-  parts.push(line("COMPROBANTE DE VENTA"));
+  if (headerL1) parts.push(line(headerL1));
+  if (empDir) parts.push(line(empDir));
+
+  // Info (timbrado, vigencia, forma de pago, número y fecha de venta)
+  if (timbrado?.numeroTimbrado || tieneVigencia) parts.push(line(`TIMBRADO: ${timbrado?.numeroTimbrado || "—"}`));
+  if (tieneVigencia) parts.push(line(`VIGENCIA: ${vigInicio} AL ${vigFin}`));
+  if (formaPagoLabel) parts.push(line(`FORMA PAGO: ${String(formaPagoLabel).toUpperCase()}`));
+  parts.push(line(`FACTURA CONTADO: ${numero || "—"}`));
+  parts.push(line(`FECHA Y HORA VENTA: ${fmtFecha(fecha)}`));
   parts.push(left());
   parts.push(separator());
 
-  // Info
-  parts.push(line(`TICKET Nº: ${numero || "—"}`));
-  parts.push(line(`FECHA: ${fmtFecha(fecha)}`));
-  if (timbrado?.numeroTimbrado) parts.push(line(`TIMBRADO: ${timbrado.numeroTimbrado}`));
-  if (formaPagoLabel) parts.push(line(`FORMA PAGO: ${formaPagoLabel}`));
-  parts.push(line(`CLIENTE: ${cliente?.razonSocial || cliente?.nombreCompleto || cliente?.nombre || "CONSUMIDOR FINAL"}`));
+  // Cliente
   if (cliente?.nroDocumento || cliente?.documento || cliente?.ruc || cliente?.ci) {
-    parts.push(line(`DOC: ${cliente?.nroDocumento || cliente?.documento || cliente?.ruc || cliente?.ci}`));
+    parts.push(line(`CI / RUC: ${cliente?.nroDocumento || cliente?.documento || cliente?.ruc || cliente?.ci}`));
   }
+  parts.push(line(`CLIENTE: ${cliente?.razonSocial || cliente?.nombreCompleto || cliente?.nombre || "Sin Nombre"}`));
   parts.push(separator());
 
-  // Items
+  // Items: tabla de 6 columnas en 48 chars
+  // COD.(11) DESC.(11) CANT(4) PREC(6) IVA(3) TOTAL(8) + 5 separaciones = 48
+  const COD_W = 11;
+  const DESC_W = 11;
+  const CANT_W = 4;
+  const PREC_W = 6;
+  const IVA_W = 3;
+  const TOTAL_W = WIDTH - COD_W - DESC_W - CANT_W - 1 - PREC_W - 1 - IVA_W - 1;
+  const LABEL_W = WIDTH - AMOUNT_W;
   parts.push(boldOn());
-  parts.push(line("ITEM                        IMPORTE"));
+  parts.push(
+    line(
+      "COD.".padEnd(COD_W) +
+        "DESC.".padEnd(DESC_W) +
+        "CANT".padStart(CANT_W) +
+        " " +
+        "PREC".padStart(PREC_W) +
+        " " +
+        "IVA".padStart(IVA_W) +
+        " " +
+        "TOTAL".padStart(TOTAL_W),
+    ),
+  );
   parts.push(boldOff());
   for (const l of lineas) {
     const cant = getCant(l);
     const pu = getPU(l);
     const sub = cant * pu;
-    const nombre = getNombre(l);
-    const line1 = `${cant > 1 ? cant.toFixed(cant % 1 === 0 ? 0 : 3) + "x " : ""}${nombre}`.substring(0, 32);
-    parts.push(line(line1.padEnd(26) + money(sub).padStart(10)));
-    parts.push(line(`  P.U: ${money(pu)}`));
+    const tasa = Number(l.iva ?? l.tasaIva ?? 10);
+    const ivaTxt = tasa === 0 ? "E" : `${tasa}%`;
+    const cod = String(l.codigoBarras || l.codigo || l.codigoBarra || "").substring(0, COD_W);
+    const nombre = getNombre(l).substring(0, DESC_W);
+    parts.push(
+      line(
+        cod.padEnd(COD_W) +
+          nombre.padEnd(DESC_W) +
+          cant.toLocaleString("es-PY", { maximumFractionDigits: 3 }).padStart(CANT_W) +
+          " " +
+          compMoney(pu).padStart(PREC_W) +
+          " " +
+          ivaTxt.padStart(IVA_W) +
+          " " +
+          compMoney(sub).padStart(TOTAL_W),
+      ),
+    );
   }
   parts.push(separator());
 
   // Totals
+  const pagoLabel = formaPagoLabel ? `PAGO ${String(formaPagoLabel).toUpperCase()}` : "RECIBIDO";
   parts.push(boldOn());
-  parts.push(line("TOTAL:".padEnd(26) + money(total).padStart(10)));
+  parts.push(line("TOTAL A PAGAR:".padEnd(LABEL_W) + money(total).padStart(AMOUNT_W)));
   parts.push(boldOff());
-  if (montoPagado != null) parts.push(line("RECIBIDO:".padEnd(26) + money(montoPagado).padStart(10)));
-  if (cambio != null && cambio > 0) parts.push(line("VUELTO:".padEnd(26) + money(cambio).padStart(10)));
+  if (montoPagado != null) parts.push(line(`${pagoLabel}:`.padEnd(LABEL_W) + money(montoPagado).padStart(AMOUNT_W)));
+  if (montoPagado != null) parts.push(line("VUELTO:".padEnd(LABEL_W) + money(cambio || 0).padStart(AMOUNT_W)));
   parts.push(separator());
 
   // Footer
   parts.push(center());
-  parts.push(line("¡GRACIAS POR SU COMPRA!"));
-  parts.push(line("VUELVA PRONTO"));
+  const footerLines = String(footerText).split(/\r?\n/);
+  for (const fl of footerLines) {
+    if (fl.trim() === "") parts.push(line(""));
+    else parts.push(line(fl));
+  }
+  if (!footerText || String(footerText).trim() === "") {
+    parts.push(line("VUELVA PRONTO"));
+  }
   parts.push(left());
   parts.push(line(""));
   parts.push(cut());

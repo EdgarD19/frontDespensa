@@ -69,6 +69,7 @@ const CONFIG = {
     label: "Devolución",
     plural: "Devoluciones",
     accion: "devolución",
+    nuevoLabel: "Nueva devolución",
     empty: "Aún no hay devoluciones registradas",
     subtitulo: "Devolvé productos de una factura y generá su reemplazo",
   },
@@ -76,6 +77,7 @@ const CONFIG = {
     label: "Intercambio",
     plural: "Intercambios",
     accion: "intercambio",
+    nuevoLabel: "Nuevo intercambio",
     empty: "Aún no hay intercambios registrados",
     subtitulo: "Registrá productos a cambiar con el proveedor",
   },
@@ -83,6 +85,7 @@ const CONFIG = {
     label: "Anulación",
     plural: "Anulaciones",
     accion: "anulación",
+    nuevoLabel: "Nueva anulación",
     empty: "Aún no hay anulaciones registradas",
     subtitulo: "Anulá una factura de compra registrada",
   },
@@ -625,8 +628,8 @@ export default function OperacionesTipo({ tipo }) {
                 <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
                   <th className={thBase}>Fecha</th>
                   <th className={thBase}>Estado</th>
-                  {tipo !== "INTERCAMBIO" && <th className={thBase}>N° factura</th>}
-                  {tipo === "DEVOLUCION" && <th className={thBase}>Factura anulada</th>}
+                  <th className={thBase}>N° factura</th>
+                  {tipo === "DEVOLUCION" && <th className={thBase}>Factura original</th>}
                   <th className={thBase}>Proveedor</th>
                   <th className={`${thBase} text-right`}>Total</th>
                   <th className={`${thBase} w-28`} aria-label="Acciones" />
@@ -638,13 +641,15 @@ export default function OperacionesTipo({ tipo }) {
                     tipo === "ANULACION"
                       ? totalFacturaById[op.facturaId] ?? totalesAnulacion[String(op.facturaId)] ?? null
                       : null;
+                  const numeroFactura =
+                    tipo === "INTERCAMBIO"
+                      ? op.facturaVinculada
+                      : op.facturaVinculada || op.facturaNueva || op.facturaNumero;
                   return (
                     <tr key={op.id} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                       <td className="whitespace-nowrap px-4 py-3 text-white/60">{fmtFechaHora(op.fecha)}</td>
                       <td className="px-4 py-3"><EstadoBadge estado={op.estado} /></td>
-                      {tipo !== "INTERCAMBIO" && (
-                        <td className="px-4 py-3 font-medium tabular-nums text-white">{op.facturaVinculada || (tipo === "INTERCAMBIO" ? "—" : op.facturaNueva || op.facturaNumero)}</td>
-                      )}
+                      <td className="px-4 py-3 font-medium tabular-nums text-white">{numeroFactura || "—"}</td>
                       {tipo === "DEVOLUCION" && (
                         <td className="px-4 py-3 tabular-nums text-white/50">{op.facturaNueva ? op.facturaOriginal : "—"}</td>
                       )}
@@ -1368,7 +1373,7 @@ function ConfirmarAccionModal({ tipo, op, onCerrar, onConfirmar }) {
 /* ───────────── Wizard: nueva devolución / intercambio / anulación ───────────── */
 
 function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloqueadas = [], onCerrar, onRegistrar, registrando = false, nombreProv }) {
-  const labelTipo = CONFIG[tipo].label;
+  const cfg = CONFIG[tipo];
   const [verDetalle, setVerDetalle] = useState(false);
   const [facturaSel, setFacturaSel] = useState(null);
   const [facturaDetalle, setFacturaDetalle] = useState(null);
@@ -1942,14 +1947,15 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
           </div>
           <div>
             <label htmlFor="motivo-anulacion" className={labelClass}>Motivo (opcional)</label>
-            <textarea
+            <input
               id="motivo-anulacion"
+              type="text"
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
-              rows={3}
               maxLength={500}
+              autoComplete="off"
               placeholder="Ej: Factura incorrecta, duplicada, productos no recibidos"
-              className={`${fieldClass} resize-none`}
+              className={fieldClass}
             />
           </div>
         </div>
@@ -2049,7 +2055,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
               type="text"
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
-              maxLength={100}
+              maxLength={tipo === "INTERCAMBIO" ? 100 : 500}
               autoComplete="off"
               placeholder="Ej: Producto defectuoso, error en pedido"
               className={fieldClass}
@@ -2084,13 +2090,13 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
           <div
             role="dialog"
             aria-modal="true"
-            aria-label={`Nueva ${labelTipo} con proveedor`}
+            aria-label={`${cfg.nuevoLabel} con proveedor`}
             className={`${modalShell} max-w-4xl max-h-[90vh]`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
               <div>
-                <h2 className="text-sm font-semibold text-white">Nueva {labelTipo.toLowerCase()}</h2>
+                <h2 className="text-sm font-semibold text-white">{cfg.nuevoLabel}</h2>
                 <p className="mt-0.5 text-xs text-white/50">Seleccioná la factura de compra.</p>
               </div>
               <button type="button" onClick={onCerrar} aria-label="Cerrar"
@@ -2135,8 +2141,8 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                 ) : esDevolucionTotal ? (
                   <p className="flex items-center gap-1.5 text-amber-400" role="alert">
                     <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                    Estás devuyendo el total de la factura. Para eso usá la sección
-                    <span className="font-semibold"> Anular factura</span>.
+                    Estás devolviendo el total de la factura. Para eso, usá la sección{" "}
+                    <span className="font-semibold">Anulaciones</span>.
                   </p>
                 ) : (
                   <p className="text-white/40">
@@ -2160,7 +2166,11 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                   type="button"
                   onClick={handleRegistrar}
                   disabled={!puedeRegistrar || registrando}
-                  className="flex items-center gap-2 rounded-none bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                  className={`flex items-center gap-2 rounded-none px-6 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                    tipo === "ANULACION"
+                      ? "bg-red-500 text-white hover:bg-red-400"
+                      : "bg-[var(--accent)] text-black hover:opacity-90"
+                  }`}
                 >
                   <Save className="h-4 w-4" />
                   {registrando

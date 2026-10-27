@@ -9,6 +9,8 @@ import { getProductos, getProductoByCodigo } from "../../../api/productosApi";
 import { getClientes } from "../../../api/clientesApi";
 import { registrarVentaFactura } from "../../../api/ventasApi";
 import { apiErrorMessage } from "../../../api/errors";
+import { getConfiguracionEmpresa } from "../../../api/configuracionEmpresaApi";
+import { getTimbradoVentaVigente } from "../../../api/timbradosVentaApi";
 import TicketVenta from "./TicketVenta";
 import { printVenta } from "../../../services/printer";
 import CantidadInput from "../../../components/ui/CantidadInput";
@@ -82,6 +84,19 @@ export default function RegistroVenta() {
   const [clientesOpciones, setClientesOpciones] = useState([]);
   const [mostrarClientes, setMostrarClientes] = useState(false);
   const [cargandoClientes, setCargandoClientes] = useState(false);
+  const [empresaConfig, setEmpresaConfig] = useState(null);
+
+  useEffect(() => {
+    let activo = true;
+    getConfiguracionEmpresa()
+      .then((data) => {
+        if (activo) setEmpresaConfig(data);
+      })
+      .catch(() => {
+        if (activo) setEmpresaConfig(null);
+      });
+    return () => { activo = false; };
+  }, []);
 
   // Sin dependencias locales: el habilitado del cobro, el número de factura y
   // el timbrado los resuelve el backend (POST /api/facturas-venta).
@@ -356,14 +371,15 @@ export default function RegistroVenta() {
   // Cierre de una venta registrada contra el backend: limpia el carrito, arma el
   // comprobante imprimible y refresca el catálogo. El número de factura y el
   // timbrado vienen del back; acá no se persiste nada en el navegador.
-  const finalizarVenta = useCallback(async ({ numFactura, timbradoInfo }) => {
+  const finalizarVenta = useCallback(async ({ numFactura, timbradoInfo, fechaVenta }) => {
     const snap = carrito.map((l) => ({ ...l }));
     const cliSnap = cliente;
     setCarrito([]); setMontoPagado(""); setCliente(null); setEditandoCantidad(null);
     await cargarProductos();
     const datosTicket = {
       idComprobante: `${Date.now()}-${numFactura}`,
-      fecha: hoyISO(),
+      // fechaVenta viene del back (fechaCreacion, con hora); fallback: hoy local
+      fecha: fechaVenta || hoyISO(),
       numero: numFactura,
       cliente: cliSnap,
       lineas: snap,
@@ -374,6 +390,15 @@ export default function RegistroVenta() {
       formaPago,
       formaPagoLabel: labelFormaPago(formaPago),
       timbrado: timbradoInfo ?? null,
+      ...(empresaConfig || {}),
+      empresaNombreComercial: empresaConfig?.nombreComercial || empresaConfig?.razonSocial,
+      empresaRazonSocial: empresaConfig?.razonSocial,
+      empresaRuc: empresaConfig?.ruc,
+      empresaDireccion: empresaConfig?.direccion,
+      empresaTelefono: empresaConfig?.telefono,
+      empresaCiudad: empresaConfig?.ciudad,
+      empresaEmail: empresaConfig?.email,
+      empresaPieTicket: empresaConfig?.pieTicket,
     };
     setDatosImpresion(datosTicket);
     try {
@@ -382,7 +407,7 @@ export default function RegistroVenta() {
       console.warn("[VENTA] No se pudo imprimir directamente:", e);
     }
     focusSearch();
-  }, [carrito, cliente, totalConIva, montoNum, cambio, formaPago, cargarProductos, focusSearch]);
+  }, [carrito, cliente, totalConIva, montoNum, cambio, formaPago, cargarProductos, focusSearch, empresaConfig]);
 
   const handleConfirmar = useCallback(async () => {
     if (!puedeConfirmar) return;
@@ -398,9 +423,24 @@ export default function RegistroVenta() {
     try {
       const data = await registrarVentaFactura(payload);
       // El back asigna el número de factura y el timbrado de venta vigente.
+      // La vigencia (inicio/fin) no viene en la respuesta de la venta y se
+      // consulta aparte: si falla, el ticket muestra solo el número.
       const numFactura = data?.numeroFactura ?? data?.numero_factura;
-      const timbradoInfo = data?.numeroTimbrado ? { numeroTimbrado: data.numeroTimbrado } : null;
-      await finalizarVenta({ numFactura, timbradoInfo });
+      let timbradoInfo = data?.numeroTimbrado ? { numeroTimbrado: data.numeroTimbrado } : null;
+      try {
+        const vig = await getTimbradoVentaVigente(data?.fechaEmision || hoyISO());
+        const t = vig?.data ?? vig;
+        if (t?.numeroTimbrado) {
+          timbradoInfo = {
+            numeroTimbrado: t.numeroTimbrado,
+            fechaInicio: t.fechaInicio ?? null,
+            fechaVencimiento: t.fechaVencimiento ?? null,
+          };
+        }
+      } catch { /* sin vigencia disponible */ }
+      // fechaCreacion del back trae fecha + hora (LocalDateTime del servidor)
+      const fechaVenta = data?.fechaCreacion ?? data?.fechaEmision ?? null;
+      await finalizarVenta({ numFactura, timbradoInfo, fechaVenta });
     } catch (err) {
       // Sin fallback local: se muestra el error tal cual lo responde el back
       // (p. ej. 409 TIMBRADO_VENTA_NO_VIGENTE si no hay timbrado de venta).

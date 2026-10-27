@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Printer, X } from "lucide-react";
-import { formatMoney, labelCliente, docCliente, esProductoPesable } from "./utils";
+import { formatMoney, labelCliente, esProductoPesable } from "./utils";
 
 export default function TicketVenta({ datos, onCerrar }) {
   const [status, setStatus] = useState("printing");
@@ -34,36 +34,48 @@ export default function TicketVenta({ datos, onCerrar }) {
 
   const fmtFecha = (valor) => {
     if (!valor) return "—";
-    try {
-      const d = new Date(String(valor) + "T00:00:00");
-      if (Number.isNaN(d.getTime())) return String(valor);
-      return d.toLocaleDateString("es-PY", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } catch {
-      return String(valor);
-    }
+    // Fechas sin hora (LocalDate del back) se parsean como medianoche LOCAL:
+    // si se usan como UTC, en zonas UTC-3 la pantalla retrocede un día.
+    // Sin hora se muestra solo la fecha.
+    const s = String(valor);
+    const esSoloFecha = /^\d{4}-\d{2}-\d{2}$/.test(s);
+    const d = esSoloFecha ? new Date(s + "T00:00:00") : new Date(s);
+    if (Number.isNaN(d.getTime())) return s;
+    const opciones = esSoloFecha
+      ? { day: "2-digit", month: "2-digit", year: "numeric" }
+      : {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        };
+    return d.toLocaleDateString("es-PY", opciones);
   };
 
   const getNombre = (l) => l.nombre || l.nombreProducto || `Producto #${l.productoId}`;
   const getCantidad = (l) => Number(l.cantidad) || 0;
   const getPU = (l) => Number(l.precioUnitario) || 0;
+  const getCodigo = (l) => l.codigoBarras || l.codigo || l.codigoBarra || "—";
   const isPesable = (l) => esProductoPesable(l);
-  const comercio = "Despensa Sandra y Carlos";
+  // Monto compacto para la tabla de productos: Gs necesitan 2 decimales salvo pesables.
+  const montoCorto = (v) => {
+    const num = Number(v) || 0;
+    const esEntero = Math.abs(num % 1) < 0.005;
+    return num.toLocaleString("es-PY", { minimumFractionDigits: esEntero ? 0 : 2, maximumFractionDigits: 2 });
+  };
+  const comercio = datos?.empresaNombreComercial || datos?.nombreComercial || "Despensa Sandra y Carlos";
 
   const isPrinting = status === "printing";
   const isCompleted = status === "completed";
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-      <div className="relative flex max-h-[90vh] w-full max-w-[380px] flex-col items-center overflow-y-auto">
+    <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/80 p-4 backdrop-blur-sm">
+      <div className="flex min-h-full items-center justify-center py-4">
+        <div className="relative flex max-h-[90vh] w-full max-w-[380px] flex-col items-center overflow-y-auto">
 
-        <div className="relative flex w-full flex-col items-center">
-          <div className="relative z-20 w-full rounded-2xl border border-[#1F1F1F] bg-gradient-to-b from-[#141414] via-[#0E0E0E] to-[#0B0B0B] p-3.5 shadow-[0_12px_28px_rgba(0,0,0,0.7)]">
+        <div className="relative flex min-h-0 w-full flex-col items-center">
+          <div className="relative z-20 w-full shrink-0 rounded-2xl border border-[#1F1F1F] bg-gradient-to-b from-[#141414] via-[#0E0E0E] to-[#0B0B0B] p-3.5 shadow-[0_12px_28px_rgba(0,0,0,0.7)]">
             <div className="absolute inset-x-3 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
             <div className="mb-2 flex items-center justify-between border-b border-[#1F1F1F] pb-2">
               <div className="flex items-center gap-2">
@@ -89,7 +101,7 @@ export default function TicketVenta({ datos, onCerrar }) {
             </div>
           </div>
 
-          <div className="relative -mt-1.5 z-10 flex w-full justify-center overflow-hidden pb-4 pt-1">
+          <div className="relative -mt-1.5 z-10 flex w-full shrink-0 justify-center pb-4 pt-1">
             <div
               key={printKey}
               className="relative w-[92%] rounded-b-md border border-[#E2E2E0] bg-[#F9F9F8] px-5 pb-6 pt-5 font-mono text-[#111111] shadow-[0_15px_35px_rgba(0,0,0,0.5)] transition-transform duration-[2400ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
@@ -104,138 +116,108 @@ export default function TicketVenta({ datos, onCerrar }) {
               <div className="absolute -left-2 top-28 h-3.5 w-3.5 rounded-full bg-[#050505]" />
               <div className="absolute -right-2 top-28 h-3.5 w-3.5 rounded-full bg-[#050505]" />
 
-              <div className="border-b border-dashed border-current/25 pb-3 text-center">
-                <p className="text-xs font-bold uppercase tracking-wider">{comercio}</p>
-                <p className="mt-0.5 text-[9px] opacity-60">COMPROBANTE DE VENTA</p>
+              <div className="border-b border-dashed border-current/25 pb-3">
+                <p className="text-center text-xs font-bold uppercase tracking-wider">{comercio}</p>
+                <div className="mt-1.5 space-y-0.5 text-center text-[9px] opacity-70">
+                  {(datos?.empresaRuc || datos?.ruc || datos?.empresaTelefono || datos?.telefono) && (() => {
+                    const ruc = datos?.empresaRuc || datos?.ruc;
+                    const tel = datos?.empresaTelefono || datos?.telefono;
+                    return (
+                      <p>
+                        {ruc && `RUC: ${ruc}`}
+                        {ruc && tel && " "}
+                        {tel && `Tel: ${tel}`}
+                      </p>
+                    );
+                  })()}
+                  {(datos?.empresaDireccion || datos?.direccion) && <p>{datos?.empresaDireccion || datos?.direccion}</p>}
+                  {(timbrado?.numeroTimbrado || timbrado?.fechaInicio || timbrado?.fechaVencimiento) && (
+                    <p className="font-semibold">TIMBRADO: {timbrado?.numeroTimbrado || "—"}</p>
+                  )}
+                  {(timbrado?.fechaInicio || timbrado?.fechaVencimiento) && (
+                    <p>VIGENCIA: {fmtFecha(timbrado?.fechaInicio) || "—"} AL {fmtFecha(timbrado?.fechaVencimiento) || "—"}</p>
+                  )}
+                  {formaPagoLabel && <p>FORMA PAGO: {String(formaPagoLabel).toUpperCase()}</p>}
+                  <p>FACTURA CONTADO: {numero || "—"}</p>
+                  <p>FECHA Y HORA VENTA: {fmtFecha(fecha)}</p>
+                </div>
               </div>
 
-              <div className="space-y-1 border-b border-dashed border-current/25 py-2.5 text-[10px]">
-                <div className="flex justify-between">
-                  <span className="opacity-60">TICKET Nº:</span>
-                  <span className="font-semibold">{numero || "—"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="opacity-60">FECHA:</span>
-                  <span>{fmtFecha(fecha)}</span>
-                </div>
-                {timbrado?.numeroTimbrado && (
-                  <div className="flex justify-between">
-                    <span className="opacity-60">TIMBRADO:</span>
-                    <span>{timbrado.numeroTimbrado}</span>
-                  </div>
-                )}
-                {formaPagoLabel && (
-                  <div className="flex justify-between">
-                    <span className="opacity-60">FORMA PAGO:</span>
-                    <span>{formaPagoLabel}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="opacity-60">CLIENTE:</span>
-                  <span className="max-w-[60%] truncate text-right">{labelCliente(cliente)}</span>
-                </div>
-                {docCliente(cliente) && (
-                  <div className="flex justify-between">
-                    <span className="opacity-60">DOC:</span>
-                    <span>{docCliente(cliente)}</span>
-                  </div>
-                )}
+              <div className="space-y-0.5 border-b border-dashed border-current/25 py-2 text-[10px]">
+                {(() => {
+                  const doc = cliente ? String(cliente.numeroDocumento ?? cliente.documentNumber ?? cliente.document_number ?? cliente.ruc ?? "").trim() : "";
+                  return (
+                    <>
+                      {doc && <p>CI / RUC: {doc}</p>}
+                      <p className="truncate">CLIENTE: {(cliente && labelCliente(cliente)) || "Sin Nombre"}</p>
+                    </>
+                  );
+                })()}
               </div>
 
               <div className="space-y-2 border-b border-dashed border-current/25 py-3">
-                <div className="flex justify-between text-[9px] font-bold uppercase opacity-60">
-                  <span>ITEM</span>
-                  <span>IMPORTE</span>
-                </div>
-                {lineas.map((l, idx) => {
-                  const cant = getCantidad(l);
-                  const pu = getPU(l);
-                  const sub = cant * pu;
-                  return (
-                    <div key={l.productoId ?? idx} className="space-y-0.5">
-                      <div className="flex items-baseline justify-between gap-2 text-[10px]">
-                        <span className="truncate font-medium">
-                          {cant > 1 ? `${cant.toLocaleString("es-PY", { maximumFractionDigits: 3 })}x ` : ""}
-                          {getNombre(l)}
-                          {isPesable(l) && " (KG)"}
-                        </span>
-                        <span className="shrink-0 font-semibold">{formatMoney(sub)}</span>
-                      </div>
-                      <div className="flex justify-between text-[9px] opacity-60">
-                        <span>P.U: {formatMoney(pu)} {isPesable(l) ? "/kg" : "/u."}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-                {lineas.length === 0 && <p className="text-center text-[10px] opacity-50">Sin productos</p>}
+                <table className="w-full text-[9px]">
+                  <thead>
+                    <tr className="uppercase opacity-60">
+                      <th className="w-[46px] text-left font-bold">Cod.</th>
+                      <th className="text-left font-bold">Descrip.</th>
+                      <th className="w-[26px] text-right font-bold">Cant.</th>
+                      <th className="w-[38px] text-left font-bold">Prec.</th>
+                      <th className="w-[26px] text-right font-bold">IVA</th>
+                      <th className="w-[50px] text-left font-bold">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lineas.map((l, idx) => {
+                      const cant = getCantidad(l);
+                      const pu = getPU(l);
+                      const sub = cant * pu;
+                      const tasa = Number(l.iva ?? l.tasaIva ?? 10);
+                      const ivaTxt = tasa === 0 ? "E" : `${tasa}%`;
+                      return (
+                        <tr key={l.productoId ?? idx}>
+                          <td className="pr-1 align-top">
+                            <span className="block truncate" title={String(getCodigo(l))}>{getCodigo(l)}</span>
+                          </td>
+                          <td className="align-top">
+                            <span className="block truncate" title={getNombre(l)}>{getNombre(l)}{isPesable(l) && " (KG)"}</span>
+                          </td>
+                          <td className="text-right align-top">{cant.toLocaleString("es-PY", { maximumFractionDigits: 3 })}</td>
+                          <td className="pl-1 text-left align-top">{montoCorto(pu)}</td>
+                          <td className="text-right align-top">{ivaTxt}</td>
+                          <td className="pl-1 text-left align-top font-semibold">{montoCorto(sub)}</td>
+                        </tr>
+                      );
+                    })}
+                    {lineas.length === 0 && (
+                      <tr><td colSpan={6} className="text-center opacity-50">Sin productos</td></tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
 
               <div className="space-y-1 border-b border-dashed border-current/25 py-2.5 text-[10px]">
                 <div className="flex justify-between items-baseline border-t border-current/15 pt-1 text-xs font-bold">
-                  <span>TOTAL:</span>
+                  <span>TOTAL A PAGAR:</span>
                   <span className="text-sm">{formatMoney(total)}</span>
                 </div>
                 {montoPagado != null && (
                   <div className="flex justify-between opacity-70">
-                    <span>RECIBIDO:</span>
+                    <span>{formaPagoLabel ? `PAGO ${String(formaPagoLabel).toUpperCase()}:` : "RECIBIDO:"}</span>
                     <span>{formatMoney(montoPagado)}</span>
                   </div>
                 )}
-                {cambio != null && cambio > 0 && (
+                {montoPagado != null && (
                   <div className="flex justify-between opacity-70">
                     <span>VUELTO:</span>
-                    <span>{formatMoney(cambio)}</span>
+                    <span>{formatMoney(cambio || 0)}</span>
                   </div>
                 )}
               </div>
 
-              <div className="flex flex-col items-center pb-1 pt-3">
-                <div className="h-7 w-full max-w-[200px] opacity-80">
-                  <svg className="h-full w-full" preserveAspectRatio="none" viewBox="0 0 160 40" fill="currentColor">
-                    <rect x="0" y="0" width="3" height="40" />
-                    <rect x="5" y="0" width="1.5" height="40" />
-                    <rect x="9" y="0" width="4" height="40" />
-                    <rect x="15" y="0" width="2" height="40" />
-                    <rect x="19" y="0" width="1" height="40" />
-                    <rect x="22" y="0" width="3" height="40" />
-                    <rect x="27" y="0" width="1.5" height="40" />
-                    <rect x="31" y="0" width="5" height="40" />
-                    <rect x="38" y="0" width="2" height="40" />
-                    <rect x="42" y="0" width="1" height="40" />
-                    <rect x="45" y="0" width="4" height="40" />
-                    <rect x="51" y="0" width="2" height="40" />
-                    <rect x="55" y="0" width="1.5" height="40" />
-                    <rect x="58" y="0" width="3" height="40" />
-                    <rect x="63" y="0" width="5" height="40" />
-                    <rect x="70" y="0" width="1.5" height="40" />
-                    <rect x="73" y="0" width="3" height="40" />
-                    <rect x="78" y="0" width="2" height="40" />
-                    <rect x="82" y="0" width="4" height="40" />
-                    <rect x="88" y="0" width="1.5" height="40" />
-                    <rect x="92" y="0" width="3" height="40" />
-                    <rect x="97" y="0" width="1" height="40" />
-                    <rect x="100" y="0" width="4" height="40" />
-                    <rect x="106" y="0" width="2" height="40" />
-                    <rect x="110" y="0" width="3" height="40" />
-                    <rect x="115" y="0" width="1.5" height="40" />
-                    <rect x="118" y="0" width="5" height="40" />
-                    <rect x="125" y="0" width="2" height="40" />
-                    <rect x="129" y="0" width="1" height="40" />
-                    <rect x="132" y="0" width="4" height="40" />
-                    <rect x="138" y="0" width="2" height="40" />
-                    <rect x="142" y="0" width="1.5" height="40" />
-                    <rect x="145" y="0" width="3" height="40" />
-                    <rect x="150" y="0" width="2" height="40" />
-                    <rect x="154" y="0" width="4" height="40" />
-                    <rect x="159" y="0" width="1" height="40" />
-                  </svg>
-                </div>
-                <span className="mt-1 font-mono text-[8px] tracking-widest opacity-60">*{numero ? String(numero).replace(/\D/g, "") : "000000"}*</span>
-              </div>
-
-              <div className="pt-2 text-center text-[9px] opacity-70">
-                <p className="font-medium">¡Gracias por su compra!</p>
-                <p className="mt-0.5 text-[8px] opacity-50">Vuelva pronto</p>
+              <div className="pb-1 pt-3 text-center">
+                <p className="font-medium whitespace-pre-line">{datos?.empresaPieTicket || datos?.pieTicket || "¡GRACIAS POR SU COMPRA!"}</p>
+                {!datos?.empresaPieTicket && !datos?.pieTicket && <p className="mt-0.5 text-[8px] opacity-50">Vuelva pronto</p>}
               </div>
 
               <div className="absolute -bottom-1.5 inset-x-0 h-1.5 overflow-hidden flex translate-y-full">
@@ -246,6 +228,7 @@ export default function TicketVenta({ datos, onCerrar }) {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

@@ -35,6 +35,7 @@ import ConfiguracionHub from './pages/configuracion/ConfiguracionHub'
 import CategoriasABM from './pages/configuracion/CategoriasABM'
 import PaisesCiudadesABM from './pages/configuracion/PaisesCiudadesABM'
 import ComprobantesConfig from './pages/configuracion/ComprobantesConfig'
+import EmpresaConfig from './pages/configuracion/EmpresaConfig'
 
 export default function App() {
   return (
@@ -82,6 +83,7 @@ export default function App() {
             <Route path="categorias" element={<CategoriasABM />} />
             <Route path="paises" element={<PaisesCiudadesABM />} />
             <Route path="comprobantes" element={<ComprobantesConfig />} />
+            <Route path="empresa" element={<EmpresaConfig />} />
           </Route>
         </Route>
       </Routes>

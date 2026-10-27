@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Tags, Globe, FileText } from "lucide-react";
+import { Tags, Globe, FileText, Building2 } from "lucide-react";
 import { hubCardClass as cardClass, hubIconClass } from "../../components/ui/hubStyles";
 
 const MODULOS = [
@@ -20,6 +20,12 @@ const MODULOS = [
     label: "Comprobantes (DNIT)",
     descripcion: "Timbrado, vigencia, establecimiento y rango de numeración de comprobantes.",
     icon: FileText,
+  },
+  {
+    to: "/configuracion/empresa",
+    label: "Datos de la empresa",
+    descripcion: "Razón social, RUC y datos que aparecen en el ticket de venta.",
+    icon: Building2,
   },
 ];
 
