@@ -20,6 +20,7 @@ const VACIO = {
   razonSocial: "",
   nombreComercial: "",
   ruc: "",
+  rucDv: "",
   direccion: "",
   telefono: "",
   ciudad: "",
@@ -34,9 +35,14 @@ function fromResponse(r) {
   return {
     razonSocial: r.razonSocial ?? "",
     nombreComercial: r.nombreComercial ?? "",
-    ruc: r.ruc ?? "",
+    ruc: normalizarRucBase(r.ruc ?? ""),
+    rucDv: (() => {
+      const s = String(r.ruc ?? "").trim();
+      const idx = s.lastIndexOf("-");
+      return idx !== -1 ? s.slice(idx + 1).replace(/\D/g, "").slice(0, 1) : "";
+    })(),
     direccion: r.direccion ?? "",
-    telefono: r.telefono ?? "",
+    telefono: normalizarTelefono(r.telefono),
     ciudad: r.ciudad ?? "",
     email: r.email ?? "",
     sitioWeb: r.sitioWeb ?? "",
@@ -45,17 +51,46 @@ function fromResponse(r) {
   };
 }
 
+// RUC estilo persona física / Proveedores: base de 6-8 dígitos + DV separado.
+function normalizarRucBase(raw) {
+  return String(raw ?? "").replace(/\D/g, "").slice(0, 8);
+}
+
+// Teléfono estilo Proveedores: prefijo fijo "021" + 6 dígitos.
+// form.telefono siempre guarda el valor COMPLETO ("021XXXXXX"); el input
+// muestra solo el resto (los 6 dígitos después del chip 021).
+function normalizarTelefono(v) {
+  const s = String(v ?? "").replace(/\s/g, "");
+  return /^021\d{6}$/.test(s) ? s : "";
+}
+
 function validar(form) {
   const e = {};
   const email = String(form.email ?? "").trim();
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    e.email = "Email no válido.";
+    e.email = "Email inválido";
+  }
+  const telefono = String(form.telefono ?? "").trim();
+  // Igual que en Proveedores: 021 + exactamente 6 dígitos.
+  if (telefono && !/^021\d{6}$/.test(telefono)) {
+    e.telefono = "Debés ingresar los 6 números del teléfono (formato 021 XXXXXX).";
+  }
+  const base = String(form.ruc ?? "").trim();
+  const dv = String(form.rucDv ?? "").trim();
+  // Ambos campos son uno solo para el back: ruc = "base-DV".
+  const rucCompleto = base && dv ? `${base}-${dv}` : "";
+  if (base || dv) {
+    if (base && !/^\d{6,8}$/.test(base)) {
+      e.ruc = "El RUC debe tener de 6 a 8 dígitos.";
+    } else if (!dv) {
+      e.rucDv = "El dígito verificador es obligatorio.";
+    } else if (!/^\d{6,8}-\d$/.test(rucCompleto)) {
+      e.ruc = "El RUC debe tener de 6 a 8 dígitos, guión y 1 dígito verificador.";
+    }
   }
   if (String(form.razonSocial ?? "").trim().length > 150) e.razonSocial = "Máximo 150 caracteres.";
   if (String(form.nombreComercial ?? "").trim().length > 150) e.nombreComercial = "Máximo 150 caracteres.";
-  if (String(form.ruc ?? "").trim().length > 20) e.ruc = "Máximo 20 caracteres.";
   if (String(form.direccion ?? "").trim().length > 200) e.direccion = "Máximo 200 caracteres.";
-  if (String(form.telefono ?? "").trim().length > 30) e.telefono = "Máximo 30 caracteres.";
   if (String(form.ciudad ?? "").trim().length > 80) e.ciudad = "Máximo 80 caracteres.";
   if (email.length > 100) e.email = "Máximo 100 caracteres.";
   if (String(form.sitioWeb ?? "").trim().length > 100) e.sitioWeb = "Máximo 100 caracteres.";
@@ -136,7 +171,8 @@ export default function EmpresaConfig() {
       const payload = {
         razonSocial: String(form.razonSocial).trim() || null,
         nombreComercial: String(form.nombreComercial).trim() || null,
-        ruc: String(form.ruc).trim() || null,
+        // Para el back el RUC es un único campo: "base-DV"
+        ruc: form.ruc && form.rucDv ? `${String(form.ruc).trim()}-${String(form.rucDv).trim()}` : null,
         direccion: String(form.direccion).trim() || null,
         telefono: String(form.telefono).trim() || null,
         ciudad: String(form.ciudad).trim() || null,
@@ -235,27 +271,57 @@ export default function EmpresaConfig() {
                 placeholder="Nombre de fantasía"
               />
             </Campo>
-            <Campo id="ruc" label="RUC" error={errores.ruc}>
-              <input
-                id="ruc"
-                className={INPUT}
-                value={form.ruc}
-                onChange={(e) => set("ruc", e.target.value)}
-                maxLength={20}
-                disabled={guardando}
-                placeholder="80000000-0"
-              />
+            <Campo id="ruc" label="RUC" error={errores.ruc || errores.rucDv}>
+              <div className="flex items-center gap-2">
+                <input
+                  id="ruc"
+                  className={INPUT}
+                  inputMode="numeric"
+                  value={form.ruc}
+                  onChange={(e) => set("ruc", normalizarRucBase(e.target.value))}
+                  maxLength={8}
+                  disabled={guardando}
+                  placeholder="1234567"
+                  aria-label="Número de RUC (sin dígito verificador)"
+                />
+                <span className="text-white/40 font-mono">-</span>
+                <input
+                  id="ruc-dv"
+                  aria-label="Dígito verificador del RUC"
+                  className="h-11 w-12 shrink-0 rounded-none border border-white/10 bg-white/[0.03] text-center px-2 text-sm text-white outline-none transition-colors focus:border-[var(--accent)]"
+                  inputMode="numeric"
+                  value={form.rucDv}
+                  onChange={(e) => set("rucDv", e.target.value.replace(/\D/g, "").slice(0, 1))}
+                  maxLength={1}
+                  disabled={guardando}
+                  placeholder="0"
+                />
+              </div>
             </Campo>
             <Campo id="telefono" label="Teléfono" error={errores.telefono}>
-              <input
-                id="telefono"
-                className={INPUT}
-                value={form.telefono}
-                onChange={(e) => set("telefono", e.target.value)}
-                maxLength={30}
-                disabled={guardando}
-                placeholder="021 XXX XXX"
-              />
+              <div className="flex items-center gap-2">
+                <span
+                  className="flex h-11 shrink-0 select-none items-center rounded-none border border-white/10 bg-white/[0.06] px-2.5 text-sm text-white"
+                  aria-hidden
+                >
+                  021
+                </span>
+                <input
+                  id="telefono"
+                  className={INPUT}
+                  type="tel"
+                  inputMode="numeric"
+                  value={(() => (String(form.telefono ?? "").startsWith("021") ? String(form.telefono).slice(3) : String(form.telefono ?? "")))()}
+                  onChange={(e) => {
+                    const solo = e.target.value.replace(/\D/g, "").slice(0, 6);
+                    set("telefono", solo ? `021${solo}` : "");
+                  }}
+                  maxLength={6}
+                  disabled={guardando}
+                  placeholder="123456"
+                  aria-label="Teléfono (6 dígitos después de 021)"
+                />
+              </div>
             </Campo>
             <Campo id="ciudad" label="Ciudad" error={errores.ciudad}>
               <input

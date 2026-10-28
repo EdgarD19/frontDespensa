@@ -30,7 +30,16 @@ export default function TicketVenta({ datos, onCerrar }) {
     };
   }, [status]);
 
-  // handleReplay disponible si se requiere en el futuro
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === "Enter" || e.key === "Escape") {
+        e.preventDefault();
+        if (onCerrar) onCerrar();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onCerrar]);
 
   const fmtFecha = (valor) => {
     if (!valor) return "—";

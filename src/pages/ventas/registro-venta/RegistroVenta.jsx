@@ -82,6 +82,7 @@ export default function RegistroVenta() {
   const [datosImpresion, setDatosImpresion] = useState(null);
   const [clienteQuery, setClienteQuery] = useState("");
   const [clientesOpciones, setClientesOpciones] = useState([]);
+  const [clienteInactivo, setClienteInactivo] = useState(null);
   const [mostrarClientes, setMostrarClientes] = useState(false);
   const [cargandoClientes, setCargandoClientes] = useState(false);
   const [empresaConfig, setEmpresaConfig] = useState(null);
@@ -130,6 +131,11 @@ export default function RegistroVenta() {
   }, []);
 
   useEffect(() => { cargarProductos(); }, [cargarProductos]);
+  // autoFocus del input no alcanza: mientras `loading` está true el campo está
+  // disabled y el foco se pierde al habilitarse. Se enfoca al terminar la carga.
+  useEffect(() => {
+    if (!loading) focusSearch();
+  }, [loading, focusSearch]);
   // Impresión directa por impresora térmica/mock; no usar window.print() del navegador.
   useEffect(() => {
     if (editandoCantidad !== null) {
@@ -287,6 +293,13 @@ export default function RegistroVenta() {
   }, [focusSearch]);
 
   const seleccionarCliente = useCallback((c) => {
+    // Clientes inactivos no pueden asignarse a la venta: se avisa con un popup.
+    if (c?.activo === false) {
+      setClienteInactivo({ nombre: labelCliente(c) });
+      setClienteQuery("");
+      setMostrarClientes(false);
+      return;
+    }
     setCliente(c);
     setClienteQuery("");
     setMostrarClientes(false);
@@ -598,11 +611,15 @@ export default function RegistroVenta() {
                       )}
                       {!cargandoClientes && clientesOpciones.map((c) => (
                         <button key={c.id ?? c.idCliente} type="button" onClick={() => seleccionarCliente(c)}
-                          className="flex w-full items-center justify-between gap-3 border-b border-white/5 px-4 py-2.5 text-left transition-colors last:border-b-0 hover:bg-white/[0.05]">
+                          title={c?.activo === false ? "Cliente inactivo: no se puede asignar a la venta" : undefined}
+                          className={`flex w-full items-center justify-between gap-3 border-b border-white/5 px-4 py-2.5 text-left transition-colors last:border-b-0 hover:bg-white/[0.05] ${c?.activo === false ? "opacity-50" : ""}`}>
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm text-white">{labelCliente(c)}</span>
                             {docCliente(c) && <span className="block truncate text-xs text-white/50">{docCliente(c)}</span>}
                           </span>
+                          {c?.activo === false && (
+                            <span className="shrink-0 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] text-red-400">Inactivo</span>
+                          )}
                         </button>
                       ))}
                     </div>
@@ -690,7 +707,7 @@ export default function RegistroVenta() {
                               </div>
                             ) : (
                               <button type="button" onClick={() => setEditandoCantidad(line.productoId)} title="Editar cantidad"
-                                className="rounded-none px-3 py-1.5 text-base text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+                                className="whitespace-nowrap rounded-none px-3 py-1.5 text-base text-white/80 transition-colors hover:bg-white/10 hover:text-white"
                                 style={MONO}>
                                 {line.cantidad} {pesable ? "kg" : "u."}
                               </button>
@@ -842,6 +859,34 @@ export default function RegistroVenta() {
             focusSearch();
           }}
         />
+      )}
+
+      {clienteInactivo && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          onClick={() => setClienteInactivo(null)}>
+          <div role="dialog" aria-modal="true" aria-label="Cliente inactivo"
+            className="w-full max-w-sm rounded-none border border-amber-400/30 bg-[#0c0c0e] p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-none border border-amber-400/30 bg-amber-400/10 text-amber-400">
+                <AlertTriangle className="h-5 w-5" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1 space-y-1">
+                <h2 className="text-sm font-semibold text-amber-400">Cliente inactivo</h2>
+                <p className="text-sm text-white/70">
+                  <span className="font-medium text-white">{clienteInactivo.nombre}</span> está inactivo y no puede
+                  asignarse a la venta. Reactivá el cliente desde <span className="text-white">Ventas → Clientes</span>.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button type="button" autoFocus onClick={() => setClienteInactivo(null)}
+                className="rounded-none bg-white/[0.08] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/[0.15]">
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
