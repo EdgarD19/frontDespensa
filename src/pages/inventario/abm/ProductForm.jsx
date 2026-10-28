@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import CantidadInput from "../../../components/ui/CantidadInput";
 
 const inputClass =
   "w-full rounded-none border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-[var(--accent)] outline-none transition-colors";
@@ -19,6 +20,7 @@ export default function ProductForm({
   categorias = [],
   subcategorias = [],
   unidades = [],
+  guardando = false,
   loading = false,
 }) {
   const handleChange = (e) => {
@@ -157,8 +159,8 @@ export default function ProductForm({
             </label>
           </div>
 
-          {/* Fila 4: Vende por peso + IVA + Unidad de medida */}
-          <div className="grid grid-cols-3 gap-3">
+          {/* Fila 4: Vende por peso + Stock mínimo + IVA + Unidad de medida */}
+          <div className="grid grid-cols-4 gap-3">
             <div>
               <span className={labelText}>Vende por peso?</span>
               <div className="flex items-center gap-3">
@@ -169,7 +171,7 @@ export default function ProductForm({
                     value="si"
                     checked={formData.productoPesable === "si"}
                     onChange={handleRadioChange}
-                    
+
                     className="accent-[var(--accent)]"
                   />
                   <span className="text-xs text-white/70">Si</span>
@@ -181,13 +183,26 @@ export default function ProductForm({
                     value="no"
                     checked={formData.productoPesable === "no"}
                     onChange={handleRadioChange}
-                    
+
                     className="accent-[var(--accent)]"
                   />
                   <span className="text-xs text-white/70">No</span>
                 </label>
               </div>
             </div>
+
+            <label className={labelClass}>
+              <span className={labelText}>Stock mínimo</span>
+              <CantidadInput
+                unidadMedida={isPeso ? "KG" : "UN"}
+                name="stockMinimo"
+                value={formData.stockMinimo ?? ""}
+                onChange={(v) => setFormData((prev) => ({ ...prev, stockMinimo: v ?? "" }))}
+                permitirCero
+                placeholder="10"
+                ariaLabel="Stock mínimo"
+              />
+            </label>
 
             <div>
               <span className={labelText}>IVA</span>
@@ -229,13 +244,13 @@ export default function ProductForm({
 
           {/* Botones */}
           <div className="flex gap-2 pt-1">
-            <button type="button" onClick={onClose}
-              className="flex-1 rounded-none border border-white/10 bg-white/[0.03] py-1.5 text-sm text-white/70 hover:text-white transition-colors">
+            <button type="button" onClick={onClose} disabled={guardando}
+              className="flex-1 rounded-none border border-white/10 bg-white/[0.03] py-1.5 text-sm text-white/70 hover:text-white transition-colors disabled:cursor-not-allowed disabled:opacity-40">
               Cancelar
             </button>
-            <button type="submit"
-              className="flex-1 rounded-none bg-[var(--accent)] py-1.5 text-sm font-semibold text-black hover:bg-[var(--accent-hover)] disabled:opacity-40 transition-colors">
-              {isEditing ? "Guardar cambios" : "Agregar producto"}
+            <button type="submit" disabled={guardando || loading}
+              className="flex-1 rounded-none bg-[var(--accent)] py-1.5 text-sm font-semibold text-black hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-40 transition-colors">
+              {guardando ? "Guardando…" : (isEditing ? "Guardar cambios" : "Agregar producto")}
             </button>
           </div>
         </form>

@@ -48,6 +48,28 @@ export function eliminarExtrasLocal(id) {
   localStorage.setItem(KEY, JSON.stringify(all));
 }
 
+// "Eliminados": el back hace SOFT DELETE y no distingue eliminado de inactivo,
+// así que los ids dados de baja se recuerdan acá para ocultarlos de la lista.
+const KEY_ELIMINADOS = "despensa_timbrados_venta_eliminados_v1";
+
+export function getEliminadosLocal() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(KEY_ELIMINADOS) || "[]");
+    return Array.isArray(raw) ? raw.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function marcarEliminadoLocal(id) {
+  if (id == null) return;
+  const all = getEliminadosLocal();
+  if (!all.includes(String(id))) {
+    all.push(String(id));
+    localStorage.setItem(KEY_ELIMINADOS, JSON.stringify(all));
+  }
+}
+
 /** Extras locales de un timbrado (con defaults si no hay nada guardado). */
 export function extrasDe(id) {
   return { ...EXTRAS_DEFAULT, ...(getExtrasLocal()[String(id)] || {}) };
@@ -81,13 +103,28 @@ export function proximoNumero(c) {
 
 // Estado de un timbrado: prioriza lo que informa el back (esVigente/estaVencido)
 // y usa el rango local solo si está cargado.
+const fmtDiaEs = (iso) => {
+  const s = String(iso ?? "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(`${s}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return s;
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+};
+
+// Reemplaza las fechas ISO dentro de un texto (mensajes del back) por DD/MM/AAAA.
+export function fechasIsoAEs(texto) {
+  return String(texto ?? "").replace(/\d{4}-\d{2}-\d{2}/g, (m) => fmtDiaEs(m));
+}
+
 export function estadoComprobante(c, hoy) {
-  const dia = hoy || new Date().toISOString().split("T")[0];
+  // "Hoy" en hora LOCAL: con toISOString() (UTC) en UTC-3 el día se corre.
+  const ahora = new Date();
+  const dia = hoy || `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, "0")}-${String(ahora.getDate()).padStart(2, "0")}`;
   if (!c) return { estado: "sin_configuracion", label: "Sin configuración" };
   if (c.estaVencido || (c.fechaVencimiento && dia > c.fechaVencimiento))
-    return { estado: "vencido", label: `Vencido ${c.fechaVencimiento}` };
+    return { estado: "vencido", label: `Vencido el ${fmtDiaEs(c.fechaVencimiento)}` };
   if (c.fechaInicio && dia < c.fechaInicio)
-    return { estado: "sin_iniciar", label: `Vigente desde ${c.fechaInicio}` };
+    return { estado: "sin_iniciar", label: `Vigente desde el ${fmtDiaEs(c.fechaInicio)}` };
   if (c.activo === false)
     return { estado: "inactivo", label: "Inactivo" };
   if (tieneRango(c) && proximoNumero(c) > Math.trunc(Number(c.numeroHasta)))

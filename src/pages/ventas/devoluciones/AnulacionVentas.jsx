@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
-  Plus, X, AlertTriangle, CheckCircle, ArrowLeft,
+  Plus, X, AlertTriangle, CheckCircle, ArrowLeft, FileText,
   Ban, Eye, Search, ShieldAlert,
 } from "lucide-react";
 import {
@@ -137,6 +137,7 @@ export default function AnulacionVentas() {
         </Link>
         <div className="flex-1 space-y-0.5">
           <h1 className="text-2xl font-semibold tracking-tight text-white">Anulación</h1>
+          <p className="text-sm text-white/40">Anulá una factura de venta registrada.</p>
         </div>
         <button
           type="button"
@@ -531,12 +532,15 @@ function NuevaAnulacionModal({ onCerrar, onAnulada }) {
             role="dialog"
             aria-modal="true"
             aria-label="Nueva anulación"
-            className={`${modalShell} max-w-2xl max-h-[90vh]`}
+            className={`${modalShell} max-w-4xl max-h-[90vh]`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
               <div>
-                <h2 className="text-sm font-semibold text-white">Nueva anulación</h2>
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
+                  <Ban className="h-4 w-4 text-white/50" />
+                  Nueva anulación
+                </h2>
                 <p className="mt-0.5 text-xs text-white/50">Buscá la factura de venta a anular.</p>
               </div>
               <button type="button" onClick={onCerrar} aria-label="Cerrar"
@@ -553,12 +557,12 @@ function NuevaAnulacionModal({ onCerrar, onAnulada }) {
 
       {/* Capa 2: confirmación de la anulación */}
       {pasoDetalle && createPortal(
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => setFacturaSel(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setFacturaSel(null)}>
           <div
             role="dialog"
             aria-modal="true"
             aria-label="Confirmar anulación"
-            className={`${modalShell} max-w-2xl max-h-[90vh]`}
+            className={`${modalShell} max-w-4xl max-h-[90vh]`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
@@ -656,114 +660,97 @@ function DetalleAnulacionModal({ anulacion, onCerrar }) {
         role="dialog"
         aria-modal="true"
         aria-label="Detalle de la anulación"
-        className={`${modalShell} max-w-2xl max-h-[90vh]`}
+        className={`${modalShell} max-w-3xl max-h-[90vh]`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Encabezado tipo factura */}
-        <div className="flex items-start justify-between border-b border-white/10 px-5 py-3.5">
-          <div className="flex items-start gap-3">
-            <span className="mt-0.5 inline-flex items-center gap-1.5 whitespace-nowrap rounded-none border border-red-500/40 bg-red-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-red-300">
-              <Ban className="h-3.5 w-3.5" /> Anulada
-            </span>
-            <div>
-              <h2 className="text-sm font-semibold text-white">
-                Factura <span className="whitespace-nowrap tabular-nums">{numeroFactura || "—"}</span>
-              </h2>
-              <p className="mt-0.5 text-xs text-white/50">Anulación #{anulacion.idAnulacion}</p>
-            </div>
-          </div>
+        <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
+          <h2 className="flex flex-wrap items-center gap-2 text-sm font-semibold text-white">
+            <FileText className="h-4 w-4 text-sky-400" /> Factura anulada{" "}
+            <span className="whitespace-nowrap tabular-nums">{numeroFactura || "—"}</span>
+            <span className="text-white/30">·</span>
+            <span className="font-medium text-white/70">{cliente || "Sin Nombre"}</span>
+          </h2>
           <button type="button" onClick={onCerrar} aria-label="Cerrar"
             className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="flex-1 space-y-5 overflow-y-auto p-5">
-          {/* Datos de la factura */}
-          <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
+        <div className="flex-1 space-y-4 overflow-y-auto p-5">
+          {/* Datos de la factura (mismo patrón que VerFacturaModal de compras) */}
+          <div className="grid grid-cols-2 gap-4 rounded-none border border-white/10 bg-white/[0.02] p-4 text-sm lg:grid-cols-4">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.12em] text-white/40">Cliente</p>
-              <p className="text-white/80">{cliente || "Sin Nombre"}</p>
+              <p className="text-xs text-white/40">N° timbrado</p>
+              <p className="whitespace-nowrap tabular-nums text-white">{timbrado || "—"}</p>
             </div>
             <div>
-              <p className="text-[11px] uppercase tracking-[0.12em] text-white/40">N° Timbrado</p>
-              <p className="whitespace-nowrap tabular-nums text-white/80">{timbrado || "—"}</p>
+              <p className="text-xs text-white/40">Fecha de emisión</p>
+              <p className="text-white">{cargandoFactura ? "…" : fmtFechaHora(factura?.fechaEmision || factura?.fechaCreacion)}</p>
             </div>
             <div>
-              <p className="text-[11px] uppercase tracking-[0.12em] text-white/40">Fecha de emisión</p>
-              <p className="text-white/80">{cargandoFactura ? "…" : fmtFechaHora(factura?.fechaEmision || factura?.fechaCreacion)}</p>
+              <p className="text-xs text-white/40">Fecha de anulación</p>
+              <p className="text-white">{fmtFechaHora(anulacion.fechaAnulacion)}</p>
             </div>
             <div>
-              <p className="text-[11px] uppercase tracking-[0.12em] text-white/40">Fecha de anulación</p>
-              <p className="text-white/80">{fmtFechaHora(anulacion.fechaAnulacion)}</p>
-            </div>
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.12em] text-white/40">Total factura</p>
-              <p className="whitespace-nowrap tabular-nums font-semibold text-red-300">{fmtMoneda(totalFactura)}</p>
+              <p className="text-xs text-white/40">Estado</p>
+              <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-none border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-red-300">
+                <Ban className="h-3 w-3" /> Anulada
+              </span>
             </div>
           </div>
 
-          {/* Productos de la factura */}
-          <div>
-            <p className="mb-1.5 text-[11px] uppercase tracking-[0.12em] text-white/40">Productos de la factura</p>
-            <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
-              <div className="max-h-[38vh] overflow-y-auto [color-scheme:dark] [scrollbar-color:#2a2a32_transparent] [scrollbar-width:thin]">
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 z-10 bg-[#0c0c0e]">
-                    <tr className="border-b border-white/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-white/50">
-                      <th className="px-3 py-2.5 font-medium">Producto</th>
-                      <th className="whitespace-nowrap px-3 py-2.5 text-right font-medium">Cant.</th>
-                      <th className="whitespace-nowrap px-3 py-2.5 text-right font-medium">Precio unit.</th>
-                      <th className="whitespace-nowrap px-3 py-2.5 text-right font-medium">Subtotal</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cargandoFactura && (
-                      <tr>
-                        <td colSpan={4} className="px-3 py-6 text-center text-white/40">Cargando productos…</td>
-                      </tr>
-                    )}
-                    {!cargandoFactura && errorFactura && (
-                      <tr>
-                        <td colSpan={4} className="px-3 py-6 text-center text-red-300">{errorFactura}</td>
-                      </tr>
-                    )}
-                    {!cargandoFactura && !errorFactura && detalles.length === 0 && (
-                      <tr>
-                        <td colSpan={4} className="px-3 py-6 text-center text-white/30">La factura no tiene productos.</td>
-                      </tr>
-                    )}
-                    {!cargandoFactura && !errorFactura && detalles.map((d, i) => (
-                      <tr key={d.idDetalle ?? i} className="border-b border-white/10 last:border-b-0">
-                        <td className="px-3 py-2.5 text-white/80">{d.nombreProducto || `Producto #${d.idProducto}`}</td>
-                        <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-white/70">{fmtCantidad(d.cantidad)}</td>
-                        <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-white/70">{fmtMoneda(d.precioUnitario)}</td>
-                        <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-white">
-                          {fmtMoneda(d.subtotal ?? (Number(d.cantidad) || 0) * (Number(d.precioUnitario) || 0))}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+          <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                  <th className="px-4 py-3 font-medium">Producto</th>
+                  <th className="px-4 py-3 text-center font-medium">Cant.</th>
+                  <th className="px-4 py-3 text-right font-medium">P. unitario</th>
+                  <th className="px-4 py-3 text-right font-medium">Subtotal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cargandoFactura && (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-6 text-center text-white/40">Cargando productos…</td>
+                  </tr>
+                )}
+                {!cargandoFactura && errorFactura && (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-6 text-center text-red-300">{errorFactura}</td>
+                  </tr>
+                )}
+                {!cargandoFactura && !errorFactura && detalles.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-6 text-center text-white/30">La factura no tiene productos</td>
+                  </tr>
+                )}
+                {!cargandoFactura && !errorFactura && detalles.map((d, i) => (
+                  <tr key={d.idDetalle ?? i} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
+                    <td className="px-4 py-3 text-white/80">{d.nombreProducto || `Producto #${d.idProducto}`}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-center tabular-nums text-white/70">{fmtCantidad(d.cantidad)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white/70">{fmtMoneda(d.precioUnitario)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white">
+                      {fmtMoneda(d.subtotal ?? (Number(d.cantidad) || 0) * (Number(d.precioUnitario) || 0))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
-          {/* Motivo */}
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.12em] text-white/40">Motivo</p>
-            <p className="mt-1 text-sm text-white/80">{anulacion.motivo || "—"}</p>
+          <div className="flex justify-end border-t border-white/10 pt-3">
+            <p className="text-sm text-white">Total de la factura anulada:{" "}
+              <span className="text-lg font-bold tabular-nums text-red-400">{fmtMoneda(totalFactura)}</span>
+            </p>
           </div>
-        </div>
 
-        <div className="flex justify-end border-t border-white/10 px-5 py-3.5">
-          <button
-            type="button"
-            onClick={onCerrar}
-            className="rounded-none border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/70 transition-colors hover:text-white"
-          >
-            Cerrar
-          </button>
+          <div className="rounded-none border border-white/10 bg-white/[0.02] p-4">
+            <p className="text-xs text-white/40">Motivo de la anulación</p>
+            <p className="mt-1 whitespace-pre-wrap break-words text-sm text-white/80">
+              {anulacion.motivo?.trim() ? anulacion.motivo : "Sin motivo registrado."}
+            </p>
+          </div>
         </div>
       </div>
     </div>,

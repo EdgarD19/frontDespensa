@@ -6,7 +6,8 @@ import {
 } from "lucide-react";
 import {
   EXTRAS_DEFAULT, extrasDe, guardarExtrasLocal, eliminarExtrasLocal,
-  estadoComprobante, numeroCompleto, rangoDisplay, proximoNumero, pad3, tieneRango,
+  estadoComprobante, numeroCompleto, rangoDisplay, proximoNumero, pad3, tieneRango, fechasIsoAEs,
+  getEliminadosLocal, marcarEliminadoLocal,
 } from "../../api/comprobantesApi";
 import {
   getTimbradosVenta, crearTimbradoVenta, actualizarTimbradoVenta,
@@ -77,7 +78,12 @@ function validarFactura(d, ultimoEmitido) {
 
 export default function ComprobantesConfig() {
   const [timbrados, setTimbrados] = useState([]);
+  // Conflicto "solo un timbrado activo": se llena al intentar activar habiendo otro activo.
+  const [conflictoActivo, setConflictoActivo] = useState(null);
+  // Intento de activar un timbrado ya vencido: se avisa con un mensajito.
+  const [timbradoVencido, setTimbradoVencido] = useState(null);
   const [extrasVersion, setExtrasVersion] = useState(0); // fuerza releer localStorage
+  const [eliminadosVersion, setEliminadosVersion] = useState(0); // fuerza releer eliminados
   const [cargando, setCargando] = useState(true);
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState(null);
@@ -113,8 +119,12 @@ export default function ComprobantesConfig() {
   useEffect(() => { cargar(); }, [cargar]);
 
   // Mezcla el timbrado del back con la configuración de factura (localStorage).
+  // El back hace SOFT DELETE (activo=false) y no distingue "eliminado" de
+  // "inactivo": los ids borrados se recuerdan acá (localStorage) para ocultarlos.
   const vivas = useMemo(
-    () => timbrados.map((t) => {
+    () => timbrados
+      .filter((t) => !getEliminadosLocal().includes(String(t.idTimbradoVenta)))
+      .map((t) => {
       const ex = extrasDe(t.idTimbradoVenta);
       const c = {
         ...t,
@@ -127,7 +137,8 @@ export default function ComprobantesConfig() {
       };
       return { ...c, st: estadoComprobante(c) };
     }),
-    [timbrados, extrasVersion]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- getEliminadosLocal es lectura de localStorage
+    [timbrados, extrasVersion, eliminadosVersion]
   );
 
   const timbradoFactura = facturaId != null ? vivas.find((v) => v.id === facturaId) : null;
@@ -178,6 +189,9 @@ export default function ComprobantesConfig() {
     try {
       await eliminarTimbradoVenta(c.id);
       eliminarExtrasLocal(c.id);
+      // Ocultarlo de la lista (el back solo hace soft delete)
+      marcarEliminadoLocal(c.id);
+      setEliminadosVersion((v) => v + 1);
       await cargar({ silencioso: true });
       mostrarAviso(`Timbrado ${c.numeroTimbrado} dado de baja.`);
     } catch (e) {
@@ -188,6 +202,27 @@ export default function ComprobantesConfig() {
   }
 
   async function toggleActivo(c) {
+    // Un timbrado vencido no se puede activar: se avisa con un mensajito.
+    if (!c.activo && (c.estaVencido || c.st?.estado === "vencido")) {
+      setTimbradoVencido({
+        numero: c.numeroTimbrado,
+        vencimiento: c.fechaVencimiento ? formatFechaEs(c.fechaVencimiento) : null,
+      });
+      return;
+    }
+    // Regla de negocio: solo un timbrado puede estar activo. Si se quiere
+    // activar y ya existe otro activo, se avisa con popup y no se envía nada.
+    if (!c.activo) {
+      const otro = vivas.find((x) => x.activo && x.id !== c.id);
+      if (otro) {
+        setConflictoActivo({
+          numeroActual: otro.numeroTimbrado,
+          vencimientoActual: otro.fechaVencimiento ? formatFechaEs(otro.fechaVencimiento) : null,
+          nuevo: c.numeroTimbrado,
+        });
+        return;
+      }
+    }
     setOcupado(true);
     setError(null);
     try {
@@ -225,7 +260,7 @@ export default function ComprobantesConfig() {
 
       {error && (
         <div className={`${CARD} mb-4 flex items-center gap-2 border-red-500/30 bg-red-500/[0.06] p-3 text-sm text-red-400`}>
-          <AlertTriangle className="h-4 w-4" /> {error}
+          <AlertTriangle className="h-4 w-4" /> {fechasIsoAEs(error)}
         </div>
       )}
 
@@ -294,6 +329,68 @@ export default function ComprobantesConfig() {
         />
       )}
 
+      {conflictoActivo && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          onClick={() => setConflictoActivo(null)}>
+          <div role="dialog" aria-modal="true" aria-label="Timbrado activo existente"
+            className="w-full max-w-sm rounded-none border border-amber-400/30 bg-[#0c0c0e] p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-none border border-amber-400/30 bg-amber-400/10 text-amber-400">
+                <AlertTriangle className="h-5 w-5" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1 space-y-1">
+                <h2 className="text-sm font-semibold text-amber-400">Ya existe un timbrado activo</h2>
+                <p className="text-sm text-white/70">
+                  El timbrado <span className="font-medium text-white">{conflictoActivo.numeroActual}</span>
+                  {conflictoActivo.vencimientoActual ? (
+                    <> (vence el <span className="whitespace-nowrap">{conflictoActivo.vencimientoActual}</span>)</>
+                  ) : null}{" "}
+                  está activo. Solo puede haber <span className="font-semibold text-white">uno activo</span>:
+                  desactivalo primero si querés activar{" "}
+                  <span className="font-medium text-white">{conflictoActivo.nuevo}</span>.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button type="button" autoFocus onClick={() => setConflictoActivo(null)}
+                className="rounded-none bg-white/[0.08] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/[0.15]">
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {timbradoVencido && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          onClick={() => setTimbradoVencido(null)}>
+          <div role="dialog" aria-modal="true" aria-label="Timbrado vencido"
+            className="w-full max-w-sm rounded-none border border-red-500/30 bg-[#0c0c0e] p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-none border border-red-500/30 bg-red-500/10 text-red-400">
+                <AlertTriangle className="h-5 w-5" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1 space-y-1">
+                <h2 className="text-sm font-semibold text-red-400">Timbrado vencido</h2>
+                <p className="text-sm text-white/70">
+                  El timbrado <span className="font-medium text-white">{timbradoVencido.numero}</span> venció
+                  {timbradoVencido.vencimiento ? <> el <span className="whitespace-nowrap">{timbradoVencido.vencimiento}</span></> : null} y
+                  ya no puede activarse. Creá uno nuevo con vigencia actual.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button type="button" autoFocus onClick={() => setTimbradoVencido(null)}
+                className="rounded-none bg-white/[0.08] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/[0.15]">
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {timbradoFactura && (
         <FacturaModal
           timbrado={timbradoFactura}
@@ -317,12 +414,15 @@ export default function ComprobantesConfig() {
 
 function formatFechaEs(iso) {
   if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return String(iso);
+  // Fechas sin hora se interpretan al mediodía LOCAL para evitar el corrimiento UTC
+  // (que hacía retroceder un día en zonas UTC-3).
+  const s = String(iso);
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T12:00:00`) : new Date(s);
+  if (Number.isNaN(d.getTime())) return s;
   const dia = String(d.getDate()).padStart(2, "0");
   const mes = String(d.getMonth() + 1).padStart(2, "0");
   const anio = d.getFullYear();
-  return `${dia}-${mes}-${anio}`;
+  return `${dia}/${mes}/${anio}`;
 }
 
 function TarjetaTimbrado({ c, ocupado, onToggle, onEditarTimbrado, onConfigurarFactura, onEliminar }) {
@@ -405,9 +505,9 @@ function ModalShell({ titulo, onCerrar, onSubmit, children, textoOk, deshabilita
   useEscape(onCerrar);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <form onSubmit={onSubmit} className="flex w-full max-w-lg flex-col overflow-hidden rounded-none border border-white/10 bg-[#0c0c0e] shadow-2xl">
+      <form onSubmit={onSubmit} className="flex w-full max-w-2xl flex-col overflow-hidden rounded-none border border-white/10 bg-[#0c0c0e] shadow-2xl">
         <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3">
-          <h2 className="text-base font-semibold text-white">{titulo}</h2>
+          <h2 className="text-sm font-semibold text-white">{titulo}</h2>
           <button type="button" onClick={onCerrar} aria-label="Cerrar"
             className="rounded-none p-1.5 text-white/50 transition-colors hover:bg-white/10 hover:text-white">
             <X className="h-4 w-4" />
@@ -449,7 +549,7 @@ function ErrorServidor({ msg }) {
   if (!msg) return null;
   return (
     <p className="flex items-center gap-1 text-xs text-red-400">
-      <AlertTriangle className="h-3.5 w-3.5" /> {msg}
+      <AlertTriangle className="h-3.5 w-3.5" /> {fechasIsoAEs(msg)}
     </p>
   );
 }

@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
   Plus, X, Save, Search, FileText, AlertTriangle, CheckCircle, ArrowLeft,
-  ArrowLeftRight, Ban, ChevronLeft, PackageCheck, XCircle, FilePlus2, Eye, ListChecks, PackageOpen,
+  ArrowLeftRight, Ban, ChevronLeft, PackageCheck, XCircle, FilePlus2, Eye, ListChecks, PackageOpen, Undo2, ShieldAlert,
 } from "lucide-react";
 import { getFacturasCompra, getFacturaCompraById, getTimbradosProveedor } from "../../../api/facturasCompraApi";
 import {
@@ -573,7 +573,7 @@ export default function OperacionesTipo({ tipo }) {
           <ArrowLeft size={18} />
         </Link>
         <div className="flex-1 space-y-0.5">
-          <h1 className="text-2xl font-semibold tracking-tight text-white">{cfg.plural}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-white">{cfg.label}</h1>
           <p className="text-sm text-white/40">{cfg.subtitulo}</p>
         </div>
         <button
@@ -582,7 +582,7 @@ export default function OperacionesTipo({ tipo }) {
           className="flex items-center gap-2 whitespace-nowrap rounded-none bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-black transition hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#22c55e]/50"
         >
           <Plus className="h-4 w-4" />
-          Registrar {cfg.label.toLowerCase()}
+          {cfg.nuevoLabel}
         </button>
       </div>
 
@@ -628,7 +628,7 @@ export default function OperacionesTipo({ tipo }) {
                 <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
                   <th className={thBase}>Fecha</th>
                   <th className={thBase}>Estado</th>
-                  <th className={thBase}>N° factura</th>
+                  <th className={thBase}>{tipo === "INTERCAMBIO" ? "Factura" : "N° factura"}</th>
                   {tipo === "DEVOLUCION" && <th className={thBase}>Factura original</th>}
                   <th className={thBase}>Proveedor</th>
                   <th className={`${thBase} text-right`}>Total</th>
@@ -2096,7 +2096,12 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
           >
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
               <div>
-                <h2 className="text-sm font-semibold text-white">{cfg.nuevoLabel}</h2>
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
+                  {tipo === "DEVOLUCION" && <Undo2 className="h-4 w-4 text-white/50" />}
+                  {tipo === "INTERCAMBIO" && <ArrowLeftRight className="h-4 w-4 text-white/50" />}
+                  {tipo === "ANULACION" && <Ban className="h-4 w-4 text-white/50" />}
+                  {cfg.nuevoLabel}
+                </h2>
                 <p className="mt-0.5 text-xs text-white/50">Seleccioná la factura de compra.</p>
               </div>
               <button type="button" onClick={onCerrar} aria-label="Cerrar"
@@ -2113,7 +2118,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
 
       {/* Capa 2: detalle de la factura, superpuesto al selector */}
       {verDetalle && createPortal(
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={volverAlSelector}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={volverAlSelector}>
           <div
             role="dialog"
             aria-modal="true"
@@ -2123,7 +2128,12 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
           >
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
               <div>
-                <h2 className="text-sm font-semibold text-white">{tituloDetalle}</h2>
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
+                  {tipo === "DEVOLUCION" && <Undo2 className="h-4 w-4 text-white/50" />}
+                  {tipo === "INTERCAMBIO" && <ArrowLeftRight className="h-4 w-4 text-white/50" />}
+                  {tipo === "ANULACION" && <ShieldAlert className="h-4 w-4 text-red-400" />}
+                  {tituloDetalle}
+                </h2>
                 <p className="mt-0.5 text-xs text-white/50">{subtituloDetalle}</p>
               </div>
               <button type="button" onClick={volverAlSelector} aria-label="Cerrar"

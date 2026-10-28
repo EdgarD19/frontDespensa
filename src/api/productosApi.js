@@ -31,7 +31,7 @@ function toFrontendProduct(backend) {
     idSubcategoria: "",
     subcategoria: "",
 
-    productoPesable: "no",
+    productoPesable: /kilo/i.test(String(backend.nombreUnidadMedida ?? "")) ? "si" : "no",
 
     idMarca: "",
     marca: "",
@@ -129,6 +129,37 @@ export async function getProductos(params = {}) {
           sortBy: params.sortBy || params.sortField || undefined,
           sortDirection: params.sortDir || "asc",
         },
+  });
+
+  const pageData = data?.data ?? data ?? {};
+  const content = Array.isArray(pageData.content)
+    ? pageData.content
+    : Array.isArray(pageData)
+    ? pageData
+    : [];
+
+  return {
+    content: content.map(toFrontendProduct).filter(Boolean),
+    totalElements: pageData.totalElements ?? content.length,
+    totalPages: pageData.totalPages ?? 0,
+    page: pageData.page ?? 0,
+    size: pageData.size ?? content.length,
+  };
+}
+
+/**
+ * GET /api/productos/stock-bajo
+ * Productos cuyo stock está por debajo del mínimo (default 10).
+ */
+export async function getProductosStockBajo(params = {}) {
+  const { data } = await api.get("/api/productos/stock-bajo", {
+    params: {
+      minimo: params.minimo ?? 10,
+      page: params.page ?? 0,
+      size: params.pageSize ?? 50,
+      sortBy: params.sortBy || "stockActual",
+      sortDirection: params.sortDir || "asc",
+    },
   });
 
   const pageData = data?.data ?? data ?? {};

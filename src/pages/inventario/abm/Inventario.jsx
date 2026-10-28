@@ -2,7 +2,7 @@
 //   useState   → guarda valores que pueden cambiar (estado local)
 //   useEffect  → ejecuta código cuando algo cambia (ej: al montar el componente)
 //   useCallback → memoriza una función para que no se recree en cada render
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
@@ -16,6 +16,7 @@ import {
   updateProducto,
   apiErrorMessage,
 } from "../../../api/productosApi";
+import { setStockMinimo, getStockMinimoMap } from "../../../api/stockMinimoApi";
 import {
   getCategorias,
   getUnidades,
@@ -50,6 +51,7 @@ const INITIAL_FORM = {
   proveedor: "",
   precio: "",
   iva: "10",
+  stockMinimo: "",
   activo: false,
 };
 
@@ -170,8 +172,16 @@ export default function Inventario() {
     setModalOpen(true);
   };
 
+  const [guardando, setGuardando] = useState(false);
+
+  const guardandoRef = useRef(false);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Guard por ref: los clics múltiples SINCRÓNICOS llegan antes de que React
+    // re-renderice, así que el estado `guardando` solo no alcanza.
+    if (guardandoRef.current) return;
+    guardandoRef.current = true;
     const data = { ...formData };
 
     const idUnid = data.idUnidad     ? Number(data.idUnidad)     : null;
@@ -196,19 +206,26 @@ export default function Inventario() {
     }
 
     try {
+      setGuardando(true);
       setError(null);
       if (editingId) {
         const updated = await updateProducto(editingId, data);
         setProductos((prev) => prev.map((p) => (p.id === editingId ? mergeProductoLista(p, updated) : p)));
         setEditingId(null);
+        // Stock mínimo vive en localStorage (el back aún no tiene el campo)
+        setStockMinimo(editingId, data.stockMinimo);
       } else {
-        await createProducto(data, idUnid);
+        const created = await createProducto(data, idUnid);
+        if (created?.id != null) setStockMinimo(created.id, data.stockMinimo);
         await loadProductos();
       }
       setFormData(INITIAL_FORM);
       setModalOpen(false);
     } catch (err) {
       setError(apiErrorMessage(err) || "Error al guardar");
+    } finally {
+      guardandoRef.current = false;
+      setGuardando(false);
     }
   };
 
@@ -223,6 +240,7 @@ export default function Inventario() {
       idMarca:       producto.idMarca       ?? "",
       productoPesable: producto.productoPesable || "no",
       iva: producto.iva != null ? String(producto.iva) : "10",
+      stockMinimo: getStockMinimoMap()[String(producto.id)] ?? "",
       activo:        producto.activo !== false,
     });
     setEditingId(producto.id);
@@ -320,6 +338,7 @@ export default function Inventario() {
               subcategorias={subcategorias}
               unidades={unidades}
               proveedores={proveedores}
+              guardando={guardando}
               loading={loading}
             />
           </div>

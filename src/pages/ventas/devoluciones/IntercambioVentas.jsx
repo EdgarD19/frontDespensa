@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
   Plus, X, ArrowLeft, ArrowLeftRight, Eye, CheckCircle,
-  AlertTriangle, Search,
+  AlertTriangle, Search, FileText,
 } from "lucide-react";
 import {
   crearIntercambioVenta, getIntercambiosVenta, apiErrorMessage,
@@ -80,6 +80,14 @@ const esAnulada = (f) => {
   return raw === "ANULADO" || raw === "ANULADA" || raw === "CANCELADA" || f?.activo === false;
 };
 
+/* El back no vincula intercambios de venta a facturas; el número se guarda
+   como texto en `observaciones` ("Factura: 001-001-0000042"). Este helper lo
+   recupera para la tabla y el detalle. */
+function extraerFacturaDeObs(obs) {
+  const m = /factura[^0-9-]*((?:\d{1,3}-){2}\d{5,}|\d[\d-]{5,})/i.exec(String(obs || ""));
+  return m ? m[1].trim() : null;
+}
+
 function useEscape(onCerrar) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onCerrar(); };
@@ -155,6 +163,7 @@ export default function IntercambioVentas() {
         </Link>
         <div className="flex-1 space-y-0.5">
           <h1 className="text-2xl font-semibold tracking-tight text-white">Intercambio</h1>
+          <p className="text-sm text-white/40">Intercambiá productos de una factura de venta con el cliente.</p>
         </div>
         <button
           type="button"
@@ -265,6 +274,7 @@ export default function IntercambioVentas() {
                 <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
                   <th className="px-4 py-3 font-medium">Fecha</th>
                   <th className="px-4 py-3 font-medium">Cliente</th>
+                  <th className="px-4 py-3 font-medium">Factura</th>
                   <th className="px-4 py-3 font-medium">Motivo</th>
                   <th className="px-4 py-3 text-right font-medium">Ítems</th>
                   <th className="px-4 py-3 font-medium w-12" aria-label="Acciones" />
@@ -276,6 +286,12 @@ export default function IntercambioVentas() {
                     <td className="whitespace-nowrap px-4 py-3 text-white/60">{fmtFechaHora(it.fechaCreacion)}</td>
                     <td className="px-4 py-3 text-white/70">
                       {it.nombreCliente || (it.idCliente ? "—" : "Sin Nombre")}
+                    </td>
+                    {/* El back aún no expone idFacturaVenta; el número viaja en
+                        `observaciones` ("Factura: ...") y se recupera acá.
+                        Cuando el back agregue numeroFacturaVenta, gana el primero. */}
+                    <td className="whitespace-nowrap px-4 py-3 font-medium tabular-nums text-white">
+                      {it.numeroFacturaVenta || it.numeroFactura || extraerFacturaDeObs(it.observaciones) || "—"}
                     </td>
                     <td className="px-4 py-3">{motivoBadge(it.motivo)}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white/80">
@@ -443,10 +459,15 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
     setErrorOperacion(null);
     setRegistrando(true);
     try {
+      // El back no acepta idFacturaVenta en el payload; el número de la factura
+      // elegida viaja en `observaciones` para poder mostrarse en la tabla.
+      const marca = facturaSel?.numeroFactura ? `Factura: ${facturaSel.numeroFactura}` : "";
+      const obsUsuario = String(observaciones || "").trim();
+      const observacionesFinal = [marca, obsUsuario].filter(Boolean).join(" — ") || undefined;
       const resp = await crearIntercambioVenta({
         idCliente: facturaSel?.idCliente ? Number(facturaSel.idCliente) : undefined,
         motivo: claveMotivo(motivo),
-        observaciones: String(observaciones || "").trim() || undefined,
+        observaciones: observacionesFinal,
         detalles: completas.map((c) => ({
           idProductoDefectuoso: c.fila.idProducto,
           idProductoReemplazo: c.fila.idProducto,
@@ -635,7 +656,7 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
             role="dialog"
             aria-modal="true"
             aria-label="Nuevo intercambio"
-            className={`${modalShell} max-w-3xl max-h-[90vh]`}
+            className={`${modalShell} max-w-4xl max-h-[90vh]`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
@@ -660,7 +681,7 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
 
       {/* Capa 2: cantidades a intercambiar */}
       {pasoDetalle && createPortal(
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => setFacturaSel(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setFacturaSel(null)}>
           <div
             role="dialog"
             aria-modal="true"
@@ -671,10 +692,11 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
               <div>
                 <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
-                  <ArrowLeftRight className="h-4 w-4 text-[var(--accent)]" />
-                  Intercambiar — factura {facturaSel?.numeroFactura || "—"}
+                  <ArrowLeftRight className="h-4 w-4 text-white/50" />
+                  Productos a intercambiar
                 </h2>
                 <p className="mt-0.5 text-xs text-white/50">
+                  Factura <span className="whitespace-nowrap tabular-nums">{facturaSel?.numeroFactura || "—"}</span> ·{" "}
                   {facturaSel?.nombreCliente || "Sin Nombre"} · {fmtFechaHora(facturaSel?.fechaEmision || facturaSel?.fechaCreacion)}
                 </p>
               </div>
@@ -738,15 +760,12 @@ function DetalleIntercambioModal({ intercambio, onCerrar }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
-          <div>
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
-              <ArrowLeftRight className="h-4 w-4 text-[var(--accent)]" />
-              Intercambio
-            </h2>
-            <p className="mt-0.5 text-xs text-white/50">
-              {fmtFechaHora(intercambio.fechaCreacion)} · {intercambio.nombreCliente || "Sin Nombre"}
-            </p>
-          </div>
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
+            <FileText className="h-4 w-4 text-sky-400" /> Factura del intercambio{" "}
+            <span className="whitespace-nowrap tabular-nums">
+              {intercambio.numeroFacturaVenta || extraerFacturaDeObs(intercambio.observaciones) || "—"}
+            </span>
+          </h2>
           <button type="button" onClick={onCerrar} aria-label="Cerrar"
             className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
             <X className="h-4 w-4" />
@@ -754,43 +773,76 @@ function DetalleIntercambioModal({ intercambio, onCerrar }) {
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto p-5 [color-scheme:dark] [scrollbar-color:#2a2a32_transparent] [scrollbar-width:thin]">
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            <p className="text-[11px] uppercase tracking-[0.12em] text-white/40">Motivo</p>
-            {motivoBadge(intercambio.motivo)}
-            {intercambio.observaciones && (
-              <p className="w-full text-xs text-white/50">{intercambio.observaciones}</p>
-            )}
+          {/* Datos del intercambio (mismo patrón que VerFacturaModal de compras) */}
+          <div className="grid grid-cols-2 gap-4 rounded-none border border-white/10 bg-white/[0.02] p-4 text-sm lg:grid-cols-4">
+            <div>
+              <p className="text-xs text-white/40">N° intercambio</p>
+              <p className="whitespace-nowrap tabular-nums text-white">{intercambio.numeroIntercambio || "—"}</p>
+            </div>
+            <div>
+              <p className="text-xs text-white/40">Factura de venta</p>
+              <p className="whitespace-nowrap tabular-nums text-white">
+                {intercambio.numeroFacturaVenta || extraerFacturaDeObs(intercambio.observaciones) || "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-white/40">Cliente</p>
+              <p className="text-white">{intercambio.nombreCliente || "Sin Nombre"}</p>
+            </div>
+            <div>
+              <p className="text-xs text-white/40">Motivo</p>
+              {motivoBadge(intercambio.motivo)}
+            </div>
           </div>
 
           <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-white/50">
-                  <th className="px-4 py-2.5 font-medium">Devuelto (defectuoso)</th>
-                  <th className="px-4 py-2.5 font-medium">Entregado (reemplazo)</th>
-                  <th className="px-4 py-2.5 text-right font-medium">Cant.</th>
-                  <th className="px-4 py-2.5 text-right font-medium">Precio unit.</th>
+                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                  <th className="px-4 py-3 font-medium">Devuelto (defectuoso)</th>
+                  <th className="px-4 py-3 font-medium">Entregado (reemplazo)</th>
+                  <th className="px-4 py-3 text-center font-medium">Cant.</th>
+                  <th className="px-4 py-3 text-right font-medium">P. unitario</th>
+                  <th className="px-4 py-3 text-right font-medium">Importe</th>
                 </tr>
               </thead>
               <tbody>
                 {detalles.length === 0 && (
-                  <tr><td colSpan={4} className="px-4 py-8 text-center text-white/30">Sin detalles.</td></tr>
+                  <tr><td colSpan={5} className="px-4 py-8 text-center text-white/30">Sin detalles</td></tr>
                 )}
                 {detalles.map((d) => (
-                  <tr key={d.idDetalle ?? `${d.idProductoReemplazo}-${d.nombreProductoReemplazo}`} className="border-b border-white/10 last:border-0">
+                  <tr key={d.idDetalle ?? `${d.idProductoReemplazo}-${d.nombreProductoReemplazo}`} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                     <td className="px-4 py-3 text-white/70">
                       <span className={d.nombreProductoDefectuoso ? "" : "italic text-white/30"}>
                         {d.nombreProductoDefectuoso || "Sin producto defectuoso"}
                       </span>
                     </td>
                     <td className="px-4 py-3 font-medium text-white">{d.nombreProductoReemplazo || `Producto #${d.idProductoReemplazo}`}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white/80">{Number(d.cantidad)}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white/80">{fmtMoneda(d.precioUnitario)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-center tabular-nums text-white/70">{Number(d.cantidad)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white/70">{fmtMoneda(d.precioUnitario)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right font-medium tabular-nums text-white">
+                      {fmtMoneda((Number(d.cantidad) || 0) * (Number(d.precioUnitario) || 0))}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+
+          <div className="flex justify-end border-t border-white/10 pt-3">
+            <p className="text-sm text-white">Total del intercambio:{" "}
+              <span className="text-lg font-bold tabular-nums text-[var(--accent)]">
+                {fmtMoneda(detalles.reduce((sum, d) => sum + (Number(d.cantidad) || 0) * (Number(d.precioUnitario) || 0), 0))}
+              </span>
+            </p>
+          </div>
+
+          {intercambio.observaciones && (
+            <div className="rounded-none border border-white/10 bg-white/[0.02] p-4">
+              <p className="text-xs text-white/40">Observaciones</p>
+              <p className="mt-1 whitespace-pre-wrap break-words text-sm text-white/80">{intercambio.observaciones}</p>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end border-t border-white/10 px-5 py-3.5">

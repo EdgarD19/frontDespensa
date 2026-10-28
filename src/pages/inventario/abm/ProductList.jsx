@@ -4,6 +4,7 @@ import {
   Plus,
   Check,
   Ban,
+  Trash2,
 } from "lucide-react";
 import Pagination from "../../../components/ui/Pagination";
 
@@ -51,10 +52,21 @@ export default function ProductList({
             onChange={(e) => onSearch(e.target.value)}
             placeholder="Buscar por nombre..."
             className="w-full rounded-none border border-white/10 bg-[#0c0c0e]
-              pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-white/30
+              pl-9 pr-10 py-2.5 text-sm text-white placeholder:text-white/30
               transition focus:outline-none focus:border-[var(--accent)]/60
               focus:ring-2 focus:ring-[var(--accent)]/20"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => onSearch("")}
+              title="Limpiar búsqueda"
+              aria-label="Limpiar búsqueda"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-white/40 transition-colors hover:bg-red-500/10 hover:text-red-400"
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
         </div>
 
         <button

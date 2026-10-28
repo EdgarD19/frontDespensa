@@ -19,6 +19,7 @@ import AnulacionVentas from './pages/ventas/devoluciones/AnulacionVentas'
 import ClientesABM from './pages/ventas/clientes/abm/ClientesABM'
 import RegistroVenta from './pages/ventas/registro-venta/RegistroVenta'
 import HistorialVentas from './pages/ventas/consultas/HistorialVentas'
+import DashboardVentas from './pages/ventas/DashboardVentas'
 
 import ComprasHub from './pages/compras/ComprasHub'
 import RegistroFactura from './pages/compras/factura/RegistroFactura'
@@ -48,6 +49,7 @@ export default function App() {
             <Route index element={<VentasHub />} />
             <Route path="registro" element={<RegistroVenta />} />
             <Route path="consultas/historial" element={<HistorialVentas />} />
+            <Route path="dashboard" element={<DashboardVentas />} />
             <Route path="clientes" element={<ClientesABM />} />
             <Route path="devoluciones" element={<Navigate to="/ventas" replace />} />
             <Route path="devoluciones/intercambios" element={<IntercambioVentas />} />

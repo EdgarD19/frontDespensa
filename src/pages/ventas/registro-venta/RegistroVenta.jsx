@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import {
   Search, ShoppingCart, Trash2, Scale,
   Banknote, Landmark, AlertTriangle, RotateCcw, Check,
-  ArrowLeft, Barcode, X,
+  ArrowLeft, Barcode, X, ClipboardList, Loader2,
 } from "lucide-react";
 import { getProductos, getProductoByCodigo } from "../../../api/productosApi";
 import { getClientes } from "../../../api/clientesApi";
@@ -11,6 +11,7 @@ import { registrarVentaFactura } from "../../../api/ventasApi";
 import { apiErrorMessage } from "../../../api/errors";
 import { getConfiguracionEmpresa } from "../../../api/configuracionEmpresaApi";
 import { getTimbradoVentaVigente } from "../../../api/timbradosVentaApi";
+import { crearTransferenciaVenta, getTransferenciasPorEstado, recibirTransferenciaVenta, descartarTransferenciaVenta } from "../../../api/transferenciasVentaApi";
 import TicketVenta from "./TicketVenta";
 import { printVenta } from "../../../services/printer";
 import CantidadInput from "../../../components/ui/CantidadInput";
@@ -86,6 +87,11 @@ export default function RegistroVenta() {
   const [mostrarClientes, setMostrarClientes] = useState(false);
   const [cargandoClientes, setCargandoClientes] = useState(false);
   const [empresaConfig, setEmpresaConfig] = useState(null);
+  // Modal de transferencias pendientes + contador para el badge
+  const [showTransferencias, setShowTransferencias] = useState(false);
+  const [pendientesCount, setPendientesCount] = useState(null);
+  // Vigencia del timbrado de venta: null (cargando) | { estado: "ok" | "venceHoy" | "vencido" | "sinTimbrado", numero, fechaVencimiento }
+  const [timbradoEstado, setTimbradoEstado] = useState(null);
 
   useEffect(() => {
     let activo = true;
@@ -131,6 +137,55 @@ export default function RegistroVenta() {
   }, []);
 
   useEffect(() => { cargarProductos(); }, [cargarProductos]);
+  // Vigencia del timbrado: el back permite vender el mismo día del vencimiento
+  // (fechaVencimiento >= fecha), así que el front bloquea al llegar a la fecha
+  // límite y obliga a crear uno nuevo. Se re-verifica al cobrar.
+  const rechequearTimbrado = useCallback(async () => {
+    const hoy = hoyISO();
+    try {
+      const res = await getTimbradoVentaVigente(hoy);
+      const t = res?.data ?? res;
+      const venc = String(t?.fechaVencimiento ?? "");
+      if (!t?.numeroTimbrado) {
+        const estado = { estado: "sinTimbrado", numero: null, fechaVencimiento: null };
+        setTimbradoEstado(estado);
+        return estado;
+      }
+      if (venc && venc <= hoy) {
+        const estado = { estado: "venceHoy", numero: t.numeroTimbrado, fechaVencimiento: venc };
+        setTimbradoEstado(estado);
+        return estado;
+      }
+      const estado = { estado: "ok", numero: t.numeroTimbrado, fechaVencimiento: venc };
+      setTimbradoEstado(estado);
+      return estado;
+    } catch {
+      const estado = { estado: "sinTimbrado", numero: null, fechaVencimiento: null };
+      setTimbradoEstado(estado);
+      return estado;
+    }
+  }, []);
+  useEffect(() => { rechequearTimbrado(); }, [rechequearTimbrado]);
+  // Contador de transferencias pendientes (badge del botón). Best-effort: el
+  // back corriendo puede no tener aún el módulo → el badge simplemente no se ve.
+  const cargarPendientesCount = useCallback(async () => {
+    try {
+      const lista = await getTransferenciasPorEstado("PENDIENTE");
+      setPendientesCount(Array.isArray(lista) ? lista.length : 0);
+    } catch {
+      setPendientesCount(null);
+    }
+  }, []);
+  useEffect(() => { cargarPendientesCount(); }, [cargarPendientesCount]);
+  // Mientras el bloqueo esté activo, re-consultar cada 15 s y al volver el foco
+  // a la ventana (por si crearon el timbrado en otra pestaña).
+  useEffect(() => {
+    if (!timbradoEstado || timbradoEstado.estado === "ok") return;
+    const id = setInterval(rechequearTimbrado, 15000);
+    const onFocus = () => rechequearTimbrado();
+    window.addEventListener("focus", onFocus);
+    return () => { clearInterval(id); window.removeEventListener("focus", onFocus); };
+  }, [timbradoEstado, rechequearTimbrado]);
   // autoFocus del input no alcanza: mientras `loading` está true el campo está
   // disabled y el foco se pierde al habilitarse. Se enfoca al terminar la carga.
   useEffect(() => {
@@ -224,7 +279,8 @@ export default function RegistroVenta() {
   const cambio = esEfectivo && montoOk ? Math.max(0, montoIngresado - totalConIva) : 0;
 
   const puedeConfirmar = carrito.length > 0 && totalConIva > 0 &&
-    (esEfectivo ? montoOk && montoIngresado >= totalConIva : true);
+    (esEfectivo ? montoOk && montoIngresado >= totalConIva : true) &&
+    (!timbradoEstado || timbradoEstado.estado === "ok");
 
   // Solo presentación: cuánto falta para cubrir el total y por qué está deshabilitado "Cobrar".
   const faltante = esEfectivo && montoPagado !== "" && montoOk
@@ -426,6 +482,13 @@ export default function RegistroVenta() {
     if (!puedeConfirmar) return;
     setConfirmando(true);
     setErrorGlobal(null);
+    // Doble control de vigencia justo antes de enviar: si el timbrado llegó a
+    // su fecha límite (o no hay vigente), bloquea y no se envía la venta.
+    const vig = await rechequearTimbrado();
+    if (vig.estado !== "ok") {
+      setConfirmando(false);
+      return;
+    }
     // El back toma el precio vigente de cada producto (IVA incluido), calcula el
     // IVA por tasa, descuenta stock y asigna la fecha de emisión (no se envía:
     // el back usa su fecha local, evitando desfases de zona horaria del navegador).
@@ -453,13 +516,29 @@ export default function RegistroVenta() {
       } catch { /* sin vigencia disponible */ }
       // fechaCreacion del back trae fecha + hora (LocalDateTime del servidor)
       const fechaVenta = data?.fechaCreacion ?? data?.fechaEmision ?? null;
+      // Contrato 27-10-26: si el pago es por transferencia, se registra la
+      // transferencia vinculada a la factura. Best-effort: si el back aún no
+      // despliega el endpoint (o falla), la venta queda registrada igual.
+      if (formaPago === FORMA_PAGO_TRANSFERENCIA && data?.idFacturaVenta) {
+        try {
+          await crearTransferenciaVenta({
+            idFacturaVenta: data.idFacturaVenta,
+            monto: totalConIva,
+            observacion: `Venta ${numFactura || "—"}`,
+          });
+        } catch (e) {
+          console.warn("[VENTA] No se pudo registrar la transferencia:", e?.message || e);
+        }
+        // El badge de pendientes puede cambiar con esta venta
+        cargarPendientesCount();
+      }
       await finalizarVenta({ numFactura, timbradoInfo, fechaVenta });
     } catch (err) {
       // Sin fallback local: se muestra el error tal cual lo responde el back
       // (p. ej. 409 TIMBRADO_VENTA_NO_VIGENTE si no hay timbrado de venta).
       setErrorGlobal(apiErrorMessage(err) || "No se pudo registrar la venta.");
     } finally { setConfirmando(false); }
-  }, [puedeConfirmar, cliente, carrito, finalizarVenta]);
+  }, [puedeConfirmar, cliente, carrito, finalizarVenta, rechequearTimbrado, formaPago, totalConIva, cargarPendientesCount]);
 
   confirmarRef.current = handleConfirmar;
 
@@ -755,7 +834,7 @@ export default function RegistroVenta() {
 
           <div className="border-t border-white/10 px-4 py-3">
             <p className={`${LABEL} mb-3`}>Forma de pago</p>
-            <div className="grid grid-cols-2 gap-2" role="group" aria-label="Forma de pago">
+            <div className="grid grid-cols-[1fr_1fr_auto] gap-2" role="group" aria-label="Forma de pago">
               {[
                 [FORMA_PAGO_EFECTIVO, "Efectivo", Banknote, "F7"],
                 [FORMA_PAGO_TRANSFERENCIA, "Transferencia", Landmark, "F8"],
@@ -763,17 +842,29 @@ export default function RegistroVenta() {
                 const activo = formaPago === codigo;
                 return (
                   <button key={codigo} type="button" aria-pressed={activo} onClick={() => setFormaPago(codigo)}
-                    className={`flex items-center justify-center gap-1.5 whitespace-nowrap rounded-none border px-2 py-2 text-sm font-medium transition-colors ${
+                    className={`flex items-center justify-center gap-1 whitespace-nowrap rounded-none border px-1.5 py-2 text-xs font-medium transition-colors sm:px-2 sm:text-sm ${
                       activo
                         ? "border-[var(--border-accent)] bg-[var(--accent-dim)] text-[var(--accent)]"
                         : "border-white/10 bg-white/[0.03] text-white/60 hover:bg-white/[0.06] hover:text-white"
                     }`}>
-                    <Icono className="h-[18px] w-[18px]" />
-                    {texto}
+                    <Icono className="h-4 w-4" />
+                    <span className="truncate">{texto}</span>
                     <Kbd>{tecla}</Kbd>
                   </button>
                 );
               })}
+              {/* Botón: transferencias pendientes (contrato 27-10-26) */}
+              <button type="button" onClick={() => setShowTransferencias(true)}
+                title="Transferencias pendientes"
+                aria-label="Transferencias pendientes"
+                className="relative flex h-[42px] items-center justify-center rounded-none border border-white/10 bg-white/[0.03] px-2.5 text-white/60 transition-colors hover:bg-white/[0.06] hover:text-white">
+                <ClipboardList className="h-4 w-4" />
+                {pendientesCount != null && pendientesCount > 0 && (
+                  <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-400 px-1 text-[10px] font-bold text-black">
+                    {pendientesCount}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
 
@@ -861,8 +952,62 @@ export default function RegistroVenta() {
         />
       )}
 
-      {clienteInactivo && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      {/* Bloqueo total: sin timbrado vigente no se puede vender. Sin cerrar:
+          solo desaparece cuando exista un timbrado vigente (re-chequeo automático). */}
+      {timbradoEstado && timbradoEstado.estado !== "ok" && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Timbrado de venta no vigente"
+            className={`w-full max-w-md rounded-none border p-6 shadow-2xl ${
+              timbradoEstado.estado === "venceHoy"
+                ? "border-amber-400/40 bg-[#0c0c0e]"
+                : "border-red-500/40 bg-[#0c0c0e]"
+            }`}
+          >
+            <div className="flex items-start gap-4">
+              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-none border ${
+                timbradoEstado.estado === "venceHoy"
+                  ? "border-amber-400/30 bg-amber-400/10 text-amber-400"
+                  : "border-red-500/30 bg-red-500/10 text-red-400"
+              }`}>
+                <AlertTriangle className="h-6 w-6" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <h2 className={`text-base font-semibold ${
+                  timbradoEstado.estado === "venceHoy" ? "text-amber-400" : "text-red-400"
+                }`}>
+                  {timbradoEstado.estado === "sinTimbrado"
+                    ? "No hay timbrado de venta vigente"
+                    : timbradoEstado.estado === "vencido"
+                      ? "Timbrado de venta vencido"
+                      : "El timbrado vence hoy"}
+                </h2>
+                <p className="text-sm text-white/70">
+                  {timbradoEstado.estado === "sinTimbrado" && (
+                    <>Para registrar ventas necesitás un timbrado de venta activo y vigente.</>
+                  )}
+                  {timbradoEstado.estado === "vencido" && (
+                    <>El timbrado <span className="font-medium text-white" style={MONO}>{timbradoEstado.numero}</span> venció el{" "}
+                      <span className="whitespace-nowrap text-white" style={MONO}>{timbradoEstado.fechaVencimiento}</span>.</>
+                  )}
+                  {timbradoEstado.estado === "venceHoy" && (
+                    <>El timbrado <span className="font-medium text-white" style={MONO}>{timbradoEstado.numero}</span> llega a su fecha límite
+                      hoy (<span className="whitespace-nowrap text-white" style={MONO}>{timbradoEstado.fechaVencimiento}</span>) y ya no permite vender.</>
+                  )}{" "}
+                  Creá uno nuevo en{" "}
+                  <Link to="/configuracion/comprobantes" className="font-semibold text-[var(--accent)] underline underline-offset-2 hover:opacity-80">
+                    Configuración → Comprobantes
+                  </Link>. La pantalla se desbloquea sola cuando haya un timbrado vigente.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {clienteInactivo && (        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
           onClick={() => setClienteInactivo(null)}>
           <div role="dialog" aria-modal="true" aria-label="Cliente inactivo"
             className="w-full max-w-sm rounded-none border border-amber-400/30 bg-[#0c0c0e] p-5 shadow-2xl"
@@ -888,6 +1033,134 @@ export default function RegistroVenta() {
           </div>
         </div>
       )}
+
+      {showTransferencias && (
+        <TransferenciasPendientesModal
+          onCerrar={() => { setShowTransferencias(false); cargarPendientesCount(); }}
+          onCambio={cargarPendientesCount}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ───────── Modal: transferencias pendientes (contrato 27-10-26) ───────── */
+
+function TransferenciasPendientesModal({ onCerrar, onCambio }) {
+  const [lista, setLista] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState(null);
+  const [ocupado, setOcupado] = useState(null); // id en acción
+
+  const cargar = useCallback(async () => {
+    setCargando(true);
+    setError(null);
+    try {
+      const lista = await getTransferenciasPorEstado("PENDIENTE");
+      setLista(Array.isArray(lista) ? lista : []);
+    } catch (e) {
+      setError(apiErrorMessage(e) || "No se pudieron cargar las transferencias.");
+    } finally {
+      setCargando(false);
+    }
+  }, []);
+
+  useEffect(() => { cargar(); }, [cargar]);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onCerrar(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCerrar]);
+
+  const accionar = async (id, accion) => {
+    setOcupado(id);
+    try {
+      if (accion === "recibir") await recibirTransferenciaVenta(id);
+      else await descartarTransferenciaVenta(id);
+      await cargar();
+      onCambio?.();
+    } catch (e) {
+      setError(apiErrorMessage(e) || "No se pudo actualizar la transferencia.");
+    } finally {
+      setOcupado(null);
+    }
+  };
+
+  const fmtF = (v) => {
+    const s = String(v ?? "");
+    const d = new Date(s);
+    return Number.isNaN(d.getTime()) ? s
+      : d.toLocaleString("es-PY", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[105] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onCerrar}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Transferencias pendientes"
+        className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-none border border-white/10 bg-[#0c0c0e] shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
+            <ClipboardList className="h-4 w-4 text-white/50" />
+            Transferencias pendientes
+          </h2>
+          <button type="button" onClick={onCerrar} aria-label="Cerrar"
+            className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 space-y-3 overflow-y-auto p-5">
+          {cargando ? (
+            <div className="flex items-center justify-center gap-2 py-10 text-sm text-white/50">
+              <Loader2 className="h-4 w-4 animate-spin" /> Cargando…
+            </div>
+          ) : error ? (
+            <div className="flex items-center gap-2 rounded-none border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+              <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
+            </div>
+          ) : lista.length === 0 ? (
+            <p className="py-10 text-center text-sm text-white/50">Sin transferencias pendientes.</p>
+          ) : (
+            lista.map((t) => (
+              <div key={t.idTransferenciaVenta} className="flex items-center justify-between gap-3 rounded-none border border-white/10 bg-white/[0.02] px-4 py-3">
+                <p className="min-w-0 flex-1 truncate text-sm">
+                  <span className="font-medium tabular-nums text-white">{t.numeroFactura || `Factura #${t.idFacturaVenta}`}</span>
+                  <span className="text-white/40"> · </span>
+                  <span className="text-white/70">{t.nombreCliente || "Sin Nombre"}</span>
+                  <span className="text-white/40"> · </span>
+                  <span className="whitespace-nowrap text-white/50">{fmtF(t.fechaCreacion)}</span>
+                </p>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="text-base font-bold tabular-nums text-[var(--accent)]" style={MONO}>
+                    {new Intl.NumberFormat("es-PY", { style: "currency", currency: "PYG", minimumFractionDigits: 0 }).format(t.monto ?? 0)}
+                  </span>
+                  <button type="button" disabled={ocupado != null} onClick={() => accionar(t.idTransferenciaVenta, "descartar")}
+                    className="rounded-none border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/60 transition-colors hover:border-red-500/40 hover:text-red-300 disabled:opacity-40">
+                    Descartar
+                  </button>
+                  <button type="button" disabled={ocupado != null} onClick={() => accionar(t.idTransferenciaVenta, "recibir")}
+                    className="rounded-none bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-black transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-40">
+                    {ocupado === t.idTransferenciaVenta ? "Procesando…" : "Recibir"}
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="flex shrink-0 items-center justify-between border-t border-white/10 px-5 py-3">
+          <span className="text-xs text-white/40">{lista.length} pendiente(s)</span>
+          <button type="button" onClick={onCerrar}
+            className="rounded-none border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white/70 transition-colors hover:text-white">
+            Cerrar
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
