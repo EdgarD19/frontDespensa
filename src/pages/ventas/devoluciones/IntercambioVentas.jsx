@@ -163,7 +163,7 @@ export default function IntercambioVentas() {
         </Link>
         <div className="flex-1 space-y-0.5">
           <h1 className="text-2xl font-semibold tracking-tight text-white">Intercambio</h1>
-          <p className="text-sm text-white/40">Intercambiá productos de una factura de venta con el cliente.</p>
+          <p className="text-sm text-white/40">Intercambiá productos defectuosos de una factura de venta con el cliente.</p>
         </div>
         <button
           type="button"
@@ -275,7 +275,6 @@ export default function IntercambioVentas() {
                   <th className="px-4 py-3 font-medium">Fecha</th>
                   <th className="px-4 py-3 font-medium">Cliente</th>
                   <th className="px-4 py-3 font-medium">Factura</th>
-                  <th className="px-4 py-3 font-medium">Motivo</th>
                   <th className="px-4 py-3 text-right font-medium">Ítems</th>
                   <th className="px-4 py-3 font-medium w-12" aria-label="Acciones" />
                 </tr>
@@ -293,7 +292,6 @@ export default function IntercambioVentas() {
                     <td className="whitespace-nowrap px-4 py-3 font-medium tabular-nums text-white">
                       {it.numeroFacturaVenta || it.numeroFactura || extraerFacturaDeObs(it.observaciones) || "—"}
                     </td>
-                    <td className="px-4 py-3">{motivoBadge(it.motivo)}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white/80">
                       {it.cantidadItems ?? (Array.isArray(it.detalles) ? it.detalles.length : 0)}
                     </td>
@@ -355,7 +353,9 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
   const [productoCatalog, setProductoCatalog] = useState([]);
   const [facturaSel, setFacturaSel] = useState(null);
   const [filas, setFilas] = useState([]);
-  const [motivo, setMotivo] = useState("DEFECTUOSO");
+  // El back exige motivo NOT NULL (DEFECTUOSO | MERMA | OTROS); el negocio maneja
+  // intercambios siempre por producto defectuoso, así que va fijo.
+  const motivo = "DEFECTUOSO";
   const [observaciones, setObservaciones] = useState("");
   const [registrando, setRegistrando] = useState(false);
   const [errorOperacion, setErrorOperacion] = useState(null);
@@ -436,7 +436,7 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
     setFilas((prev) => prev.map((fl) => (fl.key === key ? { ...fl, cantidadCambio: valor } : fl)));
   };
 
-  const puedeRegistrar = motivo && !registrando;
+  const puedeRegistrar = !registrando;
 
   const handleRegistrar = async () => {
     if (!puedeRegistrar) return;
@@ -466,7 +466,7 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
       const observacionesFinal = [marca, obsUsuario].filter(Boolean).join(" — ") || undefined;
       const resp = await crearIntercambioVenta({
         idCliente: facturaSel?.idCliente ? Number(facturaSel.idCliente) : undefined,
-        motivo: claveMotivo(motivo),
+        motivo: motivo,
         observaciones: observacionesFinal,
         detalles: completas.map((c) => ({
           idProductoDefectuoso: c.fila.idProducto,
@@ -601,37 +601,24 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
         </table>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-[1fr_2fr]">
-        <div>
-          <label htmlFor="motivo-intercambio" className={labelClass}>
-            Motivo
-          </label>
-          <select
-            id="motivo-intercambio"
-            value={motivo}
-            onChange={(e) => setMotivo(e.target.value)}
-            className={fieldClass}
-          >
-            {MOTIVOS.map((m) => (
-              <option key={m.valor} value={m.valor}>{m.etiqueta}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="observaciones-intercambio" className={labelClass}>
-            Observaciones (opcional)
-          </label>
-          <input
-            id="observaciones-intercambio"
-            type="text"
-            value={observaciones}
-            onChange={(e) => setObservaciones(e.target.value)}
-            maxLength={500}
-            autoComplete="off"
-            placeholder="Detalle del motivo…"
-            className={fieldClass}
-          />
-        </div>
+      <div>
+        <p className="mb-1 flex items-center gap-1.5 text-xs text-amber-300">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          Todo intercambio se registra por producto defectuoso.
+        </p>
+        <label htmlFor="observaciones-intercambio" className={labelClass}>
+          Observaciones (opcional)
+        </label>
+        <input
+          id="observaciones-intercambio"
+          type="text"
+          value={observaciones}
+          onChange={(e) => setObservaciones(e.target.value)}
+          maxLength={500}
+          autoComplete="off"
+          placeholder="Observaciones adicionales…"
+          className={fieldClass}
+        />
       </div>
 
       {errorFormulario && (

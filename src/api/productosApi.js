@@ -12,8 +12,15 @@ export { apiErrorMessage };
  *   { idProducto, nombre, codigoBarra, descripcion, stockActual,
  *     idCategoria, categoriaNombre, idUnidad, unidadNombre, activo,
  *     fechaCreacion, precioVentaVigente, fechaPrecioVentaVigente,
- *     habilitadoParaVenta }
+ *     habilitadoParaVenta, stockMinimo }
  */
+// Número decimal opcional (>= 0): acepta coma como separador.
+function parseDecimal(v) {
+  if (v == null || String(v).trim() === "") return undefined;
+  const n = Number(String(v).replace(",", "."));
+  return Number.isFinite(n) && n >= 0 ? n : undefined;
+}
+
 function toFrontendProduct(backend) {
   if (!backend) return null;
 
@@ -32,6 +39,9 @@ function toFrontendProduct(backend) {
     subcategoria: "",
 
     productoPesable: /kilo/i.test(String(backend.nombreUnidadMedida ?? "")) ? "si" : "no",
+
+    // Stock mínimo (ahora persistido en el back)
+    stockMinimo: backend.stockMinimo != null ? String(backend.stockMinimo) : null,
 
     idMarca: "",
     marca: "",
@@ -75,6 +85,7 @@ function toCreateBody(frontend, idUnidad) {
     codigoBarra: codigoBarras || null,
     descripcion: descripcion.length > 0 ? descripcion : null,
     stockActual: 0,
+    stockMinimo: parseDecimal(frontend.stockMinimo),
     idCategoria: Number(frontend.idCategoria) || undefined,
     idSubcategoria: Number(frontend.idSubcategoria) || undefined,
     idUnidad: idUnidad ? Number(idUnidad) : undefined,
@@ -95,6 +106,7 @@ function toPatchBody(producto, stockActual) {
     codigoBarra: String(producto.codigoBarras || "").replace(/\D/g, "") || undefined,
     descripcion: (producto.descripcion || "").trim() || undefined,
     stockActual: stockActual != null ? Number(stockActual) : undefined,
+    stockMinimo: parseDecimal(producto.stockMinimo),
     idCategoria: Number(producto.idCategoria) || undefined,
     idSubcategoria: Number(producto.idSubcategoria) || undefined,
     idUnidad: Number(producto.idUnidad) || undefined,
