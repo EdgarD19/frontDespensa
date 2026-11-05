@@ -105,7 +105,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
                 }}
                 disabled={disabled}
                 placeholder="Escanear código de barras o buscar por nombre…"
-                className="w-full rounded-none border border-white/10 bg-[#0c0c0e] pl-10 pr-12 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-[var(--accent)] focus:ring-1 focus:ring-[#22c55e]/20 outline-none disabled:opacity-50"
+                className="w-full rounded-none border border-white/10 bg-[#0c0c0e] pl-10 pr-12 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]/20 outline-none disabled:opacity-50"
               />
               {search && !disabled ? (
                 <button
@@ -203,7 +203,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
               value={categoria}
               onChange={(e) => setCategoria(e.target.value)}
               disabled={disabled}
-              className="w-full rounded-none border border-white/10 bg-[#0c0c0e] px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-[var(--accent)] focus:ring-1 focus:ring-[#22c55e]/25 outline-none disabled:opacity-50"
+              className="w-full rounded-none border border-white/10 bg-[#0c0c0e] px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]/25 outline-none disabled:opacity-50"
             >
               <option value="">Todas las categorías</option>
               {categorias.map((c) => (
@@ -223,7 +223,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
                 setMotivoError(false);
               }}
               disabled={disabled}
-              className="w-full rounded-none border border-white/10 bg-[#0c0c0e] px-3 py-2.5 text-sm text-white focus:border-[var(--accent)] focus:ring-1 focus:ring-[#22c55e]/20 outline-none disabled:opacity-50"
+              className="w-full rounded-none border border-white/10 bg-[#0c0c0e] px-3 py-2.5 text-sm text-white focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]/20 outline-none disabled:opacity-50"
             >
               <option value="">Seleccionar motivo…</option>
               <option value="ROBO">Robo</option>

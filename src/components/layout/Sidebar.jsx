@@ -31,8 +31,8 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="h-16 flex items-center border-b border-white/10 flex-shrink-0 px-4 overflow-hidden">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-none bg-[var(--accent)]/10 border border-[#22c55e]/20 flex items-center justify-center flex-shrink-0">
-            <Store className="w-4 h-4 text-[#22c55e]" />
+          <div className="w-8 h-8 rounded-none bg-[var(--accent)]/10 border border-[var(--accent)]/20 flex items-center justify-center flex-shrink-0">
+            <Store className="w-4 h-4 text-[var(--accent)]" />
           </div>
           {!collapsed && (
             <div className="overflow-hidden min-w-0">
@@ -71,7 +71,7 @@ export default function Sidebar() {
                   "relative flex items-center rounded-none transition-all duration-200 overflow-hidden group",
                   collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5",
                   active
-                    ? "bg-[var(--accent)]/10 text-[#22c55e]"
+                    ? "bg-[var(--accent)]/10 text-[var(--accent)]"
                     : "text-white/40 hover:bg-[#15151a] hover:text-[#b0b0c0]",
                 ].join(" ");
               }}

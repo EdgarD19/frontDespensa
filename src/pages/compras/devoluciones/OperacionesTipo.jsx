@@ -56,7 +56,7 @@ const labelClass = "block text-xs text-white/50 mb-1";
 
 const fieldClass =
   "w-full rounded-none border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white " +
-  "placeholder:text-white/30 outline-none transition focus:border-[#22c55e]/60 focus:ring-2 focus:ring-[#22c55e]/15 " +
+  "placeholder:text-white/30 outline-none transition focus:border-[var(--accent)]/60 focus:ring-2 focus:ring-[var(--accent)]/15 " +
   "disabled:cursor-not-allowed disabled:opacity-50";
 
 const fieldMonoClass = `${fieldClass} tabular-nums tracking-wide`;
@@ -579,7 +579,7 @@ export default function OperacionesTipo({ tipo }) {
           <button
             type="button"
             onClick={() => { setErrorOperacion(null); setAviso(null); setShowModal(true); }}
-            className="flex items-center gap-2 whitespace-nowrap rounded-none bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-black transition hover:bg-[var(--accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#22c55e]/50"
+            className="flex items-center gap-2 whitespace-nowrap rounded-none bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-black transition hover:bg-[var(--accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/50"
           >
             <Plus className="h-4 w-4" />
             {cfg.nuevoLabel}
@@ -1007,7 +1007,7 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar, nombr
             type="button"
             onClick={() => onConfirmar(op, { numero: numeroNueva, idTimbrado: timbradoId, fecha: fechaNueva })}
             disabled={!puedeGuardar}
-            className="flex items-center gap-2 rounded-none bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex items-center gap-2 rounded-none bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-black transition hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Save className="h-4 w-4" /> Registrar factura nueva
           </button>
@@ -1359,7 +1359,7 @@ function ConfirmarAccionModal({ tipo, op, onCerrar, onConfirmar }) {
             type="button"
             onClick={() => onConfirmar(op)}
             className={`rounded-none px-4 py-3 text-sm font-semibold transition-colors ${
-              esDestructiva ? "bg-red-500 text-white hover:bg-red-400" : "bg-[var(--accent)] text-black hover:opacity-90"
+              esDestructiva ? "bg-red-500 text-white hover:bg-red-400" : "bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)]"
             }`}
           >
             {labelBoton}
@@ -1850,7 +1850,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                         bloqueada
                           ? "cursor-not-allowed border-l-transparent"
                           : seleccionada
-                            ? "cursor-pointer border-l-[#22c55e] bg-[var(--accent)]/[0.08]"
+                            ? "cursor-pointer border-l-[var(--accent)] bg-[var(--accent)]/[0.08]"
                             : "cursor-pointer border-l-transparent hover:bg-white/[0.04]"
                       }`}
                     >
@@ -2047,7 +2047,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                             onClick={() => handleCambiarCantidad(d.idProducto, max)}
                             disabled={max <= 0}
                             title={max > 0 ? `Usar máximo permitido (${max})` : "No hay stock disponible"}
-                            className="shrink-0 rounded-none border border-white/10 px-1.5 py-1.5 text-[10px] text-white/40 transition-colors hover:border-[#22c55e]/40 hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-white/10 disabled:hover:text-white/40"
+                            className="shrink-0 rounded-none border border-white/10 px-1.5 py-1.5 text-[10px] text-white/40 transition-colors hover:border-[var(--accent)]/40 hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-white/10 disabled:hover:text-white/40"
                           >
                             Máx
                           </button>
@@ -2194,7 +2194,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                   className={`flex items-center gap-2 rounded-none px-6 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${
                     tipo === "ANULACION"
                       ? "bg-red-500 text-white hover:bg-red-400"
-                      : "bg-[var(--accent)] text-black hover:opacity-90"
+                      : "bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)]"
                   }`}
                 >
                   <Save className="h-4 w-4" />

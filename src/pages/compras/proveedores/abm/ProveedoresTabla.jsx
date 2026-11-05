@@ -29,7 +29,7 @@ export default function ProveedoresTabla({
           />
         </div>
         <button onClick={onNuevo}
-          className="flex items-center gap-2 bg-[var(--accent)] hover:opacity-90 text-black text-sm font-medium px-4 py-2 rounded-none transition-opacity whitespace-nowrap">
+          className="flex items-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-black text-sm font-medium px-4 py-2 rounded-none transition-opacity whitespace-nowrap">
           Nuevo proveedor
         </button>
       </div>

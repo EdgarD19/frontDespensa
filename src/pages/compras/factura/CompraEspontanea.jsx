@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import SearchField from "../../../components/ui/SearchField";
 import { THEAD_ROW } from "../../../components/ui/styles";
 import { Truck, Search, Barcode, Trash2, ShoppingCart, Check, Calendar, FileText, Plus, Settings2, X } from "lucide-react";
 import { getProductos, getProductoByCodigo, getPrecioCompraVigente } from "../../../api/productosApi";
@@ -233,7 +234,7 @@ export default function CompraEspontanea({ onVolver }) {
     ].filter((r) => detalle(r.tasa).length > 0);
     const cantProductos = (f.detalles || []).length;
     return (
-      <div className="border border-[#22c55e]/30 bg-[var(--accent)]/5 p-6 sm:p-8">
+      <div className="border border-[var(--accent)]/30 bg-[var(--accent)]/5 p-6 sm:p-8">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="w-14 h-14 shrink-0 bg-[var(--accent)]/10 flex items-center justify-center">
@@ -503,39 +504,40 @@ export default function CompraEspontanea({ onVolver }) {
         <div className="mt-4" ref={prodRef}>
           <label className={S.eyebrow} htmlFor="buscar">Productos</label>
           <div className="relative mt-1">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-white/40">
-              <Search size={16} />
-            </span>
-            <input
+            <SearchField
               id="buscar"
-              value={prodSearch}
-              onChange={(e) => { setProdSearch(e.target.value); setShowProductos(true); }}
-              onFocus={() => setShowProductos(true)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); buscarPorCodigo(prodSearch); } }}
-              placeholder="Escanear código de barras o buscar por nombre..."
-              className={`${S.field} pl-[2.5rem] pr-[2.5rem]`}
-            />
-            {prodSearch ? (
-              <button
-                type="button"
-                onClick={() => setProdSearch("")}
-                title="Limpiar búsqueda"
-                aria-label="Limpiar búsqueda"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-white/40 hover:text-white transition-colors"
-              >
-                <X size={16} />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => buscarPorCodigo(prodSearch)}
-                title="Buscar por código"
-                aria-label="Buscar por código de barras"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-white/40 hover:text-white transition-colors"
-              >
-                <Barcode size={16} />
-              </button>
-            )}
+            value={prodSearch}
+            onChange={(v) => { setProdSearch(v); setShowProductos(true); }}
+            onEnter={(e) => { e.preventDefault(); buscarPorCodigo(prodSearch); }}
+            onFocus={() => setShowProductos(true)}
+            placeholder="Escanear código de barras o buscar por nombre..."
+            ariaLabel="Buscar producto o escanear código de barras"
+            right={
+              prodSearch ? (
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => setProdSearch("")}
+                  title="Limpiar búsqueda"
+                  aria-label="Limpiar búsqueda"
+                  className="p-1.5 text-white/40 hover:text-white transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => buscarPorCodigo(prodSearch)}
+                  title="Buscar por código"
+                  aria-label="Buscar por código de barras"
+                  className="p-1.5 text-white/40 hover:text-white transition-colors"
+                >
+                  <Barcode size={16} />
+                </button>
+              )
+            }
+          />
 
             {showProductos && (
               <div className={S.dropdown}>

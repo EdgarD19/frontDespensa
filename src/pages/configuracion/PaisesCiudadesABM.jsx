@@ -12,7 +12,7 @@ import {
 } from "../../api/paisesCiudadesApi";
 
 const inputClass =
-  "flex-1 bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent)]";
+  "flex-1 bg-white/[0.03] border border-white/10 rounded-none px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent)]";
 
 function esCodigoValido(codigo) {
   return /^[A-Z]{2}$/.test(String(codigo || "").trim().toUpperCase());
@@ -105,7 +105,7 @@ function SeccionPaises() {
           placeholder="Código (PY)"
           maxLength={2}
           className="w-28 bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent)]" />
-        <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent)]/90 hover:bg-[var(--accent)] text-black text-sm font-medium rounded-none transition-colors">
+        <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent)] hover:text-black text-sm font-medium rounded-none transition-colors">
           <Plus className="w-4 h-4" /> Agregar
         </button>
       </div>
@@ -277,7 +277,7 @@ function SeccionCiudades() {
   };
 
   const selectClass =
-    "bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white focus:outline-none focus:border-[var(--accent)] cursor-pointer";
+    "bg-white/[0.03] border border-white/10 rounded-none px-3 py-2 text-sm text-white focus:outline-none focus:border-[var(--accent)] cursor-pointer";
 
   return (
     <div>
@@ -299,7 +299,7 @@ function SeccionCiudades() {
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           placeholder="Código postal"
           className="w-32 bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent)]" />
-        <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent)]/90 hover:bg-[var(--accent)] text-black text-sm font-medium rounded-none transition-colors">
+        <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent)] hover:text-black text-sm font-medium rounded-none transition-colors">
           <Plus className="w-4 h-4" /> Agregar
         </button>
       </div>

@@ -43,7 +43,7 @@ const fmtMes = (ym) => {
 
 const S = {
   field:
-    "w-full bg-white/5 border border-white/10 rounded-none px-2.5 py-1.5 text-sm text-white " +
+    "w-full bg-white/[0.03] border border-white/10 rounded-none px-2.5 py-1.5 text-sm text-white " +
     "placeholder:text-white/30 outline-none transition-colors duration-150 focus:border-[var(--accent)]",
   eyebrow: "text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40",
 };
@@ -417,7 +417,7 @@ export default function ReportesCompras() {
                 r.disabled
                   ? "text-white/25 border-white/5 cursor-not-allowed"
                   : activo
-                    ? "bg-[var(--accent)]/15 border-[#22c55e]/40 text-[var(--accent)]"
+                    ? "bg-[var(--accent)]/15 border-[var(--accent)]/40 text-[var(--accent)]"
                     : "text-white/70 border-white/10 bg-white/5 hover:bg-white/10 hover:text-white"
               }`}
             >
@@ -609,7 +609,7 @@ function ReportePeriodo({ agrupFecha, setAgrupFecha, filtradas, porFecha, kpis, 
     <div className="space-y-4">
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <KpiCard label="Total de Compras" value={String(kpis.volumen)} accent="#22c55e" />
+        <KpiCard label="Total de Compras" value={String(kpis.volumen)} accent="var(--accent)" />
         <KpiCard label="Importe Total Comprado" value={money(kpis.montoTotal)} accent="#38bdf8" />
         <KpiCard label="Cantidad Total de Productos" value={String(totalUnidades)} accent="#f59e0b" />
       </div>

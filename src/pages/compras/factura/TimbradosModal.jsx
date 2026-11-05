@@ -22,17 +22,17 @@ const fmtFecha = (iso) => {
 
 const S = {
   field:
-    "w-full bg-white/5 border border-white/10 rounded-none px-2.5 py-1.5 text-sm text-white " +
+    "w-full bg-white/[0.03] border border-white/10 rounded-none px-2.5 py-1.5 text-sm text-white " +
     "placeholder:text-white/30 outline-none transition-colors duration-150 focus:border-[var(--accent)]",
   fieldMono:
-    "w-full bg-white/5 border border-white/10 rounded-none px-2.5 py-1.5 text-sm font-mono text-white " +
+    "w-full bg-white/[0.03] border border-white/10 rounded-none px-2.5 py-1.5 text-sm font-mono text-white " +
     "placeholder:text-white/30 outline-none transition-colors duration-150 focus:border-[var(--accent)]",
   eyebrow: "text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40",
 };
 
 const estado = (t) => {
   if (!t.activo) return { label: "Inactivo", cls: "bg-white/10 text-[#8b8b9e]" };
-  if (t.esVigente) return { label: "Vigente", cls: "bg-[var(--accent)]/15 text-[#22c55e]" };
+  if (t.esVigente) return { label: "Vigente", cls: "bg-[var(--accent)]/15 text-[var(--accent)]" };
   if (t.estaVencido) return { label: "Vencido", cls: "bg-red-500/15 text-red-400" };
   return { label: "Pendiente", cls: "bg-white/10 text-[#8b8b9e]" };
 };
@@ -201,7 +201,7 @@ export default function TimbradosModal({ proveedor, onClose, onCambio }) {
                         </button>
                         <button
                           onClick={() => handleToggle(t)}
-                          className={`rounded-none p-1.5 transition-colors ${t.activo ? "text-[#22c55e]" : "text-white/40"} hover:bg-white/5`}
+                          className={`rounded-none p-1.5 transition-colors ${t.activo ? "text-[var(--accent)]" : "text-white/40"} hover:bg-white/5`}
                           title={t.activo ? "Desactivar" : "Activar"}
                         >
                           <Power size={14} />

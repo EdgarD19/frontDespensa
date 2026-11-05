@@ -11,6 +11,7 @@ import {
 } from "../../../api/facturasCompraApi";
 import { getProveedores, getProveedorId, getProveedorNombre } from "../../../api/proveedoresApi";
 import Pagination from "../../../components/ui/Pagination";
+import SearchField from "../../../components/ui/SearchField";
 
 const money = (n) => {
   const v = Number(n);
@@ -195,28 +196,13 @@ export default function ListaFacturas() {
 
       {/* Filtros */}
       <div className="flex flex-col md:flex-row md:flex-wrap md:items-end gap-3">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
-          <input
-            type="text"
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            placeholder="Buscar por N° factura"
-            aria-label="Buscar por número de factura"
-            className="w-full bg-white/5 border border-white/10 rounded-none pl-9 pr-10 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent)] transition-colors"
-          />
-          {texto && (
-            <button
-              type="button"
-              onClick={() => setTexto("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-none text-white/40 hover:text-white hover:bg-white/10 transition-colors"
-              title="Limpiar búsqueda"
-              aria-label="Limpiar búsqueda"
-            >
-              <X size={15} />
-            </button>
-          )}
-        </div>
+        <SearchField
+          value={texto}
+          onChange={setTexto}
+          placeholder="Buscar por N° factura"
+          ariaLabel="Buscar por número de factura"
+          wrapperClass="relative flex-1 min-w-[200px]"
+        />
         <div className="w-full sm:w-44">
           <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40" htmlFor="filtro-desde">
             Desde
@@ -226,7 +212,7 @@ export default function ListaFacturas() {
             type="date"
             value={desde}
             onChange={(e) => setDesde(e.target.value)}
-            className="w-full mt-1 bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors"
+            className="w-full mt-1 bg-white/[0.03] border border-white/10 rounded-none px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors"
           />
         </div>
         <div className="w-full sm:w-44">
@@ -238,7 +224,7 @@ export default function ListaFacturas() {
             type="date"
             value={hasta}
             onChange={(e) => setHasta(e.target.value)}
-            className="w-full mt-1 bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors"
+            className="w-full mt-1 bg-white/[0.03] border border-white/10 rounded-none px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors"
           />
         </div>
         <div className="w-full sm:w-44">
@@ -249,7 +235,7 @@ export default function ListaFacturas() {
             id="filtro-condicion"
             value={condicion}
             onChange={(e) => setCondicion(e.target.value)}
-            className="w-full mt-1 bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors"
+            className="w-full mt-1 bg-white/[0.03] border border-white/10 rounded-none px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors"
           >
             <option value="">Todas</option>
             <option value="CONTADO">Contado</option>
@@ -264,7 +250,7 @@ export default function ListaFacturas() {
             id="filtro-estado"
             value={estado}
             onChange={(e) => setEstado(e.target.value)}
-            className="w-full mt-1 bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors"
+            className="w-full mt-1 bg-white/[0.03] border border-white/10 rounded-none px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors"
           >
             <option value="">Todos</option>
             <option value="VIGENTES">Vigentes</option>
@@ -279,7 +265,7 @@ export default function ListaFacturas() {
             id="filtro-proveedor"
             value={idProveedor}
             onChange={(e) => setIdProveedor(e.target.value)}
-            className="w-full mt-1 bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors"
+            className="w-full mt-1 bg-white/[0.03] border border-white/10 rounded-none px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors"
           >
             <option value="">Todos los proveedores</option>
             {proveedores.map((p) => (
@@ -450,7 +436,7 @@ function DetalleFactura({ factura, cargando = false, onClose, proveedoresMap, ge
               type="button"
               onClick={onClose}
               aria-label="Cerrar"
-              className="-mr-2 -mt-1 rounded-none p-2 text-white/50 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#22c55e]/60"
+              className="-mr-2 -mt-1 rounded-none p-2 text-white/50 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/60"
             >
               <X size={20} />
             </button>

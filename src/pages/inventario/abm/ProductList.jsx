@@ -59,7 +59,7 @@ export default function ProductList({
           onClick={onNuevo}
           className="flex items-center gap-2 whitespace-nowrap rounded-none
             bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-black
-            transition hover:opacity-90 focus:outline-none
+            transition hover:bg-[var(--accent-hover)] focus:outline-none
             focus-visible:ring-2 focus-visible:ring-[var(--accent)]/50"
         >
           <Plus className="h-4 w-4" />

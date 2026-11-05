@@ -319,7 +319,7 @@ export default function AjusteInventario() {
           </Link>
           <div className="flex-1 min-w-0 flex items-center justify-between flex-wrap gap-3">
             <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-              <ArrowLeftRight className="w-5 h-5 text-[#22c55e]" />
+              <ArrowLeftRight className="w-5 h-5 text-[var(--accent)]" />
               Ajuste de Stock
             </h1>
           <button

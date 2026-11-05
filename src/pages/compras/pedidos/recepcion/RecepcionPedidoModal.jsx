@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import SearchField from "../../../../components/ui/SearchField";
 import { Truck, Search, Barcode, Trash2, ShoppingCart, Check, Calendar, FileText, X, PackageCheck, Plus, Settings2 } from "lucide-react";
 import { getProductos, getProductoByCodigo, getPrecioCompraVigente } from "../../../../api/productosApi";
 import { getProveedorById } from "../../../../api/proveedoresApi";
@@ -237,9 +238,9 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
       (detalle(10).length > 0) || (detalle(5).length > 0) || (detalle(0).length > 0);
     return (
       <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div className="bg-[#0c0c0e] border border-[#22c55e]/30 rounded-none w-full max-w-lg shadow-2xl p-8 text-center space-y-4">
+        <div className="bg-[#0c0c0e] border border-[var(--accent)]/30 rounded-none w-full max-w-lg shadow-2xl p-8 text-center space-y-4">
           <div className="w-14 h-14 mx-auto rounded-full bg-[var(--accent)]/10 flex items-center justify-center">
-            <Check className="w-7 h-7 text-[#22c55e]" />
+            <Check className="w-7 h-7 text-[var(--accent)]" />
           </div>
           <p className="text-lg font-medium text-white">Pedido #<span className="font-mono">{f.idPedido ?? pedido.idPedido}</span> recibido y factura registrada</p>
           <p className="text-sm text-white/40">
@@ -280,7 +281,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
             <div className="h-8 w-px bg-white/10" />
             <div className="text-right">
               <p className="text-xs text-white/40">Total</p>
-              <p className="font-mono text-2xl font-bold tracking-tight text-[#22c55e]">₲ {money(f.totalGeneral ?? 0)}</p>
+              <p className="font-mono text-2xl font-bold tracking-tight text-[var(--accent)]">₲ {money(f.totalGeneral ?? 0)}</p>
             </div>
           </div>
 
@@ -302,7 +303,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
       <div className="bg-[#0c0c0e] border border-white/10 rounded-none w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 sticky top-0 bg-[#0c0c0e] z-10">
           <div className="flex items-center gap-3">
-            <span className="rounded-none bg-[var(--accent)]/10 p-2 text-[#22c55e]">
+            <span className="rounded-none bg-[var(--accent)]/10 p-2 text-[var(--accent)]">
               <PackageCheck className="w-5 h-5" />
             </span>
             <div>
@@ -377,7 +378,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
               {timbrados.length === 0 && !cargandoTimbrados && (
                 <button
                   onClick={() => setShowTimbradosModal(true)}
-                  className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-[#22c55e] hover:text-[var(--accent)] transition-colors"
+                  className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-[var(--accent)] hover:text-[var(--accent)] transition-colors"
                   type="button"
                 >
                   <Plus size={13} /> Registrar timbrado
@@ -445,38 +446,39 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
           <div className="mt-1" ref={prodRef}>
             <label className={S.eyebrow}>Productos</label>
             <div className="relative mt-1">
-              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-white/40">
-                <Search size={16} />
-              </span>
-              <input
+              <SearchField
                 value={prodSearch}
-                onChange={(e) => { setProdSearch(e.target.value); setShowProductos(true); }}
+                onChange={(v) => { setProdSearch(v); setShowProductos(true); }}
+                onEnter={(e) => { e.preventDefault(); buscarPorCodigo(prodSearch); }}
                 onFocus={() => setShowProductos(true)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); buscarPorCodigo(prodSearch); } }}
                 placeholder="Escanear código de barras o buscar por nombre..."
-                className={`${S.field} pl-[2.5rem] pr-[2.5rem]`}
+                ariaLabel="Buscar producto o escanear código de barras"
+                right={
+                  prodSearch ? (
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => setProdSearch("")}
+                      title="Limpiar búsqueda"
+                      aria-label="Limpiar búsqueda"
+                      className="p-1.5 text-white/40 hover:text-white transition-colors"
+                    >
+                      <X size={16} />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => buscarPorCodigo(prodSearch)}
+                      title="Buscar por código"
+                      aria-label="Buscar por código de barras"
+                      className="p-1.5 text-white/40 hover:text-white transition-colors"
+                    >
+                      <Barcode size={16} />
+                    </button>
+                  )
+                }
               />
-              {prodSearch ? (
-                <button
-                  type="button"
-                  onClick={() => setProdSearch("")}
-                  title="Limpiar búsqueda"
-                  aria-label="Limpiar búsqueda"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-white/40 hover:text-white transition-colors"
-                >
-                  <X size={16} />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => buscarPorCodigo(prodSearch)}
-                  title="Buscar por código"
-                  aria-label="Buscar por código de barras"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-white/40 hover:text-white transition-colors"
-                >
-                  <Barcode size={16} />
-                </button>
-              )}
 
               {showProductos && (
                 <div className={S.dropdown}>
@@ -546,7 +548,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
                       step="1"
                       value={l.precioUnitario}
                       onChange={(e) => actualizarPrecio(l.producto.id, e.target.value)}
-                      className="w-28 bg-white/5 border border-white/10 rounded-none px-2 py-1 text-right text-sm font-mono text-white outline-none transition-colors focus:border-[var(--accent)]"
+                      className="w-28 bg-white/[0.03] border border-white/10 rounded-none px-2 py-1 text-right text-sm font-mono text-white outline-none transition-colors focus:border-[var(--accent)]"
                     />
                   </div>
                   <div className="py-1.5 pr-3 text-right font-semibold font-mono text-sm text-white bg-white/[0.03]">
@@ -589,7 +591,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
               <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
                 <div className="text-right">
                   <p className="text-xs text-white/40 uppercase tracking-[0.12em]">Total factura</p>
-                  <p className="font-mono text-3xl font-bold tracking-tight text-[#22c55e]">
+                  <p className="font-mono text-3xl font-bold tracking-tight text-[var(--accent)]">
                     ₲ {money(total)}
                   </p>
                 </div>

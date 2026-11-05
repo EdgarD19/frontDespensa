@@ -1,5 +1,6 @@
 
 import PageHeader from "../../../../components/ui/PageHeader";
+import SearchField from "../../../../components/ui/SearchField";
 import { THEAD_ROW } from "../../../../components/ui/styles";
 import { Link } from "react-router-dom";
 import { Plus, XCircle, PenLine, Trash2, X, Search, PackageCheck } from "lucide-react";
@@ -63,7 +64,7 @@ const actionBase = "flex h-8 w-8 items-center justify-center rounded-none transi
 
 const fieldClass =
   "w-full rounded-none border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm text-white " +
-  "placeholder:text-white/30 outline-none transition focus:border-[#22c55e]/60 focus:ring-2 focus:ring-[#22c55e]/15";
+  "placeholder:text-white/30 outline-none transition focus:border-[var(--accent)]/60 focus:ring-2 focus:ring-[var(--accent)]/15";
 
 /* ───────────── Página ───────────── */
 
@@ -224,7 +225,7 @@ export default function PedidosABM() {
                 onClick={() => { setFiltroEstado(opt.value); setPage(0); }}
                 className={`rounded-full border px-3.5 py-1.5 text-sm transition-colors ${
                   activo
-                    ? "border-[#22c55e]/40 bg-[var(--accent)]/10 font-medium text-[var(--accent)]"
+                    ? "border-[var(--accent)]/40 bg-[var(--accent)]/10 font-medium text-[var(--accent)]"
                     : "border-white/10 bg-[#0c0c0e] text-white/60 hover:border-[#3a3a44] hover:text-white"
                 }`}
               >
@@ -237,7 +238,7 @@ export default function PedidosABM() {
         <button
           type="button"
           onClick={abrirCrear}
-          className="flex items-center gap-2 whitespace-nowrap rounded-none bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#22c55e]/50"
+          className="flex items-center gap-2 whitespace-nowrap rounded-none bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-[var(--accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/50"
         >
           <Plus className="h-4 w-4" />
           Generar pedido
@@ -592,23 +593,13 @@ function PedidoModal({
           <div className="space-y-1">
             <span className="text-xs text-white/50">Productos</span>
             <div ref={prodRef} className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/40">
-                <Search className="h-4 w-4" />
-              </span>
-              <input
+              <SearchField
                 value={prodSearch}
-                onChange={(e) => { setProdSearch(e.target.value); setProdPage(0); setShowProd(true); }}
+                onChange={(v) => { setProdSearch(v); setProdPage(0); setShowProd(true); }}
                 onFocus={() => { setProdPage(0); setShowProd(true); }}
                 placeholder="Buscar producto por nombre..."
-                className={`${fieldClass} pl-10 ${prodSearch ? "pr-10" : ""}`}
+                ariaLabel="Buscar producto por nombre"
               />
-              {prodSearch && (
-                <button type="button" onClick={() => { setProdSearch(""); setProdPage(0); }}
-                  title="Limpiar búsqueda" aria-label="Limpiar búsqueda"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-white/40 hover:text-white transition-colors">
-                  <X className="h-4 w-4" />
-                </button>
-              )}
               {showProd && (
                 <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-none border border-white/10 bg-[#0c0c0e] shadow-xl shadow-black/40">
                   {prodResults.length === 0 ? (
@@ -714,7 +705,7 @@ function PedidoModal({
                 type="button"
                 onClick={handleSubmit}
                 disabled={guardando || sinBackend}
-                className="flex items-center gap-2 rounded-none bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-[#1b2e23] disabled:text-[#6bd695]/40"
+                className="flex items-center gap-2 rounded-none bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-black transition hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:bg-[#1b2e23] disabled:text-[#6bd695]/40"
               >
                 {guardando ? "Guardando..." : esEditar ? "Guardar cambios" : "Crear pedido"}
               </button>

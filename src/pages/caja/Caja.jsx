@@ -38,7 +38,7 @@ export default function Caja() {
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {MODULOS.map(({ label, descripcion, icon: Icon, pronto }) => (
           <div key={label} className={`${cardClass} ${pronto ? "opacity-40" : ""}`}>
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-none bg-[var(--accent)]/8 border border-[#22c55e]/15 text-[#22c55e]">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-none bg-[var(--accent)]/8 border border-[var(--accent)]/15 text-[var(--accent)]">
               <Icon className="w-8 h-8" aria-hidden />
             </div>
             <div className="text-center space-y-1">

@@ -13,7 +13,7 @@ import {
 } from "../../../api/maestrosABMApi";
 
 const inputClass =
-  "flex-1 bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent)]";
+  "flex-1 bg-white/[0.03] border border-white/10 rounded-none px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent)]";
 
 // Catálogo de categorías compartido entre las secciones de Categorías y Subcategorías,
 // para que al crear/editar una categoría la sección de subcategorías la vea al instante.
@@ -128,7 +128,7 @@ export function SeccionCategorias() {
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           placeholder="Nueva categoría..."
           className={inputClass} />
-        <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent)]/90 hover:bg-[var(--accent)] text-black text-sm font-medium rounded-none transition-colors">
+        <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent)] hover:text-black text-sm font-medium rounded-none transition-colors">
           <Plus className="w-4 h-4" /> Agregar
         </button>
       </div>
@@ -273,7 +273,7 @@ export function SeccionSubcategorias() {
   };
 
   const selectClass =
-    "bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white focus:outline-none focus:border-[var(--accent)] cursor-pointer";
+    "bg-white/[0.03] border border-white/10 rounded-none px-3 py-2 text-sm text-white focus:outline-none focus:border-[var(--accent)] cursor-pointer";
 
   return (
     <div>
@@ -291,7 +291,7 @@ export function SeccionSubcategorias() {
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           placeholder="Nueva subcategoría..."
           className={inputClass} />
-        <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent)]/90 hover:bg-[var(--accent)] text-black text-sm font-medium rounded-none transition-colors">
+        <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent)] hover:text-black text-sm font-medium rounded-none transition-colors">
           <Plus className="w-4 h-4" /> Agregar
         </button>
       </div>

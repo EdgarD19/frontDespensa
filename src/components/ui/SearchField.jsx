@@ -16,6 +16,7 @@ export default function SearchField({
   value,
   onChange,
   onEnter,
+  onFocus: onFoco,
   placeholder = "Buscar…",
   ariaLabel = "Buscar",
   size = "md",
@@ -47,6 +48,7 @@ export default function SearchField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && onEnter) onEnter(e); }}
+          onFocus={onFoco}
           placeholder={placeholder}
           aria-label={ariaLabel}
           autoFocus={autoFocus}

@@ -197,7 +197,7 @@ export default function PlanillaConteo({ sesion, modo = "informe", onVolver }) {
 const css = `
 .pc-acciones { display: flex; justify-content: flex-end; gap: 8px; max-width: 210mm; margin: 0 auto 12px; }
 .pc-acciones button {
-  background: #22c55e; color: #05240f; font-weight: 600;
+  background: var(--accent); color: #05240f; font-weight: 600;
   border: 0; border-radius: 6px; padding: 8px 18px; cursor: pointer;
 }
 .pc-acciones .pc-secundario {

@@ -55,7 +55,7 @@ const labelClass = "block text-xs text-white/50 mb-1";
 
 const fieldClass =
   "w-full rounded-none border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white " +
-  "placeholder:text-white/30 outline-none transition focus:border-[#22c55e]/60 focus:ring-2 focus:ring-[#22c55e]/15 " +
+  "placeholder:text-white/30 outline-none transition focus:border-[var(--accent)]/60 focus:ring-2 focus:ring-[var(--accent)]/15 " +
   "disabled:cursor-not-allowed disabled:opacity-50";
 
 const iconBtn = "flex h-8 w-8 items-center justify-center rounded-none transition-colors";
@@ -159,7 +159,7 @@ export default function IntercambioVentas() {
           <button
             type="button"
             onClick={() => { setAviso(null); setShowModal(true); }}
-            className="flex items-center gap-2 whitespace-nowrap rounded-none bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-black transition hover:bg-[var(--accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#22c55e]/50"
+            className="flex items-center gap-2 whitespace-nowrap rounded-none bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-black transition hover:bg-[var(--accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/50"
           >
             <Plus className="h-4 w-4" />
             Nuevo intercambio
@@ -478,22 +478,15 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
   const renderElegirTicket = () => (
     <div className="space-y-4 p-5">
       <div>
-        <label htmlFor="buscar-ticket-intercambio" className={labelClass}>
-          Buscar ticket
-        </label>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
-          <input
-            id="buscar-ticket-intercambio"
-            type="text"
-            value={consulta}
-            onChange={(e) => setConsulta(e.target.value)}
-            placeholder="N° de factura o cliente…"
-            autoComplete="off"
-            autoFocus
-            className={`${fieldClass} pl-9`}
-          />
-        </div>
+        <SearchField
+          id="buscar-ticket-intercambio"
+          value={consulta}
+          onChange={setConsulta}
+          placeholder="N° de factura o cliente…"
+          ariaLabel="Buscar ticket por número de factura o cliente"
+          label="Buscar ticket"
+          autoFocus
+        />
         <p className="mt-1 text-xs text-white/40">
           Mostrá todas las facturas de venta. Elegí el ticket con la mercadería a intercambiar.
         </p>
@@ -707,7 +700,7 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
                   type="button"
                   onClick={handleRegistrar}
                   disabled={!puedeRegistrar}
-                  className="flex items-center gap-2 rounded-none bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex items-center gap-2 rounded-none bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-black transition hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <CheckCircle className="h-4 w-4" />
                   {registrando ? "Registrando…" : "Confirmar intercambio"}

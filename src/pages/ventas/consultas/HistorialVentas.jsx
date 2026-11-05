@@ -405,7 +405,7 @@ function DetalleFacturaVenta({ factura, cargando = false, onClose }) {
               type="button"
               onClick={onClose}
               aria-label="Cerrar"
-              className="-mr-2 -mt-1 rounded-none p-2 text-white/50 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#22c55e]/60"
+              className="-mr-2 -mt-1 rounded-none p-2 text-white/50 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/60"
             >
               <X size={20} />
             </button>
