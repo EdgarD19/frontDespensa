@@ -229,7 +229,7 @@ export default function CantidadInput({
             emit(e.target.value);
           }}
           onKeyDown={onKeyDown}
-          className={`w-full bg-white/5 border rounded px-2 py-1 text-right text-sm font-mono text-white placeholder:text-white/25 outline-none transition-colors focus:border-[var(--accent)] ${
+          className={`w-full bg-white/5 border rounded-none px-2 py-1 text-right text-sm font-mono text-white placeholder:text-white/25 outline-none transition-colors focus:border-[var(--accent)] ${
             error ? "border-red-500/60" : "border-white/10"
           } ${!esKG ? "pr-7" : ""}`}
         />

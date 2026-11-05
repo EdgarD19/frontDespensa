@@ -59,7 +59,7 @@ export default function ProductForm({
             {isEditing ? "Editar Producto" : "Nuevo Producto"}
           </h2>
           <button type="button" onClick={onClose}
-            className="p-1 rounded text-white/40 hover:text-white hover:bg-[#1a1f2e] transition-colors">
+            className="p-1 rounded-none text-white/40 hover:text-white hover:bg-[#1a1f2e] transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -87,7 +87,7 @@ export default function ProductForm({
 
             <label className={labelClass}>
               <span className={labelText}>
-                Nombre <span className="text-rose-400">*</span>
+                Nombre <span className="text-red-400">*</span>
               </span>
               <input
                 type="text"
@@ -220,7 +220,7 @@ export default function ProductForm({
 
             <label className={labelClass}>
               <span className={labelText}>
-                Unidad de medida <span className="text-rose-400">*</span>
+                Unidad de medida <span className="text-red-400">*</span>
               </span>
               <select
                 name="idUnidad"

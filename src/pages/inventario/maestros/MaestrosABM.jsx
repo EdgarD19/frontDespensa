@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, createContext, useContext } from "react";
+
+import PageHeader from "../../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
 import {
-  Plus, Pencil, Check, X, ChevronDown, ToggleLeft, ToggleRight, ArrowLeft,
+  Plus, Pencil, Check, X, ChevronDown, ToggleLeft, ToggleRight,
 } from "lucide-react";
 import ConfirmModal from "../../../components/ui/ConfirmModal";
 import { getCategorias, getSubcategorias } from "../../../api/maestrosApi";
@@ -145,14 +147,14 @@ export function SeccionCategorias() {
                 <>
                   <input value={editName} onChange={(e) => setEditName(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleEdit()}
-                    className="flex-1 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm text-white focus:outline-none" autoFocus />
-                  <button onClick={handleEdit} className="p-1 text-green-400 hover:text-green-300"><Check className="w-4 h-4" /></button>
+                    className="flex-1 bg-white/10 border border-white/20 rounded-none px-2 py-1 text-sm text-white focus:outline-none" autoFocus />
+                  <button onClick={handleEdit} className="p-1 text-[var(--accent)] hover:text-[var(--accent)]"><Check className="w-4 h-4" /></button>
                   <button onClick={() => { setEditId(null); }} className="p-1 text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
                 </>
               ) : (
                 <>
                   <span className="flex-1 text-sm text-white">{c.nombre}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${c.activo === false ? "bg-red-500/10 text-red-400" : "bg-green-500/10 text-green-400"}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${c.activo === false ? "bg-red-500/10 text-red-400" : "bg-[var(--accent-dim)] text-[var(--accent)]"}`}>
                     {c.activo === false ? "Inactivo" : "Activo"}
                   </span>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -308,14 +310,14 @@ export function SeccionSubcategorias() {
                 <>
                   <input value={editName} onChange={(e) => setEditName(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleEdit()}
-                    className="flex-1 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm text-white focus:outline-none" autoFocus />
-                  <button onClick={handleEdit} className="p-1 text-green-400 hover:text-green-300"><Check className="w-4 h-4" /></button>
+                    className="flex-1 bg-white/10 border border-white/20 rounded-none px-2 py-1 text-sm text-white focus:outline-none" autoFocus />
+                  <button onClick={handleEdit} className="p-1 text-[var(--accent)] hover:text-[var(--accent)]"><Check className="w-4 h-4" /></button>
                   <button onClick={() => { setEditId(null); }} className="p-1 text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
                 </>
               ) : (
                 <>
                   <span className="flex-1 text-sm text-white">{s.nombre}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${s.activo === false ? "bg-red-500/10 text-red-400" : "bg-green-500/10 text-green-400"}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${s.activo === false ? "bg-red-500/10 text-red-400" : "bg-[var(--accent-dim)] text-[var(--accent)]"}`}>
                     {s.activo === false ? "Inactivo" : "Activo"}
                   </span>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -368,15 +370,11 @@ export default function MaestrosABM() {
   return (
     <CategoriasProvider>
       <div className="space-y-5">
-        <div className="flex items-center gap-3">
-          <Link to="/inventario" className="rounded-none hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
-            <ArrowLeft size={18} />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-semibold text-white mb-1">Administrar Maestros</h1>
-            <p className="text-sm text-white/40">Gestiona categorías y subcategorías</p>
-          </div>
-        </div>
+        <PageHeader
+            backTo="/inventario"
+            title="Categorías y subcategorías"
+            subtitle="Agrega y organiza las categorías y subcategorías de productos."
+        />
         <AccordionSection titulo="Categorías" defaultOpen={true}>
           <SeccionCategorias />
         </AccordionSection>

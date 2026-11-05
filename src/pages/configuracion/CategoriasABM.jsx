@@ -1,6 +1,8 @@
 import { useState } from "react";
+
+import PageHeader from "../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
-import { ChevronDown, ArrowLeft } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { CategoriasProvider, SeccionCategorias, SeccionSubcategorias } from "../inventario/maestros/MaestrosABM";
 
 function AccordionSection({ titulo, defaultOpen = false, children }) {
@@ -21,19 +23,11 @@ export default function CategoriasABM() {
   return (
     <CategoriasProvider>
       <div className="max-w-4xl mx-auto py-8 px-4 space-y-6">
-        <div className="flex items-center gap-3">
-          <Link to="/configuracion" className="p-2 rounded-none hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
-            <ArrowLeft size={18} />
-          </Link>
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold text-white tracking-tight">
-              Categorías y Subcategorías
-            </h1>
-            <p className="text-sm text-white/40">
-              Gestión de categorías y subcategorías de productos
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          backTo="/configuracion"
+          title="Categorías y subcategorías"
+          subtitle="Agrega y organiza las categorías y subcategorías de productos"
+        />
         <div className="space-y-5">
           <AccordionSection titulo="Categorías" defaultOpen={true}>
             <SeccionCategorias />

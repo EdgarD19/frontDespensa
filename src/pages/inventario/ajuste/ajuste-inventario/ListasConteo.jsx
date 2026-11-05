@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { THEAD_ROW } from "../../../../components/ui/styles";
 import { ClipboardList, FileText, PenLine, Check, X, Save, Ban } from "lucide-react";
 import Pagination from "../../../../components/ui/Pagination";
 import CantidadInput from "../../../../components/ui/CantidadInput";
@@ -200,7 +201,7 @@ export default function ListasConteo({
               onFechaHastaChange?.("");
               setCurrentPage(0);
             }}
-            className="mt-3 text-xs font-medium text-[var(--accent)] hover:text-green-400 transition-colors"
+            className="mt-3 text-xs font-medium text-[var(--accent)] hover:text-[var(--accent)] transition-colors"
           >
             Limpiar filtros
           </button>
@@ -220,7 +221,7 @@ export default function ListasConteo({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                <tr className={THEAD_ROW}>
                   <th className="px-4 py-3 font-medium">N° Registro</th>
                   <th className="px-4 py-3 font-medium">Fecha/Hora</th>
                   <th className="px-4 py-3 font-medium">Motivo</th>
@@ -261,7 +262,7 @@ export default function ListasConteo({
                         <button
                           type="button"
                           onClick={() => setVerPdfId(s.id)}
-                          className="p-1.5 rounded text-white/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors"
+                          className="p-1.5 rounded-none text-white/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors"
                           title="Planilla / PDF"
                           aria-label="Ver e imprimir la planilla de la lista"
                         >
@@ -271,7 +272,7 @@ export default function ListasConteo({
                           type="button"
                           onClick={() => setCargarId(s.id)}
                           disabled={desactivada}
-                          className="p-1.5 rounded text-white/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors disabled:opacity-25 disabled:pointer-events-none"
+                          className="p-1.5 rounded-none text-white/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors disabled:opacity-25 disabled:pointer-events-none"
                           title={
                             aplicado
                               ? "Ver carga de stock"
@@ -287,7 +288,7 @@ export default function ListasConteo({
                           type="button"
                           onClick={() => setConfirmarId(s.id)}
                           disabled={aplicado || desactivada || !listo}
-                          className="p-1.5 rounded text-white/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors disabled:opacity-25 disabled:pointer-events-none"
+                          className="p-1.5 rounded-none text-white/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors disabled:opacity-25 disabled:pointer-events-none"
                           title={
                             desactivada
                               ? "Lista desactivada"
@@ -303,7 +304,7 @@ export default function ListasConteo({
                           type="button"
                           onClick={() => setDesactivarId(s.id)}
                           disabled={aplicado || desactivada || desactivandoId === s.id}
-                          className="p-1.5 rounded text-white/40 hover:text-rose-400 hover:bg-rose-500/10 transition-colors disabled:opacity-25 disabled:pointer-events-none"
+                          className="p-1.5 rounded-none text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-25 disabled:pointer-events-none"
                           title={
                             aplicado
                               ? "Un ajuste aplicado (confirmado) no se puede desactivar"
@@ -365,7 +366,7 @@ export default function ListasConteo({
             <div className="p-6 space-y-4">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                  <tr className={THEAD_ROW}>
                     <th className="px-4 py-3 font-medium">Producto</th>
                     <th className="px-4 py-3 font-medium">Stock Físico a cargar</th>
                   </tr>
@@ -411,7 +412,7 @@ export default function ListasConteo({
                 <button
                   type="button"
                   onClick={() => setCargarId(null)}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-[var(--accent)] hover:bg-green-400 text-black font-medium rounded-none transition-colors"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-black font-medium rounded-none transition-colors"
                 >
                   Listo
                 </button>
@@ -449,7 +450,7 @@ export default function ListasConteo({
               {error && (
                 <div
                   role="alert"
-                  className="rounded-none border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200"
+                  className="rounded-none border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200"
                 >
                   {error}
                 </div>
@@ -459,7 +460,7 @@ export default function ListasConteo({
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                      <tr className={THEAD_ROW}>
                         <th className="px-4 py-3 font-medium">Producto</th>
                         <th className="px-4 py-3 text-right font-medium">Cant. en sistema</th>
                         <th className="px-4 py-3 text-right font-medium">Stock físico cargado</th>
@@ -473,7 +474,7 @@ export default function ListasConteo({
                           diff > 0
                             ? "text-[var(--accent)]"
                             : diff < 0
-                              ? "text-rose-400"
+                              ? "text-red-400"
                               : "text-[#6e6e80]";
                         return (
                           <tr key={it.idProducto} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
@@ -515,7 +516,7 @@ export default function ListasConteo({
                     <button
                       type="button"
                       onClick={() => setConfirmarId(null)}
-                      className="inline-flex items-center gap-2 px-6 py-2.5 bg-[var(--accent)] hover:bg-green-400 text-black font-medium rounded-none transition-colors"
+                      className="inline-flex items-center gap-2 px-6 py-2.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-black font-medium rounded-none transition-colors"
                     >
                       Cerrar
                     </button>
@@ -529,7 +530,7 @@ export default function ListasConteo({
                       type="button"
                       onClick={() => onAplicar(confirmar.id)}
                       disabled={aplicandoConfirmar}
-                      className="inline-flex items-center gap-2 px-6 py-2.5 bg-[var(--accent)] hover:bg-green-400 disabled:opacity-40 disabled:pointer-events-none text-black font-medium rounded-none transition-colors"
+                      className="inline-flex items-center gap-2 px-6 py-2.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-40 disabled:pointer-events-none text-black font-medium rounded-none transition-colors"
                     >
                       <Save className="w-4 h-4" />
                       {aplicandoConfirmar ? "Aplicando…" : "Confirmar ajuste"}
@@ -582,7 +583,7 @@ export default function ListasConteo({
                     setDesactivarId(null);
                   }}
                   disabled={desactivandoConfirm}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-rose-500 hover:bg-rose-600 disabled:opacity-40 disabled:pointer-events-none text-white font-medium rounded-none transition-colors"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-red-500 hover:bg-red-600 disabled:opacity-40 disabled:pointer-events-none text-white font-medium rounded-none transition-colors"
                 >
                   <Ban className="w-4 h-4" />
                   {desactivandoConfirm ? "Desactivando…" : "Desactivar lista"}

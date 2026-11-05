@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  ArrowLeft, AlertTriangle, TrendingUp, PackageOpen, BarChart3, RefreshCw,
+  AlertTriangle, TrendingUp, PackageOpen, BarChart3, RefreshCw,
 } from "lucide-react";
 import { getProductos, getProductosStockBajo } from "../../api/productosApi";
 import { getProductosMasVendidos } from "../../api/reportesVentasApi";
 import { getFacturasVenta } from "../../api/facturasVentaApi";
 import { apiErrorMessage } from "../../api/errors";
+import PageHeader from "../../components/ui/PageHeader";
 
 const MINIMO_GLOBAL = 10;
 // Rango "todo el histórico" para el reporte de más vendidos
@@ -179,19 +180,12 @@ export default function DashboardVentas() {
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
       {/* ── Encabezado ── */}
-      <div className="flex items-center gap-3">
-        <Link
-          to="/ventas"
-          aria-label="Volver a ventas"
-          className={`rounded-none p-2 text-white/50 transition-colors hover:bg-white/10 hover:text-white ${FOCUS}`}
-        >
-          <ArrowLeft size={18} />
-        </Link>
-        <div className="min-w-0 flex-1 space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-white">Dashboard</h1>
-          <p className="text-sm text-white/45">Qué reponer y qué se vende más.</p>
-        </div>
-      </div>
+      <PageHeader
+        backTo="/ventas"
+        backLabel="Volver a ventas"
+        title="Dashboard"
+        subtitle="Qué reponer y qué se vende más."
+      />
 
       {/* ── Error ── */}
       {error && (

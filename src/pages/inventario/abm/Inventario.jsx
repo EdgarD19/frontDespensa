@@ -3,8 +3,9 @@
 //   useEffect  → ejecuta código cuando algo cambia (ej: al montar el componente)
 //   useCallback → memoriza una función para que no se recree en cada render
 import { useState, useEffect, useCallback, useRef } from "react";
+import PageHeader from "../../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import {  } from "lucide-react";
 
 import ProductForm from "./ProductForm";
 import ProductList from "./ProductList";
@@ -298,12 +299,7 @@ export default function Inventario() {
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-4">
-        <Link to="/inventario" className="p-2 rounded-none hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
-          <ArrowLeft size={18} />
-        </Link>
-        <h1 className="text-2xl font-semibold text-white">Gestión de Productos</h1>
-      </div>
+      <PageHeader backTo="/inventario" title="Productos" />
 
       {error && (
         <div className="mb-4 px-4 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-none py-3">{error}</div>

@@ -1,4 +1,6 @@
-import { Search, ToggleLeft, ToggleRight, Pencil, X } from "lucide-react";
+import { Search, ToggleLeft, ToggleRight, Pencil } from "lucide-react";
+import SearchField from "../../../../components/ui/SearchField";
+import { THEAD_ROW } from "../../../../components/ui/styles";
 import Pagination from "../../../../components/ui/Pagination";
 
 export default function ProveedoresTabla({
@@ -18,16 +20,13 @@ export default function ProveedoresTabla({
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-3 py-3">
         <div className="relative flex-1">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
-          <input type="text" value={search} onChange={(e) => onSearch(e.target.value)}
+          <SearchField
+            value={search}
+            onChange={onSearch}
             placeholder="Buscar por nombre, RUC, contacto, teléfono..."
-            className="w-full bg-white/5 border border-white/10 rounded-none pl-9 pr-9 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent)] transition-colors" />
-          {search && (
-            <button type="button" onClick={() => onSearch("")} title="Limpiar búsqueda" aria-label="Limpiar búsqueda"
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-white/40 hover:text-white hover:bg-white/10 transition-colors">
-              <X size={15} />
-            </button>
-          )}
+            ariaLabel="Buscar proveedor"
+            wrapperClass=""
+          />
         </div>
         <button onClick={onNuevo}
           className="flex items-center gap-2 bg-[var(--accent)] hover:opacity-90 text-black text-sm font-medium px-4 py-2 rounded-none transition-opacity whitespace-nowrap">
@@ -38,7 +37,7 @@ export default function ProveedoresTabla({
       <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+            <tr className={THEAD_ROW}>
               <th className="px-4 py-3 font-medium">Nombre / Razón Social</th>
               <th className="px-4 py-3 font-medium">Documento</th>
               <th className="whitespace-nowrap px-4 py-3 font-medium">Tipo de persona</th>
@@ -51,7 +50,7 @@ export default function ProveedoresTabla({
             {loading && Array.from({ length: 5 }).map((_, i) => (
               <tr key={i} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                 {Array.from({ length: 6 }).map((_, j) => (
-                  <td key={j} className="px-4 py-3"><div className="h-4 w-3/4 animate-pulse rounded bg-white/10" /></td>
+                  <td key={j} className="px-4 py-3"><div className="h-4 w-3/4 animate-pulse rounded-none bg-white/10" /></td>
                 ))}
               </tr>
             ))}
@@ -71,7 +70,7 @@ export default function ProveedoresTabla({
                   <td className="px-4 py-3 text-white/70">{p.numeroDocumento || "—"}</td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      esJuridica ? "bg-blue-500/10 text-blue-400" : "bg-green-500/10 text-green-400"
+                      esJuridica ? "bg-blue-500/10 text-blue-400" : "bg-[var(--accent-dim)] text-[var(--accent)]"
                     }`}>
                       {esJuridica ? "Jurídica" : "Física"}
                     </span>
@@ -79,21 +78,21 @@ export default function ProveedoresTabla({
                   <td className="px-4 py-3 text-white/70">{p.personaContacto || "—"}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
-                      activo ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"
+                      activo ? "bg-[var(--accent-dim)] text-[var(--accent)]" : "bg-red-500/10 text-red-400"
                     }`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${activo ? "bg-emerald-400" : "bg-red-400"}`} />
+                      <span className={`h-1.5 w-1.5 rounded-full ${activo ? "bg-[var(--accent)]" : "bg-red-400"}`} />
                       {activo ? "Activo" : "Inactivo"}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <button type="button" onClick={(e) => { e.stopPropagation(); onSeleccionar(p); }}
-                        className="p-1.5 rounded text-white/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors"
+                        className="p-1.5 rounded-none text-white/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors"
                         title="Editar proveedor" aria-label="Editar proveedor">
                         <Pencil size={16} />
                       </button>
                       <button type="button" onClick={(e) => { e.stopPropagation(); onToggleActivo?.(p); }}
-                        className={`p-1.5 rounded transition-colors ${activo ? "text-green-400 hover:bg-green-500/10" : "text-white/40 hover:text-green-400 hover:bg-green-500/10"}`}
+                        className={`p-1.5 rounded-none transition-colors ${activo ? "text-[var(--accent)] hover:bg-[var(--accent-dim)]" : "text-white/40 hover:text-[var(--accent)] hover:bg-[var(--accent-dim)]"}`}
                         title={activo ? "Inactivar proveedor" : "Activar proveedor"} aria-label={activo ? "Inactivar proveedor" : "Activar proveedor"}>
                         {activo ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
                       </button>

@@ -1,4 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { THEAD_ROW } from "../../../components/ui/styles";
+
+import PageHeader from "../../../components/ui/PageHeader";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
@@ -16,6 +19,7 @@ import CantidadInput from "../../../components/ui/CantidadInput";
 import Pagination from "../../../components/ui/Pagination";
 import { esProductoPesable } from "../registro-venta/utils";
 import { esAnulada, fmtFecha, fmtMoneda } from "../common";
+import SearchField from "../../../components/ui/SearchField";
 
 /* ───────────── Utilidades y estilos ───────────── */
 
@@ -31,7 +35,7 @@ const claveMotivo = (m) => String(m || "").toUpperCase().trim();
 function motivoBadge(m) {
   const k = claveMotivo(m);
   const cls =
-    k === "DEFECTUOSO" ? "bg-rose-500/15 text-rose-400"
+    k === "DEFECTUOSO" ? "bg-red-500/15 text-red-400"
     : k === "MERMA" ? "bg-amber-500/15 text-amber-400"
     : k === "OTROS" ? "bg-sky-500/15 text-sky-400"
     : "bg-white/10 text-white/70";
@@ -147,23 +151,21 @@ export default function IntercambioVentas() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-3">
-        <Link to="/ventas" className="rounded-none p-2 text-white/50 transition-colors hover:bg-white/10" aria-label="Volver">
-          <ArrowLeft size={18} />
-        </Link>
-        <div className="flex-1 space-y-0.5">
-          <h1 className="text-2xl font-semibold tracking-tight text-white">Intercambio</h1>
-          <p className="text-sm text-white/40">Intercambiá productos defectuosos de una factura de venta con el cliente.</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => { setAviso(null); setShowModal(true); }}
-          className="flex items-center gap-2 whitespace-nowrap rounded-none bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-black transition hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#22c55e]/50"
-        >
-          <Plus className="h-4 w-4" />
-          Nuevo intercambio
-        </button>
-      </div>
+      <PageHeader
+        backTo="/ventas"
+        title="Intercambios"
+        subtitle="Intercambiá productos defectuosos de una factura de venta con el cliente."
+        right={
+          <button
+            type="button"
+            onClick={() => { setAviso(null); setShowModal(true); }}
+            className="flex items-center gap-2 whitespace-nowrap rounded-none bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-black transition hover:bg-[var(--accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#22c55e]/50"
+          >
+            <Plus className="h-4 w-4" />
+            Nuevo intercambio
+          </button>
+        }
+      />
 
       {error && (
         <div className="flex items-center gap-2 rounded-none border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
@@ -171,35 +173,20 @@ export default function IntercambioVentas() {
         </div>
       )}
       {aviso && (
-        <div className="flex items-center gap-2 rounded-none border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+        <div className="flex items-center gap-2 rounded-none border border-[var(--border-accent)] bg-[var(--accent-dim)] px-4 py-3 text-sm text-[var(--accent)]">
           <CheckCircle className="h-5 w-5 shrink-0" /> {aviso}
         </div>
       )}
 
       {/* Filtros */}
       <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
-        <div className="relative min-w-[200px] flex-1">
-          <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
-          <input
-            type="text"
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            placeholder="Buscar por cliente"
-            aria-label="Buscar por cliente"
-            className="w-full rounded-none border border-white/10 bg-white/5 py-2 pl-9 pr-10 text-sm text-white placeholder:text-white/30 transition-colors focus:border-[var(--accent)] focus:outline-none"
-          />
-          {texto && (
-            <button
-              type="button"
-              onClick={() => setTexto("")}
-              title="Limpiar búsqueda"
-              aria-label="Limpiar búsqueda"
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-white/40 transition-colors hover:bg-white/10 hover:text-white"
-            >
-              <X size={15} />
-            </button>
-          )}
-        </div>
+        <SearchField
+          value={texto}
+          onChange={setTexto}
+          placeholder="Buscar por cliente"
+          ariaLabel="Buscar por cliente"
+          wrapperClass="relative min-w-[200px] flex-1"
+        />
         <div className="w-full sm:w-44">
           <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40" htmlFor="intercambio-desde">
             Desde
@@ -239,7 +226,7 @@ export default function IntercambioVentas() {
         {loading ? (
           <div className="grid grid-cols-5 gap-4 px-4 py-6">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-4 bg-white/10 rounded animate-pulse" />
+              <div key={i} className="h-4 bg-white/10 rounded-none animate-pulse" />
             ))}
           </div>
         ) : intercambiosFiltrados.length === 0 ? (
@@ -261,7 +248,7 @@ export default function IntercambioVentas() {
           <div className="overflow-x-auto [color-scheme:dark]">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                <tr className={THEAD_ROW}>
                   <th className="px-4 py-3 font-medium">Fecha</th>
                   <th className="px-4 py-3 font-medium">Cliente</th>
                   <th className="px-4 py-3 font-medium">Factura</th>
@@ -528,7 +515,7 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
         <div className="max-h-[45vh] overflow-y-auto [color-scheme:dark] [scrollbar-color:#2a2a32_transparent] [scrollbar-width:thin]">
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-10 bg-[#0c0c0e]">
-              <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+              <tr className={THEAD_ROW}>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">Ticket</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">Fecha</th>
                 <th className="px-4 py-3 font-medium">Cliente</th>
@@ -571,7 +558,7 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
       <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+            <tr className={THEAD_ROW}>
               <th className="px-4 py-2.5 font-medium">Producto</th>
               <th className="px-4 py-2.5 text-right font-medium">Cantidad del ticket</th>
               <th className="px-4 py-2.5 text-right font-medium">Cant. a intercambiar</th>
@@ -660,7 +647,7 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
                 <p className="mt-0.5 text-xs text-white/50">Elegí el ticket (factura) a intercambiar.</p>
               </div>
               <button type="button" onClick={onCerrar} aria-label="Cerrar"
-                className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
+                className="rounded-none p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -696,7 +683,7 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
                 type="button"
                 onClick={() => { setFacturaSel(null); setErrorFormulario(null); }}
                 aria-label="Volver a elegir ticket"
-                className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white"
+                className="rounded-none p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -759,7 +746,7 @@ function DetalleIntercambioModal({ intercambio, onCerrar }) {
             </span>
           </h2>
           <button type="button" onClick={onCerrar} aria-label="Cerrar"
-            className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
+            className="rounded-none p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -790,7 +777,7 @@ function DetalleIntercambioModal({ intercambio, onCerrar }) {
           <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                <tr className={THEAD_ROW}>
                   <th className="px-4 py-3 font-medium">Devuelto (defectuoso)</th>
                   <th className="px-4 py-3 font-medium">Entregado (reemplazo)</th>
                   <th className="px-4 py-3 text-center font-medium">Cant.</th>

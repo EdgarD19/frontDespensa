@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
+
+import PageHeader from "../../../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import {  } from "lucide-react";
 import ProveedoresTabla from "./ProveedoresTabla";
 import ProveedoresModal from "./ProveedoresModal";
 import ConfirmModal from "../../../../components/ui/ConfirmModal";
@@ -154,12 +156,7 @@ export default function ProveedoresABM() {
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-4">
-      <Link to="/compras" className="p-2 rounded-none hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
-        <ArrowLeft size={18} />
-      </Link>
-      <h1 className="text-2xl font-semibold text-white">Gestión de Proveedores</h1>
-    </div>
+      <PageHeader backTo="/compras" title="Proveedores" />
 
       {error && (
         <div className="mb-4 px-4 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-none py-3">{error}</div>

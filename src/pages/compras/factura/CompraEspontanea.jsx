@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { THEAD_ROW } from "../../../components/ui/styles";
 import { Truck, Search, Barcode, Trash2, ShoppingCart, Check, Calendar, FileText, Plus, Settings2, X } from "lucide-react";
 import { getProductos, getProductoByCodigo, getPrecioCompraVigente } from "../../../api/productosApi";
 import { getProveedores, getProveedorId, getProveedorNombre } from "../../../api/proveedoresApi";
@@ -258,7 +259,7 @@ export default function CompraEspontanea({ onVolver }) {
                   setTimbrados([]); setTimbradoId(""); setNumeroComprobante(""); setFormaPago("CONTADO");
                   setFechaEmision(hoyAsuncion());
                 }}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[var(--accent)] hover:bg-green-400 text-black text-sm font-semibold transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-black text-sm font-semibold transition-colors"
               >
                 <ShoppingCart className="w-4 h-4" /> Nueva compra
               </button>
@@ -291,7 +292,7 @@ export default function CompraEspontanea({ onVolver }) {
           <div className="mx-auto mt-6 max-w-2xl overflow-hidden border border-white/10 bg-[#0c0c0e]">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                <tr className={THEAD_ROW}>
                   <th scope="col" className="px-4 py-3 text-left font-medium">Liquidación del IVA</th>
                   <th scope="col" className="px-4 py-3 text-right font-medium">Subtotal</th>
                   <th scope="col" className="px-4 py-3 text-right font-medium">IVA</th>
@@ -430,7 +431,7 @@ export default function CompraEspontanea({ onVolver }) {
               {proveedorSel && timbrados.length === 0 && !cargandoTimbrados && (
                 <button
                   onClick={() => setShowTimbradosModal(true)}
-                  className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-[var(--accent)] hover:text-green-400 transition-colors"
+                  className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-[var(--accent)] hover:text-[var(--accent)] transition-colors"
                   type="button"
                 >
                   <Plus size={13} /> Registrar timbrado
@@ -584,7 +585,7 @@ export default function CompraEspontanea({ onVolver }) {
                 </div>
                 {/* U.M. */}
                 <div className="py-1.5 text-center text-sm text-white bg-white/[0.03]">
-                  <span className="rounded px-1.5 py-0.5 text-xs bg-white/10 text-white/40">
+                  <span className="rounded-none px-1.5 py-0.5 text-xs bg-white/10 text-white/40">
                     {l.producto.unitAbbreviation || l.producto.unidadMedida || "UNI"}
                   </span>
                 </div>
@@ -599,7 +600,7 @@ export default function CompraEspontanea({ onVolver }) {
                 </div>
                 {/* IVA % */}
                 <div className="py-1.5 text-center text-sm text-white bg-white/[0.03]">
-                  <span className="rounded px-1.5 py-0.5 text-xs bg-white/10 text-white/40">
+                  <span className="rounded-none px-1.5 py-0.5 text-xs bg-white/10 text-white/40">
                     {l.producto.iva != null ? `${l.producto.iva}%` : "10%"}
                   </span>
                 </div>
@@ -611,7 +612,7 @@ export default function CompraEspontanea({ onVolver }) {
                     step="1"
                     value={l.precioUnitario}
                     onChange={(e) => actualizarPrecio(l.producto.id, e.target.value)}
-                    className="w-28 bg-white/5 border border-white/10 rounded px-2 py-1 text-right text-sm font-mono text-white outline-none transition-colors focus:border-[var(--accent)]"
+                    className="w-28 bg-white/5 border border-white/10 rounded-none px-2 py-1 text-right text-sm font-mono text-white outline-none transition-colors focus:border-[var(--accent)]"
                   />
                 </div>
                 {/* Subtotal */}
@@ -622,7 +623,7 @@ export default function CompraEspontanea({ onVolver }) {
                 <div className="py-1.5 pr-3 text-right bg-white/[0.03] rounded-r-none">
                   <button
                     onClick={() => eliminarLinea(l.producto.id)}
-                    className="rounded p-1 text-white/40 hover:bg-red-500/15 hover:text-red-400 transition-colors"
+                    className="rounded-none p-1 text-white/40 hover:bg-red-500/15 hover:text-red-400 transition-colors"
                     aria-label={`Quitar ${l.producto.nombre}`}
                   >
                     <Trash2 size={14} />
@@ -675,7 +676,7 @@ export default function CompraEspontanea({ onVolver }) {
                 <button
                   onClick={handleSubmit}
                   disabled={guardando || timbradoBloqueado || !proveedorSel || !numeroComprobante.trim() || lineas.length === 0}
-                  className="inline-flex items-center justify-center gap-2 px-5 py-2 bg-[var(--accent)] hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-none transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-none transition-colors"
                 >
                   <ShoppingCart size={16} />
                   {guardando ? "Guardando..." : "Registrar compra"}

@@ -1,4 +1,5 @@
-import { Search, ToggleLeft, ToggleRight, Ban, X, ArrowLeft } from "lucide-react";
+
+import PageHeader from "../../../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react"
 import ClientesTabla from "./ClientesTabla"
@@ -172,12 +173,7 @@ export default function ClientesABM() {
 
     return (
         <div>
-            <div className="flex items-center gap-3 mb-4">
-                <Link to="/ventas" className="p-2 rounded-none hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
-                    <ArrowLeft size={18} />
-                </Link>
-                <h1 className="text-2xl font-semibold text-white">Gestión de Clientes</h1>
-            </div>
+      <PageHeader backTo="/ventas" title="Agenda de clientes" />
 
             {error && (
                 <div className="mb-4 px-4 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-none py-3">
@@ -246,7 +242,7 @@ export default function ClientesABM() {
                                 <button
                                     type="button"
                                     onClick={handleConfirmToggle}
-                                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-medium rounded-none transition-colors"
+                                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-medium rounded-none transition-colors"
                                 >
                                     <Ban className="w-4 h-4" />
                                     {toggleModal.activo ? "Inactivar" : "Activar"}

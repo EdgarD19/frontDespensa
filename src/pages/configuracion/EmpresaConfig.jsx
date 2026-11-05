@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+
+import PageHeader from "../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Building2, Check, AlertTriangle, Loader2 } from "lucide-react";
+import { Building2, Check, AlertTriangle, Loader2 } from "lucide-react";
 import {
   getConfiguracionEmpresa,
   actualizarConfiguracionEmpresa,
@@ -15,6 +17,17 @@ const TEXTAREA =
   "min-h-[88px] w-full resize-y rounded-none border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/30 focus:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50";
 const BTN_PRIMARIO =
   "flex items-center gap-2 rounded-none bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-40";
+
+// ISO local → DD/MM/AAAA HH:mm para el "Última actualización" del header.
+// (Los inputs type="date" y los payloads siguen en yyyy-MM-dd; esto es solo display.)
+function fmtFechaHora(v) {
+  const s = String(v ?? "");
+  const d = new Date(/^\d{4}-\d{2}-\d{2}T/.test(s) ? s : "invalido");
+  if (Number.isNaN(d.getTime())) return s.replace("T", " ");
+  const fecha = d.toLocaleDateString("es-PY", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const hora = d.toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit" });
+  return `${fecha} ${hora}`;
+}
 
 const VACIO = {
   razonSocial: "",
@@ -197,21 +210,11 @@ export default function EmpresaConfig() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <div className="mb-6 flex items-center gap-3">
-        <Link
-          to="/configuracion"
-          aria-label="Volver"
-          className="rounded-none p-2 text-white/50 transition-colors hover:bg-white/10 hover:text-white"
-        >
-          <ArrowLeft size={18} />
-        </Link>
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-white">Datos de la empresa</h1>
-          <p className="text-sm text-white/40">
-            Razón social, RUC y datos que aparecen en el ticket de venta
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        backTo="/configuracion"
+        title="Datos de la empresa"
+        subtitle="Razón social, RUC y datos que aparecen en el ticket de venta"
+      />
 
       {aviso && (
         <div className={`${CARD} mb-4 flex items-center gap-2 p-3 text-sm text-[var(--accent)]`}>
@@ -242,7 +245,7 @@ export default function EmpresaConfig() {
               </p>
               {meta?.fechaActualizacion && (
                 <p className="text-[11px] text-white/30">
-                  Última actualización: {String(meta.fechaActualizacion).replace("T", " ").slice(0, 19)}
+                  Última actualización: {fmtFechaHora(meta.fechaActualizacion)}
                 </p>
               )}
             </div>

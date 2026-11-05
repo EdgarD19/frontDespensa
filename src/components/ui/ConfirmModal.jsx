@@ -21,7 +21,7 @@ export default function ConfirmModal({
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
           <h2 className="text-sm font-semibold text-white">{titulo}</h2>
           <button type="button" onClick={onCerrar}
-            className="p-1 rounded text-white/40 hover:text-white hover:bg-[#1a1f2e] transition-colors">
+            className="p-1 rounded-none text-white/40 hover:text-white hover:bg-[#1a1f2e] transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>

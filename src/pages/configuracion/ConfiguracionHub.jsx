@@ -5,20 +5,20 @@ import { hubCardClass as cardClass, hubIconClass } from "../../components/ui/hub
 const MODULOS = [
   {
     to: "/configuracion/categorias",
-    label: "Categorías y Subcategorías",
-    descripcion: "Alta, baja y modificación de categorías y subcategorías de productos.",
+    label: "Categorías y subcategorías",
+    descripcion: "Agrega y organiza las categorías y subcategorías de productos.",
     icon: Tags,
   },
   {
     to: "/configuracion/paises",
-    label: "Países y Ciudades",
-    descripcion: "Alta, baja y modificación de países y ciudades.",
+    label: "Países y ciudades",
+    descripcion: "Agrega y actualiza los países y ciudades del sistema.",
     icon: Globe,
   },
   {
     to: "/configuracion/comprobantes",
     label: "Comprobantes (DNIT)",
-    descripcion: "Timbrado, vigencia, establecimiento y rango de numeración de comprobantes.",
+    descripcion: "Registra el timbrado DNIT y la numeración de las facturas.",
     icon: FileText,
   },
   {
@@ -37,7 +37,7 @@ export default function ConfiguracionHub() {
         <p className="text-sm text-white/40">Selecciona un módulo para continuar</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 max-w-3xl mx-auto gap-4">
         {MODULOS.map((m) => {
           const { to, label, descripcion, icon: Icon } = m;
           return (

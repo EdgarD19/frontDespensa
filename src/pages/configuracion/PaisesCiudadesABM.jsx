@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
+
+import PageHeader from "../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
 import {
-  Plus, Pencil, Trash2, ChevronDown, Check, X, ToggleLeft, ToggleRight, ArrowLeft,
+  Plus, Pencil, Trash2, ChevronDown, Check, X, ToggleLeft, ToggleRight,
 } from "lucide-react";
 import ConfirmModal from "../../components/ui/ConfirmModal";
 import {
@@ -122,19 +124,19 @@ function SeccionPaises() {
                 <>
                   <input value={editNombre} onChange={(e) => setEditNombre(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleEdit()}
-                    className="flex-1 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm text-white focus:outline-none" autoFocus />
+                    className="flex-1 bg-white/10 border border-white/20 rounded-none px-2 py-1 text-sm text-white focus:outline-none" autoFocus />
                   <input value={editCodigo} onChange={(e) => setEditCodigo(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleEdit()}
                     maxLength={2}
-                    className="w-20 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm text-white focus:outline-none" />
-                  <button onClick={handleEdit} className="p-1 text-green-400 hover:text-green-300"><Check className="w-4 h-4" /></button>
+                    className="w-20 bg-white/10 border border-white/20 rounded-none px-2 py-1 text-sm text-white focus:outline-none" />
+                  <button onClick={handleEdit} className="p-1 text-[var(--accent)] hover:text-[var(--accent)]"><Check className="w-4 h-4" /></button>
                   <button onClick={() => { setEditId(null); }} className="p-1 text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
                 </>
               ) : (
                 <>
                   <span className="text-white text-sm flex-none">{p.codigo}</span>
                   <span className="flex-1 text-sm text-white">{p.nombre}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${p.activo === false ? "bg-red-500/10 text-red-400" : "bg-green-500/10 text-green-400"}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${p.activo === false ? "bg-red-500/10 text-red-400" : "bg-[var(--accent-dim)] text-[var(--accent)]"}`}>
                     {p.activo === false ? "Inactivo" : "Activo"}
                   </span>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -316,18 +318,18 @@ function SeccionCiudades() {
                 <>
                   <input value={editNombre} onChange={(e) => setEditNombre(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleEdit()}
-                    className="flex-1 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm text-white focus:outline-none" autoFocus />
+                    className="flex-1 bg-white/10 border border-white/20 rounded-none px-2 py-1 text-sm text-white focus:outline-none" autoFocus />
                   <input value={editCodigoPostal} onChange={(e) => setEditCodigoPostal(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleEdit()}
-                    className="w-28 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm text-white focus:outline-none" />
-                  <button onClick={handleEdit} className="p-1 text-green-400 hover:text-green-300"><Check className="w-4 h-4" /></button>
+                    className="w-28 bg-white/10 border border-white/20 rounded-none px-2 py-1 text-sm text-white focus:outline-none" />
+                  <button onClick={handleEdit} className="p-1 text-[var(--accent)] hover:text-[var(--accent)]"><Check className="w-4 h-4" /></button>
                   <button onClick={() => { setEditId(null); }} className="p-1 text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
                 </>
               ) : (
                 <>
                   <span className="text-white text-sm flex-none">{c.codigoPostal || "—"}</span>
                   <span className="flex-1 text-sm text-white">{c.nombre}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${c.activo === false ? "bg-red-500/10 text-red-400" : "bg-green-500/10 text-green-400"}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${c.activo === false ? "bg-red-500/10 text-red-400" : "bg-[var(--accent-dim)] text-[var(--accent)]"}`}>
                     {c.activo === false ? "Inactivo" : "Activo"}
                   </span>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -379,19 +381,11 @@ function AccordionSection({ titulo, defaultOpen = false, children }) {
 export default function PaisesCiudadesABM() {
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 space-y-6">
-      <div className="flex items-center gap-3">
-        <Link to="/configuracion" className="p-2 rounded-none hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
-          <ArrowLeft size={18} />
-        </Link>
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold text-white tracking-tight">
-            Países y Ciudades
-          </h1>
-          <p className="text-sm text-white/40">
-            Gestión de países y ciudades
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        backTo="/configuracion"
+        title="Países y ciudades"
+        subtitle="Agrega y actualiza los países y ciudades del sistema"
+      />
       <div className="space-y-5">
         <AccordionSection titulo="Países" defaultOpen={true}>
           <SeccionPaises />

@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { THEAD_ROW } from "../../../components/ui/styles";
 import { Link } from "react-router-dom";
-import { Search, X, Eye, ArrowLeft } from "lucide-react";
+import { Search, X, Eye } from "lucide-react";
+import PageHeader from "../../../components/ui/PageHeader";
 import {
   getFacturasVenta,
   buscarFacturasVenta,
@@ -10,6 +12,7 @@ import {
 } from "../../../api/facturasVentaApi";
 import { getClientes } from "../../../api/clientesApi";
 import { esAnulada, fmtFecha, fmtMoneda, diaISO } from "../common";
+import SearchField from "../../../components/ui/SearchField";
 import Pagination from "../../../components/ui/Pagination";
 
 const PAGE_SIZE = 10;
@@ -38,7 +41,7 @@ const totalFactura = (f) => {
 const estadoVenta = (f) => {
   if (esAnulada(f)) {
     return (
-      <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-rose-500/15 text-rose-400">
+      <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-red-500/15 text-red-400">
         Anulada
       </span>
     );
@@ -46,7 +49,7 @@ const estadoVenta = (f) => {
   // El estado del back es "EMITIDA" para toda factura no anulada; en el historial
   // se muestra "Vigente" para que coincida con el filtro (Vigentes / Anuladas).
   return (
-    <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-emerald-500/15 text-emerald-400">
+    <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-[var(--accent-dim)] text-[var(--accent)]">
       Vigente
     </span>
   );
@@ -162,39 +165,21 @@ export default function HistorialVentas() {
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4 space-y-6">
-      <div className="flex items-center gap-3">
-        <Link to="/ventas" className="p-2 rounded-none hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
-          <ArrowLeft size={18} />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-semibold text-white tracking-tight">Historial de Ventas</h1>
-        </div>
-      </div>
+      <PageHeader
+        backTo="/ventas"
+        backLabel="Volver a ventas"
+        title="Historial de ventas"
+      />
 
       {/* Filtros */}
       <div className="flex flex-col md:flex-row md:flex-wrap md:items-end gap-3">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
-          <input
-            type="text"
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            placeholder="Buscar por N° de factura o cliente"
-            aria-label="Buscar por número de factura, timbrado o cliente"
-            className="w-full bg-white/5 border border-white/10 rounded-none pl-9 pr-10 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent)] transition-colors"
-          />
-          {texto && (
-            <button
-              type="button"
-              onClick={() => setTexto("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-white/40 hover:text-white hover:bg-white/10 transition-colors"
-              title="Limpiar búsqueda"
-              aria-label="Limpiar búsqueda"
-            >
-              <X size={15} />
-            </button>
-          )}
-        </div>
+        <SearchField
+          value={texto}
+          onChange={setTexto}
+          placeholder="Buscar por N° de factura o cliente"
+          ariaLabel="Buscar por número de factura, timbrado o cliente"
+          wrapperClass="relative flex-1 min-w-[200px]"
+        />
         <div className="w-full sm:w-44">
           <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40" htmlFor="filtro-desde">
             Desde
@@ -263,7 +248,7 @@ export default function HistorialVentas() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300 whitespace-nowrap">
+              <tr className={THEAD_ROW + " whitespace-nowrap"}>
                 <th className="px-4 py-3 font-medium">Fecha Emisión</th>
                 <th className="px-4 py-3 font-medium">Cliente</th>
                 <th className="px-4 py-3 font-medium">N° Factura</th>
@@ -276,7 +261,7 @@ export default function HistorialVentas() {
               {loading && Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                   {Array.from({ length: columns }).map((_, j) => (
-                    <td key={j} className="px-4 py-3"><div className="h-4 bg-white/10 rounded animate-pulse w-3/4" /></td>
+                    <td key={j} className="px-4 py-3"><div className="h-4 bg-white/10 rounded-none animate-pulse w-3/4" /></td>
                   ))}
                 </tr>
               ))}
@@ -300,7 +285,7 @@ export default function HistorialVentas() {
                       <button
                         type="button"
                         onClick={() => verDetalle(f)}
-                        className="p-1.5 rounded text-white/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors"
+                        className="p-1.5 rounded-none text-white/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors"
                         title="Ver detalle" aria-label="Ver detalle"
                       >
                         <Eye size={16} />
@@ -339,7 +324,7 @@ export default function HistorialVentas() {
   );
 }
 
-const TH = "sticky top-0 z-10 bg-[#0c0c0e] border-b border-white/10 px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-300";
+const TH = "sticky top-0 z-10 bg-[#0c0c0e] border-b border-white/10 px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]";
 
 function Dato({ titulo, children }) {
   return (
@@ -456,7 +441,7 @@ function DetalleFacturaVenta({ factura, cargando = false, onClose }) {
                 {cargando && detalles.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-4 py-6 text-center text-white/30">
-                      <span className="inline-block h-4 w-16 bg-white/10 rounded animate-pulse align-middle mr-2" />
+                      <span className="inline-block h-4 w-16 bg-white/10 rounded-none animate-pulse align-middle mr-2" />
                       Cargando productos…
                     </td>
                   </tr>

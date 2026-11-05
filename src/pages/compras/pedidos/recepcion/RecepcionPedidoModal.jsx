@@ -287,7 +287,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
           <div className="flex gap-3 justify-center">
             <button
               onClick={volverSinCambios}
-              className="px-6 py-3 bg-[var(--accent)] hover:bg-green-400 text-black text-sm font-semibold rounded-none transition-colors"
+              className="px-6 py-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-black text-sm font-semibold rounded-none transition-colors"
             >
               Volver a pedidos
             </button>
@@ -377,7 +377,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
               {timbrados.length === 0 && !cargandoTimbrados && (
                 <button
                   onClick={() => setShowTimbradosModal(true)}
-                  className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-[#22c55e] hover:text-green-400 transition-colors"
+                  className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-[#22c55e] hover:text-[var(--accent)] transition-colors"
                   type="button"
                 >
                   <Plus size={13} /> Registrar timbrado
@@ -520,7 +520,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
                     {l.producto.nombre}
                   </div>
                   <div className="py-1.5 text-center text-sm text-white bg-white/[0.03]">
-                    <span className="rounded px-1.5 py-0.5 text-xs bg-white/10 text-white/40">
+                    <span className="rounded-none px-1.5 py-0.5 text-xs bg-white/10 text-white/40">
                       {l.producto.unitAbbreviation || l.producto.unidadMedida || "UNI"}
                     </span>
                   </div>
@@ -535,7 +535,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
                     />
                   </div>
                   <div className="py-1.5 text-center text-sm text-white bg-white/[0.03]">
-                    <span className="rounded px-1.5 py-0.5 text-xs bg-white/10 text-white/40">
+                    <span className="rounded-none px-1.5 py-0.5 text-xs bg-white/10 text-white/40">
                       {l.producto.iva != null ? `${l.producto.iva}%` : "10%"}
                     </span>
                   </div>
@@ -546,7 +546,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
                       step="1"
                       value={l.precioUnitario}
                       onChange={(e) => actualizarPrecio(l.producto.id, e.target.value)}
-                      className="w-28 bg-white/5 border border-white/10 rounded px-2 py-1 text-right text-sm font-mono text-white outline-none transition-colors focus:border-[var(--accent)]"
+                      className="w-28 bg-white/5 border border-white/10 rounded-none px-2 py-1 text-right text-sm font-mono text-white outline-none transition-colors focus:border-[var(--accent)]"
                     />
                   </div>
                   <div className="py-1.5 pr-3 text-right font-semibold font-mono text-sm text-white bg-white/[0.03]">
@@ -555,7 +555,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
                   <div className="py-1.5 pr-3 text-right bg-white/[0.03] rounded-r-none">
                     <button
                       onClick={() => eliminarLinea(l.producto.id)}
-                      className="rounded p-1 text-white/40 hover:bg-red-500/15 hover:text-red-400 transition-colors"
+                      className="rounded-none p-1 text-white/40 hover:bg-red-500/15 hover:text-red-400 transition-colors"
                       aria-label={`Quitar ${l.producto.nombre}`}
                     >
                       <Trash2 size={14} />
@@ -604,7 +604,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
                   <button
                     onClick={handleSubmit}
                     disabled={guardando || timbradoBloqueado}
-                    className="inline-flex items-center justify-center gap-2 px-5 py-2 bg-[var(--accent)] hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-none transition-colors"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-none transition-colors"
                   >
                     <Truck size={16} />
                     {guardando ? "Registrando..." : "Recepcionar y registrar compra"}

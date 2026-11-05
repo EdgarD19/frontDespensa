@@ -94,7 +94,7 @@ export default function TicketVenta({ datos, onCerrar }) {
                 <span className="font-mono text-[11px] font-medium tracking-tight text-[#FAFAFA]">POS-TICKET</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className={`h-2 w-2 rounded-full ${isPrinting ? "animate-ping bg-amber-400" : "bg-emerald-400"}`} />
+                <span className={`h-2 w-2 rounded-full ${isPrinting ? "animate-ping bg-amber-400" : "bg-[var(--accent)]"}`} />
                 <span className="font-mono text-[10px] text-[#6B6B6B]">{isPrinting ? "IMPRIMIENDO" : "LISTO"}</span>
               </div>
               <div className="flex h-5 justify-end">

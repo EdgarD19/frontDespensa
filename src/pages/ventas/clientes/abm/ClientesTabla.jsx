@@ -1,5 +1,7 @@
-import { Search, ToggleLeft, ToggleRight, Pencil, Trash2 } from "lucide-react";
+import { ToggleLeft, ToggleRight, Pencil, Trash2 } from "lucide-react";
 import Pagination from "../../../../components/ui/Pagination";
+import { THEAD_ROW } from "../../../../components/ui/styles";
+import SearchField from "../../../../components/ui/SearchField";
 
 export default function ClientesTabla({
   clientes = [],
@@ -19,27 +21,13 @@ export default function ClientesTabla({
       
       {/* Barra superior */}
       <div className="flex items-center gap-3 py-3">
-        <div className="relative flex-1">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40"/>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => onSearch(e.target.value)}
-            placeholder="Buscar por Nombre / Razón Social, apellido o CI / RUC"
-            className="w-full bg-white/5 border border-white/10 rounded-none
-                      pl-9 pr-10 py-2 text-sm text-white placeholder:text-white/30
-                      focus:outline-none focus:border-[var(--accent)] transition-colors"
-          />
-          <button
-            type="button"
-            onClick={() => onSearch("")}
-            title="Limpiar búsqueda"
-            aria-label="Limpiar búsqueda"
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-white/30 transition-colors hover:bg-white/10 hover:text-white"
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
+        <SearchField
+          value={search}
+          onChange={onSearch}
+          placeholder="Buscar por Nombre / Razón Social, apellido o CI / RUC"
+          ariaLabel="Buscar cliente por nombre, razón social, apellido o CI/RUC"
+          wrapperClass="relative flex-1"
+        />
 
         <button
           onClick={onNuevo}
@@ -55,7 +43,7 @@ export default function ClientesTabla({
       <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+            <tr className={THEAD_ROW}>
               <th className="px-4 py-3 font-medium">Nombre / Razón Social</th>
               <th className="px-4 py-3 font-medium">Celular</th>
               <th className="px-4 py-3 font-medium">CI / RUC</th>
@@ -71,7 +59,7 @@ export default function ClientesTabla({
                 <tr key={i} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                   {Array.from({ length: 6 }).map((_, j) => (
                     <td key={j} className="px-4 py-3">
-                      <div className="h-4 bg-white/10 rounded animate-pulse w-3/4" />
+                      <div className="h-4 bg-white/10 rounded-none animate-pulse w-3/4" />
                     </td>
                   ))}
                 </tr>
@@ -110,7 +98,7 @@ export default function ClientesTabla({
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
                       esJuridica
                         ? "bg-blue-500/10 text-blue-400"
-                        : "bg-green-500/10 text-green-400"
+                        : "bg-[var(--accent-dim)] text-[var(--accent)]"
                     }`}>
                       {esJuridica ? "Jurídica" : "Física"}
                     </span>
@@ -118,7 +106,7 @@ export default function ClientesTabla({
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
                       activo
-                        ? "bg-green-500/10 text-green-400"
+                        ? "bg-[var(--accent-dim)] text-[var(--accent)]"
                         : "bg-red-500/10 text-red-400"
                     }`}>
                       {activo ? "Activo" : "Inactivo"}
@@ -132,7 +120,7 @@ export default function ClientesTabla({
                           e.stopPropagation();
                           onSeleccionar?.(c);
                         }}
-                        className="p-1.5 rounded text-white/40 hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
+                        className="p-1.5 rounded-none text-white/40 hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
                         title="Editar cliente"
                         aria-label="Editar cliente"
                       >
@@ -144,10 +132,10 @@ export default function ClientesTabla({
                           e.stopPropagation();
                           onToggleActivo?.(c);
                         }}
-                        className={`p-1.5 rounded transition-colors ${
+                        className={`p-1.5 rounded-none transition-colors ${
                           activo
-                            ? "text-green-400 hover:bg-green-500/10"
-                            : "text-white/40 hover:text-green-400 hover:bg-green-500/10"
+                            ? "text-[var(--accent)] hover:bg-[var(--accent-dim)]"
+                            : "text-white/40 hover:text-[var(--accent)] hover:bg-[var(--accent-dim)]"
                         }`}
                         title={activo ? "Inactivar cliente" : "Activar cliente"}
                         aria-label={activo ? "Inactivar cliente" : "Activar cliente"}

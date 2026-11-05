@@ -1,4 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { THEAD_ROW } from "../../../components/ui/styles";
+
+import PageHeader from "../../../components/ui/PageHeader";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
@@ -101,8 +104,8 @@ const ESTADO_BLOQUEO = {
 
 // Estado propio de la factura de compra.
 const ESTADO_FACTURA = {
-  RECIBIDA: { badge: "bg-emerald-500/10 text-emerald-400", dot: "bg-emerald-400" },
-  VIGENTE: { badge: "bg-emerald-500/10 text-emerald-400", dot: "bg-emerald-400" },
+  RECIBIDA: { badge: "bg-[var(--accent-dim)] text-[var(--accent)]", dot: "bg-[var(--accent)]" },
+  VIGENTE: { badge: "bg-[var(--accent-dim)] text-[var(--accent)]", dot: "bg-[var(--accent)]" },
   CANCELADA: { badge: "bg-white/10 text-white/50", dot: "bg-white/40" },
   ANULADA: { badge: "bg-red-500/10 text-red-400", dot: "bg-red-400" },
 };
@@ -110,9 +113,9 @@ const ESTADO_FACTURA = {
 // Clases completas para que Tailwind las detecte.
 const ESTADO_STYLES = {
   PENDIENTE: { badge: "bg-amber-500/10 text-amber-300", dot: "bg-amber-400" },
-  RECIBIDO: { badge: "bg-emerald-500/10 text-emerald-400", dot: "bg-emerald-400" },
-  PROCESADA: { badge: "bg-emerald-500/10 text-emerald-400", dot: "bg-emerald-400" },
-  COMPLETADA: { badge: "bg-emerald-500/10 text-emerald-400", dot: "bg-emerald-400" },
+  RECIBIDO: { badge: "bg-[var(--accent-dim)] text-[var(--accent)]", dot: "bg-[var(--accent)]" },
+  PROCESADA: { badge: "bg-[var(--accent-dim)] text-[var(--accent)]", dot: "bg-[var(--accent)]" },
+  COMPLETADA: { badge: "bg-[var(--accent-dim)] text-[var(--accent)]", dot: "bg-[var(--accent)]" },
   ANULADA: { badge: "bg-red-500/10 text-red-400", dot: "bg-red-400" },
   CERRADO: { badge: "bg-sky-500/10 text-sky-300", dot: "bg-sky-400" },
   CANCELADO: { badge: "bg-white/10 text-white/50", dot: "bg-white/40" },
@@ -568,23 +571,21 @@ export default function OperacionesTipo({ tipo }) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-3">
-        <Link to="/compras/devoluciones-intercambios" className="rounded-none p-2 text-white/50 transition-colors hover:bg-white/10" aria-label="Volver">
-          <ArrowLeft size={18} />
-        </Link>
-        <div className="flex-1 space-y-0.5">
-          <h1 className="text-2xl font-semibold tracking-tight text-white">{cfg.label}</h1>
-          <p className="text-sm text-white/40">{cfg.subtitulo}</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => { setErrorOperacion(null); setAviso(null); setShowModal(true); }}
-          className="flex items-center gap-2 whitespace-nowrap rounded-none bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-black transition hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#22c55e]/50"
-        >
-          <Plus className="h-4 w-4" />
-          {cfg.nuevoLabel}
-        </button>
-      </div>
+      <PageHeader
+        backTo="/compras/devoluciones-intercambios"
+        title={cfg.label}
+        subtitle={cfg.subtitulo}
+        right={
+          <button
+            type="button"
+            onClick={() => { setErrorOperacion(null); setAviso(null); setShowModal(true); }}
+            className="flex items-center gap-2 whitespace-nowrap rounded-none bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-black transition hover:bg-[var(--accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#22c55e]/50"
+          >
+            <Plus className="h-4 w-4" />
+            {cfg.nuevoLabel}
+          </button>
+        }
+      />
 
       {error && (
         <div className="flex items-center gap-2 rounded-none border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
@@ -597,7 +598,7 @@ export default function OperacionesTipo({ tipo }) {
         </div>
       )}
       {aviso && (
-        <div className="flex items-center gap-2 rounded-none border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+        <div className="flex items-center gap-2 rounded-none border border-[var(--border-accent)] bg-[var(--accent-dim)] px-4 py-3 text-sm text-[var(--accent)]">
           <CheckCircle className="h-5 w-5 shrink-0" /> {aviso}
         </div>
       )}
@@ -608,7 +609,7 @@ export default function OperacionesTipo({ tipo }) {
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="flex items-center gap-4 px-4 py-3">
                 {Array.from({ length: 5 }).map((__, j) => (
-                  <div key={j} className="h-4 flex-1 animate-pulse rounded bg-white/10" />
+                  <div key={j} className="h-4 flex-1 animate-pulse rounded-none bg-white/10" />
                 ))}
               </div>
             ))}
@@ -625,7 +626,7 @@ export default function OperacionesTipo({ tipo }) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                <tr className={THEAD_ROW}>
                   <th className={thBase}>Fecha</th>
                   <th className={thBase}>Estado</th>
                   <th className={thBase}>{tipo === "INTERCAMBIO" ? "Factura" : "N° factura"}</th>
@@ -693,7 +694,7 @@ export default function OperacionesTipo({ tipo }) {
                                       onClick={() => setModalConfirmacion({ tipo: "cierre", op })}
                                       title="Recibir el reemplazo y cerrar el intercambio en un solo paso (reponer stock)"
                                       aria-label="Recibir y cerrar intercambio"
-                                      className={`${iconBtn} text-white/40 hover:bg-emerald-500/10 hover:text-emerald-400`}
+                                      className={`${iconBtn} text-white/40 hover:bg-[var(--accent-dim)] hover:text-[var(--accent)]`}
                                     >
                                       <PackageCheck className="h-4 w-4" />
                                     </button>
@@ -713,7 +714,7 @@ export default function OperacionesTipo({ tipo }) {
                                     onClick={() => setModalConfirmacion({ tipo: "cierre", op })}
                                     title="Cerrar intercambio (reponer stock)"
                                     aria-label="Cerrar intercambio"
-                                    className={`${iconBtn} text-white/40 hover:bg-emerald-500/10 hover:text-emerald-400`}
+                                    className={`${iconBtn} text-white/40 hover:bg-[var(--accent-dim)] hover:text-[var(--accent)]`}
                                   >
                                     <CheckCircle className="h-4 w-4" />
                                   </button>
@@ -735,7 +736,7 @@ export default function OperacionesTipo({ tipo }) {
                                   onClick={() => setModalFacturaNueva(op)}
                                   title="Registrar factura nueva (reemplazo)"
                                   aria-label="Registrar factura nueva"
-                                  className={`${iconBtn} text-white/40 hover:bg-emerald-500/10 hover:text-emerald-400`}
+                                  className={`${iconBtn} text-white/40 hover:bg-[var(--accent-dim)] hover:text-[var(--accent)]`}
                                 >
                                   <FilePlus2 className="h-4 w-4" />
                                 </button>
@@ -887,7 +888,7 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar, nombr
             Registrar factura nueva
           </h2>
           <button type="button" onClick={onCerrar} aria-label="Cerrar"
-            className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
+            className="rounded-none p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -915,7 +916,7 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar, nombr
               <div className="max-h-40 overflow-y-auto border border-white/10 bg-[#0c0c0e]">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                    <tr className={THEAD_ROW}>
                       <th className="px-4 py-3 font-medium">Producto</th>
                       <th className="px-4 py-3 text-center font-medium">Cantidad</th>
                     </tr>
@@ -935,7 +936,7 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar, nombr
 
           <div>
             <label htmlFor="numero-factura-nueva" className={labelClass}>
-              N° factura nueva <span className="text-rose-400">*</span>
+              N° factura nueva <span className="text-red-400">*</span>
             </label>
             <input
               id="numero-factura-nueva"
@@ -955,7 +956,7 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar, nombr
 
           <div>
             <label htmlFor="dev-timbrado" className={labelClass}>
-              Timbrado <span className="text-rose-400">*</span>
+              Timbrado <span className="text-red-400">*</span>
             </label>
             {!op.proveedorId ? (
               <div className="rounded-none border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
@@ -1069,7 +1070,7 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion
             <FileText className="h-4 w-4 text-sky-400" /> {tituloOp} {numeroFactura || factura?.numeroFactura || ""}
           </h2>
           <button type="button" onClick={onCerrar} aria-label="Cerrar"
-            className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
+            className="rounded-none p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -1078,7 +1079,7 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion
           {cargando ? (
             <div className="space-y-3 py-4">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-4 w-full animate-pulse rounded bg-white/10" />
+                <div key={i} className="h-4 w-full animate-pulse rounded-none bg-white/10" />
               ))}
             </div>
           ) : error ? (
@@ -1109,7 +1110,7 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion
 <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                    <tr className={THEAD_ROW}>
                       <th className="px-4 py-3 font-medium">Producto</th>
                       <th className="px-4 py-3 text-center font-medium">Cantidad</th>
                       {esIntercambio && (
@@ -1208,7 +1209,7 @@ function VerDevolucionModal({ op, onCerrar, nombreProv }) {
             <PackageOpen className="h-4 w-4 text-sky-400" /> Devolución a registrar
           </h2>
           <button type="button" onClick={onCerrar} aria-label="Cerrar"
-            className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
+            className="rounded-none p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -1236,7 +1237,7 @@ function VerDevolucionModal({ op, onCerrar, nombreProv }) {
           <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                <tr className={THEAD_ROW}>
                   <th className="px-4 py-3 font-medium">Producto</th>
                   <th className="px-4 py-3 text-center font-medium">Cantidad</th>
                   <th className="px-4 py-3 text-right font-medium">P. unitario</th>
@@ -1337,7 +1338,7 @@ function ConfirmarAccionModal({ tipo, op, onCerrar, onConfirmar }) {
             {titulo}
           </h2>
           <button type="button" onClick={onCerrar} aria-label="Cerrar"
-            className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
+            className="rounded-none p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -1788,7 +1789,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
             {loadingFacturas ? "Cargando facturas…" : ""}
           </p>
           {hayFiltros && (
-            <button type="button" onClick={limpiarFiltros} className="flex items-center gap-1 text-[var(--accent)] transition-colors hover:text-green-400">
+            <button type="button" onClick={limpiarFiltros} className="flex items-center gap-1 text-[var(--accent)] transition-colors hover:text-[var(--accent)]">
               <X className="h-3.5 w-3.5" /> Limpiar filtros
             </button>
           )}
@@ -1798,7 +1799,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
           <div className="max-h-[45vh] overflow-x-auto overflow-y-auto [color-scheme:dark] [scrollbar-color:#2a2a32_transparent] [scrollbar-width:thin]">
             <table className="w-full min-w-[640px] text-sm">
               <thead className="sticky top-0 z-10 bg-[#0c0c0e]">
-                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                <tr className={THEAD_ROW}>
                   <th className="w-[24%] px-4 py-3 font-medium">N° factura</th>
                   <th className="w-[13%] px-4 py-3 font-medium">Fecha</th>
                   <th className="w-[22%] px-4 py-3 font-medium">Estado</th>
@@ -1812,7 +1813,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                     <tr key={i} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                       {Array.from({ length: 5 }).map((__, j) => (
                         <td key={j} className="px-4 py-3">
-                          <div className="h-4 w-3/4 animate-pulse rounded bg-white/10" />
+                          <div className="h-4 w-3/4 animate-pulse rounded-none bg-white/10" />
                         </td>
                       ))}
                     </tr>
@@ -1929,7 +1930,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
               <div className="mt-3 max-h-40 overflow-y-auto rounded-none border border-white/10">
                 <table className="w-full text-xs">
                   <thead className="sticky top-0 bg-[#0c0c0e]">
-                    <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                    <tr className={THEAD_ROW}>
                       <th className="px-4 py-3 font-medium">Producto</th>
                       <th className="px-4 py-3 text-center font-medium">Comprado</th>
                       <th className="px-4 py-3 text-center font-medium">Stock</th>
@@ -1983,13 +1984,13 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
       <div className="space-y-4 p-5">
         <div className="space-y-3 rounded-none border border-white/10 bg-white/[0.02] p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className={`flex items-center gap-2 text-sm font-semibold ${tipo === "DEVOLUCION" ? "text-red-400" : "text-emerald-400"}`}>
+            <h3 className={`flex items-center gap-2 text-sm font-semibold ${tipo === "DEVOLUCION" ? "text-red-400" : "text-[var(--accent)]"}`}>
               {tipo === "DEVOLUCION" ? <FileText className="h-4 w-4" /> : <ArrowLeftRight className="h-4 w-4" />}
               {tipo === "DEVOLUCION" ? "Productos a devolver" : "Productos a intercambiar"}
             </h3>
             <div className="flex items-center gap-3 text-xs">
               <span className="text-white/40">{seleccionados} seleccionado{seleccionados === 1 ? "" : "s"}</span>
-              <button type="button" onClick={marcarTodoElMaximo} className="flex items-center gap-1 font-medium text-[var(--accent)] transition-colors hover:text-green-400">
+              <button type="button" onClick={marcarTodoElMaximo} className="flex items-center gap-1 font-medium text-[var(--accent)] transition-colors hover:text-[var(--accent)]">
                 <ListChecks className="h-3.5 w-3.5" /> Todo
               </button>
               {seleccionados > 0 && (
@@ -2003,7 +2004,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
           <div className="max-h-64 overflow-x-auto overflow-y-auto border border-white/10">
             <table className="w-full min-w-[560px] text-sm">
               <thead className="sticky top-0 bg-[#0c0c0e]">
-                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                <tr className={THEAD_ROW}>
                   <th className="px-4 py-3 font-medium">Producto</th>
                   <th className="px-4 py-3 text-center font-medium">Comprado</th>
                   <th className="px-4 py-3 text-center font-medium">Stock</th>
@@ -2119,7 +2120,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                 <p className="mt-0.5 text-xs text-white/50">Seleccioná la factura de compra.</p>
               </div>
               <button type="button" onClick={onCerrar} aria-label="Cerrar"
-                className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
+                className="rounded-none p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -2151,7 +2152,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                 <p className="mt-0.5 text-xs text-white/50">{subtituloDetalle}</p>
               </div>
               <button type="button" onClick={volverAlSelector} aria-label="Cerrar"
-                className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
+                className="rounded-none p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
                 <X className="h-4 w-4" />
               </button>
             </div>

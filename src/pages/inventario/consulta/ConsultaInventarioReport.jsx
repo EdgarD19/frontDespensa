@@ -1,8 +1,9 @@
 import { getEstadoStock } from "../utils";
+import { THEAD_ROW } from "../../../components/ui/styles";
 import Pagination from "../../../components/ui/Pagination";
 
 const estadoStockConfig = {
-  normal: { label: "Normal", cls: "bg-green-500/10 text-green-400" },
+  normal: { label: "Normal", cls: "bg-[var(--accent-dim)] text-[var(--accent)]" },
   bajo: { label: "Bajo", cls: "bg-amber-500/10 text-amber-400" },
   sin: { label: "Sin stock", cls: "bg-red-500/10 text-red-400" },
   desconocido: { label: "Desconocido", cls: "bg-white/10 text-white/40" },
@@ -23,7 +24,7 @@ export default function ConsultaInventarioReport({
       <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+            <tr className={THEAD_ROW}>
               <th className="px-4 py-3 font-medium">Código</th>
               <th className="px-4 py-3 font-medium">Producto</th>
               <th className="px-4 py-3 font-medium">Categoría</th>
@@ -39,7 +40,7 @@ export default function ConsultaInventarioReport({
                 <tr key={i} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                   {Array.from({ length: 6 }).map((_, j) => (
                     <td key={j} className="px-4 py-3">
-                      <div className="h-4 bg-white/10 rounded animate-pulse w-3/4" />
+                      <div className="h-4 bg-white/10 rounded-none animate-pulse w-3/4" />
                     </td>
                   ))}
                 </tr>

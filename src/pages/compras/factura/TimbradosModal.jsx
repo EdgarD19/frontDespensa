@@ -194,14 +194,14 @@ export default function TimbradosModal({ proveedor, onClose, onCambio }) {
                       <div className="flex items-center gap-1 shrink-0">
                         <button
                           onClick={() => setEditando(t)}
-                          className="rounded p-1.5 text-white/40 hover:bg-white/5 hover:text-white transition-colors"
+                          className="rounded-none p-1.5 text-white/40 hover:bg-white/5 hover:text-white transition-colors"
                           title="Editar"
                         >
                           <Pencil size={14} />
                         </button>
                         <button
                           onClick={() => handleToggle(t)}
-                          className={`rounded p-1.5 transition-colors ${t.activo ? "text-[#22c55e]" : "text-white/40"} hover:bg-white/5`}
+                          className={`rounded-none p-1.5 transition-colors ${t.activo ? "text-[#22c55e]" : "text-white/40"} hover:bg-white/5`}
                           title={t.activo ? "Desactivar" : "Activar"}
                         >
                           <Power size={14} />
@@ -277,7 +277,7 @@ export default function TimbradosModal({ proveedor, onClose, onCambio }) {
               <button
                 type="submit"
                 disabled={guardando}
-                className="inline-flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-[var(--accent)] hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-none transition-colors"
+                className="inline-flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-none transition-colors"
               >
                 {guardando ? (
                   "Guardando..."

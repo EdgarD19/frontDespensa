@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
+
+import PageHeader from "../../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import {  } from "lucide-react";
 import ConsultaInventarioFilters from "./ConsultaInventarioFilters";
 import ConsultaInventarioReport from "./ConsultaInventarioReport";
 import { getProductos } from "../../../api/productosApi";
@@ -86,12 +88,7 @@ export default function ConsultaInventario() {
 
   return (
     <div className="max-w-7xl mx-auto py-8 px-4 space-y-6">
-      <div className="flex items-center gap-3">
-        <Link to="/inventario" className="p-2 rounded-none hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
-          <ArrowLeft size={18} />
-        </Link>
-        <h1 className="text-2xl font-semibold text-white tracking-tight">Consulta de Inventario</h1>
-      </div>
+      <PageHeader backTo="/inventario" title="Consulta de inventario" />
 
       {error && (
         <div className="rounded-none border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>

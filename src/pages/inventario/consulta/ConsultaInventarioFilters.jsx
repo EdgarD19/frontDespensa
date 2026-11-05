@@ -38,7 +38,7 @@ export default function ConsultaInventarioFilters({
             onClick={() => setSearch("")}
             title="Limpiar búsqueda"
             aria-label="Limpiar búsqueda"
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded-none text-white/40 hover:text-white hover:bg-white/10 transition-colors"
           >
             <X className="w-3.5 h-3.5" />
           </button>

@@ -216,7 +216,7 @@ export default function ClientesModal({
             {clienteEdit ? "Editar Cliente" : "Nuevo Cliente"}
           </h2>
           <button type="button" onClick={onCerrar}
-            className="p-1 rounded text-white/40 hover:text-white hover:bg-[#1a1f2e] transition-colors">
+            className="p-1 rounded-none text-white/40 hover:text-white hover:bg-[#1a1f2e] transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -260,7 +260,7 @@ export default function ClientesModal({
               {/* Razón social + RUC */}
               <div className="grid grid-cols-2 gap-3">
                 <label className={labelClass}>
-                  <span className={labelText}>Razón social <span className="text-rose-400">*</span></span>
+                  <span className={labelText}>Razón social <span className="text-red-400">*</span></span>
                   <input
                     type="text"
                     name="razonSocial"
@@ -270,10 +270,10 @@ export default function ClientesModal({
                     placeholder="Razón social"
                     className={inputClass}
                   />
-                  {errores.razonSocial && <span className="text-[11px] text-rose-400">{errores.razonSocial}</span>}
+                  {errores.razonSocial && <span className="text-[11px] text-red-400">{errores.razonSocial}</span>}
                 </label>
                 <label className={labelClass}>
-                  <span className={labelText}>RUC <span className="text-rose-400">*</span></span>
+                  <span className={labelText}>RUC <span className="text-red-400">*</span></span>
                   <div className="flex items-center gap-1">
                     <input
                       type="text"
@@ -297,7 +297,7 @@ export default function ClientesModal({
                       className={`${inputClass} !w-14 text-center`}
                     />
                   </div>
-                  {errores.ruc && <span className="text-[11px] text-rose-400">{errores.ruc}</span>}
+                  {errores.ruc && <span className="text-[11px] text-red-400">{errores.ruc}</span>}
                 </label>
               </div>
             </>
@@ -306,7 +306,7 @@ export default function ClientesModal({
               {/* Nombre + Apellido */}
               <div className="grid grid-cols-2 gap-3">
                 <label className={labelClass}>
-                  <span className={labelText}>Nombre <span className="text-rose-400">*</span></span>
+                  <span className={labelText}>Nombre <span className="text-red-400">*</span></span>
                   <input
                     type="text"
                     name="firstName"
@@ -316,10 +316,10 @@ export default function ClientesModal({
                     placeholder="Nombre"
                     className={inputClass}
                   />
-                  {errores.firstName && <span className="text-[11px] text-rose-400">{errores.firstName}</span>}
+                  {errores.firstName && <span className="text-[11px] text-red-400">{errores.firstName}</span>}
                 </label>
                 <label className={labelClass}>
-                  <span className={labelText}>Apellido <span className="text-rose-400">*</span></span>
+                  <span className={labelText}>Apellido <span className="text-red-400">*</span></span>
                   <input
                     type="text"
                     name="lastName"
@@ -328,14 +328,14 @@ export default function ClientesModal({
                     placeholder="Apellido"
                     className={inputClass}
                   />
-                  {errores.lastName && <span className="text-[11px] text-rose-400">{errores.lastName}</span>}
+                  {errores.lastName && <span className="text-[11px] text-red-400">{errores.lastName}</span>}
                 </label>
               </div>
 
               {/* C.I. / R.U.C. + Celular */}
               <div className="grid grid-cols-2 gap-3">
                 <label className={labelClass}>
-                  <span className={labelText}>C.I. / R.U.C. <span className="text-rose-400">*</span></span>
+                  <span className={labelText}>C.I. / R.U.C. <span className="text-red-400">*</span></span>
                   <div className="flex items-center gap-1">
                     <input
                       type="text"
@@ -359,7 +359,7 @@ export default function ClientesModal({
                       className={`${inputClass} !w-14 text-center`}
                     />
                   </div>
-                  {errores.documentNumber && <span className="text-[11px] text-rose-400">{errores.documentNumber}</span>}
+                  {errores.documentNumber && <span className="text-[11px] text-red-400">{errores.documentNumber}</span>}
                 </label>
                 <label className={labelClass}>
                   <span className={labelText}>Celular</span>
@@ -378,7 +378,7 @@ export default function ClientesModal({
                       className={`${inputClass} !rounded-l-none`}
                     />
                   </div>
-                  {errores.celular && <span className="text-[11px] text-rose-400">{errores.celular}</span>}
+                  {errores.celular && <span className="text-[11px] text-red-400">{errores.celular}</span>}
                 </label>
               </div>
             </>
@@ -404,7 +404,7 @@ export default function ClientesModal({
                     className={`${inputClass} !rounded-l-none`}
                   />
                 </div>
-                {errores.celular && <span className="text-[11px] text-rose-400">{errores.celular}</span>}
+                {errores.celular && <span className="text-[11px] text-red-400">{errores.celular}</span>}
               </label>
               <label className={labelClass}>
                 <span className={labelText}>Email</span>
@@ -466,7 +466,7 @@ export default function ClientesModal({
           {/* Pais + Ciudad */}
           <div className="grid grid-cols-2 gap-3">
             <label className={labelClass}>
-              <span className={labelText}>País <span className="text-rose-400">*</span></span>
+              <span className={labelText}>País <span className="text-red-400">*</span></span>
               <select
                 name="idPais"
                 value={form.idPais ?? ""}
@@ -479,11 +479,11 @@ export default function ClientesModal({
                   <option key={p.id} value={p.id}>{p.nombre}</option>
                 ))}
               </select>
-              {errores.idPais && <span className="text-[11px] text-rose-400">{errores.idPais}</span>}
+              {errores.idPais && <span className="text-[11px] text-red-400">{errores.idPais}</span>}
             </label>
 
             <label className={labelClass}>
-              <span className={labelText}>Ciudad <span className="text-rose-400">*</span></span>
+              <span className={labelText}>Ciudad <span className="text-red-400">*</span></span>
               <select
                 name="idCiudad"
                 value={form.idCiudad ?? ""}
@@ -496,7 +496,7 @@ export default function ClientesModal({
                   <option key={c.id} value={c.id}>{c.nombre}</option>
                 ))}
               </select>
-              {errores.idCiudad && <span className="text-[11px] text-rose-400">{errores.idCiudad}</span>}
+              {errores.idCiudad && <span className="text-[11px] text-red-400">{errores.idCiudad}</span>}
             </label>
           </div>
 

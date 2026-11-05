@@ -1,5 +1,4 @@
 import {
-  Search,
   Pencil,
   Plus,
   Check,
@@ -7,6 +6,8 @@ import {
   Trash2,
 } from "lucide-react";
 import Pagination from "../../../components/ui/Pagination";
+import { THEAD_ROW } from "../../../components/ui/styles";
+import SearchField from "../../../components/ui/SearchField";
 
 /* ───────────── Helpers ───────────── */
 
@@ -44,30 +45,14 @@ export default function ProductList({
 
       {/* Barra superior */}
       <div className="flex items-center gap-3">
-        <div className="relative flex-1">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => onSearch(e.target.value)}
-            placeholder="Buscar por nombre..."
-            className="w-full rounded-none border border-white/10 bg-[#0c0c0e]
-              pl-9 pr-10 py-2.5 text-sm text-white placeholder:text-white/30
-              transition focus:outline-none focus:border-[var(--accent)]/60
-              focus:ring-2 focus:ring-[var(--accent)]/20"
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => onSearch("")}
-              title="Limpiar búsqueda"
-              aria-label="Limpiar búsqueda"
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-white/40 transition-colors hover:bg-red-500/10 hover:text-red-400"
-            >
-              <Trash2 size={15} />
-            </button>
-          )}
-        </div>
+        <SearchField
+          value={search}
+          onChange={onSearch}
+          placeholder="Buscar por nombre..."
+          ariaLabel="Buscar producto por nombre"
+          className="py-2.5"
+          wrapperClass="relative flex-1"
+        />
 
         <button
           type="button"
@@ -86,7 +71,7 @@ export default function ProductList({
       <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+            <tr className={THEAD_ROW}>
               <th className="w-36 px-4 py-3 font-medium">Código</th>
               <th className="px-4 py-3 font-medium">Producto</th>
               <th className="w-40 px-4 py-3 font-medium">Categoría</th>
@@ -103,7 +88,7 @@ export default function ProductList({
                 <tr key={i} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                   {Array.from({ length: 7 }).map((_, j) => (
                     <td key={j} className="px-4 py-3">
-                      <div className="h-4 w-3/4 animate-pulse rounded bg-white/10" />
+                      <div className="h-4 w-3/4 animate-pulse rounded-none bg-white/10" />
                     </td>
                   ))}
                 </tr>
@@ -174,13 +159,13 @@ export default function ProductList({
                       <span
                         className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
                           activo
-                            ? "bg-emerald-500/10 text-emerald-400"
+                            ? "bg-[var(--accent-dim)] text-[var(--accent)]"
                             : "bg-red-500/10 text-red-400"
                         }`}
                       >
                         <span
                           className={`h-1.5 w-1.5 rounded-full ${
-                            activo ? "bg-emerald-400" : "bg-red-400"
+                            activo ? "bg-[var(--accent)]" : "bg-red-400"
                           }`}
                         />
                         {activo ? "Activo" : "Inactivo"}
@@ -210,7 +195,7 @@ export default function ProductList({
                             e.stopPropagation();
                             onPrecio?.(p);
                           }}
-                          className={`${iconBtn} hover:bg-emerald-500/10 hover:text-emerald-400 ${
+                          className={`${iconBtn} hover:bg-[var(--accent-dim)] hover:text-[var(--accent)] ${
                             sinPrecioVenta ? "!text-amber-400" : ""
                           }`}
                           title={sinPrecioVenta ? "Definir precio de venta" : "Actualizar precio de venta"}
@@ -229,7 +214,7 @@ export default function ProductList({
                           className={`${iconBtn} ${
                             activo
                               ? "hover:bg-red-500/10 hover:text-red-400"
-                              : "hover:bg-emerald-500/10 hover:text-emerald-400"
+                              : "hover:bg-[var(--accent-dim)] hover:text-[var(--accent)]"
                           }`}
                           title={activo ? "Desactivar producto" : "Activar producto"}
                           aria-label={activo ? "Desactivar producto" : "Activar producto"}

@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+
+import PageHeader from "../../../../components/ui/PageHeader";
+import { THEAD_ROW } from "../../../../components/ui/styles";
 import { Link } from "react-router-dom";
-import { Plus, XCircle, PenLine, Trash2, X, Search, PackageCheck, ArrowLeft } from "lucide-react";
+import { Plus, XCircle, PenLine, Trash2, X, Search, PackageCheck } from "lucide-react";
 import {
   getPedidos,
   getPedido,
@@ -16,7 +18,7 @@ import RecepcionPedidoModal from "../recepcion/RecepcionPedidoModal";
 import Pagination from "../../../../components/ui/Pagination";
 import CantidadInput from "../../../../components/ui/CantidadInput";
 import { esKG } from "../../utils";
-import { useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
  
 const ESTADOS = ["solicitado", "recibido", "cancelado"];
 
@@ -40,7 +42,7 @@ function normEstado(e) {
 // Clases completas para que Tailwind las detecte.
 const ESTADO_STYLES = {
   solicitado: { label: "Solicitado", badge: "bg-amber-500/10 text-amber-300", dot: "bg-amber-400" },
-  recibido: { label: "Recibido", badge: "bg-emerald-500/10 text-emerald-400", dot: "bg-emerald-400" },
+  recibido: { label: "Recibido", badge: "bg-[var(--accent-dim)] text-[var(--accent)]", dot: "bg-[var(--accent)]" },
   cancelado: { label: "Cancelado", badge: "bg-red-500/10 text-red-400", dot: "bg-red-400" },
 };
 
@@ -55,7 +57,7 @@ function EstadoBadge({ estado }) {
 }
 
 const thClass =
-  "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300";
+  "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--accent)]";
 
 const actionBase = "flex h-8 w-8 items-center justify-center rounded-none transition-colors";
 
@@ -203,15 +205,7 @@ export default function PedidosABM() {
     <div className="space-y-5">
 
       {/* Encabezado */}
-      <div className="flex items-center gap-3">
-        <Link to="/compras" className="rounded-none p-2 text-white/50 transition-colors hover:bg-white/10" aria-label="Volver">
-          <ArrowLeft size={18} />
-        </Link>
-        <div className="space-y-0.5">
-          <h1 className="text-2xl font-semibold tracking-tight text-white">Pedidos</h1>
-          <p className="text-sm text-white/40">Seguimiento de pedidos a proveedores</p>
-        </div>
-      </div>
+      <PageHeader backTo="/compras" title="Pedidos" subtitle="Seguimiento de pedidos a proveedores" />
 
       {error && !sinBackend && (
         <div className="rounded-none border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>
@@ -255,7 +249,7 @@ export default function PedidosABM() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+              <tr className={THEAD_ROW}>
                 <th className={`${thClass} w-24`}>N°</th>
                 <th className={thClass}>Proveedor</th>
                 <th className={`${thClass} w-36`}>Emisión</th>
@@ -271,7 +265,7 @@ export default function PedidosABM() {
                   <tr key={i} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                     {Array.from({ length: 6 }).map((_, j) => (
                       <td key={j} className="px-4 py-3">
-                        <div className="h-4 w-3/4 animate-pulse rounded bg-white/10" />
+                        <div className="h-4 w-3/4 animate-pulse rounded-none bg-white/10" />
                       </td>
                     ))}
                   </tr>
@@ -549,7 +543,7 @@ function PedidoModal({
             {esEditar ? `Editar pedido #${pedido?.idPedido}` : "Generar pedido"}
           </h2>
           <button type="button" onClick={onCerrar} aria-label="Cerrar"
-            className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
+            className="rounded-none p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -564,7 +558,7 @@ function PedidoModal({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="block space-y-1">
               <span className="text-xs text-white/50">
-                Proveedor <span className="text-rose-400">*</span>
+                Proveedor <span className="text-red-400">*</span>
               </span>
               <select
                 value={form.idProveedor}
@@ -658,7 +652,7 @@ function PedidoModal({
             <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                  <tr className={THEAD_ROW}>
                     <th className="px-4 py-3 font-medium">Producto</th>
                     <th className="w-24 px-4 py-3 text-center font-medium">U.M.</th>
                     <th className="w-32 px-4 py-3 text-right font-medium">Cantidad</th>

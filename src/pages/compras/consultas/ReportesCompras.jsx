@@ -1,6 +1,9 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { THEAD_ROW } from "../../../components/ui/styles";
+
+import PageHeader from "../../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
-import { ArrowLeft, ChevronDown, Eye, X, Receipt, Building2, Package, Percent } from "lucide-react";
+import { ChevronDown, Eye, X, Receipt, Building2, Package, Percent } from "lucide-react";
 import { getFacturasCompra, apiErrorMessage } from "../../../api/facturasCompraApi";
 import { getProveedores, getProveedorId, getProveedorNombre } from "../../../api/proveedoresApi";
 
@@ -278,15 +281,11 @@ export default function ReportesCompras() {
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4 space-y-6">
-      <div className="flex items-center gap-3">
-        <Link to="/compras" className="p-2 rounded-none hover:bg-white/10 text-white/50 transition-colors" aria-label="Volver">
-          <ArrowLeft size={18} />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-semibold text-white tracking-tight">Reporte de Compras</h1>
-          <p className="text-sm text-white/40">Consulta de compras por período, proveedor y producto</p>
-        </div>
-      </div>
+      <PageHeader
+        backTo="/compras"
+        title="Reportes de compras"
+        subtitle="Consulta de compras por período, proveedor y producto"
+      />
 
       {/* Filtros */}
       <div className="bg-white/[0.02] border border-white/5 rounded-none p-4 space-y-4">
@@ -316,14 +315,14 @@ export default function ReportesCompras() {
             </button>
             {abiertoProveedores && (
               <div className="absolute z-20 mt-1 w-full max-h-52 overflow-y-auto bg-[#0c0c0e] border border-white/10 rounded-none p-1.5 space-y-0.5 shadow-xl">
-                <label className="flex items-center gap-2 px-2 py-1.5 rounded text-sm text-white hover:bg-white/5 cursor-pointer">
+                <label className="flex items-center gap-2 px-2 py-1.5 rounded-none text-sm text-white hover:bg-white/5 cursor-pointer">
                   <input type="checkbox" checked={selProveedores.size === 0} onChange={() => setSelProveedores(new Set())} />
                   Todos los proveedores
                 </label>
                 {proveedores.map((p) => {
                   const id = Number(p.id ?? p.idProveedor);
                   return (
-                    <label key={id} className="flex items-center gap-2 px-2 py-1.5 rounded text-sm text-white hover:bg-white/5 cursor-pointer">
+                    <label key={id} className="flex items-center gap-2 px-2 py-1.5 rounded-none text-sm text-white hover:bg-white/5 cursor-pointer">
                       <input type="checkbox" checked={selProveedores.has(id)} onChange={() => toggleProveedor(id)} />
                       {p.nombre}
                     </label>
@@ -349,12 +348,12 @@ export default function ReportesCompras() {
             </button>
             {abiertoProductos && (
               <div className="absolute z-20 mt-1 w-full max-h-52 overflow-y-auto bg-[#0c0c0e] border border-white/10 rounded-none p-1.5 space-y-0.5 shadow-xl">
-                <label className="flex items-center gap-2 px-2 py-1.5 rounded text-sm text-white hover:bg-white/5 cursor-pointer">
+                <label className="flex items-center gap-2 px-2 py-1.5 rounded-none text-sm text-white hover:bg-white/5 cursor-pointer">
                   <input type="checkbox" checked={selProductos.size === 0} onChange={() => setSelProductos(new Set())} />
                   Todos los productos
                 </label>
                 {productosDisponibles.map((nombre) => (
-                  <label key={nombre} className="flex items-center gap-2 px-2 py-1.5 rounded text-sm text-white hover:bg-white/5 cursor-pointer">
+                  <label key={nombre} className="flex items-center gap-2 px-2 py-1.5 rounded-none text-sm text-white hover:bg-white/5 cursor-pointer">
                     <input type="checkbox" checked={selProductos.has(nombre)} onChange={() => toggleProducto(nombre)} />
                     {nombre}
                   </label>
@@ -434,7 +433,7 @@ export default function ReportesCompras() {
       {cargando ? (
         <div className="bg-white/[0.02] border border-white/5 rounded-none p-4 space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-8 bg-white/10 rounded animate-pulse w-full" />
+            <div key={i} className="h-8 bg-white/10 rounded-none animate-pulse w-full" />
           ))}
         </div>
       ) : reporte === "periodo" ? (
@@ -461,7 +460,7 @@ export default function ReportesCompras() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                <tr className={THEAD_ROW}>
                   <th className={th}>Proveedor</th>
                   <th className={thR}>Cant. Facturas</th>
                   <th className={thR}>Cant. Productos</th>
@@ -507,7 +506,7 @@ export default function ReportesCompras() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                <tr className={THEAD_ROW}>
                   <th className={th}>Producto</th>
                   <th className={thR}>Cantidad</th>
                   <th className={thR}>Monto Comprado</th>
@@ -544,7 +543,7 @@ export default function ReportesCompras() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                <tr className={THEAD_ROW}>
                   <th className={th}>Concepto</th>
                   <th className={thR}>Base Imponible</th>
                   <th className={thR}>IVA</th>
@@ -644,7 +643,7 @@ function ReportePeriodo({ agrupFecha, setAgrupFecha, filtradas, porFecha, kpis, 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                <tr className={THEAD_ROW}>
                   <th className={th}>{agrupFecha === "dia" ? "Fecha" : "Mes"}</th>
                   <th className={thR}>Cant. Facturas</th>
                   <th className={thR}>Cant. Productos</th>
@@ -680,7 +679,7 @@ function ReportePeriodo({ agrupFecha, setAgrupFecha, filtradas, porFecha, kpis, 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                <tr className={THEAD_ROW}>
                   <th className={th}>Fecha</th>
                   <th className={th}>N° Factura</th>
                   <th className={th}>Proveedor</th>
@@ -712,7 +711,7 @@ function ReportePeriodo({ agrupFecha, setAgrupFecha, filtradas, porFecha, kpis, 
                         onClick={() => onVer(f)}
                         title="Ver detalle de la compra"
                         aria-label="Ver detalle de la compra"
-                        className="p-1.5 rounded text-white/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors"
+                        className="p-1.5 rounded-none text-white/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors"
                       >
                         <Eye size={16} />
                       </button>
@@ -778,7 +777,7 @@ function DetalleCompra({ factura, onClose, nombreProv }) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 text-white/40 text-left">
+                <tr className={THEAD_ROW}>
                   <th className="px-4 py-3 font-medium">Producto</th>
 <th className="px-4 py-3 font-medium text-right">Cantidad</th>
                   <th className="px-4 py-3 font-medium text-right">Importe</th>

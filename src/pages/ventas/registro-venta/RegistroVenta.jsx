@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import PageHeader from "../../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
 import {
   Search, ShoppingCart, Trash2, Scale, Package,
@@ -580,28 +581,25 @@ export default function RegistroVenta() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden px-6">
-      {/* Encabezado: mismo patrón que Registrar Factura (flecha + título).
-          Si el título de esa pantalla usa otro tamaño, igualá la clase de <h1>. */}
-      <header className="flex shrink-0 items-center justify-between gap-4 py-5">
-        <div className="flex items-center gap-4">
-          <Link to="/ventas" aria-label="Volver"
-            className="rounded-none p-2 text-white/50 transition-colors hover:bg-white/10 hover:text-white">
-            <ArrowLeft size={20} />
-          </Link>
-          <h1 className="text-2xl font-medium text-white">Registrar Venta</h1>
-        </div>
-
-        {datosImpresion && (
-          <p className="hidden items-center gap-2 text-xs text-white/50 md:flex">
-            <Check className="h-4 w-4 text-[var(--accent)]" />
-            <span>
-              Última venta <span className="text-white/80" style={MONO}>{datosImpresion.numero}</span>
-              {" · "}{formatMoney(datosImpresion.total)}
-              {datosImpresion.cambio > 0 && <> · vuelto {formatMoney(datosImpresion.cambio)}</>}
-            </span>
-          </p>
-        )}
-      </header>
+      {/* Encabezado estándar (PageHeader) con meta de la última venta a la derecha */}
+      <div className="shrink-0">
+        <PageHeader
+          backTo="/ventas"
+          title="Nueva venta"
+          right={
+            datosImpresion && (
+              <p className="hidden items-center gap-2 text-xs text-white/50 md:flex">
+                <Check className="h-4 w-4 text-[var(--accent)]" />
+                <span>
+                  Última venta <span className="text-white/80" style={MONO}>{datosImpresion.numero}</span>
+                  {" · "}{formatMoney(datosImpresion.total)}
+                  {datosImpresion.cambio > 0 && <> · vuelto {formatMoney(datosImpresion.cambio)}</>}
+                </span>
+              </p>
+            )
+          }
+        />
+      </div>
 
       {errorGlobal && (
         <div role="alert"
@@ -609,7 +607,7 @@ export default function RegistroVenta() {
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span className="flex-1">{errorGlobal}</span>
           <button type="button" onClick={() => setErrorGlobal(null)} aria-label="Cerrar aviso"
-            className="rounded p-0.5 text-red-300/70 transition-colors hover:text-red-200">
+            className="rounded-none p-0.5 text-red-300/70 transition-colors hover:text-red-200">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -694,7 +692,7 @@ export default function RegistroVenta() {
                     {docCliente(cliente) && <p className="truncate text-xs text-white/50">{docCliente(cliente)}</p>}
                   </div>
                   <button type="button" onClick={quitarCliente} aria-label="Quitar cliente"
-                    className="rounded p-1 text-white/50 transition-colors hover:bg-white/10 hover:text-white">
+                    className="rounded-none p-1 text-white/50 transition-colors hover:bg-white/10 hover:text-white">
                     <X className="h-4 w-4" />
                   </button>
                 </div>
@@ -1157,7 +1155,7 @@ function TransferenciasPendientesModal({ onCerrar, onCambio }) {
             Transferencias pendientes
           </h2>
           <button type="button" onClick={onCerrar} aria-label="Cerrar"
-            className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
+            className="rounded-none p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
             <X className="h-4 w-4" />
           </button>
         </div>

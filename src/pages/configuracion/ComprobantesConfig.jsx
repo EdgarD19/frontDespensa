@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import PageHeader from "../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
 import {
-  ArrowLeft, Plus, FileText, Pencil,
+  Plus, FileText, Pencil,
   AlertTriangle, Check, X, Hash, LayoutGrid, ListOrdered, Lock, Loader2,
 } from "lucide-react";
 import {
@@ -11,6 +13,7 @@ import {
 import {
   getTimbradosVenta, crearTimbradoVenta, actualizarTimbradoVenta, apiErrorMessage,
 } from "../../api/timbradosVentaApi";
+import Modal from "../../components/ui/Modal";
 
 const CARD = "rounded-none border border-white/10 bg-white/[0.02]";
 const LABEL = "text-[11px] font-medium uppercase tracking-[0.14em] text-white/50";
@@ -177,16 +180,11 @@ export default function ComprobantesConfig() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <div className="mb-6 flex items-center gap-3">
-        <Link to="/configuracion" aria-label="Volver"
-          className="rounded-none p-2 text-white/50 transition-colors hover:bg-white/10 hover:text-white">
-          <ArrowLeft size={18} />
-        </Link>
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-white">Configuración de comprobantes</h1>
-          <p className="text-sm text-white/40">Datos legales de comprobantes otorgados por la DNIT</p>
-        </div>
-      </div>
+      <PageHeader
+        backTo="/configuracion"
+        title="Comprobantes (DNIT)"
+        subtitle="Datos legales de comprobantes otorgados por la DNIT"
+      />
 
       {aviso && (
         <div className={`${CARD} mb-4 flex items-center gap-2 p-3 text-sm text-[var(--accent)]`}>
@@ -341,41 +339,7 @@ function TarjetaTimbrado({ c, onEditarTimbrado, onConfigurarFactura }) {
 }
 
 /* ───────────────────────── Piezas compartidas de modal ───────────────────────── */
-
-function useEscape(fn) {
-  useEffect(() => {
-    const h = (e) => { if (e.key === "Escape") fn(); };
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-  }, [fn]);
-}
-
-function ModalShell({ titulo, onCerrar, onSubmit, children, textoOk, deshabilitado, enviando }) {
-  useEscape(onCerrar);
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <form onSubmit={onSubmit} className="flex w-full max-w-2xl flex-col overflow-hidden rounded-none border border-white/10 bg-[#0c0c0e] shadow-2xl">
-        <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3">
-          <h2 className="text-sm font-semibold text-white">{titulo}</h2>
-          <button type="button" onClick={onCerrar} aria-label="Cerrar"
-            className="rounded-none p-1.5 text-white/50 transition-colors hover:bg-white/10 hover:text-white">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="max-h-[70vh] space-y-4 overflow-y-auto px-4 py-4">{children}</div>
-
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-white/10 px-4 py-3">
-          <button type="button" onClick={onCerrar} className={BTN_SECUNDARIO}>Cancelar</button>
-          <button type="submit" disabled={deshabilitado || enviando} className={BTN_PRIMARIO}>
-            {enviando && <Loader2 className="h-4 w-4 animate-spin" />}
-            {textoOk}
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-}
+/* ModalShell fue promovido a components/ui/Modal.jsx (import arriba) */
 
 function Campo({ label, requerido, ayuda, error, children }) {
   return (
@@ -435,7 +399,7 @@ function TimbradoModal({ inicial, onCerrar, onGuardar }) {
   }
 
   return (
-    <ModalShell
+    <Modal
       titulo={esNuevo ? "Nuevo timbrado" : `Editar timbrado ${inicial.numeroTimbrado}`}
       onCerrar={onCerrar}
       onSubmit={submit}
@@ -488,7 +452,7 @@ function TimbradoModal({ inicial, onCerrar, onGuardar }) {
       )}
 
       <ErrorServidor msg={errorServidor} />
-    </ModalShell>
+    </Modal>
   );
 }
 
@@ -534,7 +498,7 @@ function FacturaModal({ timbrado, onCerrar, onGuardar }) {
   const cantidad = valido ? Number(form.numeroHasta) - Number(form.numeroDesde) + 1 : 0;
 
   return (
-    <ModalShell
+    <Modal
       titulo={`Factura del timbrado ${timbrado.numeroTimbrado}`}
       onCerrar={onCerrar}
       onSubmit={submit}
@@ -632,6 +596,6 @@ function FacturaModal({ timbrado, onCerrar, onGuardar }) {
       )}
 
       <ErrorServidor msg={errorServidor} />
-    </ModalShell>
+    </Modal>
   );
 }

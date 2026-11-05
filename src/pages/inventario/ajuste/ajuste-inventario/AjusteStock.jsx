@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { THEAD_ROW } from "../../../../components/ui/styles";
 import { Check, Search, Trash2, Barcode, X } from "lucide-react";
 import { stockEntero } from "./utils";
 import { getProductoByCodigo } from "../../../../api/productosApi";
@@ -132,7 +133,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
           </label>
 
           {codigoNoEncontrado ? (
-            <p className="shrink-0 text-xs text-rose-400">
+            <p className="shrink-0 text-xs text-red-400">
               No se encontró el código "{codigoNoEncontrado}".
             </p>
           ) : null}
@@ -148,7 +149,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
                   type="button"
                   onClick={seleccionarTodos}
                   disabled={disabled}
-                  className="text-xs font-medium text-[var(--accent)] hover:text-green-400 disabled:opacity-40 transition-colors"
+                  className="text-xs font-medium text-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-40 transition-colors"
                 >
                   Seleccionar todos
                 </button>
@@ -232,7 +233,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
               <option value="OTROS">Otros</option>
             </select>
             {motivoError && (
-              <span className="mt-1 block text-xs text-rose-400">
+              <span className="mt-1 block text-xs text-red-400">
                 Seleccioná un motivo para la lista.
               </span>
             )}
@@ -248,7 +249,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
                 <div className="h-full max-h-full overflow-y-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300 sticky top-0">
+                      <tr className={THEAD_ROW + " sticky top-0"}>
                         <th className="px-4 py-3 font-medium">Producto</th>
                         <th className="w-16 px-4 py-3 text-center font-medium">U.M.</th>
                         <th className="w-24 px-4 py-3 text-right font-medium">Stock</th>

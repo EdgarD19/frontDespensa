@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { THEAD_ROW } from "../../../components/ui/styles";
 import { X, Save, History, Search, Clock } from "lucide-react";
 import { getHistorialPrecios, updateProductoPrecio, cancelarProgramacionPrecio, getProductoById } from "../../../api/productosApi";
 import { apiErrorMessage } from "../../../api/errors";
@@ -10,6 +11,18 @@ function formatMoney(n) {
   const v = Number(n);
   if (!Number.isFinite(v)) return "—";
   return `₲${v.toLocaleString("es-PY")}`;
+}
+
+// ISO → DD/MM/AAAA (con hora si el valor la trae). Los "yyyy-MM-dd" crudos
+// quedan solo para inputs/`type="date"` y comparaciones; lo visible se formatea.
+function fmtFechaEs(v) {
+  if (!v) return "—";
+  const s = String(v);
+  const d = new Date(/^\d{4}-\d{2}-\d{2}(T|$)/.test(s) ? s : `invalido`);
+  if (Number.isNaN(d.getTime())) return s.replace("T", " ");
+  const fecha = d.toLocaleDateString("es-PY", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const hora = s.includes("T") ? d.toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit" }) : "";
+  return hora ? `${fecha} ${hora}` : fecha;
 }
 
 export default function PrecioProductoModal({ producto, onClose, onPrecioActualizado }) {
@@ -108,7 +121,7 @@ export default function PrecioProductoModal({ producto, onClose, onPrecioActuali
         const precioData = { ...base, id: productoActual.id };
         setProductoActual(precioData);
         onPrecioActualizado?.(precioData);
-        setAviso(`Precio programado: se aplicará el ${String(vigencia).replace("T", " ")}.`);
+        setAviso(`Precio programado: se aplicará el ${fmtFechaEs(vigencia)}.`);
         setNuevoPrecio("");
         setFechaVigencia("");
         await cargarHistorial();
@@ -151,19 +164,19 @@ export default function PrecioProductoModal({ producto, onClose, onPrecioActuali
             </h2>
           </div>
           <button type="button" onClick={onClose}
-            className="p-1 rounded text-white/40 hover:text-white hover:bg-[#1a1f2e] transition-colors shrink-0">
+            className="p-1 rounded-none text-white/40 hover:text-white hover:bg-[#1a1f2e] transition-colors shrink-0">
             <X className="w-4 h-4" />
           </button>
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
           {error && (
-            <div className="text-xs text-rose-300 bg-rose-500/10 border border-rose-500/20 rounded-none px-3 py-2">
+            <div className="text-xs text-red-300 bg-red-500/10 border border-red-500/20 rounded-none px-3 py-2">
               {error}
             </div>
           )}
           {aviso && (
-            <div className="text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-none px-3 py-2">
+            <div className="text-xs text-[var(--accent)] bg-[var(--accent-dim)] border border-[var(--border-accent)] rounded-none px-3 py-2">
               {aviso}
             </div>
           )}
@@ -172,7 +185,7 @@ export default function PrecioProductoModal({ producto, onClose, onPrecioActuali
               <span className="flex items-center gap-2">
                 <Clock className="w-3.5 h-3.5 shrink-0" />
                 Precio a futuro pendiente: ₲{Number(productoActual.precioFuturo).toLocaleString("es-PY")} desde{" "}
-                {String(productoActual.fechaVigencia).replace("T", " ").slice(0, 16)}
+                {fmtFechaEs(productoActual.fechaVigencia)}
               </span>
               <button type="button" onClick={handleCancelarProgramacion} disabled={guardando}
                 className="shrink-0 rounded-none border border-amber-500/40 px-2 py-1 font-semibold text-amber-200 hover:bg-amber-500/20 disabled:opacity-40 transition-colors">
@@ -239,7 +252,7 @@ export default function PrecioProductoModal({ producto, onClose, onPrecioActuali
             <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-white/10 bg-emerald-500/10 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                  <tr className={THEAD_ROW}>
                     <th className="px-4 py-3 font-medium">Fecha</th>
                     <th className="px-4 py-3 font-medium">Hora</th>
                     <th className="px-4 py-3 font-medium">Estado</th>
@@ -265,7 +278,7 @@ export default function PrecioProductoModal({ producto, onClose, onPrecioActuali
                       const variacion = Number(h.variacionPorcentaje);
                       return (
                         <tr key={h.id} className={`border-b border-white/10 last:border-0 hover:bg-white/[0.04] transition-colors ${esProgramado ? "bg-amber-500/5" : ""}`}>
-                          <td className="px-4 py-3 text-white">{h.fecha || "—"}</td>
+                          <td className="px-4 py-3 text-white">{fmtFechaEs(h.fecha)}</td>
                           <td className="px-4 py-3 text-white/70">{h.hora || "—"}</td>
                           <td className="px-4 py-3">
                             {esProgramado ? (
@@ -273,7 +286,7 @@ export default function PrecioProductoModal({ producto, onClose, onPrecioActuali
                                 <Clock className="w-3 h-3" /> Programado
                               </span>
                             ) : esVigente ? (
-                              <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
+                              <span className="rounded-full bg-[var(--accent-dim)] border border-[var(--border-accent)] px-2 py-0.5 text-[10px] font-semibold text-[var(--accent)]">
                                 Vigente
                               </span>
                             ) : (
@@ -283,7 +296,7 @@ export default function PrecioProductoModal({ producto, onClose, onPrecioActuali
                           <td className="px-4 py-3 text-white/70 tabular-nums">
                             {h.precioVentaAnterior != null ? formatMoney(h.precioVentaAnterior) : "—"}
                             {Number.isFinite(variacion) && h.precioVentaAnterior != null && variacion !== 0 && (
-                              <span className={`ml-1 text-[10px] ${variacion > 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                              <span className={`ml-1 text-[10px] ${variacion > 0 ? "text-[var(--accent)]" : "text-red-400"}`}>
                                 ({variacion > 0 ? "+" : ""}{variacion}%)
                               </span>
                             )}
