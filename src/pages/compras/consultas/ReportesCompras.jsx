@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { THEAD_ROW } from "../../../components/ui/styles";
+import { TABLE_SHELL,THEAD_ROW } from "../../../components/ui/styles";
 
 import PageHeader from "../../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
@@ -452,7 +452,7 @@ export default function ReportesCompras() {
           nombreProv={nombreProv}
         />
       ) : reporte === "proveedor" ? (
-        <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
+        <div className={TABLE_SHELL}>
           <div className="px-4 py-3 border-b border-white/10">
             <h2 className="text-sm font-semibold text-white">Compras por proveedor</h2>
             <p className="text-xs text-white/40">Totales por proveedor en el rango seleccionado</p>
@@ -498,7 +498,7 @@ export default function ReportesCompras() {
           </p>
         </div>
       ) : reporte === "producto" ? (
-        <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
+        <div className={TABLE_SHELL}>
           <div className="px-4 py-3 border-b border-white/10">
             <h2 className="text-sm font-semibold text-white">Compras por producto</h2>
             <p className="text-xs text-white/40">Cantidades y montos comprados en el rango seleccionado</p>
@@ -535,7 +535,7 @@ export default function ReportesCompras() {
           </div>
         </div>
       ) : reporte === "iva" ? (
-        <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
+        <div className={TABLE_SHELL}>
           <div className="px-4 py-3 border-b border-white/10">
             <h2 className="text-sm font-semibold text-white">Resumen de impuestos (IVA)</h2>
             <p className="text-xs text-white/40">Desglose del IVA de las compras en el rango seleccionado</p>
@@ -614,7 +614,7 @@ function ReportePeriodo({ agrupFecha, setAgrupFecha, filtradas, porFecha, kpis, 
         <KpiCard label="Cantidad Total de Productos" value={String(totalUnidades)} accent="#f59e0b" />
       </div>
 
-      <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
+      <div className={TABLE_SHELL}>
         <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h2 className="text-sm font-semibold text-white">

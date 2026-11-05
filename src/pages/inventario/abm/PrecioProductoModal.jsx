@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { THEAD_ROW } from "../../../components/ui/styles";
+import { TABLE_SHELL,THEAD_ROW } from "../../../components/ui/styles";
 import { X, Save, History, Search, Clock } from "lucide-react";
 import { getHistorialPrecios, updateProductoPrecio, cancelarProgramacionPrecio, getProductoById } from "../../../api/productosApi";
 import { apiErrorMessage } from "../../../api/errors";
@@ -249,7 +249,7 @@ export default function PrecioProductoModal({ producto, onClose, onPrecioActuali
               </label>
             </div>
 
-            <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
+            <div className={TABLE_SHELL}>
               <table className="w-full text-sm">
                 <thead>
                   <tr className={THEAD_ROW}>

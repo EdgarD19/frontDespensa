@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { CARD } from "../../components/ui/styles";
 import { Link } from "react-router-dom";
 import {
   AlertTriangle, TrendingUp, PackageOpen, BarChart3, RefreshCw,
@@ -13,7 +14,6 @@ const MINIMO_GLOBAL = 10;
 // Rango "todo el histórico" para el reporte de más vendidos
 const DESDE_TODO = "2000-01-01";
 
-const CARD = "rounded-none border border-white/10 bg-white/[0.02]";
 const MONO = { fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums" };
 const FOCUS =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]";

@@ -1,7 +1,7 @@
 
 import PageHeader from "../../../../components/ui/PageHeader";
 import SearchField from "../../../../components/ui/SearchField";
-import { THEAD_ROW } from "../../../../components/ui/styles";
+import { TABLE_SHELL,THEAD_ROW } from "../../../../components/ui/styles";
 import { Link } from "react-router-dom";
 import { Plus, XCircle, PenLine, Trash2, X, Search, PackageCheck } from "lucide-react";
 import {
@@ -640,7 +640,7 @@ function PedidoModal({
 
           {/* Líneas del pedido */}
           {lineas.length > 0 ? (
-            <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
+            <div className={TABLE_SHELL}>
               <table className="w-full text-sm">
                 <thead>
                   <tr className={THEAD_ROW}>

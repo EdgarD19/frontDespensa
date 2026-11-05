@@ -1,5 +1,5 @@
 import { getEstadoStock } from "../utils";
-import { THEAD_ROW } from "../../../components/ui/styles";
+import { TABLE_SHELL,THEAD_ROW } from "../../../components/ui/styles";
 import Pagination from "../../../components/ui/Pagination";
 
 const estadoStockConfig = {
@@ -21,7 +21,7 @@ export default function ConsultaInventarioReport({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
+      <div className={TABLE_SHELL}>
         <table className="w-full text-sm">
           <thead>
             <tr className={THEAD_ROW}>

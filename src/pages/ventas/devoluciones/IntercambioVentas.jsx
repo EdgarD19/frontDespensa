@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { THEAD_ROW } from "../../../components/ui/styles";
+import { TABLE_SHELL,THEAD_ROW } from "../../../components/ui/styles";
 
 import PageHeader from "../../../components/ui/PageHeader";
 import { createPortal } from "react-dom";
@@ -504,7 +504,7 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
         </div>
       )}
 
-      <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
+      <div className={TABLE_SHELL}>
         <div className="max-h-[45vh] overflow-y-auto [color-scheme:dark] [scrollbar-color:#2a2a32_transparent] [scrollbar-width:thin]">
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-10 bg-[#0c0c0e]">
@@ -548,7 +548,7 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
   /* ── Capa 2: resumen del ticket + cantidades a intercambiar ── */
   const renderDetalle = () => (
     <div className="space-y-4 p-5">
-      <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
+      <div className={TABLE_SHELL}>
         <table className="w-full text-sm">
           <thead>
             <tr className={THEAD_ROW}>
@@ -767,7 +767,7 @@ function DetalleIntercambioModal({ intercambio, onCerrar }) {
             </div>
           </div>
 
-          <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
+          <div className={TABLE_SHELL}>
             <table className="w-full text-sm">
               <thead>
                 <tr className={THEAD_ROW}>

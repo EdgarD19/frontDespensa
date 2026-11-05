@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { THEAD_ROW } from "../../../components/ui/styles";
+import { TABLE_SHELL,THEAD_ROW } from "../../../components/ui/styles";
 import { Link } from "react-router-dom";
 import { Search, X, Eye } from "lucide-react";
 import PageHeader from "../../../components/ui/PageHeader";
@@ -244,7 +244,7 @@ export default function HistorialVentas() {
       )}
 
       {/* Tabla */}
-      <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
+      <div className={TABLE_SHELL}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

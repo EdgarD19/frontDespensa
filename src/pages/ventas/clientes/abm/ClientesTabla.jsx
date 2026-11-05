@@ -1,6 +1,6 @@
 import { ToggleLeft, ToggleRight, Pencil, Trash2 } from "lucide-react";
 import Pagination from "../../../../components/ui/Pagination";
-import { THEAD_ROW } from "../../../../components/ui/styles";
+import { TABLE_SHELL,THEAD_ROW } from "../../../../components/ui/styles";
 import SearchField from "../../../../components/ui/SearchField";
 
 export default function ClientesTabla({
@@ -40,7 +40,7 @@ export default function ClientesTabla({
       </div>
       
       {/* Tabla */}
-      <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
+      <div className={TABLE_SHELL}>
         <table className="w-full text-sm">
           <thead>
             <tr className={THEAD_ROW}>

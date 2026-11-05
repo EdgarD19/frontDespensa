@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { THEAD_ROW } from "../../../components/ui/styles";
+import { TABLE_SHELL,THEAD_ROW } from "../../../components/ui/styles";
 
 import PageHeader from "../../../components/ui/PageHeader";
 import { createPortal } from "react-dom";
@@ -419,7 +419,7 @@ function NuevaAnulacionModal({ onCerrar, onAnulada }) {
         </div>
       )}
 
-      <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
+      <div className={TABLE_SHELL}>
         <div className="max-h-[45vh] overflow-y-auto [color-scheme:dark] [scrollbar-color:#2a2a32_transparent] [scrollbar-width:thin]">
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-10 bg-[#0c0c0e]">
@@ -469,7 +469,7 @@ function NuevaAnulacionModal({ onCerrar, onAnulada }) {
           Anulación total de la factura
         </h3>
         {resumen && (
-          <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
+          <div className={TABLE_SHELL}>
             <table className="w-full text-sm">
               <thead>
                 <tr className={THEAD_ROW}>
@@ -689,7 +689,7 @@ function DetalleAnulacionModal({ anulacion, onCerrar }) {
             </div>
           </div>
 
-          <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
+          <div className={TABLE_SHELL}>
             <table className="w-full text-sm">
               <thead>
                 <tr className={THEAD_ROW}>

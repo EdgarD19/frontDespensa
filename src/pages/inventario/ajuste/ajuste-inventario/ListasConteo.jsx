@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { THEAD_ROW } from "../../../../components/ui/styles";
+import { TABLE_SHELL,THEAD_ROW } from "../../../../components/ui/styles";
 import { ClipboardList, FileText, PenLine, Check, X, Save, Ban } from "lucide-react";
 import Pagination from "../../../../components/ui/Pagination";
 import CantidadInput from "../../../../components/ui/CantidadInput";
@@ -109,7 +109,7 @@ export default function ListasConteo({
   }
 
   return (
-    <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
+    <div className={TABLE_SHELL}>
       <div className="px-5 py-4 border-b border-white/10">
         <div className="flex items-center gap-3 flex-wrap">
           <ClipboardList className="w-5 h-5 text-[var(--accent)] shrink-0" aria-hidden />
@@ -456,7 +456,7 @@ export default function ListasConteo({
                 </div>
               )}
 
-              <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
+              <div className={TABLE_SHELL}>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>

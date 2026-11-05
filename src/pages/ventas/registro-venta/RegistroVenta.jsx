@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { CARD } from "../../../components/ui/styles";
 import PageHeader from "../../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
 import {
@@ -28,7 +29,6 @@ const QUICK_AMOUNTS = [5000, 10000, 20000, 50000, 100000];
 // Estilo compartido con Registrar Factura / Lista de Facturas / Inventario:
 // fondo negro, tarjetas con borde white/10, etiquetas en mayúsculas espaciadas.
 const MONO = { fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums" };
-const CARD = "rounded-none border border-white/10 bg-white/[0.02]";
 const LABEL = "text-[11px] font-medium uppercase tracking-[0.14em] text-white/50";
 const TH = "sticky top-0 z-10 bg-[#0a0a0c] py-2.5 px-2 font-medium";
 

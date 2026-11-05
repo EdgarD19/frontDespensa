@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { THEAD_ROW } from "../../../components/ui/styles";
+import { TABLE_SHELL,THEAD_ROW } from "../../../components/ui/styles";
 
 import PageHeader from "../../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
@@ -280,7 +280,7 @@ export default function ListaFacturas() {
       )}
 
       {/* Tabla */}
-      <div className="overflow-hidden border border-white/10 bg-[#0c0c0e]">
+      <div className={TABLE_SHELL}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

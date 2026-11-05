@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CARD } from "../../components/ui/styles";
 
 import PageHeader from "../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
@@ -9,7 +10,6 @@ import {
 } from "../../api/configuracionEmpresaApi";
 import { apiErrorMessage } from "../../api/errors";
 
-const CARD = "rounded-none border border-white/10 bg-white/[0.02]";
 const LABEL = "text-[11px] font-medium uppercase tracking-[0.14em] text-white/50";
 const INPUT =
   "h-11 w-full rounded-none border border-white/10 bg-white/[0.03] px-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50";
