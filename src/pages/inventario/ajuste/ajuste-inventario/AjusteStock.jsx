@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Search, Trash2, Barcode } from "lucide-react";
+import { Check, Search, Trash2, Barcode, X } from "lucide-react";
 import { stockEntero } from "./utils";
 import { getProductoByCodigo } from "../../../../api/productosApi";
 
@@ -106,15 +106,28 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
                 placeholder="Escanear código de barras o buscar por nombre…"
                 className="w-full rounded-none border border-white/10 bg-[#0c0c0e] pl-10 pr-12 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-[var(--accent)] focus:ring-1 focus:ring-[#22c55e]/20 outline-none disabled:opacity-50"
               />
-              <button
-                type="button"
-                onClick={() => buscarPorCodigo(search)}
-                disabled={disabled}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors disabled:opacity-50"
-                title="Buscar por código de barras"
-              >
-                <Barcode size={16} />
-              </button>
+              {search && !disabled ? (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  disabled={disabled}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-white/40 hover:text-white transition-colors disabled:opacity-50"
+                  title="Limpiar búsqueda"
+                  aria-label="Limpiar búsqueda"
+                >
+                  <X size={16} />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => buscarPorCodigo(search)}
+                  disabled={disabled}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors disabled:opacity-50"
+                  title="Buscar por código de barras"
+                >
+                  <Barcode size={16} />
+                </button>
+              )}
             </div>
           </label>
 

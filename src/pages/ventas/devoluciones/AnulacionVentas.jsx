@@ -10,12 +10,9 @@ import {
 } from "../../../api/ventasDevolucionesApi";
 import { getFacturasVenta, buscarFacturasVenta, getFacturaVentaById } from "../../../api/facturasVentaApi";
 import Pagination from "../../../components/ui/Pagination";
+import { fmtMoneda } from "../common";
 
 /* ───────────── Utilidades y estilos ───────────── */
-
-function fmtMoneda(n) {
-  return new Intl.NumberFormat("es-PY", { style: "currency", currency: "PYG", minimumFractionDigits: 0 }).format(n ?? 0);
-}
 
 function fmtCantidad(n) {
   const v = Number(n);
@@ -76,23 +73,30 @@ export default function AnulacionVentas() {
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
 
   const cargar = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await getAnulacionesVenta({ pageSize: 1000, sortDir: "DESC" });
+      // Paginación real (el back espera page/size/sortBy/sortDirection).
+      const res = await getAnulacionesVenta({ page, pageSize: PAGE_SIZE, sortDir: "DESC" });
       setAnulaciones(Array.isArray(res.content) ? res.content : []);
+      setTotalPages(Math.max(1, res.totalPages ?? 1));
+      setTotalElements(Number(res.totalElements ?? res.content?.length ?? 0));
     } catch (err) {
       console.error("Error al cargar anulaciones:", err);
       setError(apiErrorMessage(err) || "No se pudieron cargar las anulaciones.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
+  // El back no soporta filtros (texto/fecha) en el listado: se refina la página
+  // actual (máximo PAGE_SIZE filas).
   const anulacionesFiltradas = useMemo(() => {
     const q = texto.trim().toLowerCase();
     const desdeTs = desde ? new Date(`${desde}T00:00:00`).getTime() : null;
@@ -114,12 +118,10 @@ export default function AnulacionVentas() {
 
   useEffect(() => { setPage(0); }, [texto, desde, hasta]);
 
-  const totalPaginas = Math.max(1, Math.ceil(anulacionesFiltradas.length / PAGE_SIZE));
-  const paginaActual = Math.min(page, Math.max(0, totalPaginas - 1));
-  const anulacionesPagina = anulacionesFiltradas.slice(
-    paginaActual * PAGE_SIZE,
-    paginaActual * PAGE_SIZE + PAGE_SIZE
-  );
+  // Con filtros locales la paginación server-side sigue siendo la fuente del
+  // conteo; el filtro solo descarta filas de la página mostrada.
+  const hayFiltroLocal = !!(texto.trim() || desde || hasta);
+  const anulacionesPagina = anulacionesFiltradas;
 
   const handleAnulada = (resp, factura) => {
     setShowModal(false);
@@ -284,13 +286,21 @@ export default function AnulacionVentas() {
       </div>
 
       {!loading && anulacionesFiltradas.length > 0 && (
-        <Pagination
-          page={paginaActual}
-          totalPages={totalPaginas}
-          onPageChange={setPage}
-          pageSize={PAGE_SIZE}
-          totalItems={anulacionesFiltradas.length}
-        />
+        <>
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            pageSize={PAGE_SIZE}
+            totalItems={hayFiltroLocal ? undefined : totalElements}
+          />
+          {hayFiltroLocal && (
+            <p className="text-xs text-white/40">
+              Los filtros se aplican sobre la página actual (el back todavía no
+              soporta filtros en este listado). Usá "Limpiar" para ver las páginas completas.
+            </p>
+          )}
+        </>
       )}
 
       {showModal && (

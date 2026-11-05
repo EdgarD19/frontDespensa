@@ -51,6 +51,24 @@ export async function getTimbradoVentaVigente(fecha) {
   return data;
 }
 
+/**
+ * Timbrado disponible para una fecha decidido SOLO POR FECHA:
+ * fechaInicio <= fecha <= fechaVencimiento (el día de vencimiento cuenta como
+ * disponible). No usa el flag activo del back: el back exigiría activo=true y
+ * eso bloqueaba /ventas/registro aunque el timbrado cubriera la fecha.
+ * Devuelve { data: timbrado } (igual que getTimbradoVentaVigente) o null.
+ */
+export async function getTimbradoVentaPorFecha(fecha) {
+  const { content } = await getTimbradosVenta({ pageSize: 200 });
+  const f = String(fecha ?? "");
+  const disponible = (content || []).find((t) =>
+    !!t?.numeroTimbrado &&
+    (!t.fechaInicio || t.fechaInicio <= f) &&
+    (!t.fechaVencimiento || t.fechaVencimiento >= f)
+  );
+  return disponible ? { data: disponible } : null;
+}
+
 export async function crearTimbradoVenta(payload) {
   const { data } = await api.post(BASE, payload);
   return data;

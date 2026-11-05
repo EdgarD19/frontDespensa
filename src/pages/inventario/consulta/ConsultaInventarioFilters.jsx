@@ -1,4 +1,4 @@
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 
 const fieldClass = "flex items-center gap-2 rounded-none px-3 py-2 bg-white/5 border border-white/10";
 const inputClass = "flex-1 bg-transparent border-none outline-none w-full text-white placeholder:text-white/30 focus:ring-0 text-sm";
@@ -22,7 +22,7 @@ export default function ConsultaInventarioFilters({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <div className={`${fieldClass} flex-[2]`}>
+      <div className={`${fieldClass} flex-[2] relative`}>
         <Search className="w-4 h-4 text-white/30 flex-shrink-0" />
         <input
           type="text"
@@ -32,6 +32,17 @@ export default function ConsultaInventarioFilters({
           disabled={disabled}
           className={inputClass}
         />
+        {!disabled && search && (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            title="Limpiar búsqueda"
+            aria-label="Limpiar búsqueda"
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
 
       <div className={`${fieldClass} flex-1`}>

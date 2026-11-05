@@ -262,7 +262,11 @@ export default function DashboardVentas() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="truncate text-sm text-white/85">{p.nombre}</p>
-                            <p className="truncate text-xs text-white/35">{p.codigoBarras || `#${p.id}`}</p>
+                            {/* Código de barras solo si el producto lo tiene:
+                                sin barcode ya no se muestra el "#id". */}
+                            {p.codigoBarras && (
+                              <p className="truncate text-xs text-white/35">{p.codigoBarras}</p>
+                            )}
                           </div>
                           <div className="shrink-0 text-right">
                             <p
@@ -271,9 +275,6 @@ export default function DashboardVentas() {
                             >
                               {critico && <AlertTriangle className="h-3 w-3" aria-hidden="true" />}
                               {critico ? "Agotado" : `${fmtNumero(stock)} ${unidad(p)}`}
-                            </p>
-                            <p className="text-[11px] text-white/35" style={MONO}>
-                              mínimo {fmtNumero(p.umbral)}
                             </p>
                           </div>
                         </div>

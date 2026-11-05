@@ -1,4 +1,4 @@
-import { Search, ToggleLeft, ToggleRight, Pencil } from "lucide-react";
+import { Search, ToggleLeft, ToggleRight, Pencil, X } from "lucide-react";
 import Pagination from "../../../../components/ui/Pagination";
 
 export default function ProveedoresTabla({
@@ -21,7 +21,13 @@ export default function ProveedoresTabla({
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
           <input type="text" value={search} onChange={(e) => onSearch(e.target.value)}
             placeholder="Buscar por nombre, RUC, contacto, teléfono..."
-            className="w-full bg-white/5 border border-white/10 rounded-none pl-9 pr-4 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent)] transition-colors" />
+            className="w-full bg-white/5 border border-white/10 rounded-none pl-9 pr-9 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent)] transition-colors" />
+          {search && (
+            <button type="button" onClick={() => onSearch("")} title="Limpiar búsqueda" aria-label="Limpiar búsqueda"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-white/40 hover:text-white hover:bg-white/10 transition-colors">
+              <X size={15} />
+            </button>
+          )}
         </div>
         <button onClick={onNuevo}
           className="flex items-center gap-2 bg-[var(--accent)] hover:opacity-90 text-black text-sm font-medium px-4 py-2 rounded-none transition-opacity whitespace-nowrap">

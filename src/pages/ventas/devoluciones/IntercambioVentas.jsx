@@ -8,11 +8,14 @@ import {
 import {
   crearIntercambioVenta, getIntercambiosVenta, apiErrorMessage,
 } from "../../../api/ventasDevolucionesApi";
-import { getFacturasVenta } from "../../../api/facturasVentaApi";
+import {
+  getFacturasVenta, buscarFacturasVenta,
+} from "../../../api/facturasVentaApi";
 import { getProductos } from "../../../api/productosApi";
 import CantidadInput from "../../../components/ui/CantidadInput";
 import Pagination from "../../../components/ui/Pagination";
 import { esProductoPesable } from "../registro-venta/utils";
+import { esAnulada, fmtFecha, fmtMoneda } from "../common";
 
 /* ───────────── Utilidades y estilos ───────────── */
 
@@ -39,24 +42,6 @@ function motivoBadge(m) {
   );
 }
 
-function fmtMoneda(n) {
-  return new Intl.NumberFormat("es-PY", { style: "currency", currency: "PYG", minimumFractionDigits: 0 }).format(n ?? 0);
-}
-
-function fmtFechaHora(valor) {
-  if (!valor) return "—";
-  const s = String(valor);
-  // Una fecha sin hora (yyyy-MM-dd) debe interpretarse como LOCAL: `new Date("2026-10-11")`
-  // la toma como UTC y en zonas al oeste (p. ej. America/Asuncion) resta un día.
-  const soloFecha = /^\d{4}-\d{2}-\d{2}$/.test(s);
-  const d = soloFecha ? new Date(`${s}T00:00:00`) : new Date(s);
-  if (Number.isNaN(d.getTime())) return s;
-  if (soloFecha) {
-    return d.toLocaleDateString("es-PY", { day: "2-digit", month: "2-digit", year: "numeric" });
-  }
-  return d.toLocaleString("es-PY", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-}
-
 function fmtCant(n, um) {
   const c = Number(n) || 0;
   return `${c} ${um === "KG" ? "kg" : "u."}`;
@@ -75,17 +60,19 @@ const PAGE_SIZE = 10;
 
 const modalShell = "w-full rounded-none border border-white/10 bg-[#0c0c0e] shadow-2xl flex flex-col";
 
-const esAnulada = (f) => {
-  const raw = String(f?.estado || "").toUpperCase();
-  return raw === "ANULADO" || raw === "ANULADA" || raw === "CANCELADA" || f?.activo === false;
-};
-
 /* El back no vincula intercambios de venta a facturas; el número se guarda
    como texto en `observaciones` ("Factura: 001-001-0000042"). Este helper lo
-   recupera para la tabla y el detalle. */
+   recupera para la tabla y el detalle. Si el back algún día manda
+   numeroFacturaVenta/idFacturaVenta en la respuesta, esos campos ganan
+   (los llamados ya los priorizan antes que el regex). */
 function extraerFacturaDeObs(obs) {
-  const m = /factura[^0-9-]*((?:\d{1,3}-){2}\d{5,}|\d[\d-]{5,})/i.exec(String(obs || ""));
-  return m ? m[1].trim() : null;
+  // Nro. de factura "compuesto" en cualquier parte del texto (acepta informes
+  // tipo "Factura: X", "Venta X" o "corresponde a la factura X").
+  const m = /\d{1,3}-\d{1,3}-\d{5,}/.exec(String(obs || ""));
+  if (m) return m[0];
+  // Fallback: una tanda larga de dígitos (número correlativo sin formato).
+  const m2 = /\d{6,}/.exec(String(obs || ""));
+  return m2 ? m2[0] : null;
 }
 
 function useEscape(onCerrar) {
@@ -109,23 +96,30 @@ export default function IntercambioVentas() {
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
 
   const cargar = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await getIntercambiosVenta({ pageSize: 1000, sortDir: "DESC" });
+      // Paginación real del back (param "pageSize"; un "size" se ignora).
+      const res = await getIntercambiosVenta({ page, pageSize: PAGE_SIZE, sortDir: "DESC" });
       setIntercambios(Array.isArray(res.content) ? res.content : []);
+      setTotalPages(Math.max(1, res.totalPages ?? 1));
+      setTotalElements(Number(res.totalElements ?? res.content?.length ?? 0));
     } catch (err) {
       console.error("Error al cargar intercambios:", err);
       setError(apiErrorMessage(err) || "No se pudieron cargar los intercambios.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
+  // El back no soporta filtros (texto/fecha) en el listado: se refina la página
+  // que se pidió (máximo PAGE_SIZE filas).
   const intercambiosFiltrados = useMemo(() => {
     const q = texto.trim().toLowerCase();
     const desdeTs = desde ? new Date(`${desde}T00:00:00`).getTime() : null;
@@ -140,14 +134,10 @@ export default function IntercambioVentas() {
     });
   }, [intercambios, texto, desde, hasta]);
 
-  useEffect(() => { setPage(0); }, [texto, desde, hasta]);
-
-  const totalPaginas = Math.max(1, Math.ceil(intercambiosFiltrados.length / PAGE_SIZE));
-  const paginaActual = Math.min(page, Math.max(0, totalPaginas - 1));
-  const intercambiosPagina = intercambiosFiltrados.slice(
-    paginaActual * PAGE_SIZE,
-    paginaActual * PAGE_SIZE + PAGE_SIZE
-  );
+  // Aunque el texto/fechas filtren solo la página actual, la paginación real
+  // sigue viva (page/totalPages vienen del back).
+  const hayFiltroLocal = !!(texto.trim() || desde || hasta);
+  const intercambiosPagina = intercambiosFiltrados;
 
   const handleCreado = (resp) => {
     setShowModal(false);
@@ -282,7 +272,7 @@ export default function IntercambioVentas() {
               <tbody>
                 {intercambiosPagina.map((it) => (
                   <tr key={it.idIntercambioVenta} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
-                    <td className="whitespace-nowrap px-4 py-3 text-white/60">{fmtFechaHora(it.fechaCreacion)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-white/60">{fmtFecha(it.fechaCreacion)}</td>
                     <td className="px-4 py-3 text-white/70">
                       {it.nombreCliente || (it.idCliente ? "—" : "Sin Nombre")}
                     </td>
@@ -317,13 +307,21 @@ export default function IntercambioVentas() {
       </div>
 
       {!loading && intercambiosFiltrados.length > 0 && (
-        <Pagination
-          page={paginaActual}
-          totalPages={totalPaginas}
-          onPageChange={setPage}
-          pageSize={PAGE_SIZE}
-          totalItems={intercambiosFiltrados.length}
-        />
+        <>
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            pageSize={PAGE_SIZE}
+            totalItems={hayFiltroLocal ? undefined : totalElements}
+          />
+          {hayFiltroLocal && (
+            <p className="text-xs text-white/40">
+              Los filtros se aplican sobre la página actual (el back todavía no
+              soporta filtros en este listado). Usá "Limpiar" para ver las páginas completas.
+            </p>
+          )}
+        </>
       )}
 
       {showModal && (
@@ -384,20 +382,27 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
     return () => { activo = false; };
   }, []);
 
-  // Lista de facturas de venta (todas las vigentes; búsqueda en cliente).
+  // Búsqueda server-side de facturas (debounce). El back expone
+  // GET /api/facturas-venta/buscar?q= (por número de factura o cliente);
+  // las anuladas se excluyen acá porque el endpoint no filtra estado.
+  const [consultaDebounced, setConsultaDebounced] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setConsultaDebounced(consulta), 300);
+    return () => clearTimeout(t);
+  }, [consulta]);
+
   useEffect(() => {
     let activo = true;
     setCargandoFacturas(true);
     setErrorFacturas(null);
     (async () => {
       try {
-        const res = await getFacturasVenta({ page: 0, pageSize: 1000, sortDir: "DESC" });
+        const res = consultaDebounced.trim()
+          ? await buscarFacturasVenta(consultaDebounced.trim(), { page: 0, pageSize: 20, sortDir: "DESC" })
+          : await getFacturasVenta({ page: 0, pageSize: 20, sortDir: "DESC" });
         if (!activo) return;
         const todas = Array.isArray(res.content) ? res.content : [];
-        const q = consulta.trim().toLowerCase();
-        const filtradas = todas.filter((f) => !esAnulada(f) && (!q
-          || `${f.numeroFactura || ""} ${f.nombreCliente || ""}`.toLowerCase().includes(q)));
-        setFacturas(filtradas);
+        setFacturas(todas.filter((f) => !esAnulada(f)));
       } catch (err) {
         if (!activo) return;
         setErrorFacturas(apiErrorMessage(err) || "No se pudieron cargar las facturas.");
@@ -406,7 +411,7 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
       }
     })();
     return () => { activo = false; };
-  }, [consulta]);
+  }, [consultaDebounced]);
 
   const productoMap = useMemo(
     () => new Map(productoCatalog.map((p) => [Number(p.id), p])),
@@ -548,7 +553,7 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
                   className="cursor-pointer border-b border-white/10 transition-colors last:border-b-0 focus:outline-none focus-visible:bg-white/[0.06] hover:bg-white/[0.04]"
                 >
                   <td className="whitespace-nowrap px-4 py-3 font-medium tabular-nums text-white">{f.numeroFactura || "—"}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-white/60">{fmtFechaHora(f.fechaEmision || f.fechaCreacion)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-white/60">{fmtFecha(f.fechaEmision || f.fechaCreacion)}</td>
                   <td className="px-4 py-3 text-white/70">{f.nombreCliente || "Sin Nombre"}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white">{fmtMoneda(f.totalGeneral)}</td>
                 </tr>
@@ -684,7 +689,7 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
                 </h2>
                 <p className="mt-0.5 text-xs text-white/50">
                   Factura <span className="whitespace-nowrap tabular-nums">{facturaSel?.numeroFactura || "—"}</span> ·{" "}
-                  {facturaSel?.nombreCliente || "Sin Nombre"} · {fmtFechaHora(facturaSel?.fechaEmision || facturaSel?.fechaCreacion)}
+                  {facturaSel?.nombreCliente || "Sin Nombre"} · {fmtFecha(facturaSel?.fechaEmision || facturaSel?.fechaCreacion)}
                 </p>
               </div>
               <button

@@ -61,10 +61,12 @@ export async function crearIntercambioVenta(payload) {
   return unwrapSingle(data);
 }
 
-/** GET /api/intercambios-venta?page&pageSize&sortBy&sortDir — histórico. */
+/** GET /api/intercambios-venta?page&pageSize&sortBy&sortDir — histórico.
+ *  ⚠️ El back espera "pageSize" (no "size"): con "size" la respuesta vuelve
+ *  con el default de 20 filas. */
 export async function getIntercambiosVenta({ page = 0, pageSize = 20, sortBy, sortDir = "DESC" } = {}) {
   const { data } = await api.get(INTERCAMBIOS, {
-    params: { page, size: pageSize, sortBy: sortBy || undefined, sortDir },
+    params: { page, pageSize, sortBy: sortBy || undefined, sortDir },
   });
   return unwrapPage(data);
 }

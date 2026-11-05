@@ -1,9 +1,8 @@
-// Stock mínimo por producto — puente local mientras el back no tenga el campo.
+// Stock mínimo por producto — puente local mientras el back no exponga la edición del campo.
 //
-// El back (Producto) no expone `stockMinimo`: el valor por producto se guarda
-// en localStorage (keyed por id) y el dashboard usa `umbralDe()` para decidir
-// la alerta. Cuando el back agregue el campo real, se reemplaza la fuente y
-// este módulo se elimina.
+// El valor por producto se guarda en localStorage (keyed por id). Cuando el
+// back soporte la edición desde el front, se reemplaza la fuente y este
+// módulo se elimina.
 
 const KEY = "despensa_productos_stock_minimo_v1";
 
@@ -26,10 +25,4 @@ export function setStockMinimo(id, minimo) {
     delete all[String(id)]; // vacío/inválido → vuelve al default global
   }
   localStorage.setItem(KEY, JSON.stringify(all));
-}
-
-/** Umbral efectivo del producto: su mínimo propio o el default global. */
-export function umbralDe(id, minimoGlobal = 10) {
-  const v = Number(getStockMinimoMap()[String(id)]);
-  return Number.isFinite(v) && v >= 0 ? v : minimoGlobal;
 }

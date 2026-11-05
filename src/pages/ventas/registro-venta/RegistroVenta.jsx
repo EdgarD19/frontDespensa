@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
-  Search, ShoppingCart, Trash2, Scale,
+  Search, ShoppingCart, Trash2, Scale, Package,
   Banknote, Landmark, AlertTriangle, RotateCcw, Check,
   ArrowLeft, Barcode, X, ClipboardList, Loader2,
 } from "lucide-react";
@@ -10,7 +10,7 @@ import { getClientes } from "../../../api/clientesApi";
 import { registrarVentaFactura } from "../../../api/ventasApi";
 import { apiErrorMessage } from "../../../api/errors";
 import { getConfiguracionEmpresa } from "../../../api/configuracionEmpresaApi";
-import { getTimbradoVentaVigente } from "../../../api/timbradosVentaApi";
+import { getTimbradoVentaPorFecha } from "../../../api/timbradosVentaApi";
 import { crearTransferenciaVenta, getTransferenciasPorEstado, recibirTransferenciaVenta, descartarTransferenciaVenta } from "../../../api/transferenciasVentaApi";
 import TicketVenta from "./TicketVenta";
 import { printVenta } from "../../../services/printer";
@@ -90,8 +90,19 @@ export default function RegistroVenta() {
   // Modal de transferencias pendientes + contador para el badge
   const [showTransferencias, setShowTransferencias] = useState(false);
   const [pendientesCount, setPendientesCount] = useState(null);
-  // Vigencia del timbrado de venta: null (cargando) | { estado: "ok" | "venceHoy" | "vencido" | "sinTimbrado", numero, fechaVencimiento }
+  // Disponibilidad del timbrado de venta: null (cargando) | { estado: "ok" | "sinTimbrado", numero, fechaVencimiento }
   const [timbradoEstado, setTimbradoEstado] = useState(null);
+  // Toast corto cuando un escaneo no matchea: no bloquea, se limpia solo en 2 s
+  // y el campo queda apto para seguir escaneando.
+  const [avisoScan, setAvisoScan] = useState(null);
+  const avisoScanTimer = useRef(null);
+  useEffect(() => () => clearTimeout(avisoScanTimer.current), []);
+
+  const mostrarAvisoScan = useCallback((codigo) => {
+    clearTimeout(avisoScanTimer.current);
+    setAvisoScan({ codigo });
+    avisoScanTimer.current = setTimeout(() => setAvisoScan(null), 2000);
+  }, []);
 
   useEffect(() => {
     let activo = true;
@@ -137,22 +148,18 @@ export default function RegistroVenta() {
   }, []);
 
   useEffect(() => { cargarProductos(); }, [cargarProductos]);
-  // Vigencia del timbrado: el back permite vender el mismo día del vencimiento
-  // (fechaVencimiento >= fecha), así que el front bloquea al llegar a la fecha
-  // límite y obliga a crear uno nuevo. Se re-verifica al cobrar.
+  // Disponibilidad del timbrado: SOLO POR FECHA (fechaInicio <= hoy <=
+  // fechaVencimiento, el día del vencimiento sigue contando). No depende del
+  // flag activo del back ni del endpoint /vigente (que exige activo=true).
+  // El estado solo es "ok" (hay timbrado que cubre la fecha) o "sinTimbrado".
   const rechequearTimbrado = useCallback(async () => {
     const hoy = hoyISO();
     try {
-      const res = await getTimbradoVentaVigente(hoy);
-      const t = res?.data ?? res;
+      const res = await getTimbradoVentaPorFecha(hoy);
+      const t = res?.data ?? null;
       const venc = String(t?.fechaVencimiento ?? "");
       if (!t?.numeroTimbrado) {
         const estado = { estado: "sinTimbrado", numero: null, fechaVencimiento: null };
-        setTimbradoEstado(estado);
-        return estado;
-      }
-      if (venc && venc <= hoy) {
-        const estado = { estado: "venceHoy", numero: t.numeroTimbrado, fechaVencimiento: venc };
         setTimbradoEstado(estado);
         return estado;
       }
@@ -241,16 +248,36 @@ export default function RegistroVenta() {
     return () => { activo = false; clearTimeout(t); };
   }, [cliente, clienteQuery, mostrarClientes]);
 
+  // Búsqueda de productos: server-side con debounce (250 ms) via
+  // GET /api/productos/buscar?nombre= (ya convertidos al shape del front).
+  // Si el server falla, se cae al filtro local sobre el catálogo precargado.
+  const [serverProductos, setServerProductos] = useState(null); // null = sin búsqueda vigente
+  useEffect(() => {
+    const q = search.trim();
+    if (!q || isBarcode) { setServerProductos(null); return; }
+    let activo = true;
+    const t = setTimeout(async () => {
+      try {
+        const res = await getProductos({ search: q, page: 0, pageSize: 8, sortDir: "asc" });
+        if (activo) setServerProductos(Array.isArray(res.content) ? res.content : []);
+      } catch {
+        if (activo) setServerProductos(null); // fallback al filtro local
+      }
+    }, 250);
+    return () => { activo = false; clearTimeout(t); };
+  }, [search, isBarcode]);
+
   const productosFiltrados = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) {
       return mostrarDropdown && !isBarcode ? productos.slice(0, 8) : [];
     }
     if (isBarcode) return [];
-    return productos
+    const fuente = serverProductos != null ? serverProductos : productos;
+    return fuente
       .filter((p) => (p.nombre || "").toLowerCase().includes(q))
       .slice(0, 8);
-  }, [productos, search, isBarcode, mostrarDropdown]);
+  }, [productos, serverProductos, search, isBarcode, mostrarDropdown]);
 
   // El precio de venta del back es IVA incluido y la tasa depende de cada
   // producto (5% / 10% / exento). Se replica el cálculo del back (CalculoIvaUtil)
@@ -318,10 +345,9 @@ export default function RegistroVenta() {
     });
   }, []);
 
-  // Pase automático desde Anulación (refacturación rápida): antes se leía de
-  // localStorage (despensa_refacturacion_v1) y se precargaba el carrito. Con la
-  // Caja 100% contra el back ese puente queda fuera; la búsqueda de tickets y la
-  // refacturación pasarán a /api/facturas-venta/buscar cuando exista contrato.
+  // Pase automático desde Anulación (refacturación rápida): quedó fuera de este
+  // módulo. La búsqueda de tickets y la refacturación pasarán a
+  // /api/facturas-venta/buscar cuando exista contrato.
 
   const handleCambiarCantidad = useCallback((productoId, raw) => {
     setCarrito((prev) => prev.map((line) => {
@@ -377,8 +403,17 @@ export default function RegistroVenta() {
     if (parsed) {
       try {
         const p = await getProductoByCodigo(parsed.barcode);
-        if (p) { seleccionJustoAhoraRef.current = true; agregarProducto(p, parsed.quantity); setSearch(""); setMostrarDropdown(false); focusSearch(); }
-        else { setErrorGlobal(`No se encontró producto con código "${parsed.barcode}".`); }
+        if (p) {
+          seleccionJustoAhoraRef.current = true;
+          agregarProducto(p, parsed.quantity);
+          setSearch(""); setMostrarDropdown(false); focusSearch();
+        } else {
+          // Escaneo sin match: aviso efímero + campo listo para el próximo scan
+          // (el input se limpia solo; el banner rojo queda para errores reales).
+          mostrarAvisoScan(parsed.barcode);
+          setSearch("");
+          focusSearch();
+        }
       } catch (err) { setErrorGlobal(apiErrorMessage(err) || "Error al buscar por código."); }
       return;
     }
@@ -390,7 +425,7 @@ export default function RegistroVenta() {
       setMostrarDropdown(false);
       focusSearch();
     }
-  }, [search, productosFiltrados, agregarProducto, focusSearch]);
+  }, [search, productosFiltrados, agregarProducto, focusSearch, mostrarAvisoScan]);
 
   const handleGlobalKeyDown = useCallback((e) => {
     const isInput = e.target?.tagName === "INPUT" || e.target?.tagName === "TEXTAREA" || e.target?.tagName === "SELECT";
@@ -504,8 +539,9 @@ export default function RegistroVenta() {
       const numFactura = data?.numeroFactura ?? data?.numero_factura;
       let timbradoInfo = data?.numeroTimbrado ? { numeroTimbrado: data.numeroTimbrado } : null;
       try {
-        const vig = await getTimbradoVentaVigente(data?.fechaEmision || hoyISO());
-        const t = vig?.data ?? vig;
+        // Disponibilidad por fecha (independiente del flag activo del back).
+        const vig = await getTimbradoVentaPorFecha(data?.fechaEmision || hoyISO());
+        const t = vig?.data ?? null;
         if (t?.numeroTimbrado) {
           timbradoInfo = {
             numeroTimbrado: t.numeroTimbrado,
@@ -632,7 +668,7 @@ export default function RegistroVenta() {
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-none border border-white/10 bg-white/[0.04]">
                           {pesable
                             ? <Scale className="h-4 w-4 text-[var(--cyan)]" />
-                            : <ShoppingCart className="h-4 w-4 text-white/40" />}
+                            : <Package className="h-4 w-4 text-[var(--accent-orange)]" />}
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium text-white first-letter:uppercase">{p.nombre}</p>
@@ -760,7 +796,9 @@ export default function RegistroVenta() {
                           <td className="px-2 py-3.5 text-center text-xs text-white/35" style={MONO}>{idx + 1}</td>
                           <td className="w-full max-w-0 px-2 py-3.5">
                             <div className="flex items-center gap-2">
-                              {pesable && <Scale className="h-4 w-4 shrink-0 text-[var(--cyan)]" aria-label="Producto pesable" />}
+                              {pesable
+                                ? <Scale className="h-4 w-4 shrink-0 text-[var(--cyan)]" aria-label="Producto pesable (kg)" />
+                                : <Package className="h-4 w-4 shrink-0 text-[var(--accent-orange)]" aria-label="Producto por unidad" />}
                               <span className="block truncate text-base font-medium text-white first-letter:uppercase">{line.nombre}</span>
                             </div>
                           </td>
@@ -952,51 +990,53 @@ export default function RegistroVenta() {
         />
       )}
 
-      {/* Bloqueo total: sin timbrado vigente no se puede vender. Sin cerrar:
-          solo desaparece cuando exista un timbrado vigente (re-chequeo automático). */}
+      {/* Escaneo sin match: modal centrado efímero (2 s). No bloquea el click
+          (pointer-events-none): el operador puede seguir trabajando mientras
+          se desvanece, y el timer lo cierra solo. */}
+      {avisoScan && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="pointer-events-none fixed inset-0 z-[130] flex items-center justify-center bg-black/45 p-4"
+        >
+          <div className="flex w-full max-w-sm items-start gap-4 rounded-none border border-amber-400/40 bg-[#0c0c0e] p-5 shadow-2xl">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-none border border-amber-400/30 bg-amber-400/10 text-amber-400">
+              <Barcode className="h-5 w-5" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1 space-y-1">
+              <h2 className="text-sm font-semibold text-amber-400">Código no encontrado</h2>
+              <p className="text-sm text-white/70">
+                El lector escaneó <span className="font-medium text-white" style={MONO}>{avisoScan.codigo}</span> y
+                no coincide con ningún producto del catálogo.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bloqueo total: si ningún timbrado cubre la fecha de hoy no se puede
+          vender. Solo desaparece cuando exista un timbrado vigente por fecha
+          (re-chequeo automático). */}
       {timbradoEstado && timbradoEstado.estado !== "ok" && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 p-4">
           <div
             role="dialog"
             aria-modal="true"
             aria-label="Timbrado de venta no vigente"
-            className={`w-full max-w-md rounded-none border p-6 shadow-2xl ${
-              timbradoEstado.estado === "venceHoy"
-                ? "border-amber-400/40 bg-[#0c0c0e]"
-                : "border-red-500/40 bg-[#0c0c0e]"
-            }`}
+            className="w-full max-w-md rounded-none border border-red-500/40 bg-[#0c0c0e] p-6 shadow-2xl"
           >
             <div className="flex items-start gap-4">
-              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-none border ${
-                timbradoEstado.estado === "venceHoy"
-                  ? "border-amber-400/30 bg-amber-400/10 text-amber-400"
-                  : "border-red-500/30 bg-red-500/10 text-red-400"
-              }`}>
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-none border border-red-500/30 bg-red-500/10 text-red-400">
                 <AlertTriangle className="h-6 w-6" aria-hidden />
               </div>
               <div className="min-w-0 flex-1 space-y-1.5">
-                <h2 className={`text-base font-semibold ${
-                  timbradoEstado.estado === "venceHoy" ? "text-amber-400" : "text-red-400"
-                }`}>
-                  {timbradoEstado.estado === "sinTimbrado"
-                    ? "No hay timbrado de venta vigente"
-                    : timbradoEstado.estado === "vencido"
-                      ? "Timbrado de venta vencido"
-                      : "El timbrado vence hoy"}
+                <h2 className="text-base font-semibold text-red-400">
+                  No hay timbrado de venta vigente
                 </h2>
                 <p className="text-sm text-white/70">
-                  {timbradoEstado.estado === "sinTimbrado" && (
-                    <>Para registrar ventas necesitás un timbrado de venta activo y vigente.</>
-                  )}
-                  {timbradoEstado.estado === "vencido" && (
-                    <>El timbrado <span className="font-medium text-white" style={MONO}>{timbradoEstado.numero}</span> venció el{" "}
-                      <span className="whitespace-nowrap text-white" style={MONO}>{timbradoEstado.fechaVencimiento}</span>.</>
-                  )}
-                  {timbradoEstado.estado === "venceHoy" && (
-                    <>El timbrado <span className="font-medium text-white" style={MONO}>{timbradoEstado.numero}</span> llega a su fecha límite
-                      hoy (<span className="whitespace-nowrap text-white" style={MONO}>{timbradoEstado.fechaVencimiento}</span>) y ya no permite vender.</>
-                  )}{" "}
-                  Creá uno nuevo en{" "}
+                  Para registrar ventas necesitás un timbrado cuyo período de vigencia
+                  cubra la fecha de hoy.
+                  {" "}Creá uno nuevo en{" "}
                   <Link to="/configuracion/comprobantes" className="font-semibold text-[var(--accent)] underline underline-offset-2 hover:opacity-80">
                     Configuración → Comprobantes
                   </Link>. La pantalla se desbloquea sola cuando haya un timbrado vigente.
@@ -1094,13 +1134,21 @@ function TransferenciasPendientesModal({ onCerrar, onCambio }) {
       : d.toLocaleString("es-PY", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
   };
 
+  // Más antigua arriba: la primera que se registra es la primera que corresponde
+  // recibir (el front ya trae quitas; el sort es defensivo).
+  const ordenada = useMemo(
+    () => [...lista].sort((a, b) => String(a?.fechaCreacion ?? "").localeCompare(String(b?.fechaCreacion ?? ""))),
+    [lista]
+  );
+  const totalPendiente = ordenada.reduce((acc, t) => acc + (Number(t?.monto) || 0), 0);
+
   return (
     <div className="fixed inset-0 z-[105] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onCerrar}>
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Transferencias pendientes"
-        className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-none border border-white/10 bg-[#0c0c0e] shadow-2xl"
+        className="flex max-h-[85vh] w-full max-w-4xl flex-col rounded-none border border-white/10 bg-[#0c0c0e] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
@@ -1124,37 +1172,82 @@ function TransferenciasPendientesModal({ onCerrar, onCambio }) {
               <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
             </div>
           ) : lista.length === 0 ? (
-            <p className="py-10 text-center text-sm text-white/50">Sin transferencias pendientes.</p>
+            <p className="py-10 text-center text-sm text-white/50">
+              Sin transferencias pendientes.
+            </p>
           ) : (
-            lista.map((t) => (
-              <div key={t.idTransferenciaVenta} className="flex items-center justify-between gap-3 rounded-none border border-white/10 bg-white/[0.02] px-4 py-3">
-                <p className="min-w-0 flex-1 truncate text-sm">
-                  <span className="font-medium tabular-nums text-white">{t.numeroFactura || `Factura #${t.idFacturaVenta}`}</span>
-                  <span className="text-white/40"> · </span>
-                  <span className="text-white/70">{t.nombreCliente || "Sin Nombre"}</span>
-                  <span className="text-white/40"> · </span>
-                  <span className="whitespace-nowrap text-white/50">{fmtF(t.fechaCreacion)}</span>
-                </p>
-                <div className="flex shrink-0 items-center gap-2">
-                  <span className="text-base font-bold tabular-nums text-[var(--accent)]" style={MONO}>
-                    {new Intl.NumberFormat("es-PY", { style: "currency", currency: "PYG", minimumFractionDigits: 0 }).format(t.monto ?? 0)}
-                  </span>
-                  <button type="button" disabled={ocupado != null} onClick={() => accionar(t.idTransferenciaVenta, "descartar")}
-                    className="rounded-none border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/60 transition-colors hover:border-red-500/40 hover:text-red-300 disabled:opacity-40">
-                    Descartar
-                  </button>
-                  <button type="button" disabled={ocupado != null} onClick={() => accionar(t.idTransferenciaVenta, "recibir")}
-                    className="rounded-none bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-black transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-40">
-                    {ocupado === t.idTransferenciaVenta ? "Procesando…" : "Recibir"}
-                  </button>
-                </div>
-              </div>
-            ))
+            <div className="space-y-2.5">
+              {ordenada.map((t) => {
+                // La transferencia paga la factura: si el monto difiere del total
+                // de la factura, se muestra el faltante/sobra de forma explícita.
+                const totalFactura = Number(t?.totalFactura);
+                const monto = Number(t?.monto) || 0;
+                const difiere = Number.isFinite(totalFactura) && Math.abs(totalFactura - monto) >= 1;
+                return (
+                  <div key={t.idTransferenciaVenta}
+                    className="rounded-none border border-white/10 bg-white/[0.02] px-4 py-3"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      {/* Columna izquierda: identificación */}
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <p className="flex flex-wrap items-baseline gap-x-2.5">
+                          <span className="font-medium tabular-nums text-white" style={MONO}>
+                            {t.numeroFactura || `Factura #${t.idFacturaVenta}`}
+                          </span>
+                          <span className="truncate text-xs text-white/60" title={t.nombreCliente || "Sin Nombre"}>
+                            {t.nombreCliente || "Sin Nombre"}
+                          </span>
+                        </p>
+                        <p className="text-[11px] text-white/40">
+                          Registrada: <span className="whitespace-nowrap">{fmtF(t.fechaCreacion)}</span>
+                          {t.usuarioRegistro ? <span> · por {t.usuarioRegistro}</span> : null}
+                        </p>
+                        {difiere ? (
+                          <p className="flex items-center gap-1 text-[11px] text-amber-300">
+                            <AlertTriangle className="h-3 w-3 shrink-0" />
+                            Total factura: {formatMoney(totalFactura)} (dif. {formatMoney(totalFactura - monto)})
+                          </p>
+                        ) : null}
+                      </div>
+
+                      {/* Fila derecha: monto + acciones en una sola línea */}
+                      <div className="flex shrink-0 items-center gap-3">
+                        <span className="text-base font-bold tabular-nums text-[var(--accent)]" style={MONO}>
+                          {formatMoney(monto)}
+                        </span>
+                        <button type="button" disabled={ocupado != null}
+                          onClick={() => accionar(t.idTransferenciaVenta, "descartar")}
+                          className="rounded-none border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/60 transition-colors hover:border-red-500/40 hover:text-red-300 disabled:opacity-40">
+                          Descartar
+                        </button>
+                        <button type="button" disabled={ocupado != null}
+                          onClick={() => accionar(t.idTransferenciaVenta, "recibir")}
+                          className="rounded-none bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-black transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-40">
+                          {ocupado === t.idTransferenciaVenta ? "Procesando…" : "Recibir"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
 
         <div className="flex shrink-0 items-center justify-between border-t border-white/10 px-5 py-3">
-          <span className="text-xs text-white/40">{lista.length} pendiente(s)</span>
+          <div className="flex items-baseline gap-3">
+            <span className="text-xs text-white/40">
+              {lista.length} pendiente{lista.length === 1 ? "" : "s"}
+            </span>
+            {lista.length > 0 && (
+              <span className="text-xs text-white/50">
+                Total a recibir:{" "}
+                <span className="font-semibold tabular-nums text-[var(--accent)]" style={MONO}>
+                  {formatMoney(totalPendiente)}
+                </span>
+              </span>
+            )}
+          </div>
           <button type="button" onClick={onCerrar}
             className="rounded-none border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white/70 transition-colors hover:text-white">
             Cerrar

@@ -5,19 +5,20 @@ import { hubCardClass as cardClass, hubIconClass } from "../../components/ui/hub
 const MODULOS = [
   {
     to: "/inventario/abm",
-    label: "Gestor de productos",
-    descripcion: "Alta, baja y modificacion de productos.",
+    label: "Productos",
+    descripcion: "Agrega, busca o actualiza los productos con sus precios.",
     icon: Package,
   },
   {
     to: "/inventario/consulta",
-    label: "Consulta",
-    descripcion: "Consulta de inventario.",
+    label: "Consulta de inventario",
+    descripcion: "Ubica productos por nombre, categoría y estado de stock.",
     icon: Search,
   },
   {
     to: "/inventario/ajuste",
     label: "Ajuste de stock",
+    descripcion: "Registra entradas, salidas y correcciones de stock.",
     icon: ClipboardList,
   },
 ];
@@ -27,7 +28,7 @@ export default function InventarioHub() {
     <div className="max-w-5xl mx-auto py-8 px-4 space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold text-white tracking-tight">Inventario</h1>
-        <p className="text-sm text-white/40">Selecciona un modulo para continuar</p>
+        <p className="text-sm text-white/40">Selecciona un módulo para continuar</p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">

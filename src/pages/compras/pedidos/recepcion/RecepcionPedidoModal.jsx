@@ -456,12 +456,27 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
                 placeholder="Escanear código de barras o buscar por nombre..."
                 className={`${S.field} pl-[2.5rem] pr-[2.5rem]`}
               />
-              <button
-                onClick={() => buscarPorCodigo(prodSearch)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
-              >
-                <Barcode size={16} />
-              </button>
+              {prodSearch ? (
+                <button
+                  type="button"
+                  onClick={() => setProdSearch("")}
+                  title="Limpiar búsqueda"
+                  aria-label="Limpiar búsqueda"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-white/40 hover:text-white transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => buscarPorCodigo(prodSearch)}
+                  title="Buscar por código"
+                  aria-label="Buscar por código de barras"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-white/40 hover:text-white transition-colors"
+                >
+                  <Barcode size={16} />
+                </button>
+              )}
 
               {showProductos && (
                 <div className={S.dropdown}>

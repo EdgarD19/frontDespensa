@@ -1,17 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  ArrowLeft, Plus, FileText, Pencil, Trash2, Power, ShieldCheck,
+  ArrowLeft, Plus, FileText, Pencil,
   AlertTriangle, Check, X, Hash, LayoutGrid, ListOrdered, Lock, Loader2,
 } from "lucide-react";
 import {
-  EXTRAS_DEFAULT, extrasDe, guardarExtrasLocal, eliminarExtrasLocal,
+  EXTRAS_DEFAULT, extrasDe, guardarExtrasLocal,
   estadoComprobante, numeroCompleto, rangoDisplay, proximoNumero, pad3, tieneRango, fechasIsoAEs,
-  getEliminadosLocal, marcarEliminadoLocal,
 } from "../../api/comprobantesApi";
 import {
-  getTimbradosVenta, crearTimbradoVenta, actualizarTimbradoVenta,
-  toggleActivoTimbradoVenta, eliminarTimbradoVenta, apiErrorMessage,
+  getTimbradosVenta, crearTimbradoVenta, actualizarTimbradoVenta, apiErrorMessage,
 } from "../../api/timbradosVentaApi";
 
 const CARD = "rounded-none border border-white/10 bg-white/[0.02]";
@@ -26,7 +24,6 @@ const CHIP_ESTADO = {
   vencido: "border-red-500/30 bg-red-500/10 text-red-400",
   sin_iniciar: "border-amber-400/30 bg-amber-400/10 text-amber-300",
   agotado: "border-red-500/30 bg-red-500/10 text-red-400",
-  inactivo: "border-white/10 bg-white/[0.06] text-white/50",
   sin_configuracion: "border-white/10 bg-white/[0.06] text-white/50",
 };
 
@@ -78,21 +75,14 @@ function validarFactura(d, ultimoEmitido) {
 
 export default function ComprobantesConfig() {
   const [timbrados, setTimbrados] = useState([]);
-  // Conflicto "solo un timbrado activo": se llena al intentar activar habiendo otro activo.
-  const [conflictoActivo, setConflictoActivo] = useState(null);
-  // Intento de activar un timbrado ya vencido: se avisa con un mensajito.
-  const [timbradoVencido, setTimbradoVencido] = useState(null);
   const [extrasVersion, setExtrasVersion] = useState(0); // fuerza releer localStorage
-  const [eliminadosVersion, setEliminadosVersion] = useState(0); // fuerza releer eliminados
   const [cargando, setCargando] = useState(true);
-  const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState(null);
   const [aviso, setAviso] = useState(null);
 
-  // Modales independientes: uno para el timbrado, otro para la factura, otro para confirmar baja.
+  // Modales independientes: uno para el timbrado, otro para la factura.
   const [modalTimbrado, setModalTimbrado] = useState(null); // null | { inicial }
   const [facturaId, setFacturaId] = useState(null);         // id del timbrado cuya factura se configura
-  const [aEliminar, setAEliminar] = useState(null);
 
   const avisoTimer = useRef(null);
   useEffect(() => () => clearTimeout(avisoTimer.current), []);
@@ -119,11 +109,10 @@ export default function ComprobantesConfig() {
   useEffect(() => { cargar(); }, [cargar]);
 
   // Mezcla el timbrado del back con la configuración de factura (localStorage).
-  // El back hace SOFT DELETE (activo=false) y no distingue "eliminado" de
-  // "inactivo": los ids borrados se recuerdan acá (localStorage) para ocultarlos.
+  // La disponibilidad del timbrado depende solo de su fecha (vigencia), no del
+  // flag activo del back, así que se muestran siempre todos los timbrados.
   const vivas = useMemo(
     () => timbrados
-      .filter((t) => !getEliminadosLocal().includes(String(t.idTimbradoVenta)))
       .map((t) => {
       const ex = extrasDe(t.idTimbradoVenta);
       const c = {
@@ -137,19 +126,21 @@ export default function ComprobantesConfig() {
       };
       return { ...c, st: estadoComprobante(c) };
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- getEliminadosLocal es lectura de localStorage
-    [timbrados, extrasVersion, eliminadosVersion]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- extrasDe es lectura de localStorage
+    [timbrados, extrasVersion]
   );
 
   const timbradoFactura = facturaId != null ? vivas.find((v) => v.id === facturaId) : null;
 
   /* ── Paso 1: timbrado (solo back) ── */
   async function guardarTimbrado(form) {
+    // El estado activo ya no se gestiona en el front: la disponibilidad del
+    // timbrado depende solo de su fecha de vigencia.
     const payload = {
       numeroTimbrado: String(form.numeroTimbrado).trim(),
       fechaInicio: form.fechaInicio || null,
       fechaVencimiento: form.fechaVencimiento || null,
-      activo: !!form.activo,
+      activo: true,
     };
 
     const saved = form.id
@@ -179,61 +170,6 @@ export default function ComprobantesConfig() {
     setExtrasVersion((v) => v + 1);
     setFacturaId(null);
     mostrarAviso("Configuración de factura guardada.");
-  }
-
-  async function confirmarEliminar() {
-    const c = aEliminar;
-    setAEliminar(null);
-    setOcupado(true);
-    setError(null);
-    try {
-      await eliminarTimbradoVenta(c.id);
-      eliminarExtrasLocal(c.id);
-      // Ocultarlo de la lista (el back solo hace soft delete)
-      marcarEliminadoLocal(c.id);
-      setEliminadosVersion((v) => v + 1);
-      await cargar({ silencioso: true });
-      mostrarAviso(`Timbrado ${c.numeroTimbrado} dado de baja.`);
-    } catch (e) {
-      setError(apiErrorMessage(e));
-    } finally {
-      setOcupado(false);
-    }
-  }
-
-  async function toggleActivo(c) {
-    // Un timbrado vencido no se puede activar: se avisa con un mensajito.
-    if (!c.activo && (c.estaVencido || c.st?.estado === "vencido")) {
-      setTimbradoVencido({
-        numero: c.numeroTimbrado,
-        vencimiento: c.fechaVencimiento ? formatFechaEs(c.fechaVencimiento) : null,
-      });
-      return;
-    }
-    // Regla de negocio: solo un timbrado puede estar activo. Si se quiere
-    // activar y ya existe otro activo, se avisa con popup y no se envía nada.
-    if (!c.activo) {
-      const otro = vivas.find((x) => x.activo && x.id !== c.id);
-      if (otro) {
-        setConflictoActivo({
-          numeroActual: otro.numeroTimbrado,
-          vencimientoActual: otro.fechaVencimiento ? formatFechaEs(otro.fechaVencimiento) : null,
-          nuevo: c.numeroTimbrado,
-        });
-        return;
-      }
-    }
-    setOcupado(true);
-    setError(null);
-    try {
-      await toggleActivoTimbradoVenta(c.id, !c.activo);
-      await cargar({ silencioso: true });
-      mostrarAviso(c.activo ? "Timbrado desactivado." : "Timbrado activado.");
-    } catch (e) {
-      setError(apiErrorMessage(e));
-    } finally {
-      setOcupado(false);
-    }
   }
 
   const hayDatos = vivas.length > 0;
@@ -293,8 +229,6 @@ export default function ComprobantesConfig() {
             <TarjetaTimbrado
               key={c.id}
               c={c}
-              ocupado={ocupado}
-              onToggle={() => toggleActivo(c)}
               onEditarTimbrado={() =>
                 setModalTimbrado({
                   inicial: {
@@ -302,12 +236,11 @@ export default function ComprobantesConfig() {
                     numeroTimbrado: c.numeroTimbrado,
                     fechaInicio: c.fechaInicio ?? "",
                     fechaVencimiento: c.fechaVencimiento ?? "",
-                    activo: !!c.activo,
+                    activo: true,
                   },
                 })
               }
               onConfigurarFactura={() => setFacturaId(c.id)}
-              onEliminar={() => setAEliminar(c)}
             />
           ))}
         </div>
@@ -329,81 +262,11 @@ export default function ComprobantesConfig() {
         />
       )}
 
-      {conflictoActivo && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-          onClick={() => setConflictoActivo(null)}>
-          <div role="dialog" aria-modal="true" aria-label="Timbrado activo existente"
-            className="w-full max-w-sm rounded-none border border-amber-400/30 bg-[#0c0c0e] p-5 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-none border border-amber-400/30 bg-amber-400/10 text-amber-400">
-                <AlertTriangle className="h-5 w-5" aria-hidden />
-              </div>
-              <div className="min-w-0 flex-1 space-y-1">
-                <h2 className="text-sm font-semibold text-amber-400">Ya existe un timbrado activo</h2>
-                <p className="text-sm text-white/70">
-                  El timbrado <span className="font-medium text-white">{conflictoActivo.numeroActual}</span>
-                  {conflictoActivo.vencimientoActual ? (
-                    <> (vence el <span className="whitespace-nowrap">{conflictoActivo.vencimientoActual}</span>)</>
-                  ) : null}{" "}
-                  está activo. Solo puede haber <span className="font-semibold text-white">uno activo</span>:
-                  desactivalo primero si querés activar{" "}
-                  <span className="font-medium text-white">{conflictoActivo.nuevo}</span>.
-                </p>
-              </div>
-            </div>
-            <div className="mt-4 flex justify-end">
-              <button type="button" autoFocus onClick={() => setConflictoActivo(null)}
-                className="rounded-none bg-white/[0.08] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/[0.15]">
-                Entendido
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {timbradoVencido && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-          onClick={() => setTimbradoVencido(null)}>
-          <div role="dialog" aria-modal="true" aria-label="Timbrado vencido"
-            className="w-full max-w-sm rounded-none border border-red-500/30 bg-[#0c0c0e] p-5 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-none border border-red-500/30 bg-red-500/10 text-red-400">
-                <AlertTriangle className="h-5 w-5" aria-hidden />
-              </div>
-              <div className="min-w-0 flex-1 space-y-1">
-                <h2 className="text-sm font-semibold text-red-400">Timbrado vencido</h2>
-                <p className="text-sm text-white/70">
-                  El timbrado <span className="font-medium text-white">{timbradoVencido.numero}</span> venció
-                  {timbradoVencido.vencimiento ? <> el <span className="whitespace-nowrap">{timbradoVencido.vencimiento}</span></> : null} y
-                  ya no puede activarse. Creá uno nuevo con vigencia actual.
-                </p>
-              </div>
-            </div>
-            <div className="mt-4 flex justify-end">
-              <button type="button" autoFocus onClick={() => setTimbradoVencido(null)}
-                className="rounded-none bg-white/[0.08] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/[0.15]">
-                Entendido
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {timbradoFactura && (
         <FacturaModal
           timbrado={timbradoFactura}
           onCerrar={() => setFacturaId(null)}
           onGuardar={(datos) => guardarFactura(timbradoFactura, datos)}
-        />
-      )}
-
-      {aEliminar && (
-        <ConfirmarBajaModal
-          timbrado={aEliminar}
-          onCerrar={() => setAEliminar(null)}
-          onConfirmar={confirmarEliminar}
         />
       )}
     </div>
@@ -425,7 +288,7 @@ function formatFechaEs(iso) {
   return `${dia}/${mes}/${anio}`;
 }
 
-function TarjetaTimbrado({ c, ocupado, onToggle, onEditarTimbrado, onConfigurarFactura, onEliminar }) {
+function TarjetaTimbrado({ c, onEditarTimbrado, onConfigurarFactura }) {
   const configurado = tieneRango(c);
 
   return (
@@ -438,11 +301,6 @@ function TarjetaTimbrado({ c, ocupado, onToggle, onEditarTimbrado, onConfigurarF
             <span className={`rounded-none border px-2 py-0.5 text-xs ${CHIP_ESTADO[c.st.estado]}`}>
               {c.st.label}
             </span>
-            {c.activo && (
-              <span className="flex items-center gap-1 rounded-none border border-[var(--border-accent)] bg-[var(--accent-dim)] px-2 py-0.5 text-xs text-[var(--accent)]">
-                <ShieldCheck className="h-3.5 w-3.5" /> Activo
-              </span>
-            )}
           </div>
           <p className="text-xs text-white/55">
             Vigencia: <span className="text-white/85">{formatFechaEs(c.fechaInicio)} → {formatFechaEs(c.fechaVencimiento)}</span>
@@ -450,18 +308,9 @@ function TarjetaTimbrado({ c, ocupado, onToggle, onEditarTimbrado, onConfigurarF
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5">
-          <button type="button" onClick={onToggle} disabled={ocupado}
-            title={c.activo ? "Desactivar" : "Activar"}
-            className={`rounded-none border p-2 transition-colors disabled:opacity-40 ${c.activo ? "border-[var(--border-accent)] bg-[var(--accent-dim)] text-[var(--accent)] hover:brightness-125" : "border-white/10 bg-white/[0.03] text-white/40 hover:bg-white/10 hover:text-white"}`}>
-            <Power className="h-4 w-4" />
-          </button>
-          <button type="button" onClick={onEditarTimbrado} disabled={ocupado} title="Editar timbrado"
+          <button type="button" onClick={onEditarTimbrado} title="Editar timbrado"
             className="rounded-none border border-white/10 bg-white/[0.03] p-2 text-white/60 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40">
             <Pencil className="h-4 w-4" />
-          </button>
-          <button type="button" onClick={onEliminar} disabled={ocupado} title="Dar de baja"
-            className="rounded-none border border-white/10 bg-white/[0.03] p-2 text-white/40 transition-colors hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40">
-            <Trash2 className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -481,7 +330,7 @@ function TarjetaTimbrado({ c, ocupado, onToggle, onEditarTimbrado, onConfigurarF
           </p>
         )}
 
-        <button type="button" onClick={onConfigurarFactura} disabled={ocupado}
+        <button type="button" onClick={onConfigurarFactura}
           className={configurado ? `${BTN_SECUNDARIO} flex items-center gap-2 !py-2` : `${BTN_PRIMARIO} !py-2`}>
           <LayoutGrid className="h-4 w-4" />
           {configurado ? "Editar factura" : "Configurar factura"}
@@ -631,16 +480,6 @@ function TimbradoModal({ inicial, onCerrar, onGuardar }) {
           </div>
         </div>
       </div>
-
-      <label className="flex cursor-pointer items-center gap-2 text-sm text-white/70">
-        <input
-          type="checkbox"
-          checked={form.activo}
-          onChange={(e) => set("activo", e.target.checked)}
-          className="accent-[var(--accent)]"
-        />
-        Timbrado activo
-      </label>
 
       {esNuevo && (
         <p className="text-xs text-white/40">
@@ -793,29 +632,6 @@ function FacturaModal({ timbrado, onCerrar, onGuardar }) {
       )}
 
       <ErrorServidor msg={errorServidor} />
-    </ModalShell>
-  );
-}
-
-/* ───────────────────────── Modal 3: confirmar baja ───────────────────────── */
-
-function ConfirmarBajaModal({ timbrado, onCerrar, onConfirmar }) {
-  return (
-    <ModalShell
-      titulo="Dar de baja el timbrado"
-      onCerrar={onCerrar}
-      onSubmit={(e) => { e.preventDefault(); onConfirmar(); }}
-      textoOk="Dar de baja"
-    >
-      <p className="text-sm text-white/70">
-        Vas a dar de baja el timbrado{" "}
-        <span className="text-white" style={MONO}>{timbrado.numeroTimbrado}</span> y borrar su configuración de factura.
-      </p>
-      {(timbrado.ultimoEmitido ?? 0) > 0 && (
-        <p className="flex items-center gap-1 text-xs text-amber-300">
-          <AlertTriangle className="h-3.5 w-3.5" /> Ya emitió comprobantes hasta el Nº {timbrado.ultimoEmitido}.
-        </p>
-      )}
     </ModalShell>
   );
 }

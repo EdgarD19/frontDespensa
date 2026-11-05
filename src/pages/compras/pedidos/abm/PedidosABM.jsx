@@ -606,8 +606,15 @@ function PedidoModal({
                 onChange={(e) => { setProdSearch(e.target.value); setProdPage(0); setShowProd(true); }}
                 onFocus={() => { setProdPage(0); setShowProd(true); }}
                 placeholder="Buscar producto por nombre..."
-                className={`${fieldClass} pl-10`}
+                className={`${fieldClass} pl-10 ${prodSearch ? "pr-10" : ""}`}
               />
+              {prodSearch && (
+                <button type="button" onClick={() => { setProdSearch(""); setProdPage(0); }}
+                  title="Limpiar búsqueda" aria-label="Limpiar búsqueda"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-white/40 hover:text-white transition-colors">
+                  <X className="h-4 w-4" />
+                </button>
+              )}
               {showProd && (
                 <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-none border border-white/10 bg-[#0c0c0e] shadow-xl shadow-black/40">
                   {prodResults.length === 0 ? (

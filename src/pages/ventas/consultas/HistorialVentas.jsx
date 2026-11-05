@@ -3,15 +3,23 @@ import { Link } from "react-router-dom";
 import { Search, X, Eye, ArrowLeft } from "lucide-react";
 import {
   getFacturasVenta,
+  buscarFacturasVenta,
+  getFacturasVentaPorCliente,
   getFacturaVentaById,
   apiErrorMessage,
 } from "../../../api/facturasVentaApi";
 import { getClientes } from "../../../api/clientesApi";
+import { esAnulada, fmtFecha, fmtMoneda, diaISO } from "../common";
 import Pagination from "../../../components/ui/Pagination";
 
-const money = (n) => {
-  const v = Number(n);
-  return Number.isFinite(v) ? `₲ ${v.toLocaleString("es-PY", { maximumFractionDigits: 0 })}` : "—";
+const PAGE_SIZE = 10;
+
+// IVA de una línea = bruto − base (precio CON IVA → base + IVA), mismo criterio que el back.
+const ivaLineaDetalle = (d) => {
+  const t = Number(d.tasaIva);
+  if (!t) return 0;
+  const bruto = Math.round((Number(d.cantidad) || 0) * (Number(d.precioUnitario) || 0));
+  return Math.round(bruto - bruto / (1 + t / 100));
 };
 
 // Total que paga el cliente: el back es dueño del totalGeneral (precio de venta CON IVA incluido).
@@ -25,29 +33,6 @@ const totalFactura = (f) => {
     );
   }
   return 0;
-};
-
-// IVA de una línea = bruto − base (precio CON IVA → base + IVA), mismo criterio que el back.
-const ivaLineaDetalle = (d) => {
-  const t = Number(d.tasaIva);
-  if (!t) return 0;
-  const bruto = Math.round((Number(d.cantidad) || 0) * (Number(d.precioUnitario) || 0));
-  return Math.round(bruto - bruto / (1 + t / 100));
-};
-
-const fmtFecha = (iso) => {
-  if (!iso) return "—";
-  const s = String(iso);
-  // Fecha sin hora (yyyy-MM-dd): interpretarla como LOCAL para no correr el día
-  // (new Date("2026-10-11") es UTC y en America/Asuncion muestra 10/10/2026).
-  const d = /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T00:00:00`) : new Date(s);
-  if (Number.isNaN(d.getTime())) return s;
-  return d.toLocaleDateString("es-PY", { day: "2-digit", month: "2-digit", year: "numeric" });
-};
-
-const esAnulada = (f) => {
-  const raw = String(f?.estado || "").toUpperCase();
-  return raw === "ANULADO" || raw === "ANULADA" || raw === "CANCELADA" || f?.activo === false;
 };
 
 const estadoVenta = (f) => {
@@ -68,15 +53,21 @@ const estadoVenta = (f) => {
 };
 
 export default function HistorialVentas() {
-  const [todas, setTodas] = useState([]);
+  const [filas, setFilas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Paginación REAL: la lleva el back (page/pageSize/totalPages).
   const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
 
   const [clientes, setClientes] = useState([]);
   const [idCliente, setIdCliente] = useState("");
   const [texto, setTexto] = useState("");
+  // El texto se busca en el back (debounce); fechas y estado se filtran acá
+  // porque el back todavía no los soporta en el listado.
+  const [textoQuery, setTextoQuery] = useState("");
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [estado, setEstado] = useState("");
@@ -94,53 +85,64 @@ export default function HistorialVentas() {
     return () => { activo = false; };
   }, []);
 
+  // Debounce del texto (la búsqueda es server-side).
+  useEffect(() => {
+    const t = setTimeout(() => setTextoQuery(texto), 300);
+    return () => clearTimeout(t);
+  }, [texto]);
+
+  // Reinicia a la primera página cuando cambian los filtros server-side.
+  useEffect(() => { setPage(0); }, [textoQuery, idCliente]);
+
+  // Endpoint server-side según filtros: texto → /buscar; cliente → /cliente/{id};
+  // sin filtros → listado paginado. (Back: GET paginado con page/pageSize.
+  // OJO: el back espera "pageSize"; un "size" suelto se ignora.)
+  // ⚠️ BUG CONOCIDO DEL BACK: /buscar matchea solo por cliente — las facturas
+  // "Sin Nombre" no aparecen por N° (JOIN implícito a cliente en el repositorio).
+  // El arreglo correcto está en FacturaVentaRepository (ver informe al duo).
   const cargar = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await getFacturasVenta({ page: 0, pageSize: 1000, sortDir: "DESC" });
-      setTodas(Array.isArray(res.content) ? res.content : []);
+      const base = { page, pageSize: PAGE_SIZE, sortDir: "DESC" };
+      const q = textoQuery.trim();
+      const res = q
+        ? await buscarFacturasVenta(q, base)
+        : idCliente
+          ? await getFacturasVentaPorCliente(idCliente, base)
+          : await getFacturasVenta(base);
+      setFilas(Array.isArray(res.content) ? res.content : []);
+      setTotalPages(Math.max(1, res.totalPages ?? 1));
+      setTotalElements(Number(res.totalElements ?? res.content?.length ?? 0));
     } catch (err) {
       setError(apiErrorMessage(err) || "Error al cargar las facturas de venta");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, textoQuery, idCliente]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
+  // Filtros del back NO disponibles (fecha y estado): se refina la página actual.
   const filtradas = useMemo(() => {
-    const q = texto.trim().toLowerCase();
     const d = (desde || "").trim();
     const h = (hasta || "").trim();
-    return todas
-      .filter((f) => {
-        if (estado === "VIGENTES" && esAnulada(f)) return false;
-        if (estado === "ANULADAS" && !esAnulada(f)) return false;
-        if (idCliente && Number(f.idCliente) !== Number(idCliente)) return false;
-        if (q) {
-          const hito = `${f.numeroFactura || ""} ${f.numeroTimbrado || ""} ${f.nombreCliente || ""}`.toLowerCase();
-          if (!hito.includes(q)) return false;
-        }
-        if (d || h) {
-          const fecha = String(f.fechaEmision || f.fechaCreacion || "").slice(0, 10);
-          if (d && fecha < d) return false;
-          if (h && fecha > h) return false;
-        }
-        return true;
-      })
-      .sort((a, b) => {
-        const fa = String(a.fechaEmision || a.fechaCreacion || "");
-        const fb = String(b.fechaEmision || b.fechaCreacion || "");
-        if (fa !== fb) return fa < fb ? 1 : -1;
-        return String(b.numeroFactura || "").localeCompare(String(a.numeroFactura || ""));
-      });
-  }, [todas, idCliente, texto, desde, hasta, estado]);
+    return filas.filter((f) => {
+      if (estado === "VIGENTES" && esAnulada(f)) return false;
+      if (estado === "ANULADAS" && !esAnulada(f)) return false;
+      if (d || h) {
+        const fecha = diaISO(f.fechaEmision || f.fechaCreacion);
+        if (d && fecha < d) return false;
+        if (h && fecha > h) return false;
+      }
+      return true;
+    });
+  }, [filas, estado, desde, hasta]);
 
-  const paginadas = useMemo(() => filtradas.slice(page * 10, page * 10 + 10), [filtradas, page]);
-
-  useEffect(() => { setPage(0); }, [idCliente, texto, desde, hasta, estado]);
-  useEffect(() => { setTotalPages(Math.max(1, Math.ceil(filtradas.length / 10))); }, [filtradas]);
+  // Cuando activan filtros locales escondí filas de la página: el "Mostrando"
+  // del paginado deja de ser exacto → solo se informa si no hay filtro local.
+  const hayFiltroLocal = !!(estado || desde || hasta);
+  const paginadas = filtradas;
 
   async function verDetalle(f) {
     setSeleccionada(f);
@@ -177,7 +179,7 @@ export default function HistorialVentas() {
             type="text"
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
-            placeholder="Buscar por N° factura, timbrado o cliente"
+            placeholder="Buscar por N° de factura o cliente"
             aria-label="Buscar por número de factura, timbrado o cliente"
             className="w-full bg-white/5 border border-white/10 rounded-none pl-9 pr-10 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent)] transition-colors"
           />
@@ -293,7 +295,7 @@ export default function HistorialVentas() {
                     <td className="px-4 py-3 text-white">{f.nombreCliente || "Sin Nombre"}</td>
                     <td className="px-4 py-3 text-white/70 whitespace-nowrap">{f.numeroFactura || "—"}</td>
                     <td className="px-4 py-3">{estadoVenta(f)}</td>
-                    <td className="px-4 py-3 text-white font-medium text-right whitespace-nowrap">{money(totalFactura(f))}</td>
+                    <td className="px-4 py-3 text-white font-medium text-right whitespace-nowrap">{fmtMoneda(totalFactura(f))}</td>
                     <td className="px-4 py-3 text-right">
                       <button
                         type="button"
@@ -317,9 +319,17 @@ export default function HistorialVentas() {
           page={page}
           totalPages={totalPages}
           onPageChange={setPage}
-          pageSize={10}
-          totalItems={filtradas.length}
+          pageSize={PAGE_SIZE}
+          // Con filtro de fecha/estado (refinado local) el total del back ya no
+          // describe lo que se ve: se oculta el rango "Mostrando x–y de z".
+          totalItems={hayFiltroLocal ? undefined : totalElements}
         />
+      )}
+      {hayFiltroLocal && paginadas.length === 0 && !loading && (
+        <p className="text-xs text-white/40 text-center">
+          Los filtros de fecha y estado se aplican sobre la página actual (el back
+          todavía no los soporta en el listado). Probá limpiarlos si no ves resultados.
+        </p>
       )}
 
       {seleccionada && (
@@ -458,15 +468,15 @@ function DetalleFacturaVenta({ factura, cargando = false, onClose }) {
                   <tr key={d.idDetalle ?? `${d.idProducto}-${d.nombreProducto}`} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                     <td className="px-4 py-3 font-medium text-white">{d.nombreProducto || `Producto #${d.idProducto}`}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white/80">{Number(d.cantidad)}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white/80">{money(d.precioUnitario)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white/80">{fmtMoneda(d.precioUnitario)}</td>
                     <td className="px-4 py-3 text-center">
                       <TasaBadge tasa={Number(d.tasaIva)} />
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white/80">
-                      {Number(d.tasaIva) ? money(ivaLineaDetalle(d)) : "—"}
+                      {Number(d.tasaIva) ? fmtMoneda(ivaLineaDetalle(d)) : "—"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-right font-medium tabular-nums text-white">
-                      {money(Math.round(Number(d.cantidad) * Number(d.precioUnitario)))}
+                      {fmtMoneda(Math.round(Number(d.cantidad) * Number(d.precioUnitario)))}
                     </td>
                   </tr>
                 ))}
@@ -482,22 +492,22 @@ function DetalleFacturaVenta({ factura, cargando = false, onClose }) {
               <span className="border border-white/15 bg-white/5 px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-white/80">Liquidación IVA</span>
               {iva5 > 0 && (
                 <span className="text-white/70">
-                  <span className="text-white/40">5%: </span>{money(iva5)}
+                  <span className="text-white/40">5%: </span>{fmtMoneda(iva5)}
                 </span>
               )}
               {iva10 > 0 && (
                 <span className="text-white/70">
-                  <span className="text-white/40">10%: </span>{money(iva10)}
+                  <span className="text-white/40">10%: </span>{fmtMoneda(iva10)}
                 </span>
               )}
               <span className="text-white/90 font-semibold">
-                <span className="text-white/40">Total IVA: </span>{money(ivaTotal)}
+                <span className="text-white/40">Total IVA: </span>{fmtMoneda(ivaTotal)}
               </span>
             </div>
 
             <div className="shrink-0 text-right">
               <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/50">Total factura</p>
-              <p className="text-xl font-semibold tabular-nums text-[var(--accent)]">{money(totalFactura(factura))}</p>
+              <p className="text-xl font-semibold tabular-nums text-[var(--accent)]">{fmtMoneda(totalFactura(factura))}</p>
             </div>
           </div>
         </footer>

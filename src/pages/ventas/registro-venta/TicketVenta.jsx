@@ -222,6 +222,15 @@ export default function TicketVenta({ datos, onCerrar }) {
                     <span>{formatMoney(cambio || 0)}</span>
                   </div>
                 )}
+                {/* Cantidad de artículos: suma de las cantidades de las líneas
+                    (entero sin decimales salvo pesables). */}
+                <div className="flex justify-between opacity-70">
+                  <span>CANTIDAD DE ARTICULOS:</span>
+                  <span>{(() => {
+                    const suma = lineas.reduce((acc, l) => acc + getCantidad(l), 0);
+                    return suma.toLocaleString("es-PY", { maximumFractionDigits: 3 });
+                  })()}</span>
+                </div>
               </div>
 
               <div className="space-y-0.5 py-2 text-[10px]">

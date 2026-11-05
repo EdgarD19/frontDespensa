@@ -1728,8 +1728,15 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                 onChange={(e) => setFiltroNumero(e.target.value)}
                 placeholder="Buscar número…"
                 autoComplete="off"
-                className={`${fieldClass} pl-9`}
+                className={`${fieldClass} pl-9 ${filtroNumero ? "pr-9" : ""}`}
               />
+              {filtroNumero && (
+                <button type="button" onClick={() => setFiltroNumero("")}
+                  title="Limpiar búsqueda" aria-label="Limpiar búsqueda"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-white/40 hover:text-white transition-colors">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
           </div>
           <div>
@@ -1743,8 +1750,15 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                 onChange={(e) => setFiltroProveedor(e.target.value)}
                 placeholder="Buscar proveedor…"
                 autoComplete="off"
-                className={`${fieldClass} pl-9`}
+                className={`${fieldClass} pl-9 ${filtroProveedor ? "pr-9" : ""}`}
               />
+              {filtroProveedor && (
+                <button type="button" onClick={() => setFiltroProveedor("")}
+                  title="Limpiar búsqueda" aria-label="Limpiar búsqueda"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-white/40 hover:text-white transition-colors">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
           </div>
           <div>

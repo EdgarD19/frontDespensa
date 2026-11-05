@@ -1,5 +1,4 @@
 // Configuración de comprobantes de venta — datos que el back TODAVÍA no soporta.
-//
 // El back (/api/timbrados-venta) persiste: numeroTimbrado, fechaInicio,
 // fechaVencimiento y activo. Establecimiento, punto de expedición y rango de
 // numeración no tienen endpoint, así que por el momento se guardan acá
@@ -39,35 +38,6 @@ export function guardarExtrasLocal(id, extras) {
   const clave = String(id);
   all[clave] = { ...EXTRAS_DEFAULT, ...all[clave], ...extras };
   localStorage.setItem(KEY, JSON.stringify(all));
-}
-
-export function eliminarExtrasLocal(id) {
-  if (id == null) return;
-  const all = getExtrasLocal();
-  delete all[String(id)];
-  localStorage.setItem(KEY, JSON.stringify(all));
-}
-
-// "Eliminados": el back hace SOFT DELETE y no distingue eliminado de inactivo,
-// así que los ids dados de baja se recuerdan acá para ocultarlos de la lista.
-const KEY_ELIMINADOS = "despensa_timbrados_venta_eliminados_v1";
-
-export function getEliminadosLocal() {
-  try {
-    const raw = JSON.parse(localStorage.getItem(KEY_ELIMINADOS) || "[]");
-    return Array.isArray(raw) ? raw.map(String) : [];
-  } catch {
-    return [];
-  }
-}
-
-export function marcarEliminadoLocal(id) {
-  if (id == null) return;
-  const all = getEliminadosLocal();
-  if (!all.includes(String(id))) {
-    all.push(String(id));
-    localStorage.setItem(KEY_ELIMINADOS, JSON.stringify(all));
-  }
 }
 
 /** Extras locales de un timbrado (con defaults si no hay nada guardado). */
@@ -120,13 +90,13 @@ export function estadoComprobante(c, hoy) {
   // "Hoy" en hora LOCAL: con toISOString() (UTC) en UTC-3 el día se corre.
   const ahora = new Date();
   const dia = hoy || `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, "0")}-${String(ahora.getDate()).padStart(2, "0")}`;
+  // La disponibilidad depende solo de la FECHA (el día del vencimiento todavía
+  // cuenta como vigente); no se usa el flag activo del back.
   if (!c) return { estado: "sin_configuracion", label: "Sin configuración" };
   if (c.estaVencido || (c.fechaVencimiento && dia > c.fechaVencimiento))
     return { estado: "vencido", label: `Vencido el ${fmtDiaEs(c.fechaVencimiento)}` };
   if (c.fechaInicio && dia < c.fechaInicio)
     return { estado: "sin_iniciar", label: `Vigente desde el ${fmtDiaEs(c.fechaInicio)}` };
-  if (c.activo === false)
-    return { estado: "inactivo", label: "Inactivo" };
   if (tieneRango(c) && proximoNumero(c) > Math.trunc(Number(c.numeroHasta)))
     return { estado: "agotado", label: "Rango agotado" };
   return { estado: "vigente", label: "Vigente" };
