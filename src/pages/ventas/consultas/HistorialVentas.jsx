@@ -102,7 +102,7 @@ export default function HistorialVentas() {
   // OJO: el back espera "pageSize"; un "size" suelto se ignora.)
   // ⚠️ BUG CONOCIDO DEL BACK: /buscar matchea solo por cliente — las facturas
   // "Sin Nombre" no aparecen por N° (JOIN implícito a cliente en el repositorio).
-  // El arreglo correcto está en FacturaVentaRepository (ver informe al duo).
+  // El arreglo correcto está en FacturaVentaRepository (informe al equipo del back).
   const cargar = useCallback(async () => {
     setLoading(true);
     setError(null);

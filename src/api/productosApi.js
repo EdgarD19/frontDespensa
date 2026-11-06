@@ -266,7 +266,7 @@ export async function updateProductoPrecio(id, precio, fechaHora = null) {
 /**
  * DELETE /api/productos/{id}/programacion
  * Cancela el precio de venta programado a futuro.
- * El contrato actual no lo expone: puede fallar hasta que el duo lo implemente.
+ * El contrato actual no lo expone: puede fallar hasta que el backend lo implemente.
  */
 export async function cancelarProgramacionPrecio(id) {
   const { data } = await api.delete(`/api/productos/${id}/programacion`);
