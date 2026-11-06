@@ -30,12 +30,8 @@ export function parseStockDisponible(producto) {
 export function formatMoney(n) {
   const x = Number(n);
   if (!Number.isFinite(x)) return "—";
-  return new Intl.NumberFormat("es-PY", {
-    style: "currency",
-    currency: "PYG",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(x);
+  const abs = Math.abs(Math.round(x)).toLocaleString("es-PY", { maximumFractionDigits: 0 });
+  return `${x < 0 ? "-" : ""}Gs. ${abs}`;
 }
 
 export const FORMA_PAGO_EFECTIVO = "EFECTIVO";

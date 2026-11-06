@@ -15,7 +15,7 @@ import SearchField from "../../../components/ui/SearchField";
 
 const money = (n) => {
   const v = Number(n);
-  return Number.isFinite(v) ? `₲ ${v.toLocaleString("es-PY", { maximumFractionDigits: 0 })}` : "—";
+  return Number.isFinite(v) ? `Gs. ${v.toLocaleString("es-PY", { maximumFractionDigits: 0 })}` : "—";
 };
 
 // Total real = bruto por línea (cantidad × precio). El totalGeneral del back arrastra un IVA

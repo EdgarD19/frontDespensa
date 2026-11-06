@@ -9,7 +9,7 @@ import { getProveedores, getProveedorId, getProveedorNombre } from "../../../api
 
 const money = (n) => {
   const v = Number(n);
-  return Number.isFinite(v) ? `₲ ${v.toLocaleString("es-PY", { maximumFractionDigits: 0 })}` : "—";
+  return Number.isFinite(v) ? `Gs. ${v.toLocaleString("es-PY", { maximumFractionDigits: 0 })}` : "—";
 };
 
 const fmtFecha = (iso) => {

@@ -1,9 +1,7 @@
 import { Check } from "lucide-react";
 import { THEAD_ROW, TABLE_SHELL } from "../../components/ui/styles";
 
-const money = (n) =>
-  new Intl.NumberFormat("es-PY", { style: "currency", currency: "PYG", minimumFractionDigits: 0 })
-    .format(Number(n) || 0);
+const money = (n) => Math.round(Number(n) || 0).toLocaleString("es-PY", { maximumFractionDigits: 0 });
 
 /**
  * Resumen post-registro de una compra — ÚNICO para el módulo:
@@ -43,7 +41,7 @@ export default function ResumenCompraExito({
           <div className="flex items-center gap-3">
             <span className="text-base font-medium text-white/70">Total</span>
             <span className="text-3xl font-bold tracking-tight text-[var(--accent)] tabular-nums">
-              ₲ {money(total)}
+              {money(total)}
             </span>
           </div>
           {children && <div className="mt-2 flex flex-wrap gap-3">{children}</div>}
@@ -77,8 +75,8 @@ export default function ResumenCompraExito({
               {filasIva.map((r) => (
                 <tr key={r.etiqueta} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                   <td className="px-4 py-3">{r.etiqueta}</td>
-                  <td className="px-4 py-3 text-right">₲ {money(r.subtotal)}</td>
-                  <td className="px-4 py-3 text-right">{r.iva == null ? "—" : `₲ ${money(r.iva)}`}</td>
+                  <td className="px-4 py-3 text-right">{money(r.subtotal)}</td>
+                  <td className="px-4 py-3 text-right">{r.iva == null ? "—" : `{money(r.iva)}`}</td>
                 </tr>
               ))}
             </tbody>
@@ -86,7 +84,7 @@ export default function ResumenCompraExito({
               <tr className="border-t border-white/10 font-medium tabular-nums text-white">
                 <td className="px-4 py-3">Total IVA</td>
                 <td className="px-4 py-3" />
-                <td className="px-4 py-3 text-right">₲ {money(ivaTotal)}</td>
+                <td className="px-4 py-3 text-right">{money(ivaTotal)}</td>
               </tr>
             </tfoot>
           </table>

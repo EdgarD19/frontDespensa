@@ -44,14 +44,10 @@ export function fmtFecha(valor) {
   });
 }
 
-/** Gs. sin decimales (PYG). Invalid → "—". */
+/** Gs. sin decimales — formato ÚNICO del proyecto (misma salida que utils/money). */
 export function fmtMoneda(n) {
   const v = Number(n);
   if (!Number.isFinite(v)) return NULO;
-  return new Intl.NumberFormat("es-PY", {
-    style: "currency",
-    currency: "PYG",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(v);
+  const abs = Math.abs(Math.round(v)).toLocaleString("es-PY", { maximumFractionDigits: 0 });
+  return `${v < 0 ? "-" : ""}Gs. ${abs}`;
 }

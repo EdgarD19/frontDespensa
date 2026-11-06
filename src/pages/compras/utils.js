@@ -1,4 +1,4 @@
-export const money = (n) => Math.round(n).toLocaleString("es-PY", { maximumFractionDigits: 0 });
+export const money = (n) => "Gs. " + Math.round(n).toLocaleString("es-PY", { maximumFractionDigits: 0 });
 
 export const hoyAsuncion = () =>
   new Date().toLocaleDateString("en-CA", { timeZone: "America/Asuncion", year: "numeric", month: "2-digit", day: "2-digit" });

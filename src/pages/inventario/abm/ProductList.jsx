@@ -150,7 +150,8 @@ export default function ProductList({
                         </span>
                       ) : (
                         <span className="font-semibold text-zinc-100">
-                          ₲{formatPrecioVenta(p)}
+
+                          Gs. {formatPrecioVenta(p)}
                         </span>
                       )}
                     </td>
@@ -201,7 +202,7 @@ export default function ProductList({
                           title={sinPrecioVenta ? "Definir precio de venta" : "Actualizar precio de venta"}
                           aria-label="Actualizar precio de venta"
                         >
-                          <span className="text-sm leading-none font-semibold">₲</span>
+                          <span className="text-sm leading-none font-semibold">Gs.</span>
                         </button>
 
                         {/* Activar / Desactivar */}

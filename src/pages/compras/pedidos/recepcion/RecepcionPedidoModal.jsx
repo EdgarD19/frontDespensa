@@ -244,7 +244,6 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
         <div className="bg-[#0c0c0e] border border-white/10 rounded-none w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
           <ResumenCompraExito
             titulo="Pedido recibido y factura registrada"
-            subtitulo="La mercadería ingresó al inventario."
             datos={[
               { label: "Proveedor", value: f.nombreProveedor },
               { label: "N° de factura", value: f.numeroFactura || "—" },
@@ -458,7 +457,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
                     >
                       <span>{p.nombre}</span>
                       <span className="text-xs text-white/40">
-                        {Number(p.precioCompra) > 0 ? `₲ ${money(p.precioCompra)}` : "Sin costo registrado"}
+                        {Number(p.precioCompra) > 0 ? `{money(p.precioCompra)}` : "Sin costo registrado"}
                         {p.unidadMedida ? ` (${p.unitAbbreviation || p.unidadMedida})` : ""}
                       </span>
                     </button>
@@ -519,7 +518,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
                     />
                   </div>
                   <div className="py-1.5 pr-3 text-right font-semibold font-mono text-sm text-white bg-white/[0.03]">
-                    ₲ {money(subtotalLinea(l))}
+                    {money(subtotalLinea(l))}
                   </div>
                   <div className="py-1.5 pr-3 text-right bg-white/[0.03] rounded-r-none">
                     <button
@@ -543,23 +542,23 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
                 <span className="border border-white/15 bg-white/5 px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-white/80">Liquidación IVA</span>
                 {iva5 > 0 && (
                   <span className="text-white/70">
-                    <span className="text-white/40">5%: </span>₲ {money(iva5)}
+                    <span className="text-white/40">5%: </span>{money(iva5)}
                   </span>
                 )}
                 {iva10 > 0 && (
                   <span className="text-white/70">
-                    <span className="text-white/40">10%: </span>₲ {money(iva10)}
+                    <span className="text-white/40">10%: </span>{money(iva10)}
                   </span>
                 )}
                 <span className="text-white/90 font-semibold">
-                  <span className="text-white/40">Total IVA: </span>₲ {money(totalIva)}
+                  <span className="text-white/40">Total IVA: </span>{money(totalIva)}
                 </span>
               </div>
 
               <div className="text-right">
                 <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40">Total factura</p>
                 <p className="font-mono text-2xl font-bold tracking-tight text-[var(--accent)]">
-                  ₲ {money(total)}
+                  {money(total)}
                 </p>
               </div>
             </div>

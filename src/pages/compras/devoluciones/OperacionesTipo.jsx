@@ -29,7 +29,9 @@ import { formatoFactura, hoyAsuncion, estadoTimbrado, etiquetaTimbrado, esKG } f
 import CantidadInput from "../../../components/ui/CantidadInput";
 
 function fmtMoneda(n) {
-  return new Intl.NumberFormat("es-PY", { style: "currency", currency: "PYG", minimumFractionDigits: 0 }).format(n ?? 0);
+  const v = Number(n ?? 0);
+  const abs = Math.abs(Math.round(v)).toLocaleString("es-PY", { maximumFractionDigits: 0 });
+  return `${v < 0 ? "-" : ""}Gs. ${abs}`;
 }
 
 function fmtFecha(valor) {

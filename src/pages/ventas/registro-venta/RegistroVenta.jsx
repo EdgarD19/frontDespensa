@@ -961,7 +961,7 @@ export default function RegistroVenta() {
                 <div>
                   <label htmlFor="venta-recibido" className={`${LABEL} mb-2 block`}>Recibido</label>
                   <div className="flex h-11 items-center gap-2 rounded-none border border-white/10 bg-white/[0.03] px-2 transition-colors focus-within:border-[var(--accent)]">
-                    <span className="text-lg text-white/40">₲</span>
+                    <span className="text-sm text-white/40 select-none">Gs.</span>
                     <input
                       id="venta-recibido"
                       type="text"

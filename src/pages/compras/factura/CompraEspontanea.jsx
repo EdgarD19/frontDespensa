@@ -497,7 +497,7 @@ export default function CompraEspontanea({ onVolver }) {
                     <span>{p.nombre}</span>
                     <span className="text-xs text-white/40">
                       {Number(p.precioCompra) > 0
-                        ? `₲ ${money(p.precioCompra)}`
+                        ? `{money(p.precioCompra)}`
                         : "Sin costo registrado"}
                       {p.unidadMedida ? ` (${p.unitAbbreviation || p.unidadMedida})` : ""}
                     </span>
@@ -565,7 +565,7 @@ export default function CompraEspontanea({ onVolver }) {
                 </div>
                 {/* Subtotal */}
                 <div className="py-1.5 pr-3 text-right font-semibold font-mono text-sm text-white bg-white/[0.03]">
-                  ₲ {money(subtotalLinea(l))}
+                  {money(subtotalLinea(l))}
                 </div>
                 {/* Eliminar */}
                 <div className="py-1.5 pr-3 text-right bg-white/[0.03] rounded-r-none">
@@ -591,16 +591,16 @@ export default function CompraEspontanea({ onVolver }) {
               <span className="border border-white/15 bg-white/5 px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-white/80">Liquidación IVA</span>
               {iva5 > 0 && (
                 <span className="text-white/70">
-                  <span className="text-white/40">5%: </span>₲ {money(iva5)}
+                  <span className="text-white/40">5%: </span>{money(iva5)}
                 </span>
               )}
               {iva10 > 0 && (
                 <span className="text-white/70">
-                  <span className="text-white/40">10%: </span>₲ {money(iva10)}
+                  <span className="text-white/40">10%: </span>{money(iva10)}
                 </span>
               )}
               <span className="text-white/90 font-semibold">
-                <span className="text-white/40">Total IVA: </span>₲ {money(totalIva)}
+                <span className="text-white/40">Total IVA: </span>{money(totalIva)}
               </span>
             </div>
 
@@ -608,7 +608,7 @@ export default function CompraEspontanea({ onVolver }) {
               <div className="text-right">
                 <p className="text-xs text-white/40 uppercase tracking-[0.12em]">Total factura</p>
                 <p className="font-mono text-3xl font-bold tracking-tight text-[var(--accent)]">
-                  ₲ {money(total)}
+                  {money(total)}
                 </p>
               </div>
 

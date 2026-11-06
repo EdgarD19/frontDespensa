@@ -10,7 +10,7 @@ const inputClass =
 function formatMoney(n) {
   const v = Number(n);
   if (!Number.isFinite(v)) return "—";
-  return `₲${v.toLocaleString("es-PY")}`;
+  return `Gs. ${v.toLocaleString("es-PY")}`;
 }
 
 // ISO → DD/MM/AAAA (con hora si el valor la trae). Los "yyyy-MM-dd" crudos
@@ -184,7 +184,7 @@ export default function PrecioProductoModal({ producto, onClose, onPrecioActuali
             <div className="text-xs text-amber-200 bg-amber-500/10 border border-amber-500/20 rounded-none px-3 py-2 flex items-center justify-between gap-2">
               <span className="flex items-center gap-2">
                 <Clock className="w-3.5 h-3.5 shrink-0" />
-                Precio a futuro pendiente: ₲{Number(productoActual.precioFuturo).toLocaleString("es-PY")} desde{" "}
+                Precio a futuro pendiente: Gs. {Math.round(Number(productoActual.precioFuturo)).toLocaleString("es-PY")} desde{" "}
                 {fmtFechaEs(productoActual.fechaVigencia)}
               </span>
               <button type="button" onClick={handleCancelarProgramacion} disabled={guardando}
