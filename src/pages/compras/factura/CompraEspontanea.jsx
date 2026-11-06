@@ -227,12 +227,12 @@ export default function CompraEspontanea({ onVolver }) {
     const dg = desgloseFactura(f);
     // El back sólo manda `nombre` en nombreProveedor; para FISICA mostramos nombre + apellido.
     const nombreProveedorMostrar = getProveedorNombre(proveedorSel) || f.nombreProveedor || "—";
-    const detalle = (tasa) => (f.detalles || []).filter((d) => Number(d.tasaIva) === tasa);
+
     const filasIva = [
       { etiqueta: "Exentas", tasa: 0, subtotal: dg.subtotalExento, iva: null },
       { etiqueta: "Gravadas 5%", tasa: 5, subtotal: dg.subtotal5, iva: dg.iva5 },
       { etiqueta: "Gravadas 10%", tasa: 10, subtotal: dg.subtotal10, iva: dg.iva10 },
-    ].filter((r) => detalle(r.tasa).length > 0);
+    ];
     const cantProductos = (f.detalles || []).length;
     return (
       <ResumenCompraExito

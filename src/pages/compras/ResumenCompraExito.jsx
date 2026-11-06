@@ -60,13 +60,15 @@ export default function ResumenCompraExito({
         </dl>
       )}
 
-      {/* Liquidación de IVA + Detalle fiscal (dos tablas, formato fisicalista) */}
-      {filasIva.length > 0 && (() => {
-        // Liquidación: solo tasas que llevan IVA (5% / 10%)
+      {/* Liquidación de IVA + Detalle fiscal (dos tablas, formato fiscal) */}
+      {(() => {
+        // Liquidación: solo tasas con IVA REALMENTE cobrado (si todo es exento,
+        // la tabla no aparece en vano).
         const liqRows = filasIva
-          .filter((r) => r.iva != null)
+          .filter((r) => Number(r.iva) > 0)
           .map((r) => ({ etiqueta: `IVA ${r.tasa}%`, valor: r.iva }));
-        // Detalle fiscal: montos por tasa (Exentas / Gravadas)
+        // Detalle fiscal: SIEMPRE los tres conceptos (Exentas / Gravadas 5% / 10%),
+        // con Gs. 0 cuando la compra no tiene de esa tasa.
         const fiscalRows = filasIva.map((r) => ({
           etiqueta: r.tasa === 0 ? "Total Exentas" : `Total Gravadas ${r.tasa}%`,
           valor: r.subtotal,

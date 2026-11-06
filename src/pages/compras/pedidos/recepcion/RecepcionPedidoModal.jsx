@@ -234,11 +234,11 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
 
   if (exito) {
     const f = exito;
-    const detalle = (tasa) => (f.detalles || []).filter((d) => Number(d.tasaIva) === tasa);    const filasIva = [
+    const filasIva = [
       { etiqueta: "Exentas", tasa: 0, subtotal: f.subtotalExento ?? 0, iva: null },
       { etiqueta: "Gravadas 5%", tasa: 5, subtotal: f.subtotal5 ?? 0, iva: f.iva5 ?? 0 },
       { etiqueta: "Gravadas 10%", tasa: 10, subtotal: f.subtotal10 ?? 0, iva: f.iva10 ?? 0 },
-    ].filter((r) => detalle(r.tasa).length > 0);
+    ];
     return (
       <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
         <div className="bg-[#0c0c0e] border border-white/10 rounded-none w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
