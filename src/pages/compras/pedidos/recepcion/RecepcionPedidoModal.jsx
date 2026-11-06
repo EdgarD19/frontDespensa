@@ -246,10 +246,8 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
             titulo="Pedido recibido y factura registrada"
             subtitulo="La mercadería ingresó al inventario."
             datos={[
-              { label: "Pedido", value: `#${f.idPedido ?? pedido.idPedido}` },
               { label: "Proveedor", value: f.nombreProveedor },
               { label: "N° de factura", value: f.numeroFactura || "—" },
-              { label: "N° de timbrado", value: f.numeroTimbrado || "—" },
             ]}
             filasIva={filasIva}
             ivaTotal={f.ivaTotal ?? 0}
