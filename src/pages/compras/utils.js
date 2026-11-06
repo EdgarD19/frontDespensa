@@ -24,6 +24,15 @@ export function parseCant(val, prod) {
   return esKG(prod) ? Math.round(n * 1000) / 1000 : Math.floor(n);
 }
 
+/** "yyyy-MM-dd" → "DD/MM/AAAA" para mensajes visibles; el crudo queda solo para inputs/comparaciones. */
+export function fechaEs(iso) {
+  const s = String(iso ?? "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return s || "—";
+  const d = new Date(`${s}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return s;
+  return d.toLocaleDateString("es-PY", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
 export function estadoTimbrado(t, fecha) {
   if (!t) return null;
   if (t.activo === false) {
@@ -33,10 +42,10 @@ export function estadoTimbrado(t, fecha) {
   const inicio = String(t.fechaInicio || "");
   const venc = String(t.fechaVencimiento || "");
   if (venc && fe && fe > venc) {
-    return { tipo: "vencido", msg: `El timbrado venció el ${venc}. No se puede registrar la compra con este timbrado.` };
+    return { tipo: "vencido", msg: `El timbrado venció el ${fechaEs(venc)}. No se puede registrar la compra con este timbrado.` };
   }
   if (inicio && fe && fe < inicio) {
-    return { tipo: "noIniciado", msg: `El timbrado aún no está vigente (inicia el ${inicio}).` };
+    return { tipo: "noIniciado", msg: `El timbrado aún no está vigente (inicia el ${fechaEs(inicio)}).` };
   }
   return { tipo: "vigente", msg: null };
 }
