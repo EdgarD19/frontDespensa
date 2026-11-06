@@ -233,66 +233,34 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
 
   if (exito) {
     const f = exito;
-    const detalle = (tasa) => (f.detalles || []).filter((d) => Number(d.tasaIva) === tasa);
-    const mostrarDesglose =
-      (detalle(10).length > 0) || (detalle(5).length > 0) || (detalle(0).length > 0);
+    const detalle = (tasa) => (f.detalles || []).filter((d) => Number(d.tasaIva) === tasa);    const filasIva = [
+      { etiqueta: "Exentas", tasa: 0, subtotal: f.subtotalExento ?? 0, iva: null },
+      { etiqueta: "Gravadas 5%", tasa: 5, subtotal: f.subtotal5 ?? 0, iva: f.iva5 ?? 0 },
+      { etiqueta: "Gravadas 10%", tasa: 10, subtotal: f.subtotal10 ?? 0, iva: f.iva10 ?? 0 },
+    ].filter((r) => detalle(r.tasa).length > 0);
     return (
       <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div className="bg-[#0c0c0e] border border-[var(--accent)]/30 rounded-none w-full max-w-lg shadow-2xl p-8 text-center space-y-4">
-          <div className="w-14 h-14 mx-auto rounded-full bg-[var(--accent)]/10 flex items-center justify-center">
-            <Check className="w-7 h-7 text-[var(--accent)]" />
-          </div>
-          <p className="text-lg font-medium text-white">Pedido #<span className="font-mono">{f.idPedido ?? pedido.idPedido}</span> recibido y factura registrada</p>
-          <p className="text-sm text-white/40">
-            N° {f.numeroFactura} · Timbrado {f.numeroTimbrado || "—"} · {f.nombreProveedor}
-          </p>
-
-          {mostrarDesglose && (
-            <div className="mx-auto max-w-md grid grid-cols-3 gap-3 text-sm">
-              {detalle(10).length > 0 && (
-                <div className="rounded-none border border-white/10 bg-white/[0.03] p-3">
-                  <p className={S.eyebrow}>IVA 10%</p>
-                  <p className="font-mono text-lg font-bold text-white">₲ {money(f.iva10 ?? 0)}</p>
-                  <p className="text-xs text-white/40">Subtotal ₲ {money(f.subtotal10 ?? 0)}</p>
-                </div>
-              )}
-              {detalle(5).length > 0 && (
-                <div className="rounded-none border border-white/10 bg-white/[0.03] p-3">
-                  <p className={S.eyebrow}>IVA 5%</p>
-                  <p className="font-mono text-lg font-bold text-white">₲ {money(f.iva5 ?? 0)}</p>
-                  <p className="text-xs text-white/40">Subtotal ₲ {money(f.subtotal5 ?? 0)}</p>
-                </div>
-              )}
-              {detalle(0).length > 0 && (
-                <div className="rounded-none border border-white/10 bg-white/[0.03] p-3">
-                  <p className={S.eyebrow}>Exento</p>
-                  <p className="font-mono text-lg font-bold text-white">₲ {money(f.subtotalExento ?? 0)}</p>
-                  <p className="text-xs text-white/40">Sin IVA</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="flex items-center justify-center gap-6">
-            <div className="text-right">
-              <p className="text-xs text-white/40">IVA total</p>
-              <p className="font-mono text-lg font-bold text-white">₲ {money(f.ivaTotal ?? 0)}</p>
-            </div>
-            <div className="h-8 w-px bg-white/10" />
-            <div className="text-right">
-              <p className="text-xs text-white/40">Total</p>
-              <p className="font-mono text-2xl font-bold tracking-tight text-[var(--accent)]">₲ {money(f.totalGeneral ?? 0)}</p>
-            </div>
-          </div>
-
-          <div className="flex gap-3 justify-center">
+        <div className="bg-[#0c0c0e] border border-white/10 rounded-none w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
+          <ResumenCompraExito
+            titulo="Pedido recibido y factura registrada"
+            subtitulo="La mercadería ingresó al inventario."
+            datos={[
+              { label: "Pedido", value: `#${f.idPedido ?? pedido.idPedido}` },
+              { label: "Proveedor", value: f.nombreProveedor },
+              { label: "N° de factura", value: f.numeroFactura || "—" },
+              { label: "N° de timbrado", value: f.numeroTimbrado || "—" },
+            ]}
+            filasIva={filasIva}
+            ivaTotal={f.ivaTotal ?? 0}
+            total={f.totalGeneral ?? 0}
+          >
             <button
               onClick={volverSinCambios}
-              className="px-6 py-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-black text-sm font-semibold rounded-none transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-black text-sm font-semibold transition-colors rounded-none"
             >
-              Volver a pedidos
+              <PackageCheck className="w-4 h-4" /> Volver a pedidos
             </button>
-          </div>
+          </ResumenCompraExito>
         </div>
       </div>
     );
@@ -568,9 +536,10 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
             </div>
           </div>
 
-          {/* Totales + Acciones */}
-          <div className="pt-3 border-t border-white/10">
-            <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+          {/* Totales + Acciones: resumen arriba, botones abajo (2 filas limpias) */}
+          <div className="pt-3 border-t border-white/10 space-y-3">
+            {/* Resumen: liquidación de IVA a la izquierda, total a la derecha */}
+            <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-sm">
                 <span className="border border-white/15 bg-white/5 px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-white/80">Liquidación IVA</span>
                 {iva5 > 0 && (
@@ -588,31 +557,30 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
                 </span>
               </div>
 
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-                <div className="text-right">
-                  <p className="text-xs text-white/40 uppercase tracking-[0.12em]">Total factura</p>
-                  <p className="font-mono text-3xl font-bold tracking-tight text-[var(--accent)]">
-                    ₲ {money(total)}
-                  </p>
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={onClose}
-                    className="px-4 py-2 bg-white/5 text-white border border-white/10 text-sm font-medium rounded-none hover:bg-white/10 transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleSubmit}
-                    disabled={guardando || timbradoBloqueado}
-                    className="inline-flex items-center justify-center gap-2 px-5 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-none transition-colors"
-                  >
-                    <Truck size={16} />
-                    {guardando ? "Registrando..." : "Recepcionar y registrar compra"}
-                  </button>
-                </div>
+              <div className="text-right">
+                <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40">Total factura</p>
+                <p className="font-mono text-2xl font-bold tracking-tight text-[var(--accent)]">
+                  ₲ {money(total)}
+                </p>
               </div>
+            </div>
+
+            {/* Acciones: Cancelar a la izquierda, acción principal a la derecha */}
+            <div className="flex items-center justify-between gap-2">
+              <button
+                onClick={onClose}
+                className="rounded-none border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white/70 transition-colors hover:text-white"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={guardando || timbradoBloqueado}
+                className="inline-flex items-center justify-center gap-2 rounded-none bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Truck size={16} />
+                {guardando ? "Registrando…" : "Recepcionar y registrar compra"}
+              </button>
             </div>
           </div>
         </div>

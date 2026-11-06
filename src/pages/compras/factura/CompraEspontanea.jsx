@@ -7,6 +7,7 @@ import { getProveedores, getProveedorId, getProveedorNombre } from "../../../api
 import { crearFacturaCompra, getTimbradosProveedor } from "../../../api/facturasCompraApi";
 import { apiErrorMessage } from "../../../api/errors";
 import TimbradosModal from "./TimbradosModal";
+import ResumenCompraExito from "../ResumenCompraExito";
 import { money, hoyAsuncion, formatoFactura, esKG, parseCant, estadoTimbrado, etiquetaTimbrado, S } from "../utils";
 import CantidadInput from "../../../components/ui/CantidadInput";
 
@@ -234,91 +235,36 @@ export default function CompraEspontanea({ onVolver }) {
     ].filter((r) => detalle(r.tasa).length > 0);
     const cantProductos = (f.detalles || []).length;
     return (
-      <div className="border border-[var(--accent)]/30 bg-[var(--accent)]/5 p-6 sm:p-8">
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-14 h-14 shrink-0 bg-[var(--accent)]/10 flex items-center justify-center">
-              <Check className="w-7 h-7 text-[var(--accent)]" />
-            </div>
-            <div>
-              <p className="text-xl font-semibold text-white">Factura registrada correctamente</p>
-              <p className="text-sm text-white/60">
-                {cantProductos} {cantProductos === 1 ? "producto ingresado" : "productos ingresados"} al inventario
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-col items-start gap-4 sm:items-end">
-            <div className="flex items-center gap-3">
-              <span className="text-base font-medium text-white/70">Total</span>
-              <span className="text-3xl font-bold tracking-tight text-[var(--accent)] tabular-nums">₲ {money(dg.total)}</span>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setExito(null); setLineas([]); setProveedorSel(null); setProveedorSearch("");
-                  setTimbrados([]); setTimbradoId(""); setNumeroComprobante(""); setFormaPago("CONTADO");
-                  setFechaEmision(hoyAsuncion());
-                }}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-black text-sm font-semibold transition-colors"
-              >
-                <ShoppingCart className="w-4 h-4" /> Nueva compra
-              </button>
-              {onVolver && (
-                <button
-                  onClick={onVolver}
-                  className="px-5 py-3 bg-white/5 text-white border border-white/10 text-sm font-medium hover:bg-white/10 transition-colors"
-                >
-                  Volver
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Datos del comprobante */}
-        <dl className="mx-auto mt-6 max-w-2xl grid grid-cols-1 gap-x-6 gap-y-4 border-y border-white/10 py-5 sm:grid-cols-2">
-          <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-white/50">Proveedor</dt>
-            <dd className="mt-1 text-sm font-medium text-white">{nombreProveedorMostrar}</dd>
-          </div>
-          <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-white/50">N° de factura</dt>
-            <dd className="mt-1 text-sm font-medium text-white tabular-nums">{f.numeroFactura || "—"}</dd>
-          </div>
-        </dl>
-
-        {/* Liquidación del IVA */}
-        {filasIva.length > 0 && (
-          <div className="mx-auto mt-6 max-w-2xl overflow-hidden border border-white/10 bg-[#0c0c0e]">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className={THEAD_ROW}>
-                  <th scope="col" className="px-4 py-3 text-left font-medium">Liquidación del IVA</th>
-                  <th scope="col" className="px-4 py-3 text-right font-medium">Subtotal</th>
-                  <th scope="col" className="px-4 py-3 text-right font-medium">IVA</th>
-                </tr>
-              </thead>
-              <tbody className="tabular-nums text-white/80">
-                {filasIva.map((r) => (
-                  <tr key={r.etiqueta} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
-                    <td className="px-4 py-3">{r.etiqueta}</td>
-                    <td className="px-4 py-3 text-right">₲ {money(r.subtotal)}</td>
-                    <td className="px-4 py-3 text-right">{r.iva == null ? "—" : `₲ ${money(r.iva)}`}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-t border-white/10 font-medium tabular-nums text-white">
-                  <td className="px-4 py-3">Total IVA</td>
-                  <td className="px-4 py-3" />
-                  <td className="px-4 py-3 text-right">₲ {money(dg.ivaTotal)}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+      <ResumenCompraExito
+        titulo="Factura registrada correctamente"
+        subtitulo={`${cantProductos} ${cantProductos === 1 ? "producto ingresado" : "productos ingresados"} al inventario`}
+        datos={[
+          { label: "Proveedor", value: nombreProveedorMostrar },
+          { label: "N° de factura", value: f.numeroFactura || "—" },
+        ]}
+        filasIva={filasIva}
+        ivaTotal={dg.ivaTotal}
+        total={dg.total}
+      >
+        <button
+          onClick={() => {
+            setExito(null); setLineas([]); setProveedorSel(null); setProveedorSearch("");
+            setTimbrados([]); setTimbradoId(""); setNumeroComprobante(""); setFormaPago("CONTADO");
+            setFechaEmision(hoyAsuncion());
+          }}
+          className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-black text-sm font-semibold transition-colors rounded-none"
+        >
+          <ShoppingCart className="w-4 h-4" /> Nueva compra
+        </button>
+        {onVolver && (
+          <button
+            onClick={onVolver}
+            className="px-5 py-3 bg-white/5 text-white border border-white/10 text-sm font-medium hover:bg-white/10 transition-colors rounded-none"
+          >
+            Volver
+          </button>
         )}
-      </div>
+      </ResumenCompraExito>
     );
   }
 
