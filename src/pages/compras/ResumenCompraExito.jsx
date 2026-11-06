@@ -119,12 +119,6 @@ export default function ResumenCompraExito({
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot>
-                    <tr className="border-t border-white/10 font-medium tabular-nums text-white">
-                      <td className="px-4 py-3">Total</td>
-                      <td className="px-4 py-3 text-right">{money(total)}</td>
-                    </tr>
-                  </tfoot>
                 </table>
               </div>
             )}

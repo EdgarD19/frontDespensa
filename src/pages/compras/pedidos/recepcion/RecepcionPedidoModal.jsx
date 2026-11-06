@@ -235,9 +235,10 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
   if (exito) {
     const f = exito;
     const filasIva = [
+      // "Gravadas" = IVA INCLUIDO (base + IVA del back); así suma con Exentas = totalGeneral.
       { etiqueta: "Exentas", tasa: 0, subtotal: f.subtotalExento ?? 0, iva: null },
-      { etiqueta: "Gravadas 5%", tasa: 5, subtotal: f.subtotal5 ?? 0, iva: f.iva5 ?? 0 },
-      { etiqueta: "Gravadas 10%", tasa: 10, subtotal: f.subtotal10 ?? 0, iva: f.iva10 ?? 0 },
+      { etiqueta: "Gravadas 5%", tasa: 5, subtotal: (f.subtotal5 ?? 0) + (f.iva5 ?? 0), iva: f.iva5 ?? 0 },
+      { etiqueta: "Gravadas 10%", tasa: 10, subtotal: (f.subtotal10 ?? 0) + (f.iva10 ?? 0), iva: f.iva10 ?? 0 },
     ];
     return (
       <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">

@@ -229,9 +229,10 @@ export default function CompraEspontanea({ onVolver }) {
     const nombreProveedorMostrar = getProveedorNombre(proveedorSel) || f.nombreProveedor || "—";
 
     const filasIva = [
+      // "Gravadas" = IVA INCLUIDO (base + IVA), mismo criterio del back.
       { etiqueta: "Exentas", tasa: 0, subtotal: dg.subtotalExento, iva: null },
-      { etiqueta: "Gravadas 5%", tasa: 5, subtotal: dg.subtotal5, iva: dg.iva5 },
-      { etiqueta: "Gravadas 10%", tasa: 10, subtotal: dg.subtotal10, iva: dg.iva10 },
+      { etiqueta: "Gravadas 5%", tasa: 5, subtotal: dg.subtotal5 + dg.iva5, iva: dg.iva5 },
+      { etiqueta: "Gravadas 10%", tasa: 10, subtotal: dg.subtotal10 + dg.iva10, iva: dg.iva10 },
     ];
     const cantProductos = (f.detalles || []).length;
     return (
