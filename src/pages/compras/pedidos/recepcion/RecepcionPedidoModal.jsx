@@ -11,6 +11,7 @@ import {
 import { apiErrorMessage } from "../../../../api/errors";
 import CantidadInput from "../../../../components/ui/CantidadInput";
 import TimbradosModal from "../../factura/TimbradosModal";
+import ResumenCompraExito from "../../ResumenCompraExito";
 import { money, hoyAsuncion, formatoFactura, esKG, parseCant, estadoTimbrado, etiquetaTimbrado, S } from "../../utils";
 
 export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
