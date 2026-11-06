@@ -233,9 +233,7 @@ export default function CompraEspontanea({ onVolver }) {
       { etiqueta: "Exentas", tasa: 0, subtotal: dg.subtotalExento, iva: null },
       { etiqueta: "Gravadas 5%", tasa: 5, subtotal: dg.subtotal5 + dg.iva5, iva: dg.iva5 },
       { etiqueta: "Gravadas 10%", tasa: 10, subtotal: dg.subtotal10 + dg.iva10, iva: dg.iva10 },
-    ];
-    const cantProductos = (f.detalles || []).length;
-    const reiniciarFormulario = () => {
+    ];    const reiniciarFormulario = () => {
       setExito(null); setLineas([]); setProveedorSel(null); setProveedorSearch("");
       setTimbrados([]); setTimbradoId(""); setNumeroComprobante(""); setFormaPago("CONTADO");
       setFechaEmision(hoyAsuncion());
@@ -244,22 +242,8 @@ export default function CompraEspontanea({ onVolver }) {
       /* Resumen como modal, con cabecera alineada a la pantalla ("Nueva compra") */
       <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
         <div className="bg-[#0c0c0e] border border-white/10 rounded-none w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
-          {/* Cabecera del modal */}
-          <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
-            <h2 className="text-sm font-semibold text-white">Nueva compra</h2>
-            <button
-              type="button"
-              onClick={reiniciarFormulario}
-              aria-label="Cerrar"
-              className="rounded-none p-1 text-white/40 transition-colors hover:bg-white/10 hover:text-white"
-            >
-              <X size={16} />
-            </button>
-          </div>
-
-          <ResumenCompraExito
+        <ResumenCompraExito
         titulo="Factura registrada correctamente"
-        subtitulo={`${cantProductos} ${cantProductos === 1 ? "producto ingresado" : "productos ingresados"} al inventario`}
         datos={[
           { label: "Proveedor", value: nombreProveedorMostrar },
           { label: "N° de factura", value: f.numeroFactura || "—" },
