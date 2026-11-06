@@ -192,7 +192,7 @@ export default function ProductForm({
             </div>
 
             <label className={labelClass}>
-              <span className={labelText}>Stock mínimo</span>
+              <span className={labelText}>Stock de alerta</span>
               <CantidadInput
                 unidadMedida={isPeso ? "KG" : "UN"}
                 name="stockMinimo"
@@ -200,7 +200,7 @@ export default function ProductForm({
                 onChange={(v) => setFormData((prev) => ({ ...prev, stockMinimo: v ?? "" }))}
                 permitirCero
                 placeholder="10"
-                ariaLabel="Stock mínimo"
+                ariaLabel="Stock de alerta (mínimo que dispara el aviso en el Dashboard)"
               />
             </label>
 

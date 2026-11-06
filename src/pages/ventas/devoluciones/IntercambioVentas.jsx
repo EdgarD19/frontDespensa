@@ -79,6 +79,18 @@ function extraerFacturaDeObs(obs) {
   return m2 ? m2[0] : null;
 }
 
+/* "Factura: 001-001-0000042 — <texto del usuario>" → solo el texto del usuario:
+   el n° de factura ya se muestra en su propia fila/cabecera, no en obs. */
+function obsSinMarcaDeFactura(obs) {
+  const s = String(obs ?? "").trim();
+  const m = /factura[^0-9]*((?:\d{1,3}-){2}\d{5,})/i.exec(s);
+  if (!m) return s;
+  let resto = s.replace(m[0], "").trim();
+  resto = resto.replace(/^(?:—|–|-|:)+\s*/u, "").trim();
+  resto = resto.replace(/\s*(?:—|–|-|:)+\s*$/u, "").trim();
+  return resto;
+}
+
 function useEscape(onCerrar) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onCerrar(); };
@@ -746,11 +758,7 @@ function DetalleIntercambioModal({ intercambio, onCerrar }) {
 
         <div className="flex-1 space-y-4 overflow-y-auto p-5 [color-scheme:dark] [scrollbar-color:#2a2a32_transparent] [scrollbar-width:thin]">
           {/* Datos del intercambio (mismo patrón que VerFacturaModal de compras) */}
-          <div className="grid grid-cols-2 gap-4 rounded-none border border-white/10 bg-white/[0.02] p-4 text-sm lg:grid-cols-4">
-            <div>
-              <p className="text-xs text-white/40">N° intercambio</p>
-              <p className="whitespace-nowrap tabular-nums text-white">{intercambio.numeroIntercambio || "—"}</p>
-            </div>
+          <div className="grid grid-cols-2 gap-4 rounded-none border border-white/10 bg-white/[0.02] p-4 text-sm lg:grid-cols-3">
             <div>
               <p className="text-xs text-white/40">Factura de venta</p>
               <p className="whitespace-nowrap tabular-nums text-white">
@@ -809,10 +817,14 @@ function DetalleIntercambioModal({ intercambio, onCerrar }) {
             </p>
           </div>
 
-          {intercambio.observaciones && (
+          {/* Observaciones del usuario: sin la marca "Factura: X" (esa data ya
+              figura en su fila propia). Si al limpiar no queda nada, no se muestra. */}
+          {obsSinMarcaDeFactura(intercambio.observaciones) && (
             <div className="rounded-none border border-white/10 bg-white/[0.02] p-4">
               <p className="text-xs text-white/40">Observaciones</p>
-              <p className="mt-1 whitespace-pre-wrap break-words text-sm text-white/80">{intercambio.observaciones}</p>
+              <p className="mt-1 whitespace-pre-wrap break-words text-sm text-white/80">
+                {obsSinMarcaDeFactura(intercambio.observaciones)}
+              </p>
             </div>
           )}
         </div>

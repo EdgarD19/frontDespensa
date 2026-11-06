@@ -231,7 +231,7 @@ export default function DashboardVentas() {
           </section>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            {/* ── Stock mínimo ── */}
+            {/* ── Stock bajo (sección coherente con "Stock de alerta" del ABM) ── */}
             <section className={`${CARD} flex flex-col`} aria-labelledby="h-stock">
               <SectionHeader
                 icon={AlertTriangle}
@@ -244,7 +244,7 @@ export default function DashboardVentas() {
                 <EmptyState
                   icon={PackageOpen}
                   title="Todo el stock está al día"
-                  text="Ningún producto llegó a su stock mínimo."
+                  text="Ningún producto bajó de su stock de alerta."
                 />
               ) : (
                 <ul className="max-h-[28rem] divide-y divide-white/10 overflow-y-auto">

@@ -95,15 +95,27 @@ export default function RegistroVenta() {
   const [timbradoEstado, setTimbradoEstado] = useState(null);
   // Toast corto cuando un escaneo no matchea: no bloquea, se limpia solo en 2 s
   // y el campo queda apto para seguir escaneando.
-  const [avisoScan, setAvisoScan] = useState(null);
+  const [avisoScan, setAvisoScan] = useState(null); // { titulo, texto, tone: "amber"|"red", icono }
   const avisoScanTimer = useRef(null);
   useEffect(() => () => clearTimeout(avisoScanTimer.current), []);
 
-  const mostrarAvisoScan = useCallback((codigo) => {
+  // Modal efímero de validación (2 s, no bloquea clicks): lo usan el escáner,
+  // producto inactivo, sin precio vigente y tope de stock en el carrito.
+  const mostrarAviso = useCallback(({ titulo, texto, tone = "amber", icono = "barcode" }) => {
     clearTimeout(avisoScanTimer.current);
-    setAvisoScan({ codigo });
+    setAvisoScan({ titulo, texto, tone, icono });
     avisoScanTimer.current = setTimeout(() => setAvisoScan(null), 2000);
   }, []);
+
+  // Alias para el caso puntual de código escaneado sin match.
+  const mostrarAvisoScan = useCallback((codigo) => {
+    mostrarAviso({
+      titulo: "Código no encontrado",
+      texto: <>El lector escaneó <span className="font-medium text-white" style={MONO}>{codigo}</span> y no coincide con ningún producto del catálogo.</>,
+      tone: "amber",
+      icono: "barcode",
+    });
+  }, [mostrarAviso]);
 
   useEffect(() => {
     let activo = true;
@@ -323,7 +335,35 @@ export default function RegistroVenta() {
   const agregarProducto = useCallback((producto, cantidad) => {
     const stock = parseStockDisponible(producto);
     const precio = parsePrecioVenta(producto);
-    if (stock <= 0) { setErrorGlobal("Sin stock disponible."); return; }
+    const nombre = producto?.nombre || producto?.codigoBarras || "El producto";
+    // Validaciones de catálogo: inactivo, sin precio vigente, sin stock.
+    if (producto?.activo === false) {
+      mostrarAviso({
+        titulo: "Producto inactivo",
+        texto: <> <span className="font-medium text-white">{nombre}</span> está inactivo y no está habilitado para la venta.</>,
+        tone: "red",
+        icono: "alerta",
+      });
+      return;
+    }
+    if (precio <= 0) {
+      mostrarAviso({
+        titulo: "Sin precio vigente",
+        texto: <><span className="font-medium text-white">{nombre}</span> no tiene precio de venta vigente. Cargalo en Inventario → Precios.</>,
+        tone: "red",
+        icono: "alerta",
+      });
+      return;
+    }
+    if (stock <= 0) {
+      mostrarAviso({
+        titulo: "Sin stock",
+        texto: <><span className="font-medium text-white">{nombre}</span> no tiene stock disponible.</>,
+        tone: "red",
+        icono: "alerta",
+      });
+      return;
+    }
     const pesable = esProductoPesable(producto);
     const q = pesable
       ? Math.min(Math.max(0.001, parseFloat(String(cantidad).replace(",", "."))), stock)
@@ -332,19 +372,30 @@ export default function RegistroVenta() {
     setErrorGlobal(null);
     setCarrito((prev) => {
       const idx = prev.findIndex((l) => l.productoId === producto.id);
-      if (idx === -1) {
-        const line = construirLineaCarrito(producto);
-        line.cantidad = q;
-        return [...prev, line];
+      // Producto ya en el carrito: se SUMA la cantidad (segundo escaneo del
+      // mismo código = +1, tercero = +2…), siempre respetando el stock.
+      if (idx !== -1) {
+        const line = prev[idx];
+        const nc = Math.min(line.cantidad + q, stock);
+        if (nc === line.cantidad) {
+          // Tope: el carrito ya acumuló todo el stock disponible del producto.
+          mostrarAviso({
+            titulo: "Stock al máximo en el carrito",
+            texto: <><span className="font-medium text-white">{nombre}</span> ya suma {line.cantidad} y solo hay {stock} disponible.</>,
+            tone: "amber",
+            icono: "alerta",
+          });
+          return prev;
+        }
+        const next = [...prev];
+        next[idx] = { ...line, cantidad: nc, precioUnitario: precio, stockDisponible: stock };
+        return next;
       }
-      const line = prev[idx];
-      const nc = Math.min(line.cantidad + q, stock);
-      if (nc === line.cantidad) return prev;
-      const next = [...prev];
-      next[idx] = { ...line, cantidad: nc, precioUnitario: precio, stockDisponible: stock };
-      return next;
+      const line = construirLineaCarrito(producto);
+      line.cantidad = q;
+      return [...prev, line];
     });
-  }, []);
+  }, [mostrarAviso]);
 
   // Pase automático desde Anulación (refacturación rápida): quedó fuera de este
   // módulo. La búsqueda de tickets y la refacturación pasarán a
@@ -988,25 +1039,38 @@ export default function RegistroVenta() {
         />
       )}
 
-      {/* Escaneo sin match: modal centrado efímero (2 s). No bloquea el click
-          (pointer-events-none): el operador puede seguir trabajando mientras
-          se desvanece, y el timer lo cierra solo. */}
+      {/* Validación efímera (2 s): código sin match, producto inactivo, sin
+          precio vigente o stock al máximo. Modal centrado, no bloquea el
+          click (pointer-events-none): el operador sigue escaneando mientras
+          se desvanecí. */}
       {avisoScan && (
         <div
           role="status"
           aria-live="polite"
           className="pointer-events-none fixed inset-0 z-[130] flex items-center justify-center bg-black/45 p-4"
         >
-          <div className="flex w-full max-w-sm items-start gap-4 rounded-none border border-amber-400/40 bg-[#0c0c0e] p-5 shadow-2xl">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-none border border-amber-400/30 bg-amber-400/10 text-amber-400">
-              <Barcode className="h-5 w-5" aria-hidden />
+          <div className={`flex w-full max-w-sm items-start gap-4 rounded-none border p-5 shadow-2xl ${
+            avisoScan.tone === "red"
+              ? "border-red-500/40 bg-[#0c0c0e]"
+              : "border-amber-400/40 bg-[#0c0c0e]"
+          }`}>
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-none border ${
+              avisoScan.tone === "red"
+                ? "border-red-500/30 bg-red-500/10 text-red-400"
+                : "border-amber-400/30 bg-amber-400/10 text-amber-400"
+            }`}>
+              {avisoScan.icono === "alerta"
+                ? <AlertTriangle className="h-5 w-5" aria-hidden />
+                : <Barcode className="h-5 w-5" aria-hidden />}
             </div>
             <div className="min-w-0 flex-1 space-y-1">
-              <h2 className="text-sm font-semibold text-amber-400">Código no encontrado</h2>
-              <p className="text-sm text-white/70">
-                El lector escaneó <span className="font-medium text-white" style={MONO}>{avisoScan.codigo}</span> y
-                no coincide con ningún producto del catálogo.
-              </p>
+              <h2 className={`text-sm font-semibold ${
+                avisoScan.tone === "red" ? "text-red-400" : "text-amber-400"
+              }`}
+              >
+                {avisoScan.titulo}
+              </h2>
+              <p className="text-sm text-white/70">{avisoScan.texto}</p>
             </div>
           </div>
         </div>

@@ -18,6 +18,7 @@ const FORM_INICIAL = {
   numeroDocumento: "",
   descripcionNegocio: "",
   personaContacto: "",
+  contactoCelular: "",
   idPais: "",
   idCiudad: "",
   direccion: "",
@@ -48,7 +49,12 @@ export default function ProveedoresModal({
         apellido: proveedorEdit.apellido ?? "",
         numeroDocumento: proveedorEdit.numeroDocumento ?? "",
         descripcionNegocio: proveedorEdit.descripcion ?? "",
-        personaContacto: proveedorEdit.personaContacto ?? "",
+        // El contacto puede llevar su celular embebido: "Nombre · cel +5959XXXXXXXX" — se separa al editar.
+        personaContacto: (() => {
+          const m = /^(.*?)\s*·\s*cel\s*(\+5959\d{8})$/.exec(proveedorEdit.personaContacto ?? "");
+          return m ? m[1].trim() : proveedorEdit.personaContacto ?? "";
+        })(),
+        contactoCelular: (/^(.*?)\s*·\s*cel\s*(\+5959\d{8})$/.exec(proveedorEdit.personaContacto ?? "") ?? [])[2] ?? "",
         idPais: proveedorEdit.idPais ?? "",
         idCiudad: proveedorEdit.idCiudad ?? "",
         direccion: proveedorEdit.direccion ?? "",
@@ -94,6 +100,18 @@ export default function ProveedoresModal({
   function handleCelularChange(e) {
     const solo = e.target.value.replace(/\D/g, "").slice(0, 9);
     setForm((prev) => ({ ...prev, celular: solo ? `+595${solo}` : "" }));
+  }
+
+  // Celular del contacto: misma validación/formato que el celular del proveedor
+  // (+5959XXXXXXXX). Se guarda embebido en personaContacto porque el back no
+  // tiene aún un campo propio (ver informe para el duo).
+  const contactoCelularResto = form.contactoCelular?.startsWith("+595")
+    ? form.contactoCelular.slice(4)
+    : form.contactoCelular ?? "";
+
+  function handleContactoCelularChange(e) {
+    const solo = e.target.value.replace(/\D/g, "").slice(0, 9);
+    setForm((prev) => ({ ...prev, contactoCelular: solo ? `+595${solo}` : "" }));
   }
 
   const telefonoResto = form.telefono?.startsWith("021")
@@ -143,6 +161,9 @@ export default function ProveedoresModal({
     if (form.celular && !/^\+5959\d{8}$/.test(form.celular.trim())) {
       errs.celular = "Debés ingresar los 9 números del celular (formato +5959XXXXXXXX)";
     }
+    if (form.contactoCelular && !/^\+5959\d{8}$/.test(form.contactoCelular.trim())) {
+      errs.contactoCelular = "Debés ingresar los 9 números del celular (formato +5959XXXXXXXX)";
+    }
     const email = form.email?.trim() ?? "";
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       errs.email = "Email inválido";
@@ -160,9 +181,17 @@ export default function ProveedoresModal({
       setErrores(errs);
       return;
     }
+    // Persona de contacto + su celular se juntan en el texto que persiste el back
+    // ("Nombre · cel +5959XXXXXXXX"). El back no tiene campo propio aún.
+    const nombreContacto = form.personaContacto.trim();
+    const personaContactoFinal = [nombreContacto, form.contactoCelular && `cel ${form.contactoCelular}`]
+      .filter(Boolean)
+      .join(" · ");
+    const { contactoCelular: _descartarContactoCelular, ...formLimpio } = form;
     onGuardar({
-      ...form,
+      ...formLimpio,
       nombre: form.nombre.trim(),
+      personaContacto: personaContactoFinal || "",
       numeroDocumento: form.numeroDocumento.trim(),
       tipoDocumento: form.tipoPersona === "JURIDICA" ? "RUC" : "CI",
     });
@@ -254,8 +283,8 @@ export default function ProveedoresModal({
             )}
           </div>
 
-          {/* Numero documento + Persona contacto */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Numero documento + Persona contacto + Celular del contacto */}
+          <div className="grid grid-cols-3 gap-3">
             <label className={labelClass}>
               <span className={labelText}>
                 {esJuridica ? "R.U.C." : "C.I. / R.U.C."} <span className="text-red-400">*</span>
@@ -301,6 +330,27 @@ export default function ProveedoresModal({
                 className={inputClass}
               />
               {errores.personaContacto && <span className="text-[11px] text-red-400">{errores.personaContacto}</span>}
+            </label>
+
+            {/* Celular de la persona de contacto (mismo formato que Celular del proveedor) */}
+            <label className={labelClass}>
+              <span className={labelText}>Celular (contacto)</span>
+              <div className="flex items-center gap-1">
+                <span className="rounded-l-none border border-r-0 border-white/10 bg-white/[0.06] px-2.5 py-1.5 text-sm text-white select-none">
+                  +595
+                </span>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  name="contactoCelular"
+                  value={contactoCelularResto}
+                  onChange={handleContactoCelularChange}
+                  maxLength={9}
+                  placeholder="961000000"
+                  className={`${inputClass} !rounded-l-none`}
+                />
+              </div>
+              {errores.contactoCelular && <span className="text-[11px] text-red-400">{errores.contactoCelular}</span>}
             </label>
           </div>
 
