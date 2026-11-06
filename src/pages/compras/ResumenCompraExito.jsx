@@ -60,36 +60,75 @@ export default function ResumenCompraExito({
         </dl>
       )}
 
-      {/* Liquidación del IVA (solo tasas con líneas) */}
-      {filasIva.length > 0 && (
-        <div className={TABLE_SHELL + " mx-auto mt-6 max-w-2xl"}>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className={THEAD_ROW}>
-                <th scope="col" className="px-4 py-3 text-left font-medium">Liquidación del IVA</th>
-                <th scope="col" className="px-4 py-3 text-right font-medium">Subtotal</th>
-                <th scope="col" className="px-4 py-3 text-right font-medium">IVA</th>
-              </tr>
-            </thead>
-            <tbody className="tabular-nums text-white/80">
-              {filasIva.map((r) => (
-                <tr key={r.etiqueta} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
-                  <td className="px-4 py-3">{r.etiqueta}</td>
-                  <td className="px-4 py-3 text-right">{money(r.subtotal)}</td>
-                  <td className="px-4 py-3 text-right">{r.iva == null ? "—" : `{money(r.iva)}`}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="border-t border-white/10 font-medium tabular-nums text-white">
-                <td className="px-4 py-3">Total IVA</td>
-                <td className="px-4 py-3" />
-                <td className="px-4 py-3 text-right">{money(ivaTotal)}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      )}
+      {/* Liquidación de IVA + Detalle fiscal (dos tablas, formato fisicalista) */}
+      {filasIva.length > 0 && (() => {
+        // Liquidación: solo tasas que llevan IVA (5% / 10%)
+        const liqRows = filasIva
+          .filter((r) => r.iva != null)
+          .map((r) => ({ etiqueta: `IVA ${r.tasa}%`, valor: r.iva }));
+        // Detalle fiscal: montos por tasa (Exentas / Gravadas)
+        const fiscalRows = filasIva.map((r) => ({
+          etiqueta: r.tasa === 0 ? "Total Exentas" : `Total Gravadas ${r.tasa}%`,
+          valor: r.subtotal,
+        }));
+        return (
+          <div className="mx-auto mt-6 grid max-w-2xl gap-4">
+            {liqRows.length > 0 && (
+              <div className={TABLE_SHELL}>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className={THEAD_ROW}>
+                      <th scope="col" className="px-4 py-3 text-left font-medium">Liquidación de IVA</th>
+                      <th scope="col" className="px-4 py-3 text-right font-medium">IVA</th>
+                    </tr>
+                  </thead>
+                  <tbody className="tabular-nums text-white/80">
+                    {liqRows.map((r) => (
+                      <tr key={r.etiqueta} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
+                        <td className="px-4 py-3">{r.etiqueta}</td>
+                        <td className="px-4 py-3 text-right">{money(r.valor)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t border-white/10 font-medium tabular-nums text-white">
+                      <td className="px-4 py-3">Total IVA</td>
+                      <td className="px-4 py-3 text-right">{money(ivaTotal)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+
+            {fiscalRows.length > 0 && (
+              <div className={TABLE_SHELL}>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className={THEAD_ROW}>
+                      <th scope="col" className="px-4 py-3 text-left font-medium">Detalle fiscal</th>
+                      <th scope="col" className="px-4 py-3 text-right font-medium">Monto</th>
+                    </tr>
+                  </thead>
+                  <tbody className="tabular-nums text-white/80">
+                    {fiscalRows.map((r) => (
+                      <tr key={r.etiqueta} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
+                        <td className="px-4 py-3">{r.etiqueta}</td>
+                        <td className="px-4 py-3 text-right">{money(r.valor)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t border-white/10 font-medium tabular-nums text-white">
+                      <td className="px-4 py-3">Total</td>
+                      <td className="px-4 py-3 text-right">{money(total)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
