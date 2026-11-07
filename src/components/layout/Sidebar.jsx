@@ -79,21 +79,14 @@ export default function Sidebar() {
                 ].join(" ");
               }}
             >
-              {({ isActive }) => {
-                const active = isActive || isActiveInventario || isActiveConfiguracion;
-                return (
-                  <>
-                    {active && (
-                      <span aria-hidden="true" className="absolute left-0 top-0 h-full w-[3px] bg-[var(--accent)]" />
-                    )}
-                    {/* Iconos grandes en ambos estados */}
-                    <Icon className={collapsed ? "w-6 h-6 flex-shrink-0" : "w-5 h-5 flex-shrink-0"} />
-                    {!collapsed && (
-                      <span className="text-[15px] font-medium whitespace-nowrap">{link.label}</span>
-                    )}
-                  </>
-                );
-              }}
+              {() => (
+                <>
+                  <Icon className={collapsed ? "w-6 h-6 flex-shrink-0" : "w-5 h-5 flex-shrink-0"} />
+                  {!collapsed && (
+                    <span className="text-[15px] font-medium whitespace-nowrap">{link.label}</span>
+                  )}
+                </>
+              )}
             </NavLink>
           );
         })}
