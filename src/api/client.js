@@ -12,31 +12,25 @@ function normalizeBaseUrl(raw) {
 }
 
 function resolveBaseUrl() {
-  // En `npm run dev` siempre URL relativa: pasa por el proxy de Vite (vite.config.js) y evita CORS.
-  // Si se usara VITE_API_BASE_URL=http://localhost:8081/... el navegador pegaría en otro origen y Axios suele mostrar "Network Error".
+  const fromEnv = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "").trim();
+  if (fromEnv) return normalizeBaseUrl(fromEnv);
+
+  // 2) En `npm run dev` sin variable → URL relativa: pasa por el proxy de Vite
+  //    (vite.config.js) y evita CORS contra http://127.0.0.1:8081.
   if (import.meta.env.DEV) {
     return "/DespensaProyect";
   }
-  const fromEnv = import.meta.env.VITE_API_BASE_URL?.trim();
-  if (fromEnv) return normalizeBaseUrl(fromEnv);
+
+  // 3) Build de producción sin variable → localhost por defecto.
   return "http://localhost:8081/DespensaProyect";
 }
 
-export const API_BASE_URL = resolveBaseUrl();
+const API_BASE_URL = resolveBaseUrl();
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: { "Content-Type": "application/json" },
+  headers: {
+    "Content-Type": "application/json",
+    "ngrok-skip-browser-warning": "true",
+  },
 });
-
-/** URL absoluta para enlaces en el navegador (Swagger, etc.) */
-export function absoluteApiOrigin() {
-  const base = API_BASE_URL;
-  if (base.startsWith("http")) {
-    return base;
-  }
-  if (typeof window !== "undefined") {
-    return `${window.location.origin}${base.startsWith("/") ? base : `/${base}`}`;
-  }
-  return base;
-}
