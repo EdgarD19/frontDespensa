@@ -508,15 +508,14 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
                       {l.producto.iva != null ? `${l.producto.iva}%` : "10%"}
                     </span>
                   </div>
-                  <div className="flex items-center bg-white/[0.03] border border-white/10">
-                    <span className="select-none self-stretch flex items-center px-1.5 text-[10px] leading-none text-white/30 border-r border-white/10">Gs.</span>
+                  <div className="py-1.5 text-right bg-white/[0.03]">
                     <input
                       type="number"
                       min="0"
                       step="1"
                       value={l.precioUnitario}
                       onChange={(e) => actualizarPrecio(l.producto.id, e.target.value)}
-                      className="w-24 bg-transparent rounded-none px-2 py-1 text-right text-sm font-mono text-white outline-none transition-colors focus:border-[var(--accent)]"
+                      className="w-28 bg-white/[0.03] border border-white/10 rounded-none px-2 py-1 text-right text-sm font-mono text-white outline-none transition-colors focus:border-[var(--accent)]"
                     />
                   </div>
                   <div className="py-1.5 pr-3 text-right font-semibold font-mono text-sm text-white bg-white/[0.03]">
