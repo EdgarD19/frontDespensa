@@ -23,6 +23,19 @@ select option:checked {
   color: #000;
 }
 
+/* Inputs numéricos sin las flechitas nativas de spinner (dirty chrome/ firefox):
+   sirven para que las cantidades/precios se escriban o peguen desde escáner
+   sin el ruido visual del stepper. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
 
 :root {
   --bg-main: #0b0f14;
