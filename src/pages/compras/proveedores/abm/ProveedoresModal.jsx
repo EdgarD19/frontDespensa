@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 
 const inputClass =
@@ -39,6 +39,19 @@ export default function ProveedoresModal({
 }) {
   const [form, setForm] = useState(FORM_INICIAL);
   const [errores, setErrores] = useState({});
+  const formRef = useRef(null);
+  // Carga cognitiva: al fallar el guardado, saltar al PRIMER campo con error
+  // (el usuario no debe buscar qué campo falló). Solo funciona si ese campo
+  // existe en el formulario; el mensaje también está pegado al campo.
+  useEffect(() => {
+    const claves = Object.keys(errores || {}).filter((k) => errores[k]);
+    if (claves.length === 0 || !formRef.current) return;
+    const el = formRef.current.querySelector(`[name="${claves[0]}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.focus({ preventScroll: true });
+    }
+  }, [errores]);
 
   useEffect(() => {
     if (!abierto) return;
@@ -215,7 +228,7 @@ export default function ProveedoresModal({
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} className="p-4 flex flex-col gap-2.5">
+        <form ref={formRef} onSubmit={handleSubmit} className="p-4 flex flex-col gap-2.5">
 
           {/* Tipo de persona */}
           <div>

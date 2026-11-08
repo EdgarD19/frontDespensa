@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import ConfirmModal from "../../../components/ui/ConfirmModal";
 import { CARD } from "../../../components/ui/styles";
 import PageHeader from "../../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
@@ -530,7 +531,10 @@ export default function RegistroVenta() {
   const finalizarVenta = useCallback(async ({ numFactura, timbradoInfo, fechaVenta }) => {
     const snap = carrito.map((l) => ({ ...l }));
     const cliSnap = cliente;
+    // Reset completo del cobro (la forma de pago vuelve a Efestivo, el valor
+    // más común en un POS, con menos esfuerzo para la siguiente venta).
     setCarrito([]); setMontoPagado(""); setCliente(null); setEditandoCantidad(null);
+    setFormaPago(FORMA_PAGO_EFECTIVO);
     await cargarProductos();
     const datosTicket = {
       idComprobante: `${Date.now()}-${numFactura}`,
@@ -1153,6 +1157,8 @@ function TransferenciasPendientesModal({ onCerrar, onCambio }) {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
   const [ocupado, setOcupado] = useState(null); // id en acción
+  // Descartar es irreversible: pide confirmación (reduce el miedo a pulsarlo).
+  const [descartarId, setDescartarId] = useState(null);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -1278,7 +1284,7 @@ function TransferenciasPendientesModal({ onCerrar, onCambio }) {
                           {formatMoney(monto)}
                         </span>
                         <button type="button" disabled={ocupado != null}
-                          onClick={() => accionar(t.idTransferenciaVenta, "descartar")}
+                          onClick={() => setDescartarId(t.idTransferenciaVenta)}
                           className="rounded-none border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/60 transition-colors hover:border-red-500/40 hover:text-red-300 disabled:opacity-40">
                           Descartar
                         </button>
@@ -1315,6 +1321,29 @@ function TransferenciasPendientesModal({ onCerrar, onCambio }) {
             Cerrar
           </button>
         </div>
+
+        {/* Confirmación: descartar es irreversible */}
+        {descartarId != null && (
+          <ConfirmModal
+            abierto
+            titulo="Descartar transferencia"
+            mensaje={
+              (() => {
+                const t = lista.find((x) => x.idTransferenciaVenta === descartarId);
+                const fact = t?.numeroFactura || (t?.idFacturaVenta ? `Factura #${t.idFacturaVenta}` : "");
+                return `¿Descartar la transferencia${fact ? ` de ${fact}` : ""}? La operación no se puede deshacer.`;
+              })()
+            }
+            confirmarLabel="Descartar"
+            confirmarClass="bg-red-500 text-white hover:bg-red-400"
+            cargando={ocupado === descartarId}
+            onConfirmar={async () => {
+              await accionar(descartarId, "descartar");
+              setDescartarId(null);
+            }}
+            onCerrar={() => setDescartarId(null)}
+          />
+        )}
       </div>
     </div>
   );

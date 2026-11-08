@@ -130,6 +130,12 @@ export default function EmpresaConfig() {
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState(null);
+  const bannerErrorRef = useRef(null);
+  useEffect(() => {
+    // Carga cognitiva: cuando falla el guardado, el banner aparece a la vista,
+    // no hay que scrollear a buscarlo.
+    if (error) bannerErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [error]);
   const [errores, setErrores] = useState({});
   const [aviso, setAviso] = useState(null);
   const [meta, setMeta] = useState(null);
@@ -223,7 +229,7 @@ export default function EmpresaConfig() {
       )}
 
       {error && (
-        <div className={`${CARD} mb-4 flex items-center gap-2 border-red-500/30 bg-red-500/[0.06] p-3 text-sm text-red-400`}>
+        <div ref={bannerErrorRef} className={`${CARD} mb-4 flex items-center gap-2 border-red-500/30 bg-red-500/[0.06] p-3 text-sm text-red-400`}>
           <AlertTriangle className="h-4 w-4" /> {error}
         </div>
       )}
