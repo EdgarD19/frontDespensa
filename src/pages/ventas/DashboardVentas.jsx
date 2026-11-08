@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import {
   AlertTriangle, TrendingUp, PackageOpen, BarChart3, RefreshCw,
 } from "lucide-react";
-import { getProductos, getProductosStockBajo } from "../../api/productosApi";
+import { getProductosStockBajo, getCatalogoLigero } from "../../api/productosApi";
 import { getProductosMasVendidos } from "../../api/reportesVentasApi";
 import { getFacturasVenta } from "../../api/facturasVentaApi";
 import { apiErrorMessage } from "../../api/errors";
@@ -18,10 +18,11 @@ const MONO = { fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums
 const FOCUS =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]";
 
+const nfGsDash = new Intl.NumberFormat("es-PY", { maximumFractionDigits: 0 });
 function fmtMoneda(n) {
   const v = Number(n ?? 0);
-  const abs = Math.abs(Math.round(v)).toLocaleString("es-PY", { maximumFractionDigits: 0 });
-  return `${v < 0 ? "-" : ""}Gs. ${abs}`;
+  const abs = Math.abs(Math.round(v));
+  return `${v < 0 ? "-" : ""}Gs. ${nfGsDash.format(abs)}`;
 }
 
 function fmtNumero(n) {
@@ -123,12 +124,15 @@ export default function DashboardVentas() {
       const [resBajo, resVentas, resRank, resProd] = await Promise.all([
         // El back compara contra COALESCE(stock_minimo, minimo) — mínimo por producto
         getProductosStockBajo({ minimo: MINIMO_GLOBAL, pageSize: 50, sortDir: "asc" }),
-        // Facturas solo para los KPIs (total vendido / ticket promedio)
-        getFacturasVenta({ page: 0, pageSize: 500, sortDir: "DESC" }),
+        // Facturas solo para los KPIs (total vendido / ticket promedio).
+        // 200 recientes alcanzan para el período visible del dashboard y evitan
+        // una descarga full-table en cada visita.
+        getFacturasVenta({ page: 0, pageSize: 200, sortDir: "DESC" }),
         // Ranking oficial del back (excluye anuladas)
         getProductosMasVendidos({ desde: DESDE_TODO, hasta: hoy, top: 8 }),
-        // Catálogo para saber la unidad de cada producto (kg/u.)
-        getProductos({ page: 0, pageSize: 500, sortDir: "asc" }),
+        // Catálogo solo para la unidad de cada producto (kg/u.) — versión
+        // ligera con cache de módulo (no espera mapas completos cada visita).
+        getCatalogoLigero(),
       ]);
 
       const bajos = (Array.isArray(resBajo.content) ? resBajo.content : [])

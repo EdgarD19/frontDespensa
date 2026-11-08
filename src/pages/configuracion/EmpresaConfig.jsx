@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import useAviso from "../../hooks/useAviso";
 import { CARD } from "../../components/ui/styles";
 
 import PageHeader from "../../components/ui/PageHeader";
@@ -137,17 +138,8 @@ export default function EmpresaConfig() {
     if (error) bannerErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [error]);
   const [errores, setErrores] = useState({});
-  const [aviso, setAviso] = useState(null);
+  const { aviso, mostrarAviso } = useAviso();
   const [meta, setMeta] = useState(null);
-  const avisoTimer = useRef(null);
-
-  useEffect(() => () => clearTimeout(avisoTimer.current), []);
-
-  function mostrarAviso(msg) {
-    clearTimeout(avisoTimer.current);
-    setAviso(msg);
-    avisoTimer.current = setTimeout(() => setAviso(null), 4000);
-  }
 
   const set = (campo, valor) => {
     setForm((prev) => ({ ...prev, [campo]: valor }));
@@ -401,18 +393,17 @@ export default function EmpresaConfig() {
             </div>
           </div>
 
-          <label className="flex cursor-pointer items-center gap-3 border-t border-white/10 pt-4">
-            <input
-              type="checkbox"
-              checked={Boolean(form.activo)}
-              onChange={(e) => set("activo", e.target.checked)}
-              disabled={guardando}
-              className="h-4 w-4 accent-[var(--accent)]"
-            />
-            <span className="text-sm text-white/80">Configuración activa</span>
-          </label>
-
-          <div className="flex justify-end gap-3 border-t border-white/10 pt-4">
+          <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-4">
+            <label className="flex cursor-pointer items-center gap-3">
+              <input
+                type="checkbox"
+                checked={Boolean(form.activo)}
+                onChange={(e) => set("activo", e.target.checked)}
+                disabled={guardando}
+                className="h-4 w-4 accent-[var(--accent)]"
+              />
+              <span className="text-sm text-white/80">Configuración activa</span>
+            </label>
             <button type="submit" disabled={guardando} className={BTN_PRIMARIO}>
               {guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
               {guardando ? "Guardando…" : "Guardar"}

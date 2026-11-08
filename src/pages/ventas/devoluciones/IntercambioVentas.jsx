@@ -14,7 +14,7 @@ import {
 import {
   getFacturasVenta, buscarFacturasVenta,
 } from "../../../api/facturasVentaApi";
-import { getProductos } from "../../../api/productosApi";
+import { getCatalogoLigero } from "../../../api/productosApi";
 import CantidadInput from "../../../components/ui/CantidadInput";
 import Pagination from "../../../components/ui/Pagination";
 import { esProductoPesable } from "../registro-venta/utils";
@@ -374,7 +374,7 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
     let activo = true;
     (async () => {
       try {
-        const res = await getProductos({ page: 0, pageSize: 500, sortDir: "ASC" });
+        const res = await getCatalogoLigero();
         if (activo) setProductoCatalog(Array.isArray(res.content) ? res.content : []);
       } catch { /* si no carga, las cantidades se tratan como unidad */ }
     })();

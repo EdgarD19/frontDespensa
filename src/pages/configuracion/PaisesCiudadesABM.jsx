@@ -6,6 +6,7 @@ import {
   Plus, Pencil, Trash2, ChevronDown, Check, X, ToggleLeft, ToggleRight,
 } from "lucide-react";
 import ConfirmModal from "../../components/ui/ConfirmModal";
+import { invalidarPaises } from "../../hooks/usePaises";
 import {
   getPaisesABM, getCiudadesABM, crearPais, actualizarPais, toggleActivoPais,
   crearCiudad, actualizarCiudad, toggleActivoCiudad,
@@ -52,6 +53,7 @@ function SeccionPaises() {
     if (!esCodigoValido(nuevoCodigo)) { setError("El código debe tener 2 letras (ej: PY)."); return; }
     try {
       await crearPais({ nombre, codigo: nuevoCodigo.trim().toUpperCase() });
+      invalidarPaises(); // invalida el cache compartido de países (Clientes/Proveedores)
       setNuevoNombre("");
       setNuevoCodigo("");
       await load();
@@ -68,6 +70,7 @@ function SeccionPaises() {
     if (!esCodigoValido(editCodigo)) { setError("El código debe tener 2 letras (ej: PY)."); return; }
     try {
       await actualizarPais(editId, { nombre, codigo: editCodigo.trim().toUpperCase() });
+      invalidarPaises(); // invalida el cache compartido de países
       setEditId(null);
       await load();
     } catch {

@@ -112,9 +112,11 @@ export default function CompraEspontanea({ onVolver }) {
 
   useEffect(() => {
     if (!showProductos) return;
+    const ac = new AbortController();
     const t = setTimeout(async () => {
       try {
-        const res = await getProductos({ search: prodSearch || undefined, pageSize: 20 });
+        // signal: cancela la búsqueda anterior mientras se escribe (sin carreras).
+        const res = await getProductos({ search: prodSearch || undefined, pageSize: 20, signal: ac.signal });
         const content = (res?.content || []).map((p) => ({ ...p, precioCompra: Number(p.precioCompra) }));
         const conCosto = await Promise.all(
           content.map(async (p) => {
@@ -124,9 +126,12 @@ export default function CompraEspontanea({ onVolver }) {
           })
         );
         setProductos(conCosto);
-      } catch { setProductos([]); }
+      } catch (err) {
+        if (err?.code === "ERR_CANCELED" || err?.name === "CanceledError") return;
+        setProductos([]);
+      }
     }, prodSearch.length > 0 ? 300 : 0);
-    return () => clearTimeout(t);
+    return () => { ac.abort(); clearTimeout(t); }
   }, [prodSearch, showProductos]);
 
   const agregarLinea = useCallback(async (prod) => {

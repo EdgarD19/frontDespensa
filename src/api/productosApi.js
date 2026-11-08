@@ -126,7 +126,9 @@ function toPatchBody(producto, stockActual) {
  */
 export async function getProductos(params = {}) {
   const searchTrim = params.search != null ? String(params.search).trim() : "";
+  const signal = params.signal;
   const { data } = await api.get(searchTrim ? "/api/productos/buscar" : "/api/productos", {
+    signal,
     params: searchTrim
       ? {
           nombre: searchTrim,
@@ -157,6 +159,35 @@ export async function getProductos(params = {}) {
     page: pageData.page ?? 0,
     size: pageData.size ?? content.length,
   };
+}
+
+/**
+ * Catálogo LIGERO compartido con cache de módulo (TTL 5 min): para pantallas
+ * que solo necesitan nombre/unidad de los productos (Dashboard, Intercambio
+ * de ventas), evita que cada una baje 500 filas al abrir. No sirve donde se
+ * necesita el stock fresco (POS, ABM de inventario): ahí el fetch completo
+ * sigue siendo la fuente correcta.
+ */
+let _catalogoLigero = null;
+let _catalogoTs = 0;
+const CATALOGO_TTL_MS = 5 * 60 * 1000;
+
+export async function getCatalogoLigero() {
+  if (_catalogoLigero && Date.now() - _catalogoTs < CATALOGO_TTL_MS) {
+    return { content: _catalogoLigero };
+  }
+  const res = await getProductos({ page: 0, pageSize: 500, sortDir: "asc" });
+  _catalogoLigero = (res.content || []).map((p) => ({
+    id: p.id,
+    nombre: p.nombre,
+    unidadMedida: p.unidadMedida,
+  }));
+  _catalogoTs = Date.now();
+  return { content: _catalogoLigero };
+}
+
+export function invalidarCatalogoLigero() {
+  _catalogoLigero = null;
 }
 
 /**

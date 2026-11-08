@@ -15,10 +15,12 @@ export function getClientes({
     pageSize = 10,
     sortBy = "idCliente",
     sortDir = "asc",
+    signal,
 } = {}) {
     const searchTrim = search != null ? String(search).trim() : "";
     const dir = String(sortDir || "ASC").toUpperCase() === "DESC" ? "DESC" : "ASC";
     return api.get(BASE, {
+        signal,
         params: {
             page,
             pageSize,

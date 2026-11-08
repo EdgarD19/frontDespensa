@@ -246,20 +246,21 @@ export default function RegistroVenta() {
   // Búsqueda de clientes (server-side) con debounce mientras el selector está abierto.
   useEffect(() => {
     if (cliente || !mostrarClientes) return;
-    let activo = true;
+    const ac = new AbortController();
     const t = setTimeout(async () => {
       setCargandoClientes(true);
       try {
-        const res = await getClientes({ search: clienteQuery.trim(), pageSize: 8 });
+        const res = await getClientes({ search: clienteQuery.trim(), pageSize: 8, signal: ac.signal });
         const body = res?.data ?? {};
-        if (activo) setClientesOpciones(Array.isArray(body.content) ? body.content : []);
-      } catch {
-        if (activo) setClientesOpciones([]);
+        setClientesOpciones(Array.isArray(body.content) ? body.content : []);
+      } catch (err) {
+        if (err?.code === "ERR_CANCELED" || err?.name === "CanceledError") return;
+        setClientesOpciones([]);
       } finally {
-        if (activo) setCargandoClientes(false);
+        setCargandoClientes(false);
       }
     }, 250);
-    return () => { activo = false; clearTimeout(t); };
+    return () => { ac.abort(); clearTimeout(t); };
   }, [cliente, clienteQuery, mostrarClientes]);
 
   // Búsqueda de productos: server-side con debounce (250 ms) via
@@ -269,16 +270,19 @@ export default function RegistroVenta() {
   useEffect(() => {
     const q = search.trim();
     if (!q || isBarcode) { setServerProductos(null); return; }
-    let activo = true;
+    const ac = new AbortController();
     const t = setTimeout(async () => {
       try {
-        const res = await getProductos({ search: q, page: 0, pageSize: 8, sortDir: "asc" });
-        if (activo) setServerProductos(Array.isArray(res.content) ? res.content : []);
-      } catch {
-        if (activo) setServerProductos(null); // fallback al filtro local
+        // signal: cancela la request anterior si el usuario sigue escribiendo
+        // (sin carreras de respuestas desordenadas ni trabajo desperdiciado).
+        const res = await getProductos({ search: q, page: 0, pageSize: 8, sortDir: "asc", signal: ac.signal });
+        setServerProductos(Array.isArray(res.content) ? res.content : []);
+      } catch (err) {
+        if (err?.code === "ERR_CANCELED" || err?.name === "CanceledError") return;
+        setServerProductos(null); // fallback al filtro local
       }
     }, 250);
-    return () => { activo = false; clearTimeout(t); };
+    return () => { ac.abort(); clearTimeout(t); };
   }, [search, isBarcode]);
 
   const productosFiltrados = useMemo(() => {
@@ -308,10 +312,15 @@ export default function RegistroVenta() {
     return r2(total);
   }, [carrito]);
 
-  carritoRef.current = carrito;
-  totalRef.current = totalConIva;
-  searchStringRef.current = search;
-  editandoRef.current = editandoCantidad;
+  // "Espejo" de los valores que los atajos de teclado deben leer sin re-render:
+  // por regla de React las refs NO se escriben durante el render — el useEffect
+  // asegura que la ref quede consistente después del commit (Concurrent-safe).
+  useEffect(() => {
+    carritoRef.current = carrito;
+    totalRef.current = totalConIva;
+    searchStringRef.current = search;
+    editandoRef.current = editandoCantidad;
+  }, [carrito, totalConIva, search, editandoCantidad]);
 
   const esEfectivo = formaPago === FORMA_PAGO_EFECTIVO;
   const montoIngresado = parseFloat(String(montoPagado).replace(",", "."));

@@ -1,4 +1,8 @@
-export const money = (n) => "Gs. " + Math.round(n).toLocaleString("es-PY", { maximumFractionDigits: 0 });
+// Formatter único y cacheado: construir Intl.NumberFormat en cada llamada es
+// caro y esto se ejecuta por fila en tablas densas (regla js-cache-function-results).
+const nfGs = new Intl.NumberFormat("es-PY", { maximumFractionDigits: 0 });
+
+export const money = (n) => "Gs. " + nfGs.format(Math.round(n));
 
 export const hoyAsuncion = () =>
   new Date().toLocaleDateString("en-CA", { timeZone: "America/Asuncion", year: "numeric", month: "2-digit", day: "2-digit" });

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import useAviso from "../../hooks/useAviso";
 import { CARD } from "../../components/ui/styles";
 
 import PageHeader from "../../components/ui/PageHeader";
@@ -81,20 +82,12 @@ export default function ComprobantesConfig() {
   const [extrasVersion, setExtrasVersion] = useState(0); // fuerza releer localStorage
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
-  const [aviso, setAviso] = useState(null);
+  const { aviso, mostrarAviso } = useAviso();
 
   // Modales independientes: uno para el timbrado, otro para la factura.
   const [modalTimbrado, setModalTimbrado] = useState(null); // null | { inicial }
   const [facturaId, setFacturaId] = useState(null);         // id del timbrado cuya factura se configura
 
-  const avisoTimer = useRef(null);
-  useEffect(() => () => clearTimeout(avisoTimer.current), []);
-
-  function mostrarAviso(msg) {
-    clearTimeout(avisoTimer.current);
-    setAviso(msg);
-    avisoTimer.current = setTimeout(() => setAviso(null), 4000);
-  }
 
   const cargar = useCallback(async ({ silencioso = false } = {}) => {
     if (!silencioso) setCargando(true);

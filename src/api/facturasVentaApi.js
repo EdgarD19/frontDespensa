@@ -24,24 +24,27 @@ function unwrap(body) {
  * ⚠️ El back espera "pageSize" (no "size"): si se manda "size" el parámetro se
  * ignora y la respuesta vuelve con el default de 20 filas.
  */
-export async function getFacturasVenta({ page = 0, pageSize = 20, sortBy, sortDir = "DESC" } = {}) {
+export async function getFacturasVenta({ page = 0, pageSize = 20, sortBy, sortDir = "DESC", signal } = {}) {
   const { data } = await api.get(BASE, {
+    signal,
     params: { page, pageSize, sortBy: sortBy || undefined, sortDir },
   });
   return unwrap(data);
 }
 
 /** Búsqueda libre por número de factura / cliente (paginado). */
-export async function buscarFacturasVenta(q, { page = 0, pageSize = 20, sortBy, sortDir = "DESC" } = {}) {
+export async function buscarFacturasVenta(q, { page = 0, pageSize = 20, sortBy, sortDir = "DESC", signal } = {}) {
   const { data } = await api.get(`${BASE}/buscar`, {
+    signal,
     params: { q: q || undefined, page, pageSize, sortBy: sortBy || undefined, sortDir },
   });
   return unwrap(data);
 }
 
 /** Facturas de venta de un cliente (paginado). */
-export async function getFacturasVentaPorCliente(idCliente, { page = 0, pageSize = 20, sortBy, sortDir = "DESC" } = {}) {
+export async function getFacturasVentaPorCliente(idCliente, { page = 0, pageSize = 20, sortBy, sortDir = "DESC", signal } = {}) {
   const { data } = await api.get(`${BASE}/cliente/${idCliente}`, {
+    signal,
     params: { page, pageSize, sortBy: sortBy || undefined, sortDir },
   });
   return unwrap(data);

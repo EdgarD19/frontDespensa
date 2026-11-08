@@ -28,10 +28,11 @@ import { getProveedores, getProveedorId, getProveedorNombre } from "../../../api
 import { formatoFactura, hoyAsuncion, estadoTimbrado, etiquetaTimbrado, esKG } from "../utils";
 import CantidadInput from "../../../components/ui/CantidadInput";
 
+const nfGsOp = new Intl.NumberFormat("es-PY", { maximumFractionDigits: 0 });
 function fmtMoneda(n) {
   const v = Number(n ?? 0);
-  const abs = Math.abs(Math.round(v)).toLocaleString("es-PY", { maximumFractionDigits: 0 });
-  return `${v < 0 ? "-" : ""}Gs. ${abs}`;
+  const abs = Math.abs(Math.round(v));
+  return `${v < 0 ? "-" : ""}Gs. ${nfGsOp.format(abs)}`;
 }
 
 function fmtFecha(valor) {
@@ -341,7 +342,8 @@ export default function OperacionesTipo({ tipo }) {
   // Debe declararse antes de refrescarTodo (que lo invoca).
   const cargarPendientes = useCallback(async () => {
     const [devoluciones, intercambios] = await Promise.all([
-      getDevoluciones({ page: 0, pageSize: 1000 }).catch(() => ({ content: [] })),
+      // El back filtra por estado: solo PENDIENTES (payload mínimo en vez de la tabla completa).
+      getDevoluciones({ pageSize: 500, estado: "PENDIENTE" }).catch(() => ({ content: [] })),
       getIntercambios({ page: 0, pageSize: 1000 }).catch(() => ({ content: [] })),
     ]);
     setPendientes({

@@ -1,0 +1,5 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  // Skills instaladas con el CLI de skills.sh (misma carpeta para OpenCode y otros agentes)
+  "skills": ["./.agents/skills"],
+}

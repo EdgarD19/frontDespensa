@@ -44,10 +44,10 @@ export function fmtFecha(valor) {
   });
 }
 
-/** Gs. sin decimales — formato ÚNICO del proyecto (misma salida que utils/money). */
+/** Gs. sin decimales — formato ÚNICO del proyecto. Nota: "—" para no numérico. */
+const nfGsCommon = new Intl.NumberFormat("es-PY", { maximumFractionDigits: 0 });
 export function fmtMoneda(n) {
   const v = Number(n);
   if (!Number.isFinite(v)) return NULO;
-  const abs = Math.abs(Math.round(v)).toLocaleString("es-PY", { maximumFractionDigits: 0 });
-  return `${v < 0 ? "-" : ""}Gs. ${abs}`;
+  return `${v < 0 ? "-" : ""}Gs. ${nfGsCommon.format(Math.abs(Math.round(v)))}`;
 }

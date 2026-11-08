@@ -22,9 +22,9 @@ function unwrap(body) {
 // ====================================================================
 
 /** Listar devoluciones (paginado). */
-export async function getDevoluciones({ page = 0, pageSize = 1000 } = {}) {
+export async function getDevoluciones({ page = 0, pageSize = 1000, estado } = {}) {
   const { data } = await api.get(DEVOLUCIONES, {
-    params: { page, size: pageSize, sortBy: "fechaCreacion", sortDirection: "desc" },
+    params: { page, size: pageSize, estado, sortBy: "fechaCreacion", sortDirection: "desc" },
   });
   return unwrap(data);
 }

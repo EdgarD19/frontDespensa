@@ -1,10 +1,11 @@
 
 import PageHeader from "../../../../components/ui/PageHeader";
+import usePaises from "../../../../hooks/usePaises";
 import { Link } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react"
 import ClientesTabla from "./ClientesTabla"
 import ClientesModal from "./ClientesModal"
-import { getPaises, getCiudades } from "../../../../api/maestrosApi"
+import { getCiudades } from "../../../../api/maestrosApi"
 import {
     getClientes,
     createCliente,
@@ -29,20 +30,9 @@ export default function ClientesABM() {
     const [clienteEdit, setClienteEdit] = useState(null);
     const [guardando, setGuardando] = useState(false);
     const [toggleModal, setToggleModal] = useState(null);
-    const [paises, setPaises] = useState([]);
+    // Países compartidos con cache (hook); ciudades cargan por selección local.
+    const { paises } = usePaises();
     const [ciudades, setCiudades] = useState([]);
-
-    useEffect(() => {
-        async function load() {
-            try {
-                const p = await getPaises();
-                setPaises(p);
-            } catch {
-                setPaises([]);
-            }
-        }
-        load();
-    }, []);
 
     useEffect(() => {
         const timer = setTimeout(() => {

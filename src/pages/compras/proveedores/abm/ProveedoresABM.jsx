@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import usePaises from "../../../../hooks/usePaises";
 
 import PageHeader from "../../../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
@@ -14,7 +15,7 @@ import {
   getProveedorId,
   apiErrorMessage,
 } from "../../../../api/proveedoresApi";
-import { getPaises, getCiudades } from "../../../../api/maestrosApi";
+import { getCiudades } from "../../../../api/maestrosApi";
 
 const DEBOUNCE_MS = 150;
 
@@ -33,20 +34,10 @@ export default function ProveedoresABM() {
   const [confirmarProveedor, setConfirmarProveedor] = useState(null);
   const [cambiando, setCambiando] = useState(false);
 
-  const [paises, setPaises] = useState([]);
+  // Países compartidos con cache (hook); ciudades cargan por selección local.
+  const { paises } = usePaises();
   const [ciudades, setCiudades] = useState([]);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const p = await getPaises();
-        setPaises(p);
-      } catch {
-        setPaises([]);
-      }
-    }
-    load();
-  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {

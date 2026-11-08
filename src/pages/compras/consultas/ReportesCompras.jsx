@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+const nfGsLista = new Intl.NumberFormat("es-PY", { maximumFractionDigits: 0 });
 import { TABLE_SHELL,THEAD_ROW } from "../../../components/ui/styles";
 
 import PageHeader from "../../../components/ui/PageHeader";
@@ -9,7 +10,7 @@ import { getProveedores, getProveedorId, getProveedorNombre } from "../../../api
 
 const money = (n) => {
   const v = Number(n);
-  return Number.isFinite(v) ? `Gs. ${v.toLocaleString("es-PY", { maximumFractionDigits: 0 })}` : "—";
+  return Number.isFinite(v) ? `Gs. ${nfGsLista.format(Math.round(v))}` : "—";
 };
 
 const fmtFecha = (iso) => {

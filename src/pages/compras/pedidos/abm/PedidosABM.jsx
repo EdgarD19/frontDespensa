@@ -147,15 +147,20 @@ export default function PedidosABM() {
     if (!showProd) { setProdResults([]); return; }
     setProdTotalPages(0);
     setProdTotalItems(0);
+    const ac = new AbortController();
     const t = setTimeout(async () => {
       try {
-        const res = await getProductos({ search: prodSearch || undefined, page: prodPage, pageSize: 8 });
+        // signal: cancela la búsqueda anterior mientras se escribe (sin carreras).
+        const res = await getProductos({ search: prodSearch || undefined, page: prodPage, pageSize: 8, signal: ac.signal });
         setProdResults(res.content || []);
         setProdTotalPages(res.totalPages ?? 0);
         setProdTotalItems(typeof res.totalElements === "number" ? res.totalElements : 0);
-      } catch { setProdResults([]); }
+      } catch (err) {
+        if (err?.code === "ERR_CANCELED" || err?.name === "CanceledError") return;
+        setProdResults([]);
+      }
     }, prodSearch.length > 0 ? 350 : 0);
-    return () => clearTimeout(t);
+    return () => { ac.abort(); clearTimeout(t); };
   }, [prodSearch, showProd, prodPage]);
 
   function abrirCrear() {

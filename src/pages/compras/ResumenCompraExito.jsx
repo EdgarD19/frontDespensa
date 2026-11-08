@@ -1,7 +1,8 @@
 import { Check } from "lucide-react";
 import { THEAD_ROW, TABLE_SHELL } from "../../components/ui/styles";
 
-const money = (n) => Math.round(Number(n) || 0).toLocaleString("es-PY", { maximumFractionDigits: 0 });
+const nfGs = new Intl.NumberFormat("es-PY", { maximumFractionDigits: 0 }); // cacheado
+const money = (n) => `Gs. ${nfGs.format(Math.round(Number(n) || 0))}`;
 
 /**
  * Resumen post-registro de una compra — ÚNICO para el módulo:

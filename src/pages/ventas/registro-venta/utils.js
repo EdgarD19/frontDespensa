@@ -18,6 +18,10 @@ export function parsePrecioVenta(producto) {
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
+// Formatter único cacheado (regla js-cache-function-results): construir
+// Intl.NumberFormat por llamada es caro en tablas densas.
+const nfGsRv = new Intl.NumberFormat("es-PY", { maximumFractionDigits: 0 });
+
 export function parseStockDisponible(producto) {
   const raw = producto?.stockDisponible ?? producto?.stockActual;
   if (raw === "" || raw === undefined || raw === null) return 0;
@@ -30,8 +34,7 @@ export function parseStockDisponible(producto) {
 export function formatMoney(n) {
   const x = Number(n);
   if (!Number.isFinite(x)) return "—";
-  const abs = Math.abs(Math.round(x)).toLocaleString("es-PY", { maximumFractionDigits: 0 });
-  return `${x < 0 ? "-" : ""}Gs. ${abs}`;
+  return `${x < 0 ? "-" : ""}Gs. ${nfGsRv.format(Math.abs(Math.round(x)))}`;
 }
 
 export const FORMA_PAGO_EFECTIVO = "EFECTIVO";

@@ -7,10 +7,12 @@ import { apiErrorMessage } from "../../../api/errors";
 const inputClass =
   "w-full rounded-none border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-[var(--accent)] outline-none transition-colors";
 
+// Formatter único cacheado (js-cache-function-results)
+const nfGsPpm = new Intl.NumberFormat("es-PY", { minimumFractionDigits: 0 });
 function formatMoney(n) {
   const v = Number(n);
   if (!Number.isFinite(v)) return "—";
-  return `Gs. ${v.toLocaleString("es-PY")}`;
+  return `Gs. ${nfGsPpm.format(v)}`;
 }
 
 // ISO → DD/MM/AAAA (con hora si el valor la trae). Los "yyyy-MM-dd" crudos

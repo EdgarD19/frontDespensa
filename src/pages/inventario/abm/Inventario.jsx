@@ -17,7 +17,6 @@ import {
   updateProducto,
   apiErrorMessage,
 } from "../../../api/productosApi";
-import { setStockMinimo, getStockMinimoMap } from "../../../api/stockMinimoApi";
 import {
   getCategorias,
   getUnidades,
@@ -213,11 +212,9 @@ export default function Inventario() {
         const updated = await updateProducto(editingId, data);
         setProductos((prev) => prev.map((p) => (p.id === editingId ? mergeProductoLista(p, updated) : p)));
         setEditingId(null);
-        // Stock mínimo vive en localStorage (el back aún no tiene el campo)
-        setStockMinimo(editingId, data.stockMinimo);
+        // Stock de alerta ya viaja en el payload (migración V24 del back).
       } else {
-        const created = await createProducto(data, idUnid);
-        if (created?.id != null) setStockMinimo(created.id, data.stockMinimo);
+        await createProducto(data, idUnid);
         await loadProductos();
       }
       setFormData(INITIAL_FORM);
@@ -241,7 +238,8 @@ export default function Inventario() {
       idMarca:       producto.idMarca       ?? "",
       productoPesable: producto.productoPesable || "no",
       iva: producto.iva != null ? String(producto.iva) : "10",
-      stockMinimo: getStockMinimoMap()[String(producto.id)] ?? "",
+      // Fuente única de verdad: la columna stock_minimo del back (V24).
+      stockMinimo: producto.stockMinimo != null ? String(producto.stockMinimo) : "",
       activo:        producto.activo !== false,
     });
     setEditingId(producto.id);

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { TABLE_SHELL,THEAD_ROW } from "../../../components/ui/styles";
 import { Link } from "react-router-dom";
 import { Search, X, Eye } from "lucide-react";
@@ -66,6 +66,7 @@ export default function HistorialVentas() {
   const [totalElements, setTotalElements] = useState(0);
 
   const [clientes, setClientes] = useState([]);
+  const [clientesLoading, setClientesLoading] = useState(0);
   const [idCliente, setIdCliente] = useState("");
   const [texto, setTexto] = useState("");
   // El texto se busca en el back (debounce); fechas y estado se filtran acá
@@ -77,16 +78,21 @@ export default function HistorialVentas() {
   const [seleccionada, setSeleccionada] = useState(null);
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
 
+  // La lista de clientes para el filtro se carga BAJO DEMANDA (al abrir el
+  // select por primera vez): la mayoría de las visitas no lo usa, y así se
+  // evita una descarga full-table al solo consultar el historial.
   useEffect(() => {
+    if (clientes.length > 0) return;
     let activo = true;
     (async () => {
       try {
-        const res = await getClientes({ pageSize: 500, sortBy: "firstName", sortDir: "ASC" });
+        const res = await getClientes({ pageSize: 200, sortBy: "firstName", sortDir: "ASC" });
         if (activo) setClientes(Array.isArray(res?.data?.content) ? res.data.content : (Array.isArray(res?.data) ? res.data : []));
       } catch { /* sin clientes */ }
     })();
     return () => { activo = false; };
-  }, []);
+  }, [clientesLoading, clientes]);
+  const abrirFiltroClientes = () => setClientesLoading((n) => n + 1);
 
   // Debounce del texto (la búsqueda es server-side).
   useEffect(() => {
@@ -103,28 +109,40 @@ export default function HistorialVentas() {
   // ⚠️ BUG CONOCIDO DEL BACK: /buscar matchea solo por cliente — las facturas
   // "Sin Nombre" no aparecen por N° (JOIN implícito a cliente en el repositorio).
   // El arreglo correcto está en FacturaVentaRepository (informe al equipo del back).
+  // AbortController: al cambiar texto/página/código se cancela la request anterior
+  // (sin carreras de respuestas desordenadas ni segundos desperdiciados).
+  const abortRef = useRef(null);
   const cargar = useCallback(async () => {
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+    const estaCancelado = () => ac.signal.aborted;
     setLoading(true);
     setError(null);
     try {
-      const base = { page, pageSize: PAGE_SIZE, sortDir: "DESC" };
+      const base = { page, pageSize: PAGE_SIZE, sortDir: "DESC", signal: ac.signal };
       const q = textoQuery.trim();
       const res = q
         ? await buscarFacturasVenta(q, base)
         : idCliente
           ? await getFacturasVentaPorCliente(idCliente, base)
           : await getFacturasVenta(base);
+      if (estaCancelado()) return;
       setFilas(Array.isArray(res.content) ? res.content : []);
       setTotalPages(Math.max(1, res.totalPages ?? 1));
       setTotalElements(Number(res.totalElements ?? res.content?.length ?? 0));
     } catch (err) {
+      if (ac.signal.aborted || err?.code === "ERR_CANCELED" || err?.name === "CanceledError") return;
       setError(apiErrorMessage(err) || "Error al cargar las facturas de venta");
     } finally {
-      setLoading(false);
+      if (!ac.signal.aborted) setLoading(false);
     }
   }, [page, textoQuery, idCliente]);
 
-  useEffect(() => { cargar(); }, [cargar]);
+  useEffect(() => {
+    cargar();
+    return () => abortRef.current?.abort();
+  }, [cargar]);
 
   // Filtros del back NO disponibles (fecha y estado): se refina la página actual.
   const filtradas = useMemo(() => {
@@ -226,6 +244,7 @@ export default function HistorialVentas() {
           <select
             id="filtro-cliente"
             value={idCliente}
+            onFocus={abrirFiltroClientes}
             onChange={(e) => setIdCliente(e.target.value)}
             className="w-full mt-1 bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors"
           >
