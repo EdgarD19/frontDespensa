@@ -1,0 +1,75 @@
+import { Link } from "react-router-dom";
+import { Users, ScanLine, History, LayoutDashboard, ArrowLeftRight, Ban } from "lucide-react";
+import { hubCardClass as cardClass, hubIconClass } from "../../components/ui/hubStyles";
+
+const MODULOS = [
+  {
+    to: "/ventas/registro",
+    label: "Nueva venta",
+    descripcion: "Cobra con escáner y emite la factura de contado.",
+    icon: ScanLine,
+  },
+  {
+    to: "/ventas/clientes",
+    label: "Agenda de clientes",
+    descripcion: "Agrega, busca o actualiza la información de tus clientes.",
+    icon: Users,
+  },
+  {
+    to: "/ventas/consultas/historial",
+    label: "Historial de ventas",
+    descripcion: "Consulta las facturas de venta emitidas.",
+    icon: History,
+  },
+  {
+    to: "/ventas/dashboard",
+    label: "Dashboard",
+    descripcion: "Qué reponer y qué se vende más.",
+    icon: LayoutDashboard,
+  },
+  {
+    to: "/ventas/devoluciones/intercambios",
+    label: "Intercambios",
+    descripcion: "Intercambia productos defectuosos con el cliente.",
+    icon: ArrowLeftRight,
+  },
+  {
+    to: "/ventas/devoluciones/anulaciones",
+    label: "Anulaciones",
+    descripcion: "Anula una factura de venta emitida.",
+    icon: Ban,
+  },
+];
+
+export default function Ventas() {
+    return (
+        <div className="max-w-5xl mx-auto py-8 px-4 space-y-6">
+            <div className="space-y-1">
+                <h1 className="text-2xl font-semibold text-white tracking-tight">Ventas</h1>
+                <p className="text-sm text-white/40">Selecciona un módulo para continuar</p>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                {MODULOS.map((m) => {
+                    const {to, label, descripcion, icon: Icon, pronto} = m;
+                    const contenido = (
+                        <div className={`flex flex-col items-center justify-center gap-3 ${pronto ? "opacity-40" : ""}`}>
+                            <div className={hubIconClass}>
+                                <Icon className="w-8 h-8" aria-hidden/>
+                            </div>
+                            <div className="text-center space-y-1">
+                                <h2 className="text-base font-semibold text-white tracking-tight">{label}</h2>
+                                <p className="text-xs text-white/40 leading-relaxed line-clamp-2">{descripcion}</p>
+                            </div>
+                        </div>
+                    );
+                    return to ? (
+                        <Link key={label} to={to} className={cardClass}>{contenido}</Link>
+                    ) : (
+                        <div key={label} className={`${cardClass} cursor-default pointer-events-none`}>{contenido}</div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+ 
