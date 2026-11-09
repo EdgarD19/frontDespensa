@@ -5,7 +5,7 @@
 
 /** Fila entera del thead: fondo verde tenue + texto verde + uppercase espaciado. */
 export const THEAD_ROW =
-  "border-b border-white/10 bg-[var(--accent-dim)] text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--accent)]";
+  "text-left text-xs uppercase tracking-wider text-white/50 bg-white/[0.03] border-b border-white/10";
 
 /** <th> base (agregar w-/px- al uso). */
 export const THEAD_TH = "px-4 py-3 font-medium";

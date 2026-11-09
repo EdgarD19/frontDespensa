@@ -5,7 +5,7 @@ import PageHeader from "../../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
 import {
   Search, ShoppingCart, Trash2, Scale, Package,
-  Banknote, Landmark, AlertTriangle, RotateCcw, Check,
+  Banknote, Landmark, Coins, AlertTriangle, RotateCcw, Check,
   ArrowLeft, Barcode, X, ClipboardList, Loader2,
 } from "lucide-react";
 import { getProductos, getProductoByCodigo } from "../../../api/productosApi";
@@ -21,7 +21,7 @@ import CantidadInput from "../../../components/ui/CantidadInput";
 import {
   parsePrecioVenta, parseStockDisponible, esProductoPesable, formatMoney,
   labelCliente, docCliente, labelFormaPago, hoyISO,
-  FORMA_PAGO_EFECTIVO, FORMA_PAGO_TRANSFERENCIA,
+  FORMA_PAGO_EFECTIVO, FORMA_PAGO_TRANSFERENCIA, FORMA_PAGO_MIXTO,
   parseBarcodeInput,
 } from "./utils";
 
@@ -34,7 +34,6 @@ const LABEL = "text-[11px] font-medium uppercase tracking-[0.14em] text-white/50
 const TH = "sticky top-0 z-10 bg-[#0a0a0c] py-2.5 px-2 font-medium";
 
 const ATAJOS = [
-  ["F2", "Editar último"],
   ["Supr", "Quitar último"],
   ["F6", "Monto exacto"],
   ["F7", "Efectivo"],
@@ -78,6 +77,8 @@ export default function RegistroVenta() {
   const [carrito, setCarrito] = useState([]);
   const [cliente, setCliente] = useState(null);
   const [montoPagado, setMontoPagado] = useState("");
+  // Pago múltiple: parte transferencia (input) + parte efectivo (resto derivado).
+  const [montoTransferencia, setMontoTransferencia] = useState("");
   const [formaPago, setFormaPago] = useState(FORMA_PAGO_EFECTIVO);
   const [errorGlobal, setErrorGlobal] = useState(null);
   const [confirmando, setConfirmando] = useState(false);
@@ -323,13 +324,26 @@ export default function RegistroVenta() {
   }, [carrito, totalConIva, search, editandoCantidad]);
 
   const esEfectivo = formaPago === FORMA_PAGO_EFECTIVO;
+  const esMixto = formaPago === FORMA_PAGO_MIXTO;
   const montoIngresado = parseFloat(String(montoPagado).replace(",", "."));
-  const montoNum = esEfectivo ? montoIngresado : totalConIva;
-  const montoOk = esEfectivo ? Number.isFinite(montoIngresado) && montoIngresado >= 0 : true;
+  // Mixto: el operador ingresa el monto de la TRANSFERENCIA y el efectivo es
+  // el resto (derivado siempre al total exacto; cero carga mental de cuentas).
+  const montoTransferenciaNum = esMixto
+    ? parseFloat(String(montoTransferencia).replace(",", "."))
+    : null;
+  const montoTransferenciaOk = esMixto
+    ? Number.isFinite(montoTransferenciaNum) && montoTransferenciaNum >= 0 && montoTransferenciaNum <= totalConIva
+    : true;
+  const efectivoMixto = esMixto && montoTransferenciaOk
+    ? Math.round((totalConIva - montoTransferenciaNum) * 100) / 100
+    : 0;
+  const montoNum = esEfectivo ? montoIngresado : (esMixto ? efectivoMixto : totalConIva);
+  const montoOk = esEfectivo ? Number.isFinite(montoIngresado) && montoIngresado >= 0 : (esMixto ? montoTransferenciaOk : true);
   const cambio = esEfectivo && montoOk ? Math.max(0, montoIngresado - totalConIva) : 0;
 
   const puedeConfirmar = carrito.length > 0 && totalConIva > 0 &&
-    (esEfectivo ? montoOk && montoIngresado >= totalConIva : true) &&
+    montoOk && (esMixto ? montoTransferenciaOk : true) &&
+    (!esEfectivo || montoIngresado >= totalConIva) &&
     (!timbradoEstado || timbradoEstado.estado === "ok");
 
   // Solo presentación: cuánto falta para cubrir el total y por qué está deshabilitado "Cobrar".
@@ -338,9 +352,11 @@ export default function RegistroVenta() {
     : 0;
   const ayudaCobro = carrito.length === 0
     ? "Agregá productos para habilitar el cobro."
-    : esEfectivo && !puedeConfirmar
-      ? "Ingresá un monto recibido igual o mayor al total."
-      : null;
+    : !montoTransferenciaOk
+      ? "Ingresá el monto de la transferencia (hasta el total)."
+      : esEfectivo && !puedeConfirmar
+        ? "Ingresá un monto recibido igual o mayor al total."
+        : null;
 
   const agregarProducto = useCallback((producto, cantidad) => {
     const stock = parseStockDisponible(producto);
@@ -431,6 +447,7 @@ export default function RegistroVenta() {
     setCarrito([]);
     setCliente(null);
     setMontoPagado("");
+    setMontoTransferencia("");
     setErrorGlobal(null);
     setEditandoCantidad(null);
     focusSearch();
@@ -493,12 +510,6 @@ export default function RegistroVenta() {
     const isInput = e.target?.tagName === "INPUT" || e.target?.tagName === "TEXTAREA" || e.target?.tagName === "SELECT";
     const key = e.key;
 
-    if (key === "F2") {
-      e.preventDefault();
-      const c = carritoRef.current;
-      if (c.length > 0) setEditandoCantidad(c[c.length - 1].productoId);
-      return;
-    }
     if (key === "F6") {
       e.preventDefault();
       const c = carritoRef.current;
@@ -540,9 +551,12 @@ export default function RegistroVenta() {
   const finalizarVenta = useCallback(async ({ numFactura, timbradoInfo, fechaVenta }) => {
     const snap = carrito.map((l) => ({ ...l }));
     const cliSnap = cliente;
-    // Reset completo del cobro (la forma de pago vuelve a Efestivo, el valor
+    const mixtoSnap = esMixto
+      ? { efectivo: efectivoMixto, transferencia: Math.round(montoTransferenciaNum ?? 0) }
+      : null;
+    // Reset completo del cobro (la forma de pago vuelve a Efectivo, el valor
     // más común en un POS, con menos esfuerzo para la siguiente venta).
-    setCarrito([]); setMontoPagado(""); setCliente(null); setEditandoCantidad(null);
+    setCarrito([]); setMontoPagado(""); setMontoTransferencia(""); setCliente(null); setEditandoCantidad(null);
     setFormaPago(FORMA_PAGO_EFECTIVO);
     await cargarProductos();
     const datosTicket = {
@@ -554,6 +568,8 @@ export default function RegistroVenta() {
       lineas: snap,
       total: totalConIva,
       montoPagado: montoNum,
+      // Pago múltiple: el ticket imprime el desglose Efectivo + Transferencia.
+      montoMixto: mixtoSnap,
       cambio,
       tipo: "CONTADO",
       formaPago,
@@ -576,7 +592,7 @@ export default function RegistroVenta() {
       console.warn("[VENTA] No se pudo imprimir directamente:", e);
     }
     focusSearch();
-  }, [carrito, cliente, totalConIva, montoNum, cambio, formaPago, cargarProductos, focusSearch, empresaConfig]);
+  }, [carrito, cliente, totalConIva, montoNum, cambio, formaPago, esMixto, montoTransferenciaNum, efectivoMixto, cargarProductos, focusSearch, empresaConfig]);
 
   const handleConfirmar = useCallback(async () => {
     if (!puedeConfirmar) return;
@@ -620,11 +636,17 @@ export default function RegistroVenta() {
       // Contrato 27-10-26: si el pago es por transferencia, se registra la
       // transferencia vinculada a la factura. Best-effort: si el back aún no
       // despliega el endpoint (o falla), la venta queda registrada igual.
-      if (formaPago === FORMA_PAGO_TRANSFERENCIA && data?.idFacturaVenta) {
+      // Pago MIXTO: se registra por el monto parcial de transferencia (el
+      // restante se cobró en efectivo en el mostrador).
+      const montoTransfer = esMixto ? Math.round(montoTransferenciaNum) : null;
+      const registrarTransferencia =
+        (formaPago === FORMA_PAGO_TRANSFERENCIA || (esMixto && montoTransfer > 0)) &&
+        data?.idFacturaVenta;
+      if (registrarTransferencia) {
         try {
           await crearTransferenciaVenta({
             idFacturaVenta: data.idFacturaVenta,
-            monto: totalConIva,
+            monto: esMixto ? montoTransfer : totalConIva,
             observacion: `Venta ${numFactura || "—"}`,
           });
         } catch (e) {
@@ -639,7 +661,7 @@ export default function RegistroVenta() {
       // (p. ej. 409 TIMBRADO_VENTA_NO_VIGENTE si no hay timbrado de venta).
       setErrorGlobal(apiErrorMessage(err) || "No se pudo registrar la venta.");
     } finally { setConfirmando(false); }
-  }, [puedeConfirmar, cliente, carrito, finalizarVenta, rechequearTimbrado, formaPago, totalConIva, cargarPendientesCount]);
+  }, [puedeConfirmar, cliente, carrito, finalizarVenta, rechequearTimbrado, formaPago, esMixto, montoTransferenciaNum, totalConIva, cargarPendientesCount]);
 
   confirmarRef.current = handleConfirmar;
 
@@ -913,12 +935,27 @@ export default function RegistroVenta() {
               )}
             </div>
 
-            <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-white/10 px-5 py-3 text-xs text-white/45">
+            <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-white/10 px-5 py-2.5 text-xs text-white/45">
               {ATAJOS.map(([tecla, desc]) => (
                 <span key={tecla} className="flex items-center gap-1.5">
                   <Kbd>{tecla}</Kbd>{desc}
                 </span>
               ))}
+
+              {/* Transferencias pendientes (contrato 27-10-26): esquina derecha
+                  de la franja de atajos, cerca del flujo de dinero */}
+              <button type="button" onClick={() => setShowTransferencias(true)}
+                title="Transferencias pendientes"
+                aria-label="Transferencias pendientes"
+                className="relative ml-auto flex items-center gap-2 rounded-none border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/60 transition-colors hover:bg-white/[0.06] hover:text-white">
+                <ClipboardList className="h-3.5 w-3.5" />
+                Transferencias
+                {pendientesCount != null && pendientesCount > 0 && (
+                  <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-400 px-1 text-[10px] font-bold text-black">
+                    {pendientesCount}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
         </section>
@@ -934,10 +971,11 @@ export default function RegistroVenta() {
 
           <div className="border-t border-white/10 px-4 py-3">
             <p className={`${LABEL} mb-3`}>Forma de pago</p>
-            <div className="grid grid-cols-[1fr_1fr_auto] gap-2" role="group" aria-label="Forma de pago">
+            <div className="grid grid-cols-3 gap-2" role="group" aria-label="Forma de pago">
               {[
                 [FORMA_PAGO_EFECTIVO, "Efectivo", Banknote, "F7"],
                 [FORMA_PAGO_TRANSFERENCIA, "Transferencia", Landmark, "F8"],
+                [FORMA_PAGO_MIXTO, "Mixto", Coins, "—"],
               ].map(([codigo, texto, Icono, tecla]) => {
                 const activo = formaPago === codigo;
                 return (
@@ -953,18 +991,6 @@ export default function RegistroVenta() {
                   </button>
                 );
               })}
-              {/* Botón: transferencias pendientes (contrato 27-10-26) */}
-              <button type="button" onClick={() => setShowTransferencias(true)}
-                title="Transferencias pendientes"
-                aria-label="Transferencias pendientes"
-                className="relative flex h-[42px] items-center justify-center rounded-none border border-white/10 bg-white/[0.03] px-2.5 text-white/60 transition-colors hover:bg-white/[0.06] hover:text-white">
-                <ClipboardList className="h-4 w-4" />
-                {pendientesCount != null && pendientesCount > 0 && (
-                  <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-400 px-1 text-[10px] font-bold text-black">
-                    {pendientesCount}
-                  </span>
-                )}
-              </button>
             </div>
           </div>
 
@@ -1026,6 +1052,60 @@ export default function RegistroVenta() {
             <div className="border-t border-white/10 px-4 py-3 text-sm text-white/50">
               Se registra el cobro por el total exacto de la venta:{" "}
               <span className="text-white/80" style={MONO}>{formatMoney(totalConIva)}</span>.
+            </div>
+          )}
+
+          {esMixto && (
+            <div className="border-t border-white/10 px-4 py-3 space-y-3">
+              {/* Único input: monto que llega por transferencia */}
+              <div>
+                <label htmlFor="venta-mixto-transferencia" className={`${LABEL} mb-2 block`}>
+                  Monto por transferencia
+                </label>
+                <div className="flex h-11 items-center gap-2 rounded-none border border-white/10 bg-white/[0.03] px-2 transition-colors focus-within:border-[var(--accent)]">
+                  <span className="text-sm text-white/40 select-none">Gs.</span>
+                  <input
+                    id="venta-mixto-transferencia"
+                    type="text"
+                    inputMode="numeric"
+                    value={montoTransferencia}
+                    onChange={(e) => setMontoTransferencia(e.target.value.replace(/[^\d]/g, ""))}
+                    placeholder="0"
+                    autoComplete="off"
+                    className="flex-1 min-w-0 bg-transparent text-xl font-semibold text-white outline-none placeholder:text-white/25"
+                    style={MONO}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setMontoTransferencia("")}
+                    title="Borrar monto"
+                    className="rounded-none p-1.5 text-white/30 transition-colors hover:bg-white/10 hover:text-white"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Efectivo derivado siempre al resto exacto */}
+              <div>
+                <p className={`${LABEL} mb-2`}>Efectivo (resto)</p>
+                <div
+                  className={`flex h-11 items-center justify-end rounded-none border px-3 text-xl font-semibold ${
+                    montoTransferenciaOk
+                      ? "border-[var(--border-accent)] bg-[var(--accent-dim)] text-[var(--accent)]"
+                      : "border-amber-400/30 bg-amber-400/10 text-amber-300"
+                  }`}
+                  style={MONO}
+                >
+                  {formatMoney(efectivoMixto)}
+                </div>
+              </div>
+
+              {Number.isFinite(montoTransferenciaNum) && montoTransferenciaNum > totalConIva && (
+                <p className="text-xs text-amber-300">
+                  El monto de transferencia excede el total ({formatMoney(totalConIva)}).
+                </p>
+              )}
             </div>
           )}
 

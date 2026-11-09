@@ -1,11 +1,17 @@
 const ESC = 0x1B;
 const GS = 0x1D;
 
-// Papel térmico de 80 mm (área imprimible ~72 mm) = 48 caracteres
-// en Font A de 12x24. Todas las líneas se alinean a este ancho.
-const WIDTH = 48;
+// ═══════════════════════════════════════════════════════════════
+// Papel: impresora térmica FTX Revece 2" TDR058BT (58 mm).
+// Área imprimible ~48 mm = 384 dots → 32 caracteres en Font A 12x24.
+// Todas las líneas del ticket se alinean a este ancho (localStorage del
+// ancho sugerido solo si se cambia de impresora: 80 mm → 48 columnas).
+const WIDTH = 32;
 // Ancho reservado a la columna de importes (derecha, negrita).
-const AMOUNT_W = 11;
+// Las etiquetas más largas del ticket ("PAGO TRANSFERENCIA:" = 19) entran
+// en los 20 caracteres restantes con el importe de 12.
+const AMOUNT_W = 12;
+const LABEL_W = WIDTH - AMOUNT_W; // = 20
 
 function concat(arrays) {
   const total = arrays.reduce((sum, a) => sum + (a?.length || 0), 0);
@@ -58,10 +64,6 @@ function size(nw = 1, nh = 1) {
 
 function sizeNormal() {
   return size(1, 1);
-}
-
-function sizeDouble() {
-  return size(2, 2);
 }
 
 function cut() {
@@ -133,6 +135,7 @@ export function buildVentaEscPos(datos = {}) {
     montoPagado,
     cambio,
     formaPagoLabel,
+    montoMixto,
     timbrado,
   } = datos;
 
@@ -156,7 +159,9 @@ export function buildVentaEscPos(datos = {}) {
   // Header: nombre centrado, resto y bloque de datos también centrados
   parts.push(center());
   parts.push(boldOn());
-  parts.push(sizeDouble());
+  // En 58mm (32 col) el doble-ancho completo haría overflow con nombres largos:
+  // se usa doble ALTO (1x2) — prominencia sin romper la línea.
+  parts.push(size(1, 2));
   parts.push(line(empName));
   parts.push(sizeNormal());
   parts.push(boldOff());
@@ -179,50 +184,39 @@ export function buildVentaEscPos(datos = {}) {
   parts.push(line(`CLIENTE: ${cliente?.razonSocial || cliente?.nombreCompleto || cliente?.nombre || "Sin Nombre"}`));
   parts.push(separator());
 
-  // Items: tabla de 6 columnas en 48 chars
-  // COD.(11) DESC.(11) CANT(4) PREC(6) IVA(3) TOTAL(8) + 5 separaciones = 48
-  const COD_W = 11;
-  const DESC_W = 11;
-  const CANT_W = 4;
-  const PREC_W = 6;
-  const IVA_W = 3;
-  const TOTAL_W = WIDTH - COD_W - DESC_W - CANT_W - 1 - PREC_W - 1 - IVA_W - 1;
-  const LABEL_W = WIDTH - AMOUNT_W;
-  parts.push(boldOn());
-  parts.push(
-    line(
-      "COD.".padEnd(COD_W) +
-        "DESC.".padEnd(DESC_W) +
-        "CANT".padStart(CANT_W) +
-        " " +
-        "PREC".padStart(PREC_W) +
-        " " +
-        "IVA".padStart(IVA_W) +
-        " " +
-        "TOTAL".padStart(TOTAL_W),
-    ),
-  );
-  parts.push(boldOff());
+  // Items: 2 líneas por artículo (estándar en papel de 58 mm = 32 columnas):
+  //   línea 1: nombre del producto (con sufijo (KG) si pesable)
+  //   línea 2: cant × precio unitario ……………… total
+  // El IVA por artículo no se imprime en esta versión (el desglose total
+  // por tasa está más abajo), igual que el ticket de pantalla.
+  const unidadDe = (l) => {
+    const u = String(l?.unidadMedida || "").toUpperCase();
+    return l?.productoPesable === "si" || u === "KG" || u === "KILOGRAMO" || u === "KILOGRAMOS" ? "kg" : "u.";
+  };
+  const wrapText = (str, w = WIDTH) => {
+    const s = String(str ?? "");
+    const out = [];
+    for (let i = 0; i < s.length; i += w) out.push(s.slice(i, i + w));
+    return out.length > 0 ? out : [""];
+  };
+
   for (const l of lineas) {
     const cant = getCant(l);
     const pu = getPU(l);
-    const sub = cant * pu;
-    const tasa = Number(l.iva ?? l.tasaIva ?? 10);
-    const ivaTxt = tasa === 0 ? "-" : `${tasa}%`;
-    const cod = String(l.codigoBarras || l.codigo || l.codigoBarra || "").substring(0, COD_W);
-    const nombre = getNombre(l).substring(0, DESC_W);
+    const sub = Math.round(cant * pu * 100) / 100;
+    const pesable = unidadDe(l) === "kg";
+    const nombreBase = getNombre(l) + (pesable ? " (KG)" : "");
+
+    // Línea 1: nombre (si es largo, se separa en varias líneas de 32)
+    for (const tramo of wrapText(nombreBase)) {
+      parts.push(line(tramo));
+    }
+
+    // Línea 2: "2 u. × 1.250 ……… 2.500" (total alineado a la derecha)
+    const leftTxt = `  ${cant.toLocaleString("es-PY", { maximumFractionDigits: 3 })} ${unidadDe(l)} × ${compMoney(pu)}`;
+    const subTxt = compMoney(sub);
     parts.push(
-      line(
-        cod.padEnd(COD_W) +
-          nombre.padEnd(DESC_W) +
-          cant.toLocaleString("es-PY", { maximumFractionDigits: 3 }).padStart(CANT_W) +
-          " " +
-          compMoney(pu).padStart(PREC_W) +
-          " " +
-          ivaTxt.padStart(IVA_W) +
-          " " +
-          compMoney(sub).padStart(TOTAL_W),
-      ),
+      line(leftTxt.padEnd(WIDTH - subTxt.length) + subTxt),
     );
   }
   parts.push(separator());
@@ -232,8 +226,16 @@ export function buildVentaEscPos(datos = {}) {
   parts.push(boldOn());
   parts.push(line("TOTAL A PAGAR:".padEnd(LABEL_W) + money(total).padStart(AMOUNT_W)));
   parts.push(boldOff());
-  if (montoPagado != null) parts.push(line(`${pagoLabel}:`.padEnd(LABEL_W) + money(montoPagado).padStart(AMOUNT_W)));
-  if (montoPagado != null) parts.push(line("VUELTO:".padEnd(LABEL_W) + money(cambio || 0).padStart(AMOUNT_W)));
+  // Pago múltiple: desglose Efectivo + Transferencia en el papel también.
+  const mixto = montoMixto;
+  if (mixto) {
+    parts.push(line("PAGO EFECTIVO:".padEnd(LABEL_W) + money(mixto.efectivo).padStart(AMOUNT_W)));
+    parts.push(line("PAGO TRANSFERENCIA:".padEnd(LABEL_W) + money(mixto.transferencia).padStart(AMOUNT_W)));
+    if (montoPagado != null) parts.push(line("VUELTO:".padEnd(LABEL_W) + money(cambio || 0).padStart(AMOUNT_W)));
+  } else {
+    if (montoPagado != null) parts.push(line(`${pagoLabel}:`.padEnd(LABEL_W) + money(montoPagado).padStart(AMOUNT_W)));
+    if (montoPagado != null) parts.push(line("VUELTO:".padEnd(LABEL_W) + money(cambio || 0).padStart(AMOUNT_W)));
+  }
   parts.push(separator());
 
   // Desglose de IVA por tasa (replica CalculoIvaUtil del back)

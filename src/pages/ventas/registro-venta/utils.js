@@ -39,9 +39,11 @@ export function formatMoney(n) {
 
 export const FORMA_PAGO_EFECTIVO = "EFECTIVO";
 export const FORMA_PAGO_TRANSFERENCIA = "TRANSFERENCIA";
+export const FORMA_PAGO_MIXTO = "MIXTO";
 
 export function labelFormaPago(codigo) {
   if (codigo === FORMA_PAGO_TRANSFERENCIA) return "Transferencia";
+  if (codigo === FORMA_PAGO_MIXTO) return "Mixto";
   return "Efectivo";
 }
 

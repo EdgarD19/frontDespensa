@@ -210,11 +210,25 @@ export default function TicketVenta({ datos, onCerrar }) {
                   <span>TOTAL A PAGAR:</span>
                   <span className="text-sm">{formatMoney(total)}</span>
                 </div>
-                {montoPagado != null && (
-                  <div className="flex justify-between opacity-70">
-                    <span>{formaPagoLabel ? `PAGO ${String(formaPagoLabel).toUpperCase()}:` : "RECIBIDO:"}</span>
-                    <span>{formatMoney(montoPagado)}</span>
-                  </div>
+                {/* Pago múltiple: desglose Efectivo + Transferencia */}
+                {datos?.montoMixto ? (
+                  <>
+                    <div className="flex justify-between opacity-70">
+                      <span>PAGO EFECTIVO:</span>
+                      <span>{formatMoney(datos.montoMixto.efectivo)}</span>
+                    </div>
+                    <div className="flex justify-between opacity-70">
+                      <span>PAGO TRANSFERENCIA:</span>
+                      <span>{formatMoney(datos.montoMixto.transferencia)}</span>
+                    </div>
+                  </>
+                ) : (
+                  montoPagado != null && (
+                    <div className="flex justify-between opacity-70">
+                      <span>{formaPagoLabel ? `PAGO ${String(formaPagoLabel).toUpperCase()}:` : "RECIBIDO:"}</span>
+                      <span>{formatMoney(montoPagado)}</span>
+                    </div>
+                  )
                 )}
                 {montoPagado != null && (
                   <div className="flex justify-between opacity-70">
