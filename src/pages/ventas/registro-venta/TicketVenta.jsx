@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Printer, X } from "lucide-react";
+import { Loader2, Printer, X } from "lucide-react";
 import { formatMoney, labelCliente, esProductoPesable } from "./utils";
 
-export default function TicketVenta({ datos, onCerrar }) {
+export default function TicketVenta({ datos, onCerrar, onReimprimir, reimprimiendo = false }) {
   const [status, setStatus] = useState("printing");
   const [printKey] = useState(0);
   const timerRef = useRef(null);
@@ -97,7 +97,18 @@ export default function TicketVenta({ datos, onCerrar }) {
                 <span className={`h-2 w-2 rounded-full ${isPrinting ? "animate-ping bg-amber-400" : "bg-[var(--accent)]"}`} />
                 <span className="font-mono text-[10px] text-[#6B6B6B]">{isPrinting ? "IMPRIMIENDO" : "LISTO"}</span>
               </div>
-              <div className="flex h-5 justify-end">
+              <div className="flex h-5 items-center gap-1.5">
+                {isCompleted && onReimprimir && (
+                  <button
+                    type="button"
+                    onClick={onReimprimir}
+                    disabled={reimprimiendo}
+                    className="flex items-center gap-1 rounded-md border border-[#2a2a2a] bg-[#0E0E0E] px-2 py-0.5 text-[10px] font-semibold text-white/80 transition-all hover:bg-white/10 hover:text-white disabled:opacity-40"
+                  >
+                    {reimprimiendo ? <Loader2 className="h-3 w-3 animate-spin" /> : <Printer className="h-3 w-3" />}
+                    Reimprimir
+                  </button>
+                )}
                 {isCompleted && (
                   <button type="button" onClick={onCerrar} className="rounded-md bg-white px-2 py-0.5 text-[10px] font-semibold text-black transition-all hover:bg-white/90">
                     Nueva compra

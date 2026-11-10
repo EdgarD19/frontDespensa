@@ -83,7 +83,15 @@ export default function RegistroVenta() {
   const [errorGlobal, setErrorGlobal] = useState(null);
   const [confirmando, setConfirmando] = useState(false);
   const [editandoCantidad, setEditandoCantidad] = useState(null);
-  const [datosImpresion, setDatosImpresion] = useState(null);
+  const [datosImpresion, setDatosImpresion] = useState(() => {
+    // Última venta persistida por pestaña: permite REIMPRIMIR el ticket aunque
+    // el recargue/puede haber fallado la impresora en el primer intento.
+    try {
+      const raw = sessionStorage.getItem("despensa_ultima_venta_v1");
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  });
+  const [mostrarTicket, setMostrarTicket] = useState(false);
   const [clienteQuery, setClienteQuery] = useState("");
   const [clientesOpciones, setClientesOpciones] = useState([]);
   const [clienteInactivo, setClienteInactivo] = useState(null);
@@ -586,6 +594,8 @@ export default function RegistroVenta() {
       empresaPieTicket: empresaConfig?.pieTicket,
     };
     setDatosImpresion(datosTicket);
+    setMostrarTicket(true);
+    try { sessionStorage.setItem("despensa_ultima_venta_v1", JSON.stringify(datosTicket)); } catch { /* cuota llena */ }
     try {
       await printVenta(datosTicket);
     } catch (e) {
@@ -664,6 +674,21 @@ export default function RegistroVenta() {
   }, [puedeConfirmar, cliente, carrito, finalizarVenta, rechequearTimbrado, formaPago, esMixto, montoTransferenciaNum, totalConIva, cargarPendientesCount]);
 
   confirmarRef.current = handleConfirmar;
+
+  // Reimpresión del último ticket (si la impresora falló en el primer intento):
+  // null-safe contra técnicas datosImpresion persistida en sessionStorage.
+  const [reimprimiendo, setReimprimiendo] = useState(false);
+  const reimprimirTicket = useCallback(async () => {
+    if (!datosImpresion || reimprimiendo) return;
+    setReimprimiendo(true);
+    setErrorGlobal(null);
+    try {
+      await printVenta(datosImpresion);
+    } catch (e) {
+      console.warn("[VENTA] Reimpresión fallida:", e);
+      setErrorGlobal("No se pudo reenviar el ticket a la impresora (" + (e?.message || e) + ").");
+    } finally { setReimprimiendo(false); }
+  }, [datosImpresion, reimprimiendo]);
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden px-6">
@@ -1122,13 +1147,17 @@ export default function RegistroVenta() {
         </aside>
       </div>
 
-      {datosImpresion && (
+      {mostrarTicket && datosImpresion && (
         <TicketVenta
           datos={datosImpresion}
           onCerrar={() => {
-            setDatosImpresion(null);
+            // Cerrar el ticket NO borra datosImpresion: queda disponible para
+            // reimprimir desde el botón del propio ticket.
+            setMostrarTicket(false);
             focusSearch();
           }}
+          onReimprimir={reimprimirTicket}
+          reimprimiendo={reimprimiendo}
         />
       )}
 
