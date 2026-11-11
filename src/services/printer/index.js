@@ -1,32 +1,17 @@
 let printerInstance = null;
 
-async function hayWebUSB() {
-  if (typeof navigator === "undefined" || !navigator.usb) return false;
-  try {
-    const devices = await navigator.usb.getDevices();
-    return devices && devices.length > 0;
-  } catch (e) {
-    console.warn("[PRINTER] Error al obtener dispositivos USB:", e);
-    return false;
-  }
-}
-
-// ¿QZ Tray corriendo y respondiendo en :8182? — intento corto para no frenar
-// el arranque si no está instalado. qz-tray se importa SOLO acá (lazy).
+// ¿QZ Tray corriendo y respondiendo en :8182?
+// Sin timeout corto a propósito: si QZ Tray está corriendo, la conexión
+// WebSocket es instantánea (fail-fast si no está: conexión rechazada).
+// Lo único que puede demorar es el DIÁLOGO de confianza de QZ Tray ("Permitir
+// siempre") — ese espera al usuario, no al reloj: si lo cortamos a los 2,5 s
+// la impresión cae a MOCK y el permiso quedaba a medias.
 async function hayQZ() {
   try {
     const qzModule = await import("./qz");
     const mod = qzModule.default;
-    const intento = (async () => {
-      await mod.connect();
-      return mod;
-    })();
-    const conTimeout = Promise.race([
-      intento,
-      new Promise((_, rej) => setTimeout(() => rej(new Error("QZ timeout")), 2500)),
-    ]);
-    const modConectado = await conTimeout;
-    return modConectado;
+    await mod.connect();
+    return mod;
   } catch (e) {
     console.info("[PRINTER] QZ Tray no disponible:", e?.message || e);
     return null;
@@ -46,15 +31,7 @@ export async function getPrinter() {
     return printerInstance;
   }
 
-  // 2) Impresora USB ya aparejada en el navegador (TDR por cable / WebUSB)
-  if (await hayWebUSB()) {
-    const mod = await import("./webusb");
-    printerInstance = mod.default;
-    console.info("[PRINTER] Modo: WebUSB (impresora aparejada)");
-    return printerInstance;
-  }
-
-  // 3) Sin nada disponible: emulador — console muestra "Texto legible"
+  // 2) Sin impresora: emulador — console muestra "Texto legible"
   console.info("[PRINTER] Modo: MOCK (emulador de ticket en consola)");
   const mod = await import("./mock");
   printerInstance = mod.default;

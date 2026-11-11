@@ -124,18 +124,20 @@ function separator() {
 }
 
 function money(v) {
-  if (v == null) return "0.00";
+  // Guaraníes: SIN decimales en el papel (igual que la pantalla). El valor
+  // exacto (centavos del IVA) sigue vivo en el back/factura digital.
+  if (v == null) return "0";
   const num = typeof v === "number" ? v : Number(v);
   if (Number.isNaN(num)) return String(v);
-  return num.toLocaleString("es-PY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return Math.round(num).toLocaleString("es-PY", { maximumFractionDigits: 0 });
 }
 
-// Monto compacto para la tabla de productos: enteros sin decimales;
-// pesables/cortes decimales con 2 decimales.
+// Monto compacto para la tabla de productos: enteros (guaraníes no usan
+// decimales); la ÚNICA cifra con decimales del papel es la CANTIDAD en kg
+// (hasta 3, impresa directamente desde el valor del carrito).
 function compMoney(v) {
   const num = Number(v) || 0;
-  const esEntero = Math.abs(num % 1) < 0.005;
-  return num.toLocaleString("es-PY", { minimumFractionDigits: esEntero ? 0 : 2, maximumFractionDigits: 2 });
+  return Math.round(num).toLocaleString("es-PY", { maximumFractionDigits: 0 });
 }
 
 function fmtFecha(valor) {
