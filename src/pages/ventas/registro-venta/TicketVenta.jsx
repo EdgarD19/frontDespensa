@@ -247,13 +247,17 @@ export default function TicketVenta({ datos, onCerrar, onReimprimir, reimprimien
                     <span>{formatMoney(cambio || 0)}</span>
                   </div>
                 )}
-                {/* Cantidad de artículos: suma de las cantidades de las líneas
-                    (entero sin decimales salvo pesables). */}
+                {/* Cantidad de ARTÍCULOS: cuenta unidades vendidas.
+                    Un pesable (ej. 1,5 kg de Azúcar) cuenta como 1 artículo:
+                    "artículos" no suma kilos. */}
                 <div className="flex justify-between opacity-70">
                   <span>CANTIDAD DE ARTICULOS:</span>
                   <span>{(() => {
-                    const suma = lineas.reduce((acc, l) => acc + getCantidad(l), 0);
-                    return suma.toLocaleString("es-PY", { maximumFractionDigits: 3 });
+                    const articulos = lineas.reduce((acc, l) => {
+                      const cant = getCantidad(l);
+                      return acc + (esProductoPesable(l) ? 1 : Math.trunc(cant));
+                    }, 0);
+                    return articulos.toLocaleString("es-PY", { maximumFractionDigits: 0 });
                   })()}</span>
                 </div>
               </div>

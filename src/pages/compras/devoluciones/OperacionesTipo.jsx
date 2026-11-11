@@ -103,6 +103,7 @@ const ESTADO_BLOQUEO = {
   INTERCAMBIO_PENDIENTE: { label: "Intercambio pendiente", badge: "bg-amber-500/10 text-amber-300", dot: "bg-amber-400" },
   INTERCAMBIO_PROVEEDOR: { label: "Intercambio en curso", badge: "bg-sky-500/10 text-sky-300", dot: "bg-sky-400" },
   ESTADO_NO_RECIBIDA: { label: "No recibida", badge: "bg-white/10 text-white/50", dot: "bg-white/40" },
+  FUERA_DE_PLAZO: { label: "Fuera de plazo (15 días)", badge: "bg-red-500/10 text-red-400", dot: "bg-red-400" },
 };
 
 // Estado propio de la factura de compra.
@@ -554,6 +555,14 @@ export default function OperacionesTipo({ tipo }) {
     }
     const devSet = new Set(pendientes.devFacturas);
     const intFacturasSet = new Set(pendientes.intFacturas);
+    // Plazo de la regla del back: despensa.devolucion.dias-permitidos (default 15).
+    const hoy = new Date();
+    const fueraDePlazo = (fechaEmision) => {
+      const dia = String(fechaEmision || "").slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) return null;
+      const dias = Math.floor((hoy.getTime() - new Date(dia + "T00:00:00").getTime()) / 86400000);
+      return dias > 15 ? dias : null;
+    };
     const bloqueadas = [];
     facturas.forEach((f) => {
       const idf = Number(f.idFactura);
@@ -568,6 +577,18 @@ export default function OperacionesTipo({ tipo }) {
         bloqueadas.push({ idFactura: idf, motivo: "La factura ya tiene un intercambio pendiente", estado: "INTERCAMBIO_PENDIENTE" });
       } else if (tipo === "DEVOLUCION" && estado !== "RECIBIDA" && estado !== "VIGENTE") {
         bloqueadas.push({ idFactura: idf, motivo: "La factura debe estar RECIBIDA", estado: "ESTADO_NO_RECIBIDA" });
+      } else if (tipo === "DEVOLUCION") {
+        // Espejo de DevolucionService: la devolución rechaza facturas emitidas
+        // hace más de despensa.devolucion.dias-permitidos (15). Sin este filtro
+        // el 400 llegaba recién al registrar el operativo.
+        const dias = fueraDePlazo(f.fechaEmision);
+        if (dias != null) {
+          bloqueadas.push({
+            idFactura: idf,
+            motivo: `Fuera de plazo: emitida hace ${dias} días (máximo 15).`,
+            estado: "FUERA_DE_PLAZO",
+          });
+        }
       }
     });
     setFacturasBloqueadas(bloqueadas);
@@ -634,7 +655,7 @@ export default function OperacionesTipo({ tipo }) {
                   <th className={thBase}>Fecha</th>
                   <th className={thBase}>Estado</th>
                   <th className={thBase}>{tipo === "INTERCAMBIO" ? "Factura" : "N° factura"}</th>
-                  {tipo === "DEVOLUCION" && <th className={thBase}>Factura original</th>}
+                  {tipo === "DEVOLUCION" && <th className={thBase}>Factura anulada</th>}
                   <th className={thBase}>Proveedor</th>
                   <th className={`${thBase} text-right`}>Total</th>
                   <th className={`${thBase} w-28`} aria-label="Acciones" />
@@ -1024,7 +1045,7 @@ function RegistrarFacturaNuevaModal({ op, facturas, onCerrar, onConfirmar, nombr
 
 /* ───────────── Ver factura vinculada a un intercambio ───────────── */
 
-function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion, motivo = "", tipoOp, nombreProv, onCerrar }) {
+function VerFacturaModal({ facturaId, items = [], estadoOperacion, motivo = "", tipoOp, nombreProv, onCerrar }) {
   const [factura, setFactura] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
@@ -1071,7 +1092,7 @@ function VerFacturaModal({ facturaId, numeroFactura, items = [], estadoOperacion
       >
         <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
-            <FileText className="h-4 w-4 text-sky-400" /> {tituloOp} {numeroFactura || factura?.numeroFactura || ""}
+            <FileText className="h-4 w-4 text-sky-400" /> {tituloOp}
           </h2>
           <button type="button" onClick={onCerrar} aria-label="Cerrar"
             className="rounded-none p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white">
@@ -1610,6 +1631,21 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
   // superar los días permitidos y tener stock suficiente para revertirlo.
   const DIAS_PERMITIDOS_ANULACION = 15;
 
+  // Espejo de DevolucionService.validarDiasPermitidos: la devolución rechaza
+  // facturas emitidas hace más de despensa.devolucion.dias-permitidos (15).
+  const DIAS_PERMITIDOS_DEVOLUCION = 15;
+
+  const validarPlazoDevolucion = useCallback((factura) => {
+    if (!factura) return [];
+    const diaEmision = String(factura.fechaEmision || "").slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(diaEmision)) return [];
+    const dias = Math.floor((new Date().getTime() - new Date(diaEmision + "T00:00:00").getTime()) / 86400000);
+    if (dias > DIAS_PERMITIDOS_DEVOLUCION) {
+      return [`Fuera de plazo: la factura fue emitida hace ${dias} días (máximo ${DIAS_PERMITIDOS_DEVOLUCION}).`];
+    }
+    return [];
+  }, []);
+
   const validarAnulacion = useCallback((factura) => {
     if (!factura) return [];
     const avisos = [];
@@ -1643,9 +1679,13 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
 
   const avisosAnulacion = tipo === "ANULACION" && facturaDetalle ? validarAnulacion(facturaDetalle) : [];
   const bloqueaAnulacion = avisosAnulacion.length > 0;
+  // Plazo de devolución: segunda capa (el selector ya bloquea las facturas
+  // fuera de plazo; este aviso cubre el detalle por si cambia de día abierto).
+  const avisosDevolucion = tipo === "DEVOLUCION" && facturaDetalle ? validarPlazoDevolucion(facturaDetalle) : [];
+  const bloqueaDevolucion = avisosDevolucion.length > 0;
   const puedeRegistrar = tipo === "ANULACION"
     ? !bloqueaAnulacion
-    : tieneProductos && !esDevolucionTotal;
+    : tieneProductos && !esDevolucionTotal && !bloqueaDevolucion;
 
   const handleRegistrar = () => {
     if (!puedeRegistrar || registrando) return;
@@ -1986,6 +2026,17 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
 
     return (
       <div className="space-y-4 p-5">
+        {/* Plazo de devolución: aviso + bloqueo del registro (espejo del 400 del back) */}
+        {tipo === "DEVOLUCION" && avisosDevolucion.length > 0 && (
+          <ul className="space-y-1 rounded-none border border-red-500/20 bg-red-500/5 p-3 text-xs text-red-300">
+            {avisosDevolucion.map((a) => (
+              <li key={a} className="flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {a}
+              </li>
+            ))}
+          </ul>
+        )}
+
         <div className="space-y-3 rounded-none border border-white/10 bg-white/[0.02] p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className={`flex items-center gap-2 text-sm font-semibold ${tipo === "DEVOLUCION" ? "text-red-400" : "text-[var(--accent)]"}`}>

@@ -1,5 +1,13 @@
+import { useMemo } from "react";
 import { Search, ToggleLeft, ToggleRight, Pencil } from "lucide-react";
 import SearchField from "../../../../components/ui/SearchField";
+
+/* Nombre visible del proveedor (FÍSICA: nombre + apellido; JURÍDICA: razón social). */
+function nombreDe(p) {
+  return p.tipoPersona === "FISICA"
+    ? [p.nombre, p.apellido].filter(Boolean).join(" ") || "—"
+    : (p.nombre || "—");
+}
 import { TABLE_SHELL,THEAD_ROW } from "../../../../components/ui/styles";
 import Pagination from "../../../../components/ui/Pagination";
 
@@ -16,6 +24,16 @@ export default function ProveedoresTabla({
   totalItems = 0,
   pageSize = 10,
 }) {
+  // Orden alfabético visible: el back ordena por `nombre` crudo (que para
+  // FÍSICA no incluye el apellido y diferencia mayúsculas); acá se reordena
+  // por el NOMBRE MOSTRADO, insensible a mayúsculas/acentos (es-PY).
+  const ordenados = useMemo(
+    () => [...proveedores].sort((a, b) =>
+      nombreDe(a).localeCompare(nombreDe(b), "es", { sensitivity: "base" })
+    ),
+    [proveedores]
+  );
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-3 py-3">
@@ -39,9 +57,10 @@ export default function ProveedoresTabla({
           <thead>
             <tr className={THEAD_ROW}>
               <th className="px-4 py-3 font-medium">Nombre / Razón Social</th>
+              <th className="whitespace-nowrap px-4 py-3 font-medium">Celular contacto</th>
+              <th className="px-4 py-3 font-medium">Contacto</th>
               <th className="px-4 py-3 font-medium">Documento</th>
               <th className="whitespace-nowrap px-4 py-3 font-medium">Tipo de persona</th>
-              <th className="px-4 py-3 font-medium">Contacto</th>
               <th className="px-4 py-3 font-medium">Estado</th>
               <th className="w-24 px-4 py-3 text-right font-medium">Acciones</th>
             </tr>
@@ -49,24 +68,33 @@ export default function ProveedoresTabla({
           <tbody>
             {loading && Array.from({ length: 5 }).map((_, i) => (
               <tr key={i} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
-                {Array.from({ length: 6 }).map((_, j) => (
+                {Array.from({ length: 7 }).map((_, j) => (
                   <td key={j} className="px-4 py-3"><div className="h-4 w-3/4 animate-pulse rounded-none bg-white/10" /></td>
                 ))}
               </tr>
             ))}
             {!loading && proveedores.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-12 text-center text-white/30">No se encontraron proveedores.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-12 text-center text-white/30">No se encontraron proveedores.</td></tr>
             )}
-            {!loading && proveedores.map((p) => {
+            {!loading && ordenados.map((p) => {
               const activo = p.activo !== false;
               const esJuridica = p.tipoPersona === "JURIDICA";
-              const nombre = p.tipoPersona === "FISICA"
-                ? [p.nombre, p.apellido].filter(Boolean).join(" ") || "—"
-                : (p.nombre || "—");
+              const nombre = nombreDe(p);
+              // El celular del contacto viaja embebido en personaContacto
+              // ("Nombre · cel +5959XXXXXXXX") — se separa para su columna.
+              const m = /^(.*?)\s*·\s*cel\s*(\+5959\d{8})$/.exec(p.personaContacto ?? "");
+              const contactoNombre = m ? m[1].trim() : (p.personaContacto ?? "");
+              const contactoCelular = m ? m[2] : "";
               return (
                 <tr key={p.id ?? p.idProveedor} onClick={() => onSeleccionar(p)}
                   className={`border-b border-white/10 cursor-pointer transition-colors hover:bg-white/[0.04] last:border-0 ${!activo ? "opacity-60" : ""}`}>
                   <td className="px-4 py-3 text-white">{nombre}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-white/70">
+                    {contactoCelular
+                      ? <span className="tabular-nums text-white/85">{contactoCelular}</span>
+                      : <span className="text-white/30">—</span>}
+                  </td>
+                  <td className="px-4 py-3 text-white/70">{contactoNombre || "—"}</td>
                   <td className="px-4 py-3 text-white/70">{p.numeroDocumento || "—"}</td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
@@ -75,7 +103,6 @@ export default function ProveedoresTabla({
                       {esJuridica ? "Jurídica" : "Física"}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-white/70">{p.personaContacto || "—"}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
                       activo ? "bg-[var(--accent-dim)] text-[var(--accent)]" : "bg-red-500/10 text-red-400"

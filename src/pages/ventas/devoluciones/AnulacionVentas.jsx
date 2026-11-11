@@ -18,6 +18,17 @@ import { fmtMoneda } from "../common";
 
 /* ───────────── Utilidades y estilos ───────────── */
 
+// Regla del back (AnulacionFacturaVentaService.validarDiasLimite):
+// despensa.anulacion.dias-permitidos (default 15). Solo se pueden anular
+// facturas emitidas hace ≤ 15 días.
+const DIAS_PERMITIDOS_ANULACION_VENTA = 15;
+
+function diasDesdeEmision(f) {
+  const dia = String(f?.fechaEmision || f?.fechaCreacion || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) return 0;
+  return Math.floor((new Date().getTime() - new Date(dia + "T00:00:00").getTime()) / 86400000);
+}
+
 function fmtCantidad(n) {
   const v = Number(n);
   if (!Number.isFinite(v)) return "—";
@@ -374,6 +385,15 @@ function NuevaAnulacionModal({ onCerrar, onAnulada }) {
 
   const handleRegistrar = async () => {
     if (!puedeRegistrar) return;
+    // Red de seguridad del plazo: la selección ya bloquea facturas fuera de
+    // plazo en la capa 1; esto cubre el borde de que cambie el día con el
+    // wizard abierto (el back igualmente rechazaría con 400).
+    if (diasDesdeEmision(facturaSel) > DIAS_PERMITIDOS_ANULACION_VENTA) {
+      setErrorOperacion(
+        `Fuera de plazo: la factura fue emitida hace ${diasDesdeEmision(facturaSel)} días (máximo ${DIAS_PERMITIDOS_ANULACION_VENTA}).`
+      );
+      return;
+    }
     setErrorOperacion(null);
     setRegistrando(true);
     try {
@@ -438,21 +458,38 @@ function NuevaAnulacionModal({ onCerrar, onAnulada }) {
                   </td>
                 </tr>
               )}
-              {facturas.map((f) => (
-                <tr
-                  key={f.idFacturaVenta}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setFacturaSel(f)}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setFacturaSel(f); } }}
-                  className="cursor-pointer border-b border-white/10 transition-colors last:border-b-0 focus:outline-none focus-visible:bg-white/[0.06] hover:bg-white/[0.04]"
-                >
-                  <td className="whitespace-nowrap px-4 py-3 font-medium tabular-nums text-white">{f.numeroFactura || "—"}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-white/60">{fmtFechaHora(f.fechaEmision || f.fechaCreacion)}</td>
-                  <td className="px-4 py-3 text-white/70">{f.nombreCliente || "Sin Nombre"}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white">{fmtMoneda(f.totalGeneral)}</td>
-                </tr>
-              ))}
+              {facturas.map((f) => {
+                // Plazo: facturas emitidas hace más de 15 días NO son anulables
+                // (espejo del 400 del back) — se muestran bloqueadas.
+                const dias = diasDesdeEmision(f);
+                const fueraDePlazo = dias > DIAS_PERMITIDOS_ANULACION_VENTA;
+                return (
+                  <tr
+                    key={f.idFacturaVenta}
+                    role={fueraDePlazo ? undefined : "button"}
+                    tabIndex={fueraDePlazo ? -1 : 0}
+                    aria-disabled={fueraDePlazo || undefined}
+                    onClick={fueraDePlazo ? undefined : () => setFacturaSel(f)}
+                    onKeyDown={fueraDePlazo ? undefined : (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setFacturaSel(f); } }}
+                    className={`${fueraDePlazo ? "cursor-not-allowed opacity-45" : "cursor-pointer"} border-b border-white/10 transition-colors last:border-b-0 focus:outline-none focus-visible:bg-white/[0.06] ${fueraDePlazo ? "" : "hover:bg-white/[0.04]"}`}
+                  >
+                    <td className="whitespace-nowrap px-4 py-3 font-medium tabular-nums text-white">
+                      <span className="flex flex-col">
+                        <span>{f.numeroFactura || "—"}</span>
+                        {fueraDePlazo && (
+                          <span className="flex items-center gap-1 text-[10px] font-medium text-red-400">
+                            <AlertTriangle className="h-3 w-3" aria-hidden />
+                            Fuera de plazo ({dias} días)
+                          </span>
+                        )}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-white/60">{fmtFechaHora(f.fechaEmision || f.fechaCreacion)}</td>
+                    <td className="px-4 py-3 text-white/70">{f.nombreCliente || "Sin Nombre"}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white">{fmtMoneda(f.totalGeneral)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

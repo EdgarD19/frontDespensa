@@ -1,7 +1,15 @@
+import { useMemo } from "react";
 import { ToggleLeft, ToggleRight, Pencil, Trash2 } from "lucide-react";
 import Pagination from "../../../../components/ui/Pagination";
 import { TABLE_SHELL,THEAD_ROW } from "../../../../components/ui/styles";
 import SearchField from "../../../../components/ui/SearchField";
+
+/* Nombre visible del cliente (FÍSICA: nombre + apellido; JURÍDICA: razón social). */
+function nombreDe(c) {
+  return [c.nombre ?? c.firstName ?? c.name ?? c.razonSocial, c.apellido ?? c.lastName]
+    .filter(Boolean)
+    .join(" ") || "—";
+}
 
 export default function ClientesTabla({
   clientes = [],
@@ -16,6 +24,15 @@ export default function ClientesTabla({
   totalItems = 0,
   pageSize = 10,
 }) {
+  // Orden alfabético visible por el nombre mostrado (insensible a
+  // mayúsculas/acentos) — el back ordena por idCliente por defecto.
+  const ordenados = useMemo(
+    () => [...clientes].sort((a, b) =>
+      nombreDe(a).localeCompare(nombreDe(b), "es", { sensitivity: "base" })
+    ),
+    [clientes]
+  );
+
   return (
     <div className="flex flex-col gap-4">
       
@@ -74,11 +91,9 @@ export default function ClientesTabla({
               </tr>
             )}
 
-            {!loading && clientes.map((c) => {
+            {!loading && ordenados.map((c) => {
               const esJuridica = c.tipoCliente === "JURIDICA" || c.tipoDocumento === "RUC";
-              const nombre = [c.nombre ?? c.firstName ?? c.name ?? c.razonSocial, c.apellido ?? c.lastName]
-                .filter(Boolean)
-                .join(" ") || "—";
+              const nombre = nombreDe(c);
               const doc = c.numeroDocumento || c.documentNumber || "—";
               const activo = c.activo !== false;
 
