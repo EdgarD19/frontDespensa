@@ -19,7 +19,7 @@ import { QZ_CERT, firmarPeticion } from "./qzKeys";
 
 let conectado = false;
 
-const PRINTER_MATCH = /tdr|pos|thermal|termica|t[eé]rmica|58|receipt/i;
+const PRINTER_MATCH = /58|pos|thermal|termica|t[eé]rmica|receipt/i;
 
 function bytesABase64(bytes) {
   let binario = "";
@@ -36,18 +36,26 @@ async function elegirImpresora() {
   const impresoras = await qz.printers.find();
   const lista = Array.isArray(impresoras) ? impresoras : [impresoras].filter(Boolean);
 
-  const match = lista.find((p) => PRINTER_MATCH.test(String(p)));
-  if (match) {
-    localStorage.setItem("despensa_qz_printer", match);
-    return match;
+  let elegida = null;
+  try {
+    const predeterminada = await qz.printers.getDefault();
+    if (predeterminada && lista.includes(predeterminada)) elegida = predeterminada;
+  } catch (e) {
+    console.info("[PRINTER][QZ] No se pudo obtener la impresora predeterminada:", e?.message || e);
   }
-  if (lista.length === 1) {
-    localStorage.setItem("despensa_qz_printer", lista[0]);
-    return lista[0];
+
+  if (!elegida) {
+    elegida = lista.find((p) => PRINTER_MATCH.test(String(p))) || null;
   }
-  throw new Error(
-    "No se pudo elegir la impresora automática. Opciones instaladas: " + lista.join(" | ")
-  );
+  if (!elegida && lista.length === 1) elegida = lista[0];
+
+  if (!elegida) {
+    throw new Error(
+      "No se pudo elegir la impresora automática. Opciones instaladas: " + lista.join(" | ")
+    );
+  }
+  localStorage.setItem("despensa_qz_printer", elegida);
+  return elegida;
 }
 
 export default {
@@ -56,6 +64,8 @@ export default {
 
   async connect() {
     // qz-tray: configurar la firma con nuestro par de llaves ANTES de conectar.
+    // El algoritmo debe coincidir con el usado en firmarPeticion (SHA256withRSA).
+    qz.security.setSignatureAlgorithm("SHA256");
     qz.security.setCertificatePromise((resolve) => resolve(QZ_CERT));
     qz.security.setSignaturePromise((toSign) => (resolve) => resolve(firmarPeticion(toSign)));
 
@@ -69,7 +79,7 @@ export default {
     }
     const impresora = await elegirImpresora();
     const base64 = bytesABase64(buildVentaEscPos(datos));
-    const config = qz.config.create(impresora);
+    const config = qz.configs.create(impresora);
     await qz.print(config, [{ type: "raw", format: "base64", data: base64 }]);
     return { success: true };
   },

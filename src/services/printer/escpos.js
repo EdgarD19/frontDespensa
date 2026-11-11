@@ -3,15 +3,15 @@ const GS = 0x1D;
 
 // ═══════════════════════════════════════════════════════════════
 // Papel: impresora térmica FTX Revece 2" TDR058BT (58 mm).
-// Área imprimible ~48 mm = 384 dots → 32 caracteres en Font A 12x24.
+// Área imprimible ~48 mm = 384 dots → 42 caracteres en Font B 9x17.
 // Todas las líneas del ticket se alinean a este ancho (localStorage del
 // ancho sugerido solo si se cambia de impresora: 80 mm → 48 columnas).
-const WIDTH = 32;
+const WIDTH = 42;
 // Ancho reservado a la columna de importes (derecha, negrita).
 // Las etiquetas más largas del ticket ("PAGO TRANSFERENCIA:" = 19) entran
-// en los 20 caracteres restantes con el importe de 12.
-const AMOUNT_W = 12;
-const LABEL_W = WIDTH - AMOUNT_W; // = 20
+// en los 28 caracteres restantes con el importe de 14.
+const AMOUNT_W = 14;
+const LABEL_W = WIDTH - AMOUNT_W; // = 28
 
 function concat(arrays) {
   const total = arrays.reduce((sum, a) => sum + (a?.length || 0), 0);
@@ -29,12 +29,49 @@ function cmd(bytes) {
   return new Uint8Array(bytes);
 }
 
+// La térmica interpreta los bytes según su code page ESC/POS, no UTF-8.
+// Se usa PC850 (Multilingual) que cubre los acentos y la ñ del español.
+const CP850 = {
+  "Ç": 0x80, "ü": 0x81, "é": 0x82, "â": 0x83, "ä": 0x84, "à": 0x85, "å": 0x86, "ç": 0x87,
+  "ê": 0x88, "ë": 0x89, "è": 0x8a, "ï": 0x8b, "î": 0x8c, "ì": 0x8d, "Ä": 0x8e, "Å": 0x8f,
+  "É": 0x90, "æ": 0x91, "Æ": 0x92, "ô": 0x93, "ö": 0x94, "ò": 0x95, "û": 0x96, "ù": 0x97,
+  "ÿ": 0x98, "Ö": 0x99, "Ü": 0x9a, "ø": 0x9b, "£": 0x9c, "Ø": 0x9d, "×": 0x9e, "ƒ": 0x9f,
+  "á": 0xa0, "í": 0xa1, "ó": 0xa2, "ú": 0xa3, "ñ": 0xa4, "Ñ": 0xa5, "ª": 0xa6, "º": 0xa7,
+  "¿": 0xa8, "¬": 0xaa, "½": 0xab, "¼": 0xac, "¡": 0xad, "«": 0xae, "»": 0xaf,
+  "Á": 0xb5, "Â": 0xb6, "À": 0xb7, "©": 0xb8, "¢": 0xbd, "¥": 0xbe,
+  "ã": 0xc6, "Ã": 0xc7, "¤": 0xcf, "ð": 0xd0, "Ð": 0xd1, "Ê": 0xd2, "Ë": 0xd3, "È": 0xd4,
+  "ı": 0xd5, "Í": 0xd6, "Î": 0xd7, "Ï": 0xd8, "¦": 0xdd, "Ì": 0xde,
+  "Ó": 0xe0, "ß": 0xe1, "Ô": 0xe2, "Ò": 0xe3, "õ": 0xe4, "Õ": 0xe5, "µ": 0xe6, "þ": 0xe7,
+  "Þ": 0xe8, "Ú": 0xe9, "Û": 0xea, "Ù": 0xeb, "ý": 0xec, "Ý": 0xed, "¯": 0xee, "´": 0xef,
+  "±": 0xf1, "¾": 0xf3, "¶": 0xf4, "§": 0xf5, "÷": 0xf6, "¸": 0xf7, "°": 0xf8, "¨": 0xf9,
+  "·": 0xfa, "¹": 0xfb, "³": 0xfc, "²": 0xfd, "■": 0xfe,
+};
+
 function text(str) {
   if (!str) return new Uint8Array([]);
-  const s = String(str);
-  // Use TextEncoder for UTF-8
-  const enc = new TextEncoder();
-  return enc.encode(s);
+  const s = String(str).normalize("NFC");
+  const out = [];
+  for (const ch of s) {
+    const code = ch.codePointAt(0);
+    if (code < 0x80) {
+      out.push(code);
+    } else if (CP850[ch] != null) {
+      out.push(CP850[ch]);
+    } else if (ch === "\u2014" || ch === "\u2013") {
+      out.push(0x2d);
+    } else if (ch === "\u2026") {
+      out.push(0x2e, 0x2e, 0x2e);
+    } else if (ch === "\u201c" || ch === "\u201d") {
+      out.push(0x22);
+    } else if (ch === "\u2018" || ch === "\u2019") {
+      out.push(0x27);
+    } else if (ch === "\u00a0") {
+      out.push(0x20);
+    } else {
+      out.push(0x3f);
+    }
+  }
+  return new Uint8Array(out);
 }
 
 function line(str = "") {
@@ -58,7 +95,8 @@ function boldOff() {
 }
 
 function size(nw = 1, nh = 1) {
-  const n = ((nw & 0x07) << 4) | (nh & 0x07);
+  // GS ! usa 0 = normal, 1 = doble, 2 = triple...; nw/nh son 1x, 2x, 3x...
+  const n = (((nw - 1) & 0x07) << 4) | ((nh - 1) & 0x07);
   return cmd([GS, 0x21, n]);
 }
 
@@ -70,8 +108,15 @@ function cut() {
   return cmd([GS, 0x56, 0x01]);
 }
 
+function fontB() {
+  // ESC M 1: fuente B (9x17), más compacta que la A (12x24).
+  return cmd([ESC, 0x4d, 0x01]);
+}
+
 function init() {
-  return cmd([ESC, 0x40]);
+  // ESC @ inicializa; ESC t 2 selecciona el code page PC850;
+  // ESC M 1 usa la fuente B (más chica, ~42 columnas en 58 mm).
+  return concat([cmd([ESC, 0x40, ESC, 0x74, 0x02]), fontB()]);
 }
 
 function separator() {
@@ -159,8 +204,8 @@ export function buildVentaEscPos(datos = {}) {
   // Header: nombre centrado, resto y bloque de datos también centrados
   parts.push(center());
   parts.push(boldOn());
-  // En 58mm (32 col) el doble-ancho completo haría overflow con nombres largos:
-  // se usa doble ALTO (1x2) — prominencia sin romper la línea.
+  // En 58mm con fuente B (42 col) el doble-ancho completo haría overflow con
+  // nombres largos: se usa doble ALTO (1x2) — prominencia sin romper la línea.
   parts.push(size(1, 2));
   parts.push(line(empName));
   parts.push(sizeNormal());
@@ -184,7 +229,7 @@ export function buildVentaEscPos(datos = {}) {
   parts.push(line(`CLIENTE: ${cliente?.razonSocial || cliente?.nombreCompleto || cliente?.nombre || "Sin Nombre"}`));
   parts.push(separator());
 
-  // Items: 2 líneas por artículo (estándar en papel de 58 mm = 32 columnas):
+  // Items: 2 líneas por artículo (estándar en papel de 58 mm = 42 columnas):
   //   línea 1: nombre del producto (con sufijo (KG) si pesable)
   //   línea 2: cant × precio unitario ……………… total
   // El IVA por artículo no se imprime en esta versión (el desglose total

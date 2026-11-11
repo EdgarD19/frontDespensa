@@ -1,4 +1,4 @@
-import { KJUR } from "jsrsasign";
+import { KJUR, stob64, hextorstr } from "jsrsasign";
 
 /**
  * Par de llaves para firmar las peticiones a QZ Tray.
@@ -65,7 +65,8 @@ function firmarPeticion(toSign) {
   const sig = new KJUR.crypto.Signature({ alg: "SHA256withRSA" });
   sig.init(QZ_PRIVATE_KEY);
   sig.updateString(toSign);
-  return sig.sign(); // hex — formato que QZ Tray acepta
+  // QZ Tray espera la firma en base64 (el resultado de jsrsasign es hex).
+  return stob64(hextorstr(sig.sign()));
 }
 
 export { QZ_CERT, firmarPeticion };

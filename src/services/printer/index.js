@@ -36,19 +36,21 @@ async function hayQZ() {
 export async function getPrinter() {
   if (printerInstance) return printerInstance;
 
-  // 1) Impresora USB ya aparejada en el navegador (TDR por cable / WebUSB)
-  if (await hayWebUSB()) {
-    const mod = await import("./webusb");
-    printerInstance = mod.default;
-    console.info("[PRINTER] Modo: WebUSB (impresora aparejada)");
-    return printerInstance;
-  }
-
-  // 2) QZ Tray (impresión silenciosa vía spooler del sistema)
+  // 1) QZ Tray (impresión silenciosa vía spooler del sistema). Va primero
+  // porque en Windows el driver USB (usbprint) es dueño del dispositivo y
+  // WebUSB no puede reclamarlo; además QZ ya está instalado y configurado.
   const qzMod = await hayQZ();
   if (qzMod) {
     printerInstance = qzMod;
     console.info("[PRINTER] Modo: QZ Tray (impresión silenciosa)");
+    return printerInstance;
+  }
+
+  // 2) Impresora USB ya aparejada en el navegador (TDR por cable / WebUSB)
+  if (await hayWebUSB()) {
+    const mod = await import("./webusb");
+    printerInstance = mod.default;
+    console.info("[PRINTER] Modo: WebUSB (impresora aparejada)");
     return printerInstance;
   }
 
