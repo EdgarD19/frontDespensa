@@ -2,13 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CARD } from "../../components/ui/styles";
 import { Link } from "react-router-dom";
 import {
-  AlertTriangle, TrendingUp, PackageOpen, BarChart3, RefreshCw,
+  AlertTriangle, TrendingUp, PackageOpen, BarChart3, RefreshCw, SearchX,
 } from "lucide-react";
 import { getProductosStockBajo, getCatalogoLigero } from "../../api/productosApi";
 import { getProductosMasVendidos } from "../../api/reportesVentasApi";
 import { getFacturasVenta } from "../../api/facturasVentaApi";
 import { apiErrorMessage } from "../../api/errors";
 import PageHeader from "../../components/ui/PageHeader";
+import SearchField from "../../components/ui/SearchField";
 
 const MINIMO_GLOBAL = 10;
 // Rango "todo el histórico" para el reporte de más vendidos
@@ -22,7 +23,7 @@ const nfGsDash = new Intl.NumberFormat("es-PY", { maximumFractionDigits: 0 });
 function fmtMoneda(n) {
   const v = Number(n ?? 0);
   const abs = Math.abs(Math.round(v));
-  return `${v < 0 ? "-" : ""}Gs. ${nfGsDash.format(abs)}`;
+  return `${v < 0 ? "-" : ""}${nfGsDash.format(abs)}`;
 }
 
 function fmtNumero(n) {
@@ -111,6 +112,9 @@ export default function DashboardVentas() {
   const [resumen, setResumen] = useState({ tickets: 0, importe: 0 });
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
+  // Buscadores independientes por sección (filtran solo por nombre).
+  const [busquedaBajo, setBusquedaBajo] = useState("");
+  const [busquedaVendidos, setBusquedaVendidos] = useState("");
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -183,6 +187,23 @@ export default function DashboardVentas() {
   const ticketPromedio = resumen.tickets > 0 ? resumen.importe / resumen.tickets : 0;
   const hayDatos = !cargando && !error;
 
+  /* ── Filtro de los buscadores: solo por nombre, sin distinguir
+        mayúsculas ni acentos. Cada sección tiene el suyo. ── */
+  const normalizar = (s) =>
+    String(s ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  const filtroBajo = useMemo(() => normalizar(busquedaBajo).trim(), [busquedaBajo]);
+  const stockBajoFiltrado = useMemo(() => {
+    if (!filtroBajo) return stockBajo ?? [];
+    return (stockBajo ?? []).filter((p) => normalizar(p.nombre).includes(filtroBajo));
+  }, [stockBajo, filtroBajo]);
+
+  const filtroVendidos = useMemo(() => normalizar(busquedaVendidos).trim(), [busquedaVendidos]);
+  const masVendidosFiltrado = useMemo(() => {
+    if (!filtroVendidos) return masVendidos ?? [];
+    return (masVendidos ?? []).filter((p) => normalizar(p.nombre).includes(filtroVendidos));
+  }, [masVendidos, filtroVendidos]);
+
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
       {/* ── Encabezado ── */}
@@ -220,12 +241,21 @@ export default function DashboardVentas() {
             aria-label="Resumen de ventas"
             className={`${CARD} grid grid-cols-2 divide-white/10 max-lg:divide-y lg:grid-cols-4 lg:divide-x`}
           >
-            <Kpi label="Total vendido" value={fmtMoneda(resumen.importe)} sub={`${resumen.tickets} ventas`} />
-            <Kpi label="Ticket promedio" value={fmtMoneda(Math.round(ticketPromedio))} />
+            <Kpi
+              label="Total vendido"
+              value={fmtMoneda(resumen.importe)}
+              tone="text-emerald-400"
+              sub={`${resumen.tickets} ventas`}
+            />
+            <Kpi
+              label="Ticket promedio"
+              value={fmtMoneda(Math.round(ticketPromedio))}
+              tone="text-cyan-300"
+            />
             <Kpi
               label="Para reponer"
               value={stockBajo?.length ?? 0}
-              tone={(stockBajo?.length ?? 0) > 0 ? "text-white" : "text-white/50"}
+              tone={(stockBajo?.length ?? 0) > 0 ? "text-orange-300" : "text-white/50"}
               sub="productos en o bajo su mínimo"
             />
             <Kpi
@@ -241,20 +271,38 @@ export default function DashboardVentas() {
             <section className={`${CARD} flex flex-col`} aria-labelledby="h-stock">
               <SectionHeader
                 icon={AlertTriangle}
-                iconClass="text-white/40"
+                iconClass="text-orange-400"
                 title={<span id="h-stock">Stock bajo</span>}
-                hint={`${stockBajo?.length ?? 0} producto(s)`}
+                hint={`${stockBajoFiltrado.length} producto(s)`}
               />
 
-              {(stockBajo?.length ?? 0) === 0 ? (
-                <EmptyState
-                  icon={PackageOpen}
-                  title="Todo el stock está al día"
-                  text="Ningún producto bajó de su stock de alerta."
+              <div className="px-4 pt-3">
+                <SearchField
+                  value={busquedaBajo}
+                  onChange={setBusquedaBajo}
+                  placeholder="Buscar por nombre…"
+                  ariaLabel="Buscar producto en stock bajo"
+                  className="h-9"
                 />
+              </div>
+
+              {stockBajoFiltrado.length === 0 ? (
+                filtroBajo ? (
+                  <EmptyState
+                    icon={SearchX}
+                    title="Sin resultados"
+                    text={`Ningún producto coincide con "${busquedaBajo}".`}
+                  />
+                ) : (
+                  <EmptyState
+                    icon={PackageOpen}
+                    title="Todo el stock está al día"
+                    text="Ningún producto bajó de su stock de alerta."
+                  />
+                )
               ) : (
                 <ul className="max-h-[28rem] divide-y divide-white/10 overflow-y-auto">
-                  {stockBajo.map((p) => {
+                  {stockBajoFiltrado.map((p) => {
                     const stock = Number(p.stockActual) || 0;
                     const critico = stock <= 0;
                     return (
@@ -262,11 +310,6 @@ export default function DashboardVentas() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="truncate text-sm text-white/85">{p.nombre}</p>
-                            {/* Código de barras solo si el producto lo tiene:
-                                sin barcode ya no se muestra el "#id". */}
-                            {p.codigoBarras && (
-                              <p className="truncate text-xs text-white/35">{p.codigoBarras}</p>
-                            )}
                           </div>
                           <div className="shrink-0 text-right">
                             <p
@@ -289,27 +332,45 @@ export default function DashboardVentas() {
             <section className={`${CARD} flex flex-col`} aria-labelledby="h-top">
               <SectionHeader
                 icon={TrendingUp}
-                iconClass="text-white/40"
+                iconClass="text-cyan-400"
                 title={<span id="h-top">Más vendidos</span>}
                 hint="por unidades"
               />
 
-              {(masVendidos?.length ?? 0) === 0 ? (
-                <EmptyState
-                  icon={BarChart3}
-                  title="Todavía no hay ventas"
-                  text="Cuando registres ventas, acá vas a ver los productos que más salen."
+              <div className="px-4 pt-3">
+                <SearchField
+                  value={busquedaVendidos}
+                  onChange={setBusquedaVendidos}
+                  placeholder="Buscar por nombre…"
+                  ariaLabel="Buscar producto en más vendidos"
+                  className="h-9"
                 />
+              </div>
+
+              {masVendidosFiltrado.length === 0 ? (
+                filtroVendidos ? (
+                  <EmptyState
+                    icon={SearchX}
+                    title="Sin resultados"
+                    text={`Ningún producto coincide con "${busquedaVendidos}".`}
+                  />
+                ) : (
+                  <EmptyState
+                    icon={BarChart3}
+                    title="Todavía no hay ventas"
+                    text="Cuando registres ventas, acá vas a ver los productos que más salen."
+                  />
+                )
               ) : (
                 <ol className="flex-1 divide-y divide-white/10">
-                  {masVendidos.map((p, i) => {
+                  {masVendidosFiltrado.map((p, i) => {
                     const primero = i === 0;
                     return (
                       <li key={p.id} className="px-5 py-3">
                         <div className="flex items-baseline justify-between gap-3">
                           <p className="flex min-w-0 items-baseline gap-2 text-sm">
                             <span
-                              className={`w-4 shrink-0 text-xs ${primero ? "font-semibold text-white" : "text-white/35"}`}
+                              className={`w-4 shrink-0 text-xs ${primero ? "font-semibold text-amber-400" : "text-white/35"}`}
                               style={MONO}
                             >
                               {i + 1}
@@ -318,10 +379,8 @@ export default function DashboardVentas() {
                               {p.nombre}
                             </span>
                           </p>
-                          <p className="shrink-0 text-sm text-white" style={MONO}>
+                          <p className="shrink-0 text-sm text-emerald-400" style={MONO}>
                             {fmtNumero(p.unidades)} <span className="font-normal text-white/45">{p.unidad}</span>
-                            {" · "}
-                            <span className="font-medium">{fmtMoneda(p.importe)}</span>
                           </p>
                         </div>
                       </li>
