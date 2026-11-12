@@ -3,8 +3,7 @@ const nfGsLista = new Intl.NumberFormat("es-PY", { maximumFractionDigits: 0 });
 import { TABLE_SHELL,THEAD_ROW } from "../../../components/ui/styles";
 
 import PageHeader from "../../../components/ui/PageHeader";
-import { Link } from "react-router-dom";
-import { Search, X, Eye } from "lucide-react";
+import { X, Eye } from "lucide-react";
 import {
   getFacturasCompra,
   getFacturaCompraById,
@@ -13,11 +12,21 @@ import {
 import { getProveedores, getProveedorId, getProveedorNombre } from "../../../api/proveedoresApi";
 import Pagination from "../../../components/ui/Pagination";
 import SearchField from "../../../components/ui/SearchField";
+import { FORMAS_PAGO_COMPRA, formaPagoLabel, formatoFactura } from "../utils";
 
 const money = (n) => {
   const v = Number(n);
   return Number.isFinite(v) ? `Gs. ${nfGsLista.format(Math.round(v))}` : "—";
 };
+
+// Los números de factura se comparan solo por dígitos: así "001-001-0001234",
+// "0010010001234" y "0001234" encuentran la misma factura.
+const soloDigitos = (valor) => String(valor ?? "").replace(/\D/g, "");
+
+// Barra de filtros: una sola fila con controles de la misma altura.
+const FILTRO_LABEL = "text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40";
+const FILTRO_FIELD =
+  "mt-1 h-10 w-full bg-white/[0.03] border border-white/10 rounded-none px-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors";
 
 // Total real = bruto por línea (cantidad × precio). El totalGeneral del back arrastra un IVA
 // calculado por unidad, por eso se recalcula desde los detalles cuando están disponibles.
@@ -51,16 +60,16 @@ const fmtFechaHora = (iso) => {
   });
 };
 
-const condicionPago = (c) => {
-  const label = c === "CONTADO" ? "Contado" : c === "TRANSFERENCIA" ? "Transferencia" : c === "CREDITO" ? "Crédito" : (c || "—");
+const formaPagoBadge = (c) => {
+  const label = formaPagoLabel(c);
   const cls = c === "CONTADO"
-    ? "bg-white/15 text-white/90"
+    ? "bg-emerald-500/10 text-emerald-300"
     : c === "TRANSFERENCIA"
-      ? "bg-sky-500/15 text-sky-400"
+      ? "bg-sky-500/15 text-sky-300"
       : c === "CREDITO"
         ? "bg-amber-500/15 text-amber-400"
-        : "bg-white/10 text-[#8b8b9e]";
-  return <span className={`text-xs px-2 py-0.5 rounded-full ${cls}`}>{label}</span>;
+        : "bg-white/10 text-white/60";
+  return <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${cls}`}>{label}</span>;
 };
 
 const esAnulada = (f) => {
@@ -91,7 +100,7 @@ export default function ListaFacturas() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   const [proveedores, setProveedores] = useState([]);
   const [idProveedor, setIdProveedor] = useState("");
@@ -149,17 +158,14 @@ export default function ListaFacturas() {
   }, []);
 
   const filtradas = useMemo(() => {
-    const q = texto.trim().toLowerCase();
+    const q = soloDigitos(texto);
     const d = (desde || "").trim();
     const h = (hasta || "").trim();
     return todas.filter((f) => {
       if (estado === "VIGENTES" && esAnulada(f)) return false;
       if (estado === "ANULADAS" && !esAnulada(f)) return false;
       if (idProveedor && Number(f.idProveedor) !== Number(idProveedor)) return false;
-      if (q) {
-        const hito = String(f.numeroFactura || "").toLowerCase();
-        if (!hito.includes(q)) return false;
-      }
+      if (q && !soloDigitos(f.numeroFactura).includes(q)) return false;
       if (condicion && String(f.condicionPago || "") !== condicion) return false;
       if (d || h) {
         const fecha = String(f.fechaCreacion || "").slice(0, 10);
@@ -172,8 +178,20 @@ export default function ListaFacturas() {
 
   const paginadas = useMemo(() => filtradas.slice(page * 10, page * 10 + 10), [filtradas, page]);
 
-  useEffect(() => { setPage(0); }, [idProveedor, texto, condicion, desde, hasta]);
+  useEffect(() => { setPage(0); }, [idProveedor, texto, condicion, desde, hasta, estado]);
   useEffect(() => { setTotalPages(Math.max(1, Math.ceil(filtradas.length / 10))); }, [filtradas]);
+  // Si los filtros achican la lista estando en una página alta, no dejar la tabla vacía.
+  useEffect(() => { setPage((p) => Math.max(0, Math.min(p, totalPages - 1))); }, [totalPages]);
+
+  const hayFiltros = Boolean(texto.trim() || idProveedor || desde || hasta || condicion || estado);
+  const limpiarFiltros = () => {
+    setTexto("");
+    setIdProveedor("");
+    setDesde("");
+    setHasta("");
+    setCondicion("");
+    setEstado("");
+  };
 
   async function verDetalle(f) {
     setSeleccionada(f);
@@ -192,81 +210,76 @@ export default function ListaFacturas() {
   const columns = 7;
 
   return (
-    <div className="max-w-6xl mx-auto py-8 px-4 space-y-6">
+    <div className="w-full py-8 px-4 space-y-6">
       <PageHeader backTo="/compras" title="Historial de compras" />
 
-      {/* Filtros */}
-      <div className="flex flex-col md:flex-row md:flex-wrap md:items-end gap-3">
-        <SearchField
-          value={texto}
-          onChange={setTexto}
-          placeholder="Buscar por N° factura"
-          ariaLabel="Buscar por número de factura"
-          wrapperClass="relative flex-1 min-w-[200px]"
-        />
-        <div className="w-full sm:w-44">
-          <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40" htmlFor="filtro-desde">
-            Desde
-          </label>
+      {/* Filtros: todos en una fila; en ventanas angostas la barra scrollea */}
+      <div className="flex flex-nowrap items-end gap-2 overflow-x-auto pb-1">
+        <div className="min-w-[10rem] max-w-md flex-1">
+          <label className={FILTRO_LABEL} htmlFor="filtro-numero">N° factura</label>
+          <SearchField
+            id="filtro-numero"
+            value={texto}
+            onChange={(v) => setTexto(formatoFactura(v))}
+            placeholder="Buscar por N° de factura"
+            ariaLabel="Buscar por número de factura"
+            wrapperClass="relative mt-1"
+          />
+        </div>
+        <div className="w-40 shrink-0">
+          <label className={FILTRO_LABEL} htmlFor="filtro-desde">Desde</label>
           <input
             id="filtro-desde"
             type="date"
             value={desde}
             onChange={(e) => setDesde(e.target.value)}
-            className="w-full mt-1 bg-white/[0.03] border border-white/10 rounded-none px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors"
+            className={FILTRO_FIELD}
           />
         </div>
-        <div className="w-full sm:w-44">
-          <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40" htmlFor="filtro-hasta">
-            Hasta
-          </label>
+        <div className="w-40 shrink-0">
+          <label className={FILTRO_LABEL} htmlFor="filtro-hasta">Hasta</label>
           <input
             id="filtro-hasta"
             type="date"
             value={hasta}
             onChange={(e) => setHasta(e.target.value)}
-            className="w-full mt-1 bg-white/[0.03] border border-white/10 rounded-none px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors"
+            className={FILTRO_FIELD}
           />
         </div>
-        <div className="w-full sm:w-44">
-          <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40" htmlFor="filtro-condicion">
-            Condición de Pago
-          </label>
+        <div className="w-36 shrink-0">
+          <label className={FILTRO_LABEL} htmlFor="filtro-condicion">Forma de pago</label>
           <select
             id="filtro-condicion"
             value={condicion}
             onChange={(e) => setCondicion(e.target.value)}
-            className="w-full mt-1 bg-white/[0.03] border border-white/10 rounded-none px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors"
+            className={FILTRO_FIELD}
           >
             <option value="">Todas</option>
-            <option value="CONTADO">Contado</option>
-            <option value="CREDITO">Crédito</option>
+            {FORMAS_PAGO_COMPRA.map((f) => (
+              <option key={f.value} value={f.value}>{f.label}</option>
+            ))}
           </select>
         </div>
-        <div className="w-full sm:w-44">
-          <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40" htmlFor="filtro-estado">
-            Estado
-          </label>
+        <div className="w-32 shrink-0">
+          <label className={FILTRO_LABEL} htmlFor="filtro-estado">Estado</label>
           <select
             id="filtro-estado"
             value={estado}
             onChange={(e) => setEstado(e.target.value)}
-            className="w-full mt-1 bg-white/[0.03] border border-white/10 rounded-none px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors"
+            className={FILTRO_FIELD}
           >
             <option value="">Todos</option>
             <option value="VIGENTES">Vigentes</option>
             <option value="ANULADAS">Anuladas</option>
           </select>
         </div>
-        <div className="w-full sm:w-64">
-          <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40" htmlFor="filtro-proveedor">
-            Proveedor
-          </label>
+        <div className="w-64 shrink-0">
+          <label className={FILTRO_LABEL} htmlFor="filtro-proveedor">Proveedor</label>
           <select
             id="filtro-proveedor"
             value={idProveedor}
             onChange={(e) => setIdProveedor(e.target.value)}
-            className="w-full mt-1 bg-white/[0.03] border border-white/10 rounded-none px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors"
+            className={FILTRO_FIELD}
           >
             <option value="">Todos los proveedores</option>
             {proveedores.map((p) => (
@@ -274,6 +287,16 @@ export default function ListaFacturas() {
             ))}
           </select>
         </div>
+        {hayFiltros && (
+          <button
+            type="button"
+            onClick={limpiarFiltros}
+            className="ml-auto inline-flex h-10 shrink-0 items-center gap-1.5 rounded-none border border-[var(--accent)]/50 bg-[var(--accent)]/10 px-3 text-sm font-medium text-[var(--accent)] transition-colors hover:border-[var(--accent)]/80 hover:bg-[var(--accent)]/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+          >
+            <X size={14} aria-hidden="true" />
+            Limpiar
+          </button>
+        )}
       </div>
 
       {error && (
@@ -289,7 +312,7 @@ export default function ListaFacturas() {
                 <th className="px-4 py-3 font-medium">Fecha Registro</th>
                 <th className="px-4 py-3 font-medium">Proveedor</th>
                 <th className="px-4 py-3 font-medium">N° Factura</th>
-                <th className="px-4 py-3 font-medium">Condición</th>
+                <th className="px-4 py-3 font-medium">Forma de pago</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
                 <th className="px-4 py-3 font-medium text-right">Monto Total</th>
                 <th className="px-4 py-3 font-medium w-12" aria-label="Acciones" />
@@ -304,10 +327,19 @@ export default function ListaFacturas() {
                 </tr>
               ))}
               {!loading && paginadas.length === 0 && (
-                <tr><td colSpan={columns} className="px-4 py-8 text-center text-white/30">
-                  {texto.trim()
-                    ? `No se encontraron facturas para "${texto.trim()}".`
-                    : "No se encontraron facturas."}
+                <tr><td colSpan={columns} className="px-4 py-10 text-center text-white/40">
+                  <p className="text-sm">
+                    {hayFiltros ? "Ninguna factura coincide con los filtros." : "Todavía no hay compras registradas."}
+                  </p>
+                  {hayFiltros && (
+                    <button
+                      type="button"
+                      onClick={limpiarFiltros}
+                      className="mt-2 text-sm font-medium text-[var(--accent)] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                    >
+                      Limpiar filtros
+                    </button>
+                  )}
                 </td></tr>
               )}
               {!loading && paginadas.map((f) => {
@@ -317,7 +349,7 @@ export default function ListaFacturas() {
                     <td className="px-4 py-3 text-white/70 whitespace-nowrap">{fmtFechaHora(f.fechaCreacion)}</td>
                     <td className="px-4 py-3 text-white">{nombreProv(f)}</td>
                     <td className="px-4 py-3 text-white/70 whitespace-nowrap">{f.numeroFactura || "—"}</td>
-                    <td className="px-4 py-3">{condicionPago(f.condicionPago)}</td>
+                    <td className="px-4 py-3">{formaPagoBadge(f.condicionPago)}</td>
                     <td className="px-4 py-3">{estadoFactura(f)}</td>
                     <td className="px-4 py-3 text-white font-medium text-right whitespace-nowrap">{money(totalDesdeDetalles(f))}</td>
                     <td className="px-4 py-3 text-right">
@@ -447,7 +479,7 @@ function DetalleFactura({ factura, cargando = false, onClose, proveedoresMap, ge
         <dl className="grid grid-cols-2 gap-4 px-6 py-5 sm:grid-cols-3">
           <Dato titulo="Fecha de emisión">{fmtFecha(factura.fechaEmision)}</Dato>
           <Dato titulo="N° de timbrado">{factura.numeroTimbrado || "—"}</Dato>
-          <Dato titulo="Condición">{condicionPago(factura.condicionPago)}</Dato>
+          <Dato titulo="Forma de pago">{formaPagoBadge(factura.condicionPago)}</Dato>
         </dl>
 
         {/* Ítems: solo esta zona scrollea, cabecera y pie quedan fijos */}

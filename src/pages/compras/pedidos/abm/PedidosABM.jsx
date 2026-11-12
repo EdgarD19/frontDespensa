@@ -57,8 +57,9 @@ function EstadoBadge({ estado }) {
   );
 }
 
-const thClass =
-  "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--accent)]";
+// Encabezado estándar de tabla: mismo color/peso que el resto de los listados
+// (THEAD_ROW ya aporta fondo, tamaño, uppercase y color).
+const thClass = "px-4 py-3 font-medium";
 
 const actionBase = "flex h-8 w-8 items-center justify-center rounded-none transition-colors";
 
@@ -251,7 +252,7 @@ export default function PedidosABM() {
       </div>
 
       {/* Tabla */}
-      <div className="overflow-hidden border border-white/10 bg-[#0c0c0e] shadow-lg shadow-black/20">
+      <div className={TABLE_SHELL}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

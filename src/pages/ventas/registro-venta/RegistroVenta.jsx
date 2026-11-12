@@ -998,10 +998,10 @@ export default function RegistroVenta() {
             <p className={`${LABEL} mb-3`}>Forma de pago</p>
             <div className="grid grid-cols-3 gap-2" role="group" aria-label="Forma de pago">
               {[
-                [FORMA_PAGO_EFECTIVO, "Efectivo", Banknote, "F7"],
-                [FORMA_PAGO_TRANSFERENCIA, "Transferencia", Landmark, "F8"],
-                [FORMA_PAGO_MIXTO, "Mixto", Coins, "—"],
-              ].map(([codigo, texto, Icono, tecla]) => {
+                [FORMA_PAGO_EFECTIVO, "Efectivo", Banknote],
+                [FORMA_PAGO_TRANSFERENCIA, "Transferencia", Landmark],
+                [FORMA_PAGO_MIXTO, "Mixto", Coins],
+              ].map(([codigo, texto, Icono]) => {
                 const activo = formaPago === codigo;
                 return (
                   <button key={codigo} type="button" aria-pressed={activo} onClick={() => setFormaPago(codigo)}
@@ -1012,7 +1012,6 @@ export default function RegistroVenta() {
                     }`}>
                     <Icono className="h-4 w-4" />
                     <span className="truncate">{texto}</span>
-                    <Kbd>{tecla}</Kbd>
                   </button>
                 );
               })}

@@ -22,6 +22,22 @@ export function esKG(prod) {
   return u === "KG" || u === "KILOGRAMO" || u === "KILOGRAMOS";
 }
 
+/* Formas de pago de una compra: al proveedor se le paga en efectivo o por
+   transferencia (el back las guarda como CONTADO / TRANSFERENCIA). */
+export const FORMAS_PAGO_COMPRA = [
+  { value: "CONTADO", label: "Efectivo" },
+  { value: "TRANSFERENCIA", label: "Transferencia" },
+];
+
+/** Etiqueta visible de una forma de pago de compra (tolera datos viejos). */
+export function formaPagoLabel(valor) {
+  const v = String(valor ?? "").toUpperCase();
+  if (v === "CONTADO") return "Efectivo";
+  if (v === "TRANSFERENCIA") return "Transferencia";
+  if (v === "CREDITO") return "Crédito";
+  return valor || "—";
+}
+
 export function parseCant(val, prod) {
   const n = parseFloat(String(val).replace(",", "."));
   if (!Number.isFinite(n) || n <= 0) return esKG(prod) ? 0.001 : 1;

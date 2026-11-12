@@ -12,7 +12,7 @@ import { apiErrorMessage } from "../../../../api/errors";
 import CantidadInput from "../../../../components/ui/CantidadInput";
 import TimbradosModal from "../../factura/TimbradosModal";
 import ResumenCompraExito from "../../ResumenCompraExito";
-import { money, hoyAsuncion, formatoFactura, esKG, parseCant, estadoTimbrado, etiquetaTimbrado, S } from "../../utils";
+import { money, hoyAsuncion, formatoFactura, esKG, parseCant, estadoTimbrado, etiquetaTimbrado, FORMAS_PAGO_COMPRA, S } from "../../utils";
 
 export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
   const [proveedor, setProveedor] = useState(null);
@@ -385,15 +385,16 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
             </div>
 
             <div>
-              <label className={S.eyebrow} htmlFor="rc-condicion">Condición de pago *</label>
+              <label className={S.eyebrow} htmlFor="rc-condicion">Forma de pago *</label>
               <select
                 id="rc-condicion"
                 value={formaPago}
                 onChange={(e) => setFormaPago(e.target.value)}
                 className={`${S.field} mt-1 appearance-none`}
               >
-                <option value="CONTADO">Contado</option>
-                <option value="CREDITO">Crédito</option>
+                {FORMAS_PAGO_COMPRA.map((fp) => (
+                  <option key={fp.value} value={fp.value}>{fp.label}</option>
+                ))}
               </select>
             </div>
 
@@ -563,7 +564,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
 
               <div className="text-right">
                 <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40">Total factura</p>
-                <p className="font-mono text-2xl font-bold tracking-tight text-[var(--accent)]">
+                <p className="font-mono text-2xl font-bold tracking-tight whitespace-nowrap tabular-nums text-[var(--accent)]">
                   {money(total)}
                 </p>
               </div>

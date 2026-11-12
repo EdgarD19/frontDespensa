@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CARD } from "../../components/ui/styles";
 import { Link } from "react-router-dom";
 import {
@@ -6,7 +6,6 @@ import {
 } from "lucide-react";
 import { getProductosStockBajo, getCatalogoLigero } from "../../api/productosApi";
 import { getProductosMasVendidos } from "../../api/reportesVentasApi";
-import { getFacturasVenta } from "../../api/facturasVentaApi";
 import { apiErrorMessage } from "../../api/errors";
 import PageHeader from "../../components/ui/PageHeader";
 import SearchField from "../../components/ui/SearchField";
@@ -19,11 +18,26 @@ const MONO = { fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums
 const FOCUS =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]";
 
-const nfGsDash = new Intl.NumberFormat("es-PY", { maximumFractionDigits: 0 });
-function fmtMoneda(n) {
-  const v = Number(n ?? 0);
-  const abs = Math.abs(Math.round(v));
-  return `${v < 0 ? "-" : ""}${nfGsDash.format(abs)}`;
+/* Períodos del ranking de más vendidos. `diasAtras` es cuántos días hacia
+   atrás incluye el rango (0 = solo hoy, null = todo el histórico). */
+const RANGOS = [
+  { id: "hoy", label: "Hoy", diasAtras: 0 },
+  { id: "7d", label: "7 días", diasAtras: 6 },
+  { id: "30d", label: "30 días", diasAtras: 29 },
+  { id: "todo", label: "Todo", diasAtras: null },
+];
+const RANGO_INICIAL = "30d";
+
+function fechaISO(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function desdeDeRango(id) {
+  const r = RANGOS.find((x) => x.id === id) ?? RANGOS[2];
+  if (r.diasAtras === null) return DESDE_TODO;
+  const d = new Date();
+  d.setDate(d.getDate() - r.diasAtras);
+  return fechaISO(d);
 }
 
 function fmtNumero(n) {
@@ -79,8 +93,8 @@ function DashboardSkeleton() {
   return (
     <div className="space-y-4" aria-busy="true" aria-live="polite">
       <span className="sr-only">Cargando dashboard…</span>
-      <div className={`${CARD} grid grid-cols-2 divide-white/10 lg:grid-cols-4 lg:divide-x`}>
-        {[0, 1, 2, 3].map((i) => (
+      <div className={`${CARD} grid grid-cols-2 divide-x divide-white/10`}>
+        {[0, 1].map((i) => (
           <div key={i} className="space-y-3 px-5 py-4">
             <Skeleton className="h-3 w-20" />
             <Skeleton className="h-7 w-28" />
@@ -109,83 +123,73 @@ function DashboardSkeleton() {
 export default function DashboardVentas() {
   const [stockBajo, setStockBajo] = useState(null);
   const [masVendidos, setMasVendidos] = useState(null); // [{ id, nombre, unidades, importe }]
-  const [resumen, setResumen] = useState({ tickets: 0, importe: 0 });
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
+  const [rango, setRango] = useState(RANGO_INICIAL);
+  const [reintento, setReintento] = useState(0);
   // Buscadores independientes por sección (filtran solo por nombre).
   const [busquedaBajo, setBusquedaBajo] = useState("");
   const [busquedaVendidos, setBusquedaVendidos] = useState("");
+  // Atajo de reposición: ver únicamente lo que no tiene stock.
+  const [soloAgotados, setSoloAgotados] = useState(false);
 
-  const cargar = useCallback(async () => {
+  // Cambiar de período vuelve a pedir el ranking, pero no vacía la pantalla:
+  // los datos previos quedan visibles mientras llega la respuesta.
+  useEffect(() => {
+    let vigente = true;
     setCargando(true);
     setError(null);
-    try {
-      const hoy = (() => {
-        const d = new Date();
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      })();
 
-      const [resBajo, resVentas, resRank, resProd] = await Promise.all([
-        // El back compara contra COALESCE(stock_minimo, minimo) — mínimo por producto
-        getProductosStockBajo({ minimo: MINIMO_GLOBAL, pageSize: 50, sortDir: "asc" }),
-        // Facturas solo para los KPIs (total vendido / ticket promedio).
-        // 200 recientes alcanzan para el período visible del dashboard y evitan
-        // una descarga full-table en cada visita.
-        getFacturasVenta({ page: 0, pageSize: 200, sortDir: "DESC" }),
-        // Ranking oficial del back (excluye anuladas)
-        getProductosMasVendidos({ desde: DESDE_TODO, hasta: hoy, top: 8 }),
-        // Catálogo solo para la unidad de cada producto (kg/u.) — versión
-        // ligera con cache de módulo (no espera mapas completos cada visita).
-        getCatalogoLigero(),
-      ]);
+    (async () => {
+      try {
+        const [resBajo, resRank, resProd] = await Promise.all([
+          // El back compara contra COALESCE(stock_minimo, minimo) — mínimo por producto
+          getProductosStockBajo({ minimo: MINIMO_GLOBAL, pageSize: 50, sortDir: "asc" }),
+          // Ranking oficial del back (excluye anuladas), acotado al período elegido.
+          getProductosMasVendidos({ desde: desdeDeRango(rango), hasta: fechaISO(new Date()), top: 8 }),
+          // Catálogo solo para la unidad de cada producto (kg/u.) — versión
+          // ligera con cache de módulo (no espera mapas completos cada visita).
+          getCatalogoLigero(),
+        ]);
+        if (!vigente) return;
 
-      const bajos = (Array.isArray(resBajo.content) ? resBajo.content : [])
-        .filter((p) => p.activo !== false)
-        .map((p) => ({
-          ...p,
-          umbral: Number(p.stockMinimo) > 0 ? Number(p.stockMinimo) : MINIMO_GLOBAL,
-        }));
-      setStockBajo(bajos);
+        const bajos = (Array.isArray(resBajo.content) ? resBajo.content : [])
+          .filter((p) => p.activo !== false)
+          .map((p) => ({
+            ...p,
+            umbral: Number(p.stockMinimo) > 0 ? Number(p.stockMinimo) : MINIMO_GLOBAL,
+          }));
+        setStockBajo(bajos);
 
-      // Unidad por producto (de la respuesta del ranking aún no viene): del catálogo
-      const unidadPorId = new Map(
-        (Array.isArray(resProd.content) ? resProd.content : []).map((p) => [p.id, unidadDe(p.unidadMedida)]),
-      );
+        // Unidad por producto (de la respuesta del ranking aún no viene): del catálogo
+        const unidadPorId = new Map(
+          (Array.isArray(resProd.content) ? resProd.content : []).map((p) => [p.id, unidadDe(p.unidadMedida)]),
+        );
 
-      setMasVendidos(resRank.map((r) => ({
-        id: r.idProducto,
-        nombre: r.nombreProducto,
-        unidades: Number(r.unidadesVendidas) || 0,
-        importe: Number(r.importeTotal) || 0,
-        unidad: unidadPorId.get(r.idProducto) || "u.",
-      })));
-
-      // KPIs (total vendido / cantidad de ventas)
-      let tickets = 0;
-      let importeTotal = 0;
-      for (const f of Array.isArray(resVentas.content) ? resVentas.content : []) {
-        if (String(f.estado || "").toUpperCase() === "ANULADA") continue;
-        tickets += 1;
-        for (const d of Array.isArray(f.detalles) ? f.detalles : []) {
-          importeTotal += (Number(d.cantidad) || 0) * (Number(d.precioUnitario) || 0);
-        }
+        setMasVendidos(resRank.map((r) => ({
+          id: r.idProducto,
+          nombre: r.nombreProducto,
+          unidades: Number(r.unidadesVendidas) || 0,
+          importe: Number(r.importeTotal) || 0,
+          unidad: unidadPorId.get(r.idProducto) || "u.",
+        })));
+      } catch (e) {
+        if (!vigente) return;
+        setError(apiErrorMessage(e) || "No se pudo cargar el dashboard.");
+      } finally {
+        if (vigente) setCargando(false);
       }
-      setResumen({ tickets, importe: importeTotal });
-    } catch (e) {
-      setError(apiErrorMessage(e) || "No se pudo cargar el dashboard.");
-    } finally {
-      setCargando(false);
-    }
-  }, []);
+    })();
 
-  useEffect(() => { cargar(); }, [cargar]);
+    return () => { vigente = false; };
+  }, [rango, reintento]);
 
   const agotados = useMemo(
     () => (stockBajo ?? []).filter((p) => (Number(p.stockActual) || 0) <= 0).length,
     [stockBajo],
   );
-  const ticketPromedio = resumen.tickets > 0 ? resumen.importe / resumen.tickets : 0;
-  const hayDatos = !cargando && !error;
+  const hayDatos = stockBajo !== null || masVendidos !== null;
+  const etiquetaRango = RANGOS.find((r) => r.id === rango)?.label ?? "";
 
   /* ── Filtro de los buscadores: solo por nombre, sin distinguir
         mayúsculas ni acentos. Cada sección tiene el suyo. ── */
@@ -194,9 +198,11 @@ export default function DashboardVentas() {
 
   const filtroBajo = useMemo(() => normalizar(busquedaBajo).trim(), [busquedaBajo]);
   const stockBajoFiltrado = useMemo(() => {
-    if (!filtroBajo) return stockBajo ?? [];
-    return (stockBajo ?? []).filter((p) => normalizar(p.nombre).includes(filtroBajo));
-  }, [stockBajo, filtroBajo]);
+    let lista = stockBajo ?? [];
+    if (soloAgotados) lista = lista.filter((p) => (Number(p.stockActual) || 0) <= 0);
+    if (!filtroBajo) return lista;
+    return lista.filter((p) => normalizar(p.nombre).includes(filtroBajo));
+  }, [stockBajo, filtroBajo, soloAgotados]);
 
   const filtroVendidos = useMemo(() => normalizar(busquedaVendidos).trim(), [busquedaVendidos]);
   const masVendidosFiltrado = useMemo(() => {
@@ -224,7 +230,7 @@ export default function DashboardVentas() {
           <span className="min-w-0 flex-1">{error}</span>
           <button
             type="button"
-            onClick={cargar}
+            onClick={() => setReintento((n) => n + 1)}
             className={`rounded-none border border-red-400/40 px-3 py-1 text-xs font-medium text-red-200 transition-colors hover:bg-red-500/20 ${FOCUS}`}
           >
             Reintentar
@@ -232,26 +238,15 @@ export default function DashboardVentas() {
         </div>
       )}
 
-      {cargando && <DashboardSkeleton />}
+      {cargando && !hayDatos && <DashboardSkeleton />}
 
       {hayDatos && (
         <>
-          {/* ── Resumen: una sola franja, no cuatro tarjetas ── */}
+          {/* ── Resumen de stock: una sola franja con lo accionable ── */}
           <section
-            aria-label="Resumen de ventas"
-            className={`${CARD} grid grid-cols-2 divide-white/10 max-lg:divide-y lg:grid-cols-4 lg:divide-x`}
+            aria-label="Resumen de stock"
+            className={`${CARD} grid grid-cols-2 divide-x divide-white/10`}
           >
-            <Kpi
-              label="Total vendido"
-              value={fmtMoneda(resumen.importe)}
-              tone="text-emerald-400"
-              sub={`${resumen.tickets} ventas`}
-            />
-            <Kpi
-              label="Ticket promedio"
-              value={fmtMoneda(Math.round(ticketPromedio))}
-              tone="text-cyan-300"
-            />
             <Kpi
               label="Para reponer"
               value={stockBajo?.length ?? 0}
@@ -276,7 +271,7 @@ export default function DashboardVentas() {
                 hint={`${stockBajoFiltrado.length} producto(s)`}
               />
 
-              <div className="px-4 pt-3">
+              <div className="flex items-center gap-2 px-4 pt-3">
                 <SearchField
                   value={busquedaBajo}
                   onChange={setBusquedaBajo}
@@ -284,6 +279,18 @@ export default function DashboardVentas() {
                   ariaLabel="Buscar producto en stock bajo"
                   className="h-9"
                 />
+                <button
+                  type="button"
+                  aria-pressed={soloAgotados}
+                  onClick={() => setSoloAgotados((v) => !v)}
+                  className={`h-9 shrink-0 border px-2.5 text-xs font-medium transition-colors ${FOCUS} ${
+                    soloAgotados
+                      ? "border-red-400/50 bg-red-500/15 text-red-200"
+                      : "border-white/10 text-white/55 hover:bg-white/[0.04] hover:text-white"
+                  }`}
+                >
+                  Solo agotados
+                </button>
               </div>
 
               {stockBajoFiltrado.length === 0 ? (
@@ -292,6 +299,12 @@ export default function DashboardVentas() {
                     icon={SearchX}
                     title="Sin resultados"
                     text={`Ningún producto coincide con "${busquedaBajo}".`}
+                  />
+                ) : soloAgotados ? (
+                  <EmptyState
+                    icon={PackageOpen}
+                    title="Ningún producto agotado"
+                    text="Todos los productos tienen stock disponible."
                   />
                 ) : (
                   <EmptyState
@@ -329,15 +342,45 @@ export default function DashboardVentas() {
             </section>
 
             {/* ── Más vendidos ── */}
-            <section className={`${CARD} flex flex-col`} aria-labelledby="h-top">
+            <section
+              className={`${CARD} flex flex-col`}
+              aria-labelledby="h-top"
+              aria-busy={cargando}
+            >
               <SectionHeader
                 icon={TrendingUp}
                 iconClass="text-cyan-400"
                 title={<span id="h-top">Más vendidos</span>}
-                hint="por unidades"
+                hint={cargando ? "Actualizando…" : `${etiquetaRango} · unidades`}
               />
 
-              <div className="px-4 pt-3">
+              <div className="space-y-2 px-4 pt-3">
+                {/* Período del ranking: el back filtra con desde/hasta. */}
+                <div
+                  role="group"
+                  aria-label="Período de más vendidos"
+                  className="grid grid-cols-4 divide-x divide-white/10 border border-white/10"
+                >
+                  {RANGOS.map((r) => {
+                    const activo = rango === r.id;
+                    return (
+                      <button
+                        key={r.id}
+                        type="button"
+                        aria-pressed={activo}
+                        onClick={() => setRango(r.id)}
+                        className={`px-1 py-1.5 text-xs font-medium transition-colors ${FOCUS} ${
+                          activo
+                            ? "bg-[var(--accent-dim)] text-[var(--accent)]"
+                            : "text-white/55 hover:bg-white/[0.04] hover:text-white"
+                        }`}
+                      >
+                        {r.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
                 <SearchField
                   value={busquedaVendidos}
                   onChange={setBusquedaVendidos}
@@ -357,12 +400,24 @@ export default function DashboardVentas() {
                 ) : (
                   <EmptyState
                     icon={BarChart3}
-                    title="Todavía no hay ventas"
-                    text="Cuando registres ventas, acá vas a ver los productos que más salen."
+                    title={
+                      rango === "todo"
+                        ? "Todavía no hay ventas"
+                        : rango === "hoy"
+                          ? "Sin ventas hoy"
+                          : `Sin ventas en ${etiquetaRango.toLowerCase()}`
+                    }
+                    text={
+                      rango === "todo"
+                        ? "Cuando registres ventas, acá vas a ver los productos que más salen."
+                        : "Probá con un período más amplio para ver el ranking."
+                    }
                   />
                 )
               ) : (
-                <ol className="flex-1 divide-y divide-white/10">
+                <ol
+                  className={`flex-1 divide-y divide-white/10 transition-opacity ${cargando ? "opacity-50" : "opacity-100"}`}
+                >
                   {masVendidosFiltrado.map((p, i) => {
                     const primero = i === 0;
                     return (

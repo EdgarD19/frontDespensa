@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import { ChevronDown, Eye, X, Receipt, Building2, Package, Percent } from "lucide-react";
 import { getFacturasCompra, apiErrorMessage } from "../../../api/facturasCompraApi";
 import { getProveedores, getProveedorId, getProveedorNombre } from "../../../api/proveedoresApi";
+import { formaPagoLabel } from "../utils";
 
 const money = (n) => {
   const v = Number(n);
@@ -765,8 +766,8 @@ function DetalleCompra({ factura, onClose, nombreProv }) {
             <p className="text-white">{factura.numeroTimbrado || "—"}</p>
           </div>
           <div className="space-y-0.5">
-            <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40">Condición</p>
-            <p className="text-white">{factura.condicionPago || "—"}</p>
+            <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40">Forma de pago</p>
+            <p className="text-white">{formaPagoLabel(factura.condicionPago)}</p>
           </div>
           <div className="space-y-0.5">
             <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40">Proveedor</p>

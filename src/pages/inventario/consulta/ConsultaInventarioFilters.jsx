@@ -15,9 +15,12 @@ export default function ConsultaInventarioFilters({
   setSearch,
   filterCategoria,
   setFilterCategoria,
+  filterUnidad,
+  setFilterUnidad,
   filterStock,
   setFilterStock,
   categoriasOptions = [],
+  unidadesOptions = [],
   disabled = false,
 }) {
   return (
@@ -55,6 +58,21 @@ export default function ConsultaInventarioFilters({
           <option value="">Todas las categorías</option>
           {categoriasOptions.map((c) => (
             <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className={`${fieldClass} flex-1`}>
+        <select
+          value={filterUnidad}
+          onChange={(e) => setFilterUnidad(e.target.value)}
+          disabled={disabled}
+          aria-label="Filtrar por unidad de medida"
+          className={selectClass}
+        >
+          <option value="">Todas las unidades</option>
+          {unidadesOptions.map((u) => (
+            <option key={u} value={u}>{u}</option>
           ))}
         </select>
       </div>

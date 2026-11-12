@@ -8,7 +8,7 @@ import { crearFacturaCompra, getTimbradosProveedor } from "../../../api/facturas
 import { apiErrorMessage } from "../../../api/errors";
 import TimbradosModal from "./TimbradosModal";
 import ResumenCompraExito from "../ResumenCompraExito";
-import { money, hoyAsuncion, formatoFactura, esKG, parseCant, estadoTimbrado, etiquetaTimbrado, S } from "../utils";
+import { money, hoyAsuncion, formatoFactura, esKG, parseCant, estadoTimbrado, etiquetaTimbrado, FORMAS_PAGO_COMPRA, S } from "../utils";
 import CantidadInput from "../../../components/ui/CantidadInput";
 
 // Recalcula el desglose de IVA desde los detalles de la factura guardada.
@@ -423,17 +423,18 @@ export default function CompraEspontanea({ onVolver }) {
             </div>
           </div>
 
-          {/* Condición de pago */}
+          {/* Forma de pago */}
           <div>
-            <label className={S.eyebrow} htmlFor="condicion">Condición de pago *</label>
+            <label className={S.eyebrow} htmlFor="condicion">Forma de pago *</label>
             <select
               id="condicion"
               value={formaPago}
               onChange={(e) => setFormaPago(e.target.value)}
               className={`${S.field} mt-1 appearance-none`}
             >
-              <option value="CONTADO">Contado</option>
-              <option value="CREDITO">Crédito</option>
+              {FORMAS_PAGO_COMPRA.map((fp) => (
+                <option key={fp.value} value={fp.value}>{fp.label}</option>
+              ))}
             </select>
           </div>
 
@@ -594,9 +595,10 @@ export default function CompraEspontanea({ onVolver }) {
         {/* Totales + Acciones */}
         <div className="mt-3 border-t border-white/10 pt-3">
           {/* Liquidación IVA + Total factura — misma estructura que el detalle de
-              /compras/consultas/facturas */}
-          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-sm">
+              /compras/consultas/facturas. En sm+ van en una sola línea: el total
+              no rompe y los botones nunca bajan por un monto largo. */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 font-mono text-sm">
               <span className="border border-white/15 bg-white/5 px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-white/80">Liquidación IVA</span>
               {iva5 > 0 && (
                 <span className="text-white/70">
@@ -613,10 +615,10 @@ export default function CompraEspontanea({ onVolver }) {
               </span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+            <div className="flex shrink-0 items-center gap-x-4 whitespace-nowrap">
               <div className="text-right">
                 <p className="text-xs text-white/40 uppercase tracking-[0.12em]">Total factura</p>
-                <p className="font-mono text-3xl font-bold tracking-tight text-[var(--accent)]">
+                <p className="font-mono text-2xl font-bold tracking-tight tabular-nums text-[var(--accent)] sm:text-3xl">
                   {money(total)}
                 </p>
               </div>
