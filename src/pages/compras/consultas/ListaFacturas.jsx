@@ -5,14 +5,14 @@ import { TABLE_SHELL,THEAD_ROW } from "../../../components/ui/styles";
 import PageHeader from "../../../components/ui/PageHeader";
 import { X, Eye } from "lucide-react";
 import {
-  getFacturasCompra,
+  getFacturasCompraCompletas,
   getFacturaCompraById,
   apiErrorMessage,
 } from "../../../api/facturasCompraApi";
 import { getProveedores, getProveedorId, getProveedorNombre } from "../../../api/proveedoresApi";
 import Pagination from "../../../components/ui/Pagination";
 import SearchField from "../../../components/ui/SearchField";
-import { FORMAS_PAGO_COMPRA, formaPagoLabel, formatoFactura } from "../utils";
+import { FORMAS_PAGO_COMPRA, formaPagoLabel, formatoFactura, fmtCant, ivaLineaCompra, totalLineaCompra } from "../utils";
 
 const money = (n) => {
   const v = Number(n);
@@ -28,19 +28,24 @@ const FILTRO_LABEL = "text-[0.625rem] font-medium uppercase tracking-[0.12em] te
 const FILTRO_FIELD =
   "mt-1 h-10 w-full bg-white/[0.03] border border-white/10 rounded-none px-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors";
 
-// Total real = bruto por línea (cantidad × precio). El totalGeneral del back arrastra un IVA
-// calculado por unidad, por eso se recalcula desde los detalles cuando están disponibles.
-const totalDesdeDetalles = (f) => {
-  if (!Array.isArray(f?.detalles) || f.detalles.length === 0) return Number(f?.totalGeneral) || 0;
-  return f.detalles.reduce((s, d) => s + Math.round((Number(d.cantidad) || 0) * (Number(d.precioUnitario) || 0)), 0);
+// El total autoritativo es el que devuelve el back (suma exacta de líneas).
+// Solo si falta se recalcula con la fórmula espejo; así no aparecen diferencias
+// de 1 Gs entre el listado y la factura guardada.
+const totalFactura = (f) => {
+  const total = Number(f?.totalGeneral);
+  if (f?.totalGeneral != null && Number.isFinite(total)) return total;
+  if (!Array.isArray(f?.detalles) || f.detalles.length === 0) return 0;
+  return f.detalles.reduce(
+    (s, d) => s + totalLineaCompra(d?.precioUnitario, d?.cantidad, d?.tasaIva),
+    0,
+  );
 };
 
-// IVA de una línea = bruto − base (precio CON IVA → base + IVA), mismo criterio que el desglose.
+// IVA de una línea: se prefiere el valor persistido por el back.
 const ivaLineaDetalle = (d) => {
-  const t = Number(d.tasaIva);
-  if (!t) return 0;
-  const bruto = Math.round((Number(d.cantidad) || 0) * (Number(d.precioUnitario) || 0));
-  return Math.round(bruto - bruto / (1 + t / 100));
+  const iva = Number(d?.iva);
+  if (d?.iva != null && Number.isFinite(iva)) return iva;
+  return ivaLineaCompra(d?.precioUnitario, d?.cantidad, d?.tasaIva);
 };
 
 const fmtFecha = (iso) => {
@@ -146,8 +151,8 @@ export default function ListaFacturas() {
       setLoading(true);
       setError(null);
       try {
-        const res = await getFacturasCompra({ page: 0, pageSize: 1000 });
-        if (activo) setTodas(Array.isArray(res.content) ? res.content : []);
+        const res = await getFacturasCompraCompletas();
+        if (activo) setTodas(Array.isArray(res) ? res : []);
       } catch (err) {
         if (activo) setError(apiErrorMessage(err) || "Error al cargar facturas");
       } finally {
@@ -184,6 +189,7 @@ export default function ListaFacturas() {
   useEffect(() => { setPage((p) => Math.max(0, Math.min(p, totalPages - 1))); }, [totalPages]);
 
   const hayFiltros = Boolean(texto.trim() || idProveedor || desde || hasta || condicion || estado);
+  const rangoInvertido = Boolean(desde && hasta && desde > hasta);
   const limpiarFiltros = () => {
     setTexto("");
     setIdProveedor("");
@@ -299,6 +305,12 @@ export default function ListaFacturas() {
         )}
       </div>
 
+      {rangoInvertido && (
+        <div className="rounded-none border border-amber-500/30 bg-amber-500/10 text-amber-300 text-sm px-4 py-3">
+          La fecha “Desde” es posterior a “Hasta”: no se muestran facturas. Corregí el rango para ver resultados.
+        </div>
+      )}
+
       {error && (
         <div className="rounded-none border border-red-500/30 bg-red-500/10 text-red-400 text-sm px-4 py-3">{error}</div>
       )}
@@ -351,7 +363,7 @@ export default function ListaFacturas() {
                     <td className="px-4 py-3 text-white/70 whitespace-nowrap">{f.numeroFactura || "—"}</td>
                     <td className="px-4 py-3">{formaPagoBadge(f.condicionPago)}</td>
                     <td className="px-4 py-3">{estadoFactura(f)}</td>
-                    <td className="px-4 py-3 text-white font-medium text-right whitespace-nowrap">{money(totalDesdeDetalles(f))}</td>
+                    <td className="px-4 py-3 text-white font-medium text-right whitespace-nowrap">{money(totalFactura(f))}</td>
                     <td className="px-4 py-3 text-right">
                       <button
                         type="button"
@@ -424,17 +436,25 @@ function DetalleFactura({ factura, cargando = false, onClose, proveedoresMap, ge
 
   const desglose = detalles.reduce(
     (acc, d) => {
-      const t = Number(d.tasaIva);
-      const bruto = Math.round(Number(d.cantidad || 0) * Number(d.precioUnitario || 0));
-      const ivaLinea = t > 0 ? Math.round(bruto - bruto / (1 + t / 100)) : 0;
-      (acc[t] || (acc[t] = { subtotal: 0, iva: 0 })).subtotal += bruto - ivaLinea;
+      const t = Number(d.tasaIva) || 0;
+      const ivaLinea = ivaLineaDetalle(d);
+      const total = d?.total != null && Number.isFinite(Number(d.total))
+        ? Number(d.total)
+        : totalLineaCompra(d?.precioUnitario, d?.cantidad, d?.tasaIva);
+      const base = d?.baseImponible != null && Number.isFinite(Number(d.baseImponible))
+        ? Number(d.baseImponible)
+        : total - ivaLinea;
+      (acc[t] || (acc[t] = { subtotal: 0, iva: 0 })).subtotal += base;
       if (t > 0) acc[t].iva += ivaLinea;
-      acc.totales.total += bruto;
+      acc.totales.total += total;
       acc.totales.iva += ivaLinea;
       return acc;
     },
     { 0: { subtotal: 0, iva: 0 }, 5: { subtotal: 0, iva: 0 }, 10: { subtotal: 0, iva: 0 }, totales: { total: 0, iva: 0 } },
   );
+  const iva5Mostrar = factura.iva5 != null && Number.isFinite(Number(factura.iva5)) ? Number(factura.iva5) : desglose[5].iva;
+  const iva10Mostrar = factura.iva10 != null && Number.isFinite(Number(factura.iva10)) ? Number(factura.iva10) : desglose[10].iva;
+  const ivaTotalMostrar = factura.ivaTotal != null && Number.isFinite(Number(factura.ivaTotal)) ? Number(factura.ivaTotal) : desglose.totales.iva;
 
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
@@ -516,7 +536,7 @@ function DetalleFactura({ factura, cargando = false, onClose, proveedoresMap, ge
                 {detalles.map((d) => (
                   <tr key={d.idDetalle ?? `${d.idProducto}-${d.nombreProducto}`} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                     <td className="px-4 py-3 font-medium text-white">{d.nombreProducto || `Producto #${d.idProducto}`}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white/80">{Number(d.cantidad)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white/80">{fmtCant(d.cantidad)}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white/80">{money(d.precioUnitario)}</td>
                     <td className="px-4 py-3 text-center">
                       <TasaBadge tasa={Number(d.tasaIva)} />
@@ -525,7 +545,9 @@ function DetalleFactura({ factura, cargando = false, onClose, proveedoresMap, ge
                       {Number(d.tasaIva) ? money(ivaLineaDetalle(d)) : "—"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-right font-medium tabular-nums text-white">
-                      {money(Math.round(Number(d.cantidad) * Number(d.precioUnitario)))}
+                      {money(d?.total != null && Number.isFinite(Number(d.total))
+                        ? Number(d.total)
+                        : totalLineaCompra(d?.precioUnitario, d?.cantidad, d?.tasaIva))}
                     </td>
                   </tr>
                 ))}
@@ -539,24 +561,24 @@ function DetalleFactura({ factura, cargando = false, onClose, proveedoresMap, ge
           <div className="flex items-center justify-between gap-6">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-sm">
               <span className="border border-white/15 bg-white/5 px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-white/80">Liquidación IVA</span>
-              {desglose[5].iva > 0 && (
+              {iva5Mostrar > 0 && (
                 <span className="text-white/70">
-                  <span className="text-white/40">5%: </span>{money(desglose[5].iva)}
+                  <span className="text-white/40">5%: </span>{money(iva5Mostrar)}
                 </span>
               )}
-              {desglose[10].iva > 0 && (
+              {iva10Mostrar > 0 && (
                 <span className="text-white/70">
-                  <span className="text-white/40">10%: </span>{money(desglose[10].iva)}
+                  <span className="text-white/40">10%: </span>{money(iva10Mostrar)}
                 </span>
               )}
               <span className="text-white/90 font-semibold">
-                <span className="text-white/40">Total IVA: </span>{money(desglose.totales.iva)}
+                <span className="text-white/40">Total IVA: </span>{money(ivaTotalMostrar)}
               </span>
             </div>
 
             <div className="shrink-0 text-right">
               <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/50">Total factura</p>
-              <p className="text-xl font-semibold tabular-nums text-[var(--accent)]">{money(totalDesdeDetalles(factura))}</p>
+              <p className="text-xl font-semibold tabular-nums text-[var(--accent)]">{money(totalFactura(factura))}</p>
             </div>
           </div>
         </footer>

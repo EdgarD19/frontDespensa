@@ -163,6 +163,9 @@ export default function HistorialVentas() {
   // Cuando activan filtros locales escondí filas de la página: el "Mostrando"
   // del paginado deja de ser exacto → solo se informa si no hay filtro local.
   const hayFiltroLocal = !!(estado || desde || hasta);
+  // Un rango invertido no matchea ninguna fecha: se avisa en vez de mostrar
+  // una tabla vacía sin explicación.
+  const rangoInvertido = Boolean(desde && hasta && desde > hasta);
   const paginadas = filtradas;
 
   async function verDetalle(f) {
@@ -260,6 +263,12 @@ export default function HistorialVentas() {
 
       {error && (
         <div className="rounded-none border border-red-500/30 bg-red-500/10 text-red-400 text-sm px-4 py-3">{error}</div>
+      )}
+
+      {rangoInvertido && (
+        <p role="alert" className="text-xs text-red-400">
+          El rango de fechas está invertido: “Desde” ({fmtFecha(desde)}) es posterior a “Hasta” ({fmtFecha(hasta)}).
+        </p>
       )}
 
       {/* Tabla */}

@@ -93,6 +93,10 @@ export default function TimbradosModal({ proveedor, onClose, onCambio }) {
       return;
     }
     if (!fechaInicio) { setError("Indicá la fecha de inicio."); return; }
+    if (fechaInicio > hoyAsuncion()) {
+      setError("La fecha de inicio no puede ser futura.");
+      return;
+    }
     if (!fechaVencimiento) { setError("Indicá la fecha de vencimiento."); return; }
     if (fechaVencimiento < fechaInicio) {
       setError("La fecha de vencimiento no puede ser anterior a la de inicio.");

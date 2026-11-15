@@ -1,3 +1,5 @@
+import { baseImponibleUnitaria, r2 } from "../../utils/iva";
+
 const ESC = 0x1B;
 const GS = 0x1D;
 
@@ -260,7 +262,7 @@ export function buildVentaEscPos(datos = {}) {
     }
 
     // Línea 2: "2 u. × 1.250 ……… 2.500" (total alineado a la derecha)
-    const leftTxt = `  ${cant.toLocaleString("es-PY", { maximumFractionDigits: 3 })} ${unidadDe(l)} × ${compMoney(pu)}`;
+    const leftTxt = `  ${cant.toLocaleString("es-PY", { maximumFractionDigits: 2 })} ${unidadDe(l)} × ${compMoney(pu)}`;
     const subTxt = compMoney(sub);
     parts.push(
       line(leftTxt.padEnd(WIDTH - subTxt.length) + subTxt),
@@ -286,7 +288,6 @@ export function buildVentaEscPos(datos = {}) {
   parts.push(separator());
 
   // Desglose de IVA por tasa (replica CalculoIvaUtil del back)
-  const r2 = (n) => Math.round(n * 100) / 100;
   let iva5 = 0;
   let iva10 = 0;
   for (const l of lineas) {
@@ -294,7 +295,7 @@ export function buildVentaEscPos(datos = {}) {
     const pu = getPU(l);
     const t = Number(l.iva ?? l.tasaIva ?? 10);
     if (t === 0) continue;
-    const base = r2(r2(pu / (1 + t / 100)) * cant);
+    const base = r2(baseImponibleUnitaria(pu, t) * cant);
     const iva = r2((base * t) / 100);
     if (t === 5) iva5 += iva;
     else iva10 += iva;

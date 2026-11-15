@@ -27,7 +27,11 @@ export function parseStockDisponible(producto) {
   if (raw === "" || raw === undefined || raw === null) return 0;
   const n = parseFloat(String(raw).replace(",", "."));
   if (!Number.isFinite(n)) return 0;
-  if (esProductoPesable(producto)) return Math.max(0, n);
+  // Cantidades con 2 decimales (0.01), igual que numeric(19,2) / numeric(38,2)
+  // del back: una cantidad con más precisión se redondearía en la base y el
+  // total del ticket no coincidiría con la factura guardada.
+  // Kg se maneja con 2 decimales: el stock vendible no puede tener más precisión.
+  if (esProductoPesable(producto)) return Math.max(0, Math.floor(n * 100) / 100);
   return Math.max(0, Math.trunc(n));
 }
 
@@ -35,6 +39,12 @@ export function formatMoney(n) {
   const x = Number(n);
   if (!Number.isFinite(x)) return "—";
   return `${x < 0 ? "-" : ""}Gs. ${nfGsRv.format(Math.abs(Math.round(x)))}`;
+}
+
+// Guaraníes: sin decimales. Cualquier separador (punto de miles, coma) o letra
+// se descarta antes de convertir, para que "50.000" no se lea como 50.
+export function soloDigitos(valor, maxLength = 15) {
+  return String(valor ?? "").replace(/[^\d]/g, "").slice(0, maxLength);
 }
 
 export const FORMA_PAGO_EFECTIVO = "EFECTIVO";

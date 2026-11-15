@@ -8,37 +8,54 @@ import { crearFacturaCompra, getTimbradosProveedor } from "../../../api/facturas
 import { apiErrorMessage } from "../../../api/errors";
 import TimbradosModal from "./TimbradosModal";
 import ResumenCompraExito from "../ResumenCompraExito";
-import { money, hoyAsuncion, formatoFactura, esKG, parseCant, estadoTimbrado, etiquetaTimbrado, FORMAS_PAGO_COMPRA, S } from "../utils";
+import { money, hoyAsuncion, formatoFactura, esKG, ivaLineaCompra, totalLineaCompra, CANTIDAD_MINIMA_KG, estadoTimbrado, etiquetaTimbrado, FORMAS_PAGO_COMPRA, S } from "../utils";
 import CantidadInput from "../../../components/ui/CantidadInput";
 
-// Recalcula el desglose de IVA desde los detalles de la factura guardada.
-// El backend guarda IVA por unidad; acá se calcula sobre el bruto (cantidad × precio).
+// Desglose de IVA de la factura guardada. Se prefieren los totales que devuelve
+// el back (suma exacta por línea); la fórmula espejo queda solo como respaldo.
 function desgloseFactura(f) {
-  const detalles = f?.detalles || [];
+  const factura = f?.data ?? f;
+  const detalles = factura?.detalles || [];
   const porTasa = (tasa) => detalles.filter((d) => Number(d.tasaIva) === tasa);
-  const bruto = (d) => Math.round((Number(d.cantidad) || 0) * (Number(d.precioUnitario) || 0));
-  const ivaDe = (d) => {
-    const t = Number(d.tasaIva ?? 0);
-    if (t === 0) return 0;
-    const b = bruto(d);
-    return Math.round(b - b / (1 + t / 100));
-  };
+  const ivaDe = (d) => (d?.iva != null && Number.isFinite(Number(d.iva))
+    ? Number(d.iva)
+    : ivaLineaCompra(d?.precioUnitario, d?.cantidad, d?.tasaIva));
+  const totalDe = (d) => (d?.total != null && Number.isFinite(Number(d.total))
+    ? Number(d.total)
+    : totalLineaCompra(d?.precioUnitario, d?.cantidad, d?.tasaIva));
+  const baseDe = (d) => (d?.baseImponible != null && Number.isFinite(Number(d.baseImponible))
+    ? Number(d.baseImponible)
+    : totalDe(d) - ivaDe(d));
   const suma = (arr, fn) => arr.reduce((s, d) => s + fn(d), 0);
-  const bruto10 = suma(porTasa(10), bruto);
-  const bruto5 = suma(porTasa(5), bruto);
-  const brutoExento = suma(porTasa(0), bruto);
+
   const iva10 = suma(porTasa(10), ivaDe);
   const iva5 = suma(porTasa(5), ivaDe);
-  const ivaExento = 0;
-  return {
-    subtotal10: bruto10 - iva10,
-    subtotal5: bruto5 - iva5,
-    subtotalExento: brutoExento,
+  const total10 = suma(porTasa(10), totalDe);
+  const total5 = suma(porTasa(5), totalDe);
+  const totalExento = suma(porTasa(0), totalDe);
+  const respaldo = {
+    subtotal10: suma(porTasa(10), baseDe),
+    subtotal5: suma(porTasa(5), baseDe),
+    subtotalExento: totalExento,
     iva10,
     iva5,
-    ivaExento,
+    ivaExento: 0,
     ivaTotal: iva10 + iva5,
-    total: bruto10 + bruto5 + brutoExento,
+    total: total10 + total5 + totalExento,
+  };
+  const delBack = (campo, respaldoCampo) => {
+    const valor = factura?.[campo];
+    return valor != null && Number.isFinite(Number(valor)) ? Number(valor) : respaldoCampo;
+  };
+  return {
+    subtotal10: delBack("subtotal10", respaldo.subtotal10),
+    subtotal5: delBack("subtotal5", respaldo.subtotal5),
+    subtotalExento: delBack("subtotalExento", respaldo.subtotalExento),
+    iva10: delBack("iva10", respaldo.iva10),
+    iva5: delBack("iva5", respaldo.iva5),
+    ivaExento: delBack("ivaExento", respaldo.ivaExento),
+    ivaTotal: delBack("ivaTotal", respaldo.ivaTotal),
+    total: delBack("totalGeneral", respaldo.total),
   };
 }
 
@@ -139,7 +156,7 @@ export default function CompraEspontanea({ onVolver }) {
     if (existente) {
       setLineas((prev) =>
         prev.map((l) =>
-          l.producto.id === prod.id ? { ...l, cantidad: l.cantidad + (esKG(prod) ? 0.001 : 1) } : l
+          l.producto.id === prod.id ? { ...l, cantidad: l.cantidad + (esKG(prod) ? CANTIDAD_MINIMA_KG : 1) } : l
         )
       );
     } else {
@@ -165,18 +182,25 @@ export default function CompraEspontanea({ onVolver }) {
   const eliminarLinea = (id) => setLineas((prev) => prev.filter((l) => l.producto.id !== id));
 
   const actualizarCantidad = (id, val) => {
+    const texto = String(val ?? "").trim();
     setLineas((prev) => prev.map((l) => {
       if (l.producto.id !== id) return l;
-      return { ...l, cantidad: parseCant(val, l.producto) };
+      // Campo vacío: se conserva vacío (el submit lo rechaza) en vez de
+      // “clampear” silenciosamente a la cantidad mínima.
+      if (texto === "") return { ...l, cantidad: "" };
+      const n = Number(texto.replace(",", "."));
+      if (!Number.isFinite(n) || n <= 0) return l;
+      return { ...l, cantidad: esKG(l.producto) ? Math.round(n * 100) / 100 : Math.floor(n) };
     }));
   };
 
   const actualizarPrecio = (id, val) => {
-    const n = Math.round(parseFloat(val.replace(",", ".")));
-    setLineas((prev) => prev.map((l) => (l.producto.id === id ? { ...l, precioUnitario: Number.isFinite(n) && n >= 0 ? n : 0 } : l)));
+    const n = Math.round(parseFloat(String(val).replace(",", ".")));
+    if (!Number.isFinite(n) || n < 0) return;
+    setLineas((prev) => prev.map((l) => (l.producto.id === id ? { ...l, precioUnitario: n } : l)));
   };
 
-  const subtotalLinea = (l) => Math.round(l.cantidad * l.precioUnitario);
+  const subtotalLinea = (l) => totalLineaCompra(l.precioUnitario, l.cantidad, l.producto.iva ?? 10);
   const total = lineas.reduce((sum, l) => sum + subtotalLinea(l), 0);
 
   const timbradoSel = timbrados.find((t) => String(t.idTimbrado) === String(timbradoId)) || null;
@@ -184,12 +208,7 @@ export default function CompraEspontanea({ onVolver }) {
   const timbradoBloqueado = estadoTimbradoSel && estadoTimbradoSel.tipo !== "vigente";
 
   // Desglose de IVA (misma fórmula que el backend: precio CON IVA -> base + IVA)
-  const ivaLinea = (l) => {
-    const t = Number(l.producto.iva ?? 10);
-    const bruto = l.cantidad * l.precioUnitario;
-    if (t === 0) return 0;
-    return Math.round(bruto - bruto / (1 + t / 100));
-  };
+  const ivaLinea = (l) => ivaLineaCompra(l.precioUnitario, l.cantidad, l.producto.iva ?? 10);
   const tasasLineas = (tasa) => lineas.filter((l) => Number(l.producto.iva ?? 10) === tasa);
   const iva5 = tasasLineas(5).reduce((s, l) => s + ivaLinea(l), 0);
   const iva10 = tasasLineas(10).reduce((s, l) => s + ivaLinea(l), 0);
@@ -203,10 +222,18 @@ export default function CompraEspontanea({ onVolver }) {
     if (!numeroComprobante.match(/^\d{3}-\d{3}-\d{7}$/)) {
       setError("El número de factura debe tener el formato 000-000-0000000"); return;
     }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaEmision)) { setError("Indicá la fecha de emisión"); return; }
+    if (fechaEmision > hoyAsuncion()) { setError("La fecha de emisión no puede ser futura"); return; }
     if (lineas.length === 0) { setError("Agregá al menos un producto"); return; }
     for (const l of lineas) {
-      if (l.precioUnitario <= 0) { setError(`Indicá el precio de costo de "${l.producto.nombre}"`); return; }
-      if (l.cantidad <= 0) { setError(`La cantidad de "${l.producto.nombre}" debe ser mayor a cero`); return; }
+      const precio = Number(l.precioUnitario);
+      const cant = Number(l.cantidad);
+      const min = esKG(l.producto) ? CANTIDAD_MINIMA_KG : 1;
+      if (!Number.isFinite(precio) || precio <= 0) { setError(`Indicá el precio de costo de "${l.producto.nombre}"`); return; }
+      if (!Number.isFinite(cant) || cant < min) {
+        setError(`La cantidad de "${l.producto.nombre}" debe ser al menos ${min}`);
+        return;
+      }
     }
     setGuardando(true);
     setError(null);
@@ -219,7 +246,7 @@ export default function CompraEspontanea({ onVolver }) {
         fechaEmision,
         detalles: lineas.map((l) => ({ idProducto: l.producto.id, cantidad: l.cantidad, precioUnitario: l.precioUnitario })),
       });
-      setExito(res);
+      setExito(res?.data ?? res);
     } catch (err) {
       setError(apiErrorMessage(err) || "Error al registrar factura");
     } finally {
@@ -238,7 +265,8 @@ export default function CompraEspontanea({ onVolver }) {
       { etiqueta: "Exentas", tasa: 0, subtotal: dg.subtotalExento, iva: null },
       { etiqueta: "Gravadas 5%", tasa: 5, subtotal: dg.subtotal5 + dg.iva5, iva: dg.iva5 },
       { etiqueta: "Gravadas 10%", tasa: 10, subtotal: dg.subtotal10 + dg.iva10, iva: dg.iva10 },
-    ];    const reiniciarFormulario = () => {
+    ];
+    const reiniciarFormulario = () => {
       setExito(null); setLineas([]); setProveedorSel(null); setProveedorSearch("");
       setTimbrados([]); setTimbradoId(""); setNumeroComprobante(""); setFormaPago("CONTADO");
       setFechaEmision(hoyAsuncion());
@@ -507,7 +535,7 @@ export default function CompraEspontanea({ onVolver }) {
                     <span>{p.nombre}</span>
                     <span className="text-xs text-white/40">
                       {Number(p.precioCompra) > 0
-                        ? `{money(p.precioCompra)}`
+                        ? money(p.precioCompra)
                         : "Sin costo registrado"}
                       {p.unidadMedida ? ` (${p.unitAbbreviation || p.unidadMedida})` : ""}
                     </span>
@@ -553,7 +581,7 @@ export default function CompraEspontanea({ onVolver }) {
                 unidadMedida={esKG(l.producto) ? "KG" : "UN"}
                 value={l.cantidad}
                 onChange={(v) => actualizarCantidad(l.producto.id, v)}
-                maxDecimales={3}
+                maxDecimales={2}
               />
                 </div>
                 {/* IVA % */}

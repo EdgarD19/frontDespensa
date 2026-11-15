@@ -48,6 +48,21 @@ export async function getFacturasCompra({ page = 0, pageSize = 10 } = {}) {
   return unwrap(data);
 }
 
+/**
+ * Todas las facturas de compra, recorriendo las páginas del back.
+ * Evita que Historial/Reportes se trunquen en silencio al superar `size`.
+ */
+export async function getFacturasCompraCompletas({ pageSize = 1000 } = {}) {
+  const primera = await getFacturasCompra({ page: 0, pageSize });
+  const content = Array.isArray(primera.content) ? [...primera.content] : [];
+  const totalPages = Number(primera.totalPages) || 0;
+  for (let page = 1; page < totalPages; page++) {
+    const siguiente = await getFacturasCompra({ page, pageSize });
+    if (Array.isArray(siguiente.content)) content.push(...siguiente.content);
+  }
+  return content;
+}
+
 /** Obtener una factura de compra por ID (con detalles). */
 export async function getFacturaCompraById(id) {
   const { data } = await api.get(`${BASE}/${id}`);

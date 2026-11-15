@@ -29,6 +29,18 @@ export async function getDevoluciones({ page = 0, pageSize = 1000, estado } = {}
   return unwrap(data);
 }
 
+/** Todas las devoluciones, recorriendo las páginas del back. */
+export async function getDevolucionesCompletas({ estado, pageSize = 1000 } = {}) {
+  const primero = await getDevoluciones({ page: 0, pageSize, estado });
+  const content = [...primero.content];
+  const totalPages = Number(primero.totalPages) || 0;
+  for (let page = 1; page < totalPages; page++) {
+    const siguiente = await getDevoluciones({ page, pageSize, estado });
+    content.push(...siguiente.content);
+  }
+  return content;
+}
+
 /** Crear una devolución PENDIENTE (descuenta stock). */
 export async function crearDevolucion(payload) {
   const { data } = await api.post(DEVOLUCIONES, payload);
@@ -54,6 +66,18 @@ export async function cancelarDevolucion(id) {
 export async function getIntercambios({ page = 0, pageSize = 1000 } = {}) {
   const { data } = await api.get(INTERCAMBIOS, { params: { page, size: pageSize } });
   return unwrap(data);
+}
+
+/** Todas las órdenes de intercambio, recorriendo las páginas del back. */
+export async function getIntercambiosCompletos({ pageSize = 1000 } = {}) {
+  const primero = await getIntercambios({ page: 0, pageSize });
+  const content = [...primero.content];
+  const totalPages = Number(primero.totalPages) || 0;
+  for (let page = 1; page < totalPages; page++) {
+    const siguiente = await getIntercambios({ page, pageSize });
+    content.push(...siguiente.content);
+  }
+  return content;
 }
 
 /** Crear una orden de intercambio. */
@@ -89,6 +113,18 @@ export async function getAnulaciones({ page = 0, pageSize = 1000 } = {}) {
     params: { page, size: pageSize, sortBy: "fechaAnulacion", sortDirection: "desc" },
   });
   return unwrap(data);
+}
+
+/** Todas las anulaciones, recorriendo las páginas del back. */
+export async function getAnulacionesCompletas({ pageSize = 1000 } = {}) {
+  const primero = await getAnulaciones({ page: 0, pageSize });
+  const content = [...primero.content];
+  const totalPages = Number(primero.totalPages) || 0;
+  for (let page = 1; page < totalPages; page++) {
+    const siguiente = await getAnulaciones({ page, pageSize });
+    content.push(...siguiente.content);
+  }
+  return content;
 }
 
 /** Anular una factura de compra. */

@@ -12,7 +12,7 @@ import { apiErrorMessage } from "../../../../api/errors";
 import CantidadInput from "../../../../components/ui/CantidadInput";
 import TimbradosModal from "../../factura/TimbradosModal";
 import ResumenCompraExito from "../../ResumenCompraExito";
-import { money, hoyAsuncion, formatoFactura, esKG, parseCant, estadoTimbrado, etiquetaTimbrado, FORMAS_PAGO_COMPRA, S } from "../../utils";
+import { money, hoyAsuncion, formatoFactura, esKG, ivaLineaCompra, totalLineaCompra, CANTIDAD_MINIMA_KG, estadoTimbrado, etiquetaTimbrado, FORMAS_PAGO_COMPRA, S } from "../../utils";
 
 export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
   const [proveedor, setProveedor] = useState(null);
@@ -88,15 +88,18 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
       const filas = await Promise.all(
         detalles.map(async (d) => {
           const costo = await getPrecioCompraVigente(d.idProducto).catch(() => 0);
+          const producto = {
+            id: d.idProducto,
+            nombre: d.nombreProducto || "",
+            unidadMedida: d.nombreUnidadMedida || "",
+            unitAbbreviation: "",
+            iva: d.tasaIva != null ? d.tasaIva : 10,
+          };
+          const min = esKG(producto) ? CANTIDAD_MINIMA_KG : 1;
+          const cant = Number(d.cantidad);
           return {
-            producto: {
-              id: d.idProducto,
-              nombre: d.nombreProducto || "",
-              unidadMedida: d.nombreUnidadMedida || "",
-              unitAbbreviation: "",
-              iva: d.tasaIva != null ? d.tasaIva : 10,
-            },
-            cantidad: Number(d.cantidad) > 0 ? Number(d.cantidad) : 1,
+            producto,
+            cantidad: Number.isFinite(cant) && cant >= min ? Math.round(cant * 100) / 100 : min,
             precioUnitario: costo > 0 ? costo : 0,
           };
         })
@@ -145,7 +148,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
     if (existente) {
       setLineas((prev) =>
         prev.map((l) =>
-          l.producto.id === prod.id ? { ...l, cantidad: l.cantidad + (esKG(prod) ? 0.001 : 1) } : l
+          l.producto.id === prod.id ? { ...l, cantidad: l.cantidad + (esKG(prod) ? CANTIDAD_MINIMA_KG : 1) } : l
         )
       );
     } else {
@@ -171,30 +174,32 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
   const eliminarLinea = (id) => setLineas((prev) => prev.filter((l) => l.producto.id !== id));
 
   const actualizarCantidad = (id, val) => {
+    const texto = String(val ?? "").trim();
     setLineas((prev) => prev.map((l) => {
       if (l.producto.id !== id) return l;
-      return { ...l, cantidad: parseCant(val, l.producto) };
+      // Campo vacío: se conserva vacío (el submit lo rechaza) en vez de
+      // “clampear” silenciosamente a la cantidad mínima.
+      if (texto === "") return { ...l, cantidad: "" };
+      const n = Number(texto.replace(",", "."));
+      if (!Number.isFinite(n) || n <= 0) return l;
+      return { ...l, cantidad: esKG(l.producto) ? Math.round(n * 100) / 100 : Math.floor(n) };
     }));
   };
 
   const actualizarPrecio = (id, val) => {
     const n = Math.round(parseFloat(String(val).replace(",", ".")));
-    setLineas((prev) => prev.map((l) => (l.producto.id === id ? { ...l, precioUnitario: Number.isFinite(n) && n >= 0 ? n : 0 } : l)));
+    if (!Number.isFinite(n) || n < 0) return;
+    setLineas((prev) => prev.map((l) => (l.producto.id === id ? { ...l, precioUnitario: n } : l)));
   };
 
-  const subtotalLinea = (l) => Math.round(l.cantidad * l.precioUnitario);
+  const subtotalLinea = (l) => totalLineaCompra(l.precioUnitario, l.cantidad, l.producto.iva ?? 10);
   const total = lineas.reduce((sum, l) => sum + subtotalLinea(l), 0);
 
   const timbradoSel = timbrados.find((t) => String(t.idTimbrado) === String(timbradoId)) || null;
   const estadoTimbradoSel = timbradoSel ? estadoTimbrado(timbradoSel, fechaEmision) : null;
   const timbradoBloqueado = estadoTimbradoSel && estadoTimbradoSel.tipo !== "vigente";
 
-  const ivaLinea = (l) => {
-    const t = Number(l.producto.iva ?? 10);
-    const bruto = l.cantidad * l.precioUnitario;
-    if (t === 0) return 0;
-    return Math.round(bruto - bruto / (1 + t / 100));
-  };
+  const ivaLinea = (l) => ivaLineaCompra(l.precioUnitario, l.cantidad, l.producto.iva ?? 10);
   const tasasLineas = (tasa) => lineas.filter((l) => Number(l.producto.iva ?? 10) === tasa);
   const iva5 = tasasLineas(5).reduce((s, l) => s + ivaLinea(l), 0);
   const iva10 = tasasLineas(10).reduce((s, l) => s + ivaLinea(l), 0);
@@ -206,16 +211,24 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
     if (!numeroComprobante.match(/^\d{3}-\d{3}-\d{7}$/)) {
       setError("El número de factura debe tener el formato 000-000-0000000"); return;
     }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaEmision)) { setError("Indicá la fecha de emisión"); return; }
+    if (fechaEmision > hoyAsuncion()) { setError("La fecha de emisión no puede ser futura"); return; }
     if (lineas.length === 0) { setError("Agregá al menos un producto"); return; }
     for (const l of lineas) {
-      if (l.precioUnitario <= 0) { setError(`Indicá el precio de costo de "${l.producto.nombre}"`); return; }
-      if (l.cantidad <= 0) { setError(`La cantidad de "${l.producto.nombre}" debe ser mayor a cero`); return; }
+      const precio = Number(l.precioUnitario);
+      const cant = Number(l.cantidad);
+      const min = esKG(l.producto) ? CANTIDAD_MINIMA_KG : 1;
+      if (!Number.isFinite(precio) || precio <= 0) { setError(`Indicá el precio de costo de "${l.producto.nombre}"`); return; }
+      if (!Number.isFinite(cant) || cant < min) {
+        setError(`La cantidad de "${l.producto.nombre}" debe ser al menos ${min}`);
+        return;
+      }
     }
     setGuardando(true);
     setError(null);
     try {
       const res = await crearFacturaCompra({
-        idProveedor,
+        idProveedor: idProveedor ?? proveedor?.idProveedor ?? proveedor?.id,
         idTimbrado: Number(timbradoId),
         numeroFactura: numeroComprobante.trim(),
         condicionPago: formaPago,
@@ -223,7 +236,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
         detalles: lineas.map((l) => ({ idProducto: l.producto.id, cantidad: l.cantidad, precioUnitario: l.precioUnitario })),
         idPedido: pedido.idPedido,
       });
-      setExito(res);
+      setExito(res?.data ?? res);
     } catch (err) {
       setError(apiErrorMessage(err) || "Error al registrar factura");
     } finally {
@@ -464,7 +477,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
                     >
                       <span>{p.nombre}</span>
                       <span className="text-xs text-white/40">
-                        {Number(p.precioCompra) > 0 ? `{money(p.precioCompra)}` : "Sin costo registrado"}
+                        {Number(p.precioCompra) > 0 ? money(p.precioCompra) : "Sin costo registrado"}
                         {p.unidadMedida ? ` (${p.unitAbbreviation || p.unidadMedida})` : ""}
                       </span>
                     </button>
@@ -505,7 +518,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
                       value={l.cantidad}
                       onChange={(v) => actualizarCantidad(l.producto.id, v)}
                       className="mx-auto w-20"
-                      maxDecimales={3}
+                      maxDecimales={2}
                       ariaLabel={`Cantidad de ${l.producto.nombre}`}
                     />
                   </div>

@@ -1,8 +1,22 @@
+import { baseImponibleUnitaria, r2 } from "../../utils/iva";
+
 // Formatter único y cacheado: construir Intl.NumberFormat en cada llamada es
 // caro y esto se ejecuta por fila en tablas densas (regla js-cache-function-results).
 const nfGs = new Intl.NumberFormat("es-PY", { maximumFractionDigits: 0 });
+const nfCant = new Intl.NumberFormat("es-PY", { maximumFractionDigits: 2 });
 
-export const money = (n) => "Gs. " + nfGs.format(Math.round(n));
+export const CANTIDAD_MINIMA_KG = 0.01;
+
+export const money = (n) => {
+  const v = Number(n);
+  return Number.isFinite(v) ? `Gs. ${nfGs.format(Math.round(v))}` : "—";
+};
+
+/** Cantidad visible con la precisión del back: 2 decimales (0.01). */
+export const fmtCant = (n) => {
+  const v = Number(n);
+  return Number.isFinite(v) ? nfCant.format(v) : "—";
+};
 
 export const hoyAsuncion = () =>
   new Date().toLocaleDateString("en-CA", { timeZone: "America/Asuncion", year: "numeric", month: "2-digit", day: "2-digit" });
@@ -38,10 +52,25 @@ export function formaPagoLabel(valor) {
   return valor || "—";
 }
 
-export function parseCant(val, prod) {
-  const n = parseFloat(String(val).replace(",", "."));
-  if (!Number.isFinite(n) || n <= 0) return esKG(prod) ? 0.001 : 1;
-  return esKG(prod) ? Math.round(n * 1000) / 1000 : Math.floor(n);
+/**
+ * IVA de una línea de compra, espejo de CalculoIvaUtil.calcularIva:
+ * base = round2(baseUnitaria(precioConIva) × cantidad); iva = round2(base × tasa/100).
+ */
+export function ivaLineaCompra(precioConIva, cantidad, tasaIva) {
+  const t = Number(tasaIva);
+  if (!Number.isFinite(t) || t <= 0) return 0;
+  const base = r2(baseImponibleUnitaria(precioConIva, t) * (Number(cantidad) || 0));
+  return r2((base * t) / 100);
+}
+
+/** Total de una línea (base + IVA) con el mismo redondeo por línea del back. */
+export function totalLineaCompra(precioConIva, cantidad, tasaIva) {
+  const p = Number(precioConIva) || 0;
+  const c = Number(cantidad) || 0;
+  const t = Number(tasaIva);
+  if (!Number.isFinite(t) || t <= 0) return r2(p * c);
+  const base = r2(baseImponibleUnitaria(p, t) * c);
+  return base + ivaLineaCompra(p, c, t);
 }
 
 /** "yyyy-MM-dd" → "DD/MM/AAAA" para mensajes visibles; el crudo queda solo para inputs/comparaciones. */

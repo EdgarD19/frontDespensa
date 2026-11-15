@@ -156,13 +156,17 @@ export default function ComprobantesConfig() {
 
   /* ── Paso 2: factura (solo local) ── */
   function guardarFactura(c, datos) {
-    guardarExtrasLocal(c.id, {
+    const guardado = guardarExtrasLocal(c.id, {
       establecimiento: String(datos.establecimiento).trim(),
       puntoExpedicion: String(datos.puntoExpedicion).trim(),
       numeroDesde: Math.trunc(Number(datos.numeroDesde)),
       numeroHasta: Math.trunc(Number(datos.numeroHasta)),
       ultimoEmitido: c.ultimoEmitido ?? 0, // nunca se pisa el correlativo
     });
+    if (!guardado) {
+      mostrarAviso("No se pudo guardar la configuración en este navegador (almacenamiento local bloqueado o lleno).");
+      return;
+    }
     setExtrasVersion((v) => v + 1);
     setFacturaId(null);
     mostrarAviso("Configuración de factura guardada.");

@@ -394,7 +394,7 @@ export default function ListasConteo({
                               onChange={(v) => onChangeFisico(cargar.id, it.idProducto, v)}
                               disabled={cargar.estado === "CONFIRMADO"}
                               permitirCero
-                              maxDecimales={3}
+                              maxDecimales={2}
                               placeholder="contado"
                             />
                           );

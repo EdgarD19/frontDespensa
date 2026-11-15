@@ -5,13 +5,20 @@ import { TABLE_SHELL,THEAD_ROW } from "../../../components/ui/styles";
 import PageHeader from "../../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
 import { ChevronDown, Eye, X, Receipt, Building2, Package, Percent } from "lucide-react";
-import { getFacturasCompra, apiErrorMessage } from "../../../api/facturasCompraApi";
+import { getFacturasCompraCompletas, apiErrorMessage } from "../../../api/facturasCompraApi";
 import { getProveedores, getProveedorId, getProveedorNombre } from "../../../api/proveedoresApi";
-import { formaPagoLabel } from "../utils";
+import { formaPagoLabel, fmtCant, totalLineaCompra } from "../utils";
 
 const money = (n) => {
   const v = Number(n);
   return Number.isFinite(v) ? `Gs. ${nfGsLista.format(Math.round(v))}` : "—";
+};
+
+// El back marca las compras anuladas con estado "ANULADO" (no "CANCELADA").
+const esAnulada = (f) => {
+  const estado = String(f?.estado || "").toUpperCase();
+  return estado === "ANULADO" || estado === "ANULADA"
+    || estado === "CANCELADA" || f?.activo === false;
 };
 
 const fmtFecha = (iso) => {
@@ -107,8 +114,8 @@ export default function ReportesCompras() {
       setCargando(true);
       setError(null);
       try {
-        const res = await getFacturasCompra({ page: 0, pageSize: 1000 });
-        if (activo) setTodas(Array.isArray(res.content) ? res.content : []);
+        const res = await getFacturasCompraCompletas();
+        if (activo) setTodas(Array.isArray(res) ? res : []);
       } catch (err) {
         if (activo) setError(apiErrorMessage(err) || "Error al cargar facturas");
       } finally {
@@ -118,15 +125,18 @@ export default function ReportesCompras() {
     return () => { activo = false; };
   }, []);
 
+  const vigentes = useMemo(() => todas.filter((f) => !esAnulada(f)), [todas]);
+  const rangoInvertido = Boolean(desde && hasta && desde > hasta);
+
   const productosDisponibles = useMemo(() => {
     const set = new Set();
-    for (const f of todas) {
+    for (const f of vigentes) {
       for (const d of Array.isArray(f.detalles) ? f.detalles : []) {
         set.add(d.nombreProducto || `Producto #${d.idProducto}`);
       }
     }
     return [...set].sort((a, b) => a.localeCompare(b));
-  }, [todas]);
+  }, [vigentes]);
 
   const limpiarFiltros = () => {
     const r = mesActual();
@@ -153,8 +163,6 @@ export default function ReportesCompras() {
       return next;
     });
   };
-
-  const vigentes = useMemo(() => todas.filter((f) => f.estado !== "CANCELADA" && f.activo !== false), [todas]);
 
   const filtradas = useMemo(() => {
     return vigentes.filter((f) => {
@@ -218,7 +226,11 @@ export default function ReportesCompras() {
           monto: 0,
         };
         row.cantidad += Number(d.cantidad || 0);
-        row.monto += Math.round(Number(d.cantidad || 0) * Number(d.precioUnitario || 0));
+        // Se prefiere el total persistido por el back para no desviar 1 Gs.
+        const totalLinea = d?.total != null && Number.isFinite(Number(d.total))
+          ? Number(d.total)
+          : totalLineaCompra(d?.precioUnitario, d?.cantidad, d?.tasaIva);
+        row.monto += totalLinea;
         map.set(key, row);
       }
     }
@@ -383,6 +395,12 @@ export default function ReportesCompras() {
         </div>
       </div>
 
+      {rangoInvertido && (
+        <div className="rounded-none border border-amber-500/30 bg-amber-500/10 text-amber-300 text-sm px-4 py-3">
+          La fecha “Desde” es posterior a “Hasta”: el reporte no muestra compras. Corregí el rango para ver resultados.
+        </div>
+      )}
+
       {error && (
         <div className="rounded-none border border-red-500/30 bg-red-500/10 text-red-400 text-sm px-4 py-3">{error}</div>
       )}
@@ -478,7 +496,7 @@ export default function ReportesCompras() {
                   <tr key={r.idProveedor ?? r.nombre} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                     <td className="px-4 py-3 text-white">{r.nombre}</td>
                     <td className="px-4 py-3 text-white/70 text-right tabular-nums">{r.cantFacturas}</td>
-                    <td className="px-4 py-3 text-white/70 text-right tabular-nums">{r.cantProductos}</td>
+                    <td className="px-4 py-3 text-white/70 text-right tabular-nums">{fmtCant(r.cantProductos)}</td>
                     <td className="px-4 py-3 text-white font-medium text-right tabular-nums">{money(r.importe)}</td>
                     <td className="px-4 py-3 text-white/30 text-right">—</td>
                   </tr>
@@ -488,7 +506,7 @@ export default function ReportesCompras() {
                 <tr className="border-t border-white/10 bg-white/5">
                   <td className="px-4 py-3 font-semibold text-white">Totales</td>
                   <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">{kpis.volumen}</td>
-                  <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">{totalUnidades}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">{fmtCant(totalUnidades)}</td>
                   <td className="px-4 py-3 text-right font-semibold text-[var(--accent)] tabular-nums">{money(kpis.montoTotal)}</td>
                   <td className="px-4 py-3" />
                 </tr>
@@ -521,7 +539,7 @@ export default function ReportesCompras() {
                 {porProducto.map((r) => (
                   <tr key={r.idProducto ?? r.nombre} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                     <td className="px-4 py-3 text-white">{r.nombre}</td>
-                    <td className="px-4 py-3 text-white/70 text-right tabular-nums">{Number(r.cantidad)}</td>
+                    <td className="px-4 py-3 text-white/70 text-right tabular-nums">{fmtCant(r.cantidad)}</td>
                     <td className="px-4 py-3 text-white font-medium text-right tabular-nums">{money(r.monto)}</td>
                   </tr>
                 ))}
@@ -529,7 +547,7 @@ export default function ReportesCompras() {
               <tfoot>
                 <tr className="border-t border-white/10 bg-white/5">
                   <td className="px-4 py-3 font-semibold text-white">Totales</td>
-                  <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">{totalUnidades}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">{fmtCant(totalUnidades)}</td>
                   <td className="px-4 py-3 text-right font-semibold text-[var(--accent)] tabular-nums">{money(montoProductos)}</td>
                 </tr>
               </tfoot>
@@ -613,7 +631,7 @@ function ReportePeriodo({ agrupFecha, setAgrupFecha, filtradas, porFecha, kpis, 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard label="Total de Compras" value={String(kpis.volumen)} accent="var(--accent)" />
         <KpiCard label="Importe Total Comprado" value={money(kpis.montoTotal)} accent="#38bdf8" />
-        <KpiCard label="Cantidad Total de Productos" value={String(totalUnidades)} accent="#f59e0b" />
+        <KpiCard label="Cantidad Total de Productos" value={fmtCant(totalUnidades)} accent="#f59e0b" />
       </div>
 
       <div className={TABLE_SHELL}>
@@ -662,7 +680,7 @@ function ReportePeriodo({ agrupFecha, setAgrupFecha, filtradas, porFecha, kpis, 
                       {agrupFecha === "dia" ? fmtFecha(r.fecha) : fmtMes(r.fecha)}
                     </td>
                     <td className="px-4 py-3 text-white/70 text-right tabular-nums">{r.cant}</td>
-                    <td className="px-4 py-3 text-white/70 text-right tabular-nums">{Number(r.unidades)}</td>
+                    <td className="px-4 py-3 text-white/70 text-right tabular-nums">{fmtCant(r.unidades)}</td>
                     <td className="px-4 py-3 text-white font-medium text-right tabular-nums">{money(r.importe)}</td>
                   </tr>
                 ))}
@@ -671,7 +689,7 @@ function ReportePeriodo({ agrupFecha, setAgrupFecha, filtradas, porFecha, kpis, 
                 <tr className="border-t border-white/10 bg-white/5">
                   <td className="px-4 py-3 font-semibold text-white">Totales</td>
                   <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">{kpis.volumen}</td>
-                  <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">{totalUnidades}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">{fmtCant(totalUnidades)}</td>
                   <td className="px-4 py-3 text-right font-semibold text-[var(--accent)] tabular-nums">{money(kpis.montoTotal)}</td>
                 </tr>
               </tfoot>
@@ -724,7 +742,7 @@ function ReportePeriodo({ agrupFecha, setAgrupFecha, filtradas, porFecha, kpis, 
               <tfoot>
                 <tr className="border-t border-white/10 bg-white/5">
                   <td colSpan={3} className="px-4 py-3 font-semibold text-white">Totales</td>
-                  <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">{totalUnidades}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">{fmtCant(totalUnidades)}</td>
                   <td className="px-4 py-3 text-right font-semibold text-[var(--accent)] tabular-nums">{money(kpis.montoTotal)}</td>
                   <td />
                 </tr>
@@ -781,7 +799,8 @@ function DetalleCompra({ factura, onClose, nombreProv }) {
               <thead>
                 <tr className={THEAD_ROW}>
                   <th className="px-4 py-3 font-medium">Producto</th>
-<th className="px-4 py-3 font-medium text-right">Cantidad</th>
+                  <th className="px-4 py-3 font-medium text-right">Cantidad</th>
+                  <th className="px-4 py-3 font-medium text-right">Costo unit.</th>
                   <th className="px-4 py-3 font-medium text-right">Importe</th>
                 </tr>
               </thead>
@@ -794,9 +813,13 @@ function DetalleCompra({ factura, onClose, nombreProv }) {
                 {detalles.map((d) => (
                   <tr key={d.idDetalle ?? `${d.idProducto}-${d.nombreProducto}`} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                     <td className="px-4 py-3 text-white">{d.nombreProducto || `Producto #${d.idProducto}`}</td>
-                    <td className="px-4 py-3 text-white/70 text-right whitespace-nowrap">{Number(d.cantidad)}</td>
+                    <td className="px-4 py-3 text-white/70 text-right whitespace-nowrap">{fmtCant(d.cantidad)}</td>
                     <td className="px-4 py-3 text-white/70 text-right whitespace-nowrap">{money(d.precioUnitario)}</td>
-                    <td className="px-4 py-3 text-white text-right whitespace-nowrap">{money(Math.round(Number(d.cantidad) * Number(d.precioUnitario)))}</td>
+                    <td className="px-4 py-3 text-white text-right whitespace-nowrap">
+                      {money(d?.total != null && Number.isFinite(Number(d.total))
+                        ? Number(d.total)
+                        : totalLineaCompra(d?.precioUnitario, d?.cantidad, d?.tasaIva))}
+                    </td>
                   </tr>
                 ))}
               </tbody>

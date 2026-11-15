@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Printer, X } from "lucide-react";
 import { formatMoney, labelCliente, esProductoPesable } from "./utils";
+import { baseImponibleUnitaria, r2 } from "../../../utils/iva";
 
 export default function TicketVenta({ datos, onCerrar, onReimprimir, reimprimiendo = false }) {
   const [status, setStatus] = useState("printing");
@@ -202,7 +203,7 @@ export default function TicketVenta({ datos, onCerrar, onReimprimir, reimprimien
                           <td className="align-top">
                             <span className="block truncate" title={getNombre(l)}>{getNombre(l)}{isPesable(l) && " (KG)"}</span>
                           </td>
-                          <td className="text-right align-top">{cant.toLocaleString("es-PY", { maximumFractionDigits: 3 })}</td>
+                          <td className="text-right align-top">{cant.toLocaleString("es-PY", { maximumFractionDigits: 2 })}</td>
                           <td className="pl-1 text-left align-top">{montoCorto(pu)}</td>
                           <td className="text-right align-top">{ivaTxt}</td>
                           <td className="pl-1 text-left align-top font-semibold">{montoCorto(sub)}</td>
@@ -265,7 +266,6 @@ export default function TicketVenta({ datos, onCerrar, onReimprimir, reimprimien
               <div className="space-y-0.5 py-2 text-[10px]">
                 {(() => {
                   // Desglose de IVA por tasa, replicando CalculoIvaUtil del back
-                  const r2 = (n) => Math.round(n * 100) / 100;
                   let iva5 = 0;
                   let iva10 = 0;
                   for (const l of lineas) {
@@ -273,7 +273,7 @@ export default function TicketVenta({ datos, onCerrar, onReimprimir, reimprimien
                     const pu = getPU(l);
                     const t = Number(l.iva ?? l.tasaIva ?? 10);
                     if (t === 0) continue;
-                    const base = r2(r2(pu / (1 + t / 100)) * cant);
+                    const base = r2(baseImponibleUnitaria(pu, t) * cant);
                     const iva = r2((base * t) / 100);
                     if (t === 5) iva5 += iva;
                     else iva10 += iva;
@@ -294,7 +294,6 @@ export default function TicketVenta({ datos, onCerrar, onReimprimir, reimprimien
               <div className="space-y-0.5 border-y border-dashed border-current/25 py-2 text-[10px]">
                 {(() => {
                   // Gravadas / Exentas: montos con IVA incluido por tasa (liq. DNIT)
-                  const r2 = (n) => Math.round(n * 100) / 100;
                   let g5 = 0;
                   let g10 = 0;
                   let ex = 0;

@@ -25,14 +25,20 @@ const DIAS_PERMITIDOS_ANULACION_VENTA = 15;
 
 function diasDesdeEmision(f) {
   const dia = String(f?.fechaEmision || f?.fechaCreacion || "").slice(0, 10);
+  // Se replica el back (AnulacionFacturaVentaService.validarDiasLimite): una
+  // fecha ausente/inválida no bloquea la anulación y una fecha futura tampoco
+  // (puede venir de un desfase de reloj servidor/cliente). Solo bloquea > 15.
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) return 0;
-  return Math.floor((new Date().getTime() - new Date(dia + "T00:00:00").getTime()) / 86400000);
+  const fecha = new Date(dia + "T00:00:00");
+  if (Number.isNaN(fecha.getTime())) return 0;
+  return Math.floor((new Date().getTime() - fecha.getTime()) / 86400000);
 }
 
 function fmtCantidad(n) {
   const v = Number(n);
   if (!Number.isFinite(v)) return "—";
-  return v.toLocaleString("es-PY", { maximumFractionDigits: 3 });
+  // Cantidades con 2 decimales (0.01), igual que numeric(19,2) del back.
+  return v.toLocaleString("es-PY", { maximumFractionDigits: 2 });
 }
 
 function fmtFechaHora(valor) {
@@ -388,9 +394,10 @@ function NuevaAnulacionModal({ onCerrar, onAnulada }) {
     // Red de seguridad del plazo: la selección ya bloquea facturas fuera de
     // plazo en la capa 1; esto cubre el borde de que cambie el día con el
     // wizard abierto (el back igualmente rechazaría con 400).
-    if (diasDesdeEmision(facturaSel) > DIAS_PERMITIDOS_ANULACION_VENTA) {
+    const dias = diasDesdeEmision(facturaSel);
+    if (dias > DIAS_PERMITIDOS_ANULACION_VENTA) {
       setErrorOperacion(
-        `Fuera de plazo: la factura fue emitida hace ${diasDesdeEmision(facturaSel)} días (máximo ${DIAS_PERMITIDOS_ANULACION_VENTA}).`
+        `Fuera de plazo: la factura fue emitida hace ${dias} días (máximo ${DIAS_PERMITIDOS_ANULACION_VENTA}).`
       );
       return;
     }
@@ -404,7 +411,9 @@ function NuevaAnulacionModal({ onCerrar, onAnulada }) {
       onAnulada(resp, facturaSel);
     } catch (err) {
       console.error("Error al registrar anulación:", err);
-      setErrorOperacion(err?.message || apiErrorMessage(err));
+      // El mensaje de Axios ("Request failed with status code 400") siempre
+      // existe y taparía el detalle de validación del back.
+      setErrorOperacion(apiErrorMessage(err) || err?.message);
       setRegistrando(false);
     }
   };

@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import {
   Search, ShoppingCart, Trash2, Scale, Package,
   Banknote, Landmark, Coins, AlertTriangle, RotateCcw, Check,
-  ArrowLeft, Barcode, X, ClipboardList, Loader2,
+  ArrowLeft, Barcode, X, ClipboardList, Loader2, Printer,
 } from "lucide-react";
 import { getProductos, getProductoByCodigo } from "../../../api/productosApi";
 import { getClientes } from "../../../api/clientesApi";
@@ -16,16 +16,20 @@ import { getConfiguracionEmpresa } from "../../../api/configuracionEmpresaApi";
 import { getTimbradoVentaPorFecha } from "../../../api/timbradosVentaApi";
 import { crearTransferenciaVenta, getTransferenciasPorEstado, recibirTransferenciaVenta, descartarTransferenciaVenta } from "../../../api/transferenciasVentaApi";
 import TicketVenta from "./TicketVenta";
+import { cargarUltimaVenta, guardarUltimaVenta } from "./ultimaVentaStorage";
 import { printVenta } from "../../../services/printer";
 import CantidadInput from "../../../components/ui/CantidadInput";
 import {
   parsePrecioVenta, parseStockDisponible, esProductoPesable, formatMoney,
-  labelCliente, docCliente, labelFormaPago, hoyISO,
+  labelCliente, docCliente, labelFormaPago, hoyISO, soloDigitos,
   FORMA_PAGO_EFECTIVO, FORMA_PAGO_TRANSFERENCIA, FORMA_PAGO_MIXTO,
   parseBarcodeInput,
 } from "./utils";
+import { baseImponibleUnitaria, r2 } from "../../../utils/iva";
 
 const QUICK_AMOUNTS = [5000, 10000, 20000, 50000, 100000];
+// Contraparte de DetalleFacturaVentaRequest: @DecimalMin("0.01").
+const CANTIDAD_MINIMA_KG = 0.01;
 
 // Estilo compartido con Registrar Factura / Lista de Facturas / Inventario:
 // fondo negro, tarjetas con borde white/10, etiquetas en mayúsculas espaciadas.
@@ -83,14 +87,7 @@ export default function RegistroVenta() {
   const [errorGlobal, setErrorGlobal] = useState(null);
   const [confirmando, setConfirmando] = useState(false);
   const [editandoCantidad, setEditandoCantidad] = useState(null);
-  const [datosImpresion, setDatosImpresion] = useState(() => {
-    // Última venta persistida por pestaña: permite REIMPRIMIR el ticket aunque
-    // el recargue/puede haber fallado la impresora en el primer intento.
-    try {
-      const raw = sessionStorage.getItem("despensa_ultima_venta_v1");
-      return raw ? JSON.parse(raw) : null;
-    } catch { return null; }
-  });
+  const [datosImpresion, setDatosImpresion] = useState(cargarUltimaVenta);
   const [mostrarTicket, setMostrarTicket] = useState(false);
   const [clienteQuery, setClienteQuery] = useState("");
   const [clientesOpciones, setClientesOpciones] = useState([]);
@@ -310,11 +307,9 @@ export default function RegistroVenta() {
   // producto (5% / 10% / exento). Se replica el cálculo del back (CalculoIvaUtil)
   // para que el total a cobrar coincida con el total de la factura emitida.
   const totalConIva = useMemo(() => {
-    const r2 = (n) => Math.round(n * 100) / 100;
     const total = carrito.reduce((a, l) => {
       const tasa = Number.isFinite(Number(l.tasaIva)) ? Number(l.tasaIva) : 10;
-      const baseUnit = Math.round((l.precioUnitario / (1 + tasa / 100)) * 1e6) / 1e6;
-      const base = r2(baseUnit * l.cantidad);
+      const base = r2(baseImponibleUnitaria(l.precioUnitario, tasa) * l.cantidad);
       const iva = r2((base * tasa) / 100);
       return a + base + iva;
     }, 0);
@@ -333,11 +328,13 @@ export default function RegistroVenta() {
 
   const esEfectivo = formaPago === FORMA_PAGO_EFECTIVO;
   const esMixto = formaPago === FORMA_PAGO_MIXTO;
-  const montoIngresado = parseFloat(String(montoPagado).replace(",", "."));
+  // El input solo admite dígitos (guaraníes sin decimales), así que "50.000"
+  // no se interpreta como 50: se guarda como "50000".
+  const montoIngresado = montoPagado === "" ? NaN : Number(montoPagado);
   // Mixto: el operador ingresa el monto de la TRANSFERENCIA y el efectivo es
   // el resto (derivado siempre al total exacto; cero carga mental de cuentas).
   const montoTransferenciaNum = esMixto
-    ? parseFloat(String(montoTransferencia).replace(",", "."))
+    ? (montoTransferencia === "" ? NaN : Number(montoTransferencia))
     : null;
   const montoTransferenciaOk = esMixto
     ? Number.isFinite(montoTransferenciaNum) && montoTransferenciaNum >= 0 && montoTransferenciaNum <= totalConIva
@@ -399,10 +396,22 @@ export default function RegistroVenta() {
       return;
     }
     const pesable = esProductoPesable(producto);
-    const q = pesable
-      ? Math.min(Math.max(0.001, parseFloat(String(cantidad).replace(",", "."))), stock)
-      : Math.min(Math.max(1, Math.trunc(Number(cantidad) || 1)), stock);
-    if (!Number.isFinite(q) || q <= 0) return;
+    // El back exige cantidad >= 0.01 (DetalleFacturaVentaRequest).
+    const min = pesable ? CANTIDAD_MINIMA_KG : 1;
+    const base = Number(String(cantidad ?? "").replace(",", "."));
+    // Cantidad ausente/negativa/no numérica: no se agrega nada.
+    if (!Number.isFinite(base) || base <= 0) return;
+    const q = Math.min(Math.max(min, pesable ? Math.floor(base * 100) / 100 : Math.trunc(base)), stock);
+    // Stock truncado a 0.01 o menos: no se puede vender una cantidad válida.
+    if (!Number.isFinite(q) || q < min) {
+      mostrarAviso({
+        titulo: "Stock insuficiente",
+        texto: <><span className="font-medium text-white">{nombre}</span> no alcanza el mínimo vendible ({min} {pesable ? "kg" : "u."}).</>,
+        tone: "amber",
+        icono: "alerta",
+      });
+      return;
+    }
     setErrorGlobal(null);
     setCarrito((prev) => {
       const idx = prev.findIndex((l) => l.productoId === producto.id);
@@ -410,7 +419,8 @@ export default function RegistroVenta() {
       // mismo código = +1, tercero = +2…), siempre respetando el stock.
       if (idx !== -1) {
         const line = prev[idx];
-        const nc = Math.min(line.cantidad + q, stock);
+        // Redondeo a 2 decimales (kg) para evitar polvo flotante tipo 0.30000000000000004.
+        const nc = Math.min(Math.round((line.cantidad + q) * 100) / 100, stock);
         if (nc === line.cantidad) {
           // Tope: el carrito ya acumuló todo el stock disponible del producto.
           mostrarAviso({
@@ -439,10 +449,17 @@ export default function RegistroVenta() {
     setCarrito((prev) => prev.map((line) => {
       if (line.productoId !== productoId) return line;
       const pesable = esProductoPesable(line);
-      const v = pesable ? parseFloat(String(raw).replace(",", ".")) : Math.trunc(Number(raw));
-      const min = pesable ? 0.001 : 1;
-      const q = Math.min(Math.max(min, v), line.stockDisponible);
-      return { ...line, cantidad: Number.isFinite(q) ? q : line.cantidad };
+      // Rechaza vacío, NaN y negativos en lugar de "clampearlos": un pegado de
+      // "-2" no debe convertirse en 0.01 kg ni en 1 unidad.
+      const v = pesable
+        ? Number(String(raw ?? "").trim().replace(",", "."))
+        : Math.trunc(Number(raw));
+      const min = pesable ? CANTIDAD_MINIMA_KG : 1;
+      if (!Number.isFinite(v) || v < min) return line;
+      const stock = Number(line.stockDisponible);
+      if (!Number.isFinite(stock) || stock < min) return line;
+      const q = Math.min(v, stock);
+      return { ...line, cantidad: q };
     }));
   }, []);
 
@@ -524,7 +541,8 @@ export default function RegistroVenta() {
       const t = totalRef.current;
       if (c.length > 0 && t > 0) {
         setFormaPago(FORMA_PAGO_EFECTIVO);
-        setMontoPagado(String(t));
+        // Guaraníes sin decimales: el efectivo se carga con enteros.
+        setMontoPagado(String(Math.ceil(t)));
       }
       return;
     }
@@ -593,9 +611,8 @@ export default function RegistroVenta() {
       empresaEmail: empresaConfig?.email,
       empresaPieTicket: empresaConfig?.pieTicket,
     };
-    setDatosImpresion(datosTicket);
+    setDatosImpresion(guardarUltimaVenta(datosTicket) ?? datosTicket);
     setMostrarTicket(true);
-    try { sessionStorage.setItem("despensa_ultima_venta_v1", JSON.stringify(datosTicket)); } catch { /* cuota llena */ }
     try {
       await printVenta(datosTicket);
     } catch (e) {
@@ -606,6 +623,16 @@ export default function RegistroVenta() {
 
   const handleConfirmar = useCallback(async () => {
     if (!puedeConfirmar) return;
+    // Red de seguridad: nunca enviar líneas con cantidad no finita, <= 0 o por
+    // debajo del mínimo del back (0.01).
+    const lineaInvalida = carrito.find((l) => {
+      const n = Number(l.cantidad);
+      return !Number.isFinite(n) || n < CANTIDAD_MINIMA_KG;
+    });
+    if (lineaInvalida) {
+      setErrorGlobal(`La cantidad de “${lineaInvalida.nombre}” no es válida. Revisá el carrito antes de cobrar.`);
+      return;
+    }
     setConfirmando(true);
     setErrorGlobal(null);
     // Doble control de vigencia justo antes de enviar: si el timbrado llegó a
@@ -699,14 +726,28 @@ export default function RegistroVenta() {
           title="Nueva venta"
           right={
             datosImpresion && (
-              <p className="hidden items-center gap-2 text-xs text-white/50 md:flex">
+              <div className="hidden items-center gap-2 text-xs text-white/50 md:flex">
                 <Check className="h-4 w-4 text-[var(--accent)]" />
-                <span>
+                <p
+                  className="min-w-0"
+                  title={datosImpresion.guardadaEn
+                    ? `Guardada el ${new Date(datosImpresion.guardadaEn).toLocaleString("es-PY")}`
+                    : undefined}
+                >
                   Última venta <span className="text-white/80" style={MONO}>{datosImpresion.numero}</span>
                   {" · "}{formatMoney(datosImpresion.total)}
                   {datosImpresion.cambio > 0 && <> · vuelto {formatMoney(datosImpresion.cambio)}</>}
-                </span>
-              </p>
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setMostrarTicket(true)}
+                  className="flex items-center gap-1.5 rounded-none border border-white/10 px-2 py-1 text-[11px] font-medium text-white/70 transition-colors hover:border-[var(--accent)] hover:text-white"
+                  title="Abrir el último ticket para revisarlo o reimprimirlo"
+                >
+                  <Printer className="h-3.5 w-3.5" />
+                  Ver ticket
+                </button>
+              </div>
             )
           }
         />
@@ -1030,7 +1071,7 @@ export default function RegistroVenta() {
                       type="text"
                       inputMode="numeric"
                       value={montoPagado}
-                      onChange={(e) => setMontoPagado(e.target.value)}
+                      onChange={(e) => setMontoPagado(soloDigitos(e.target.value))}
                       placeholder="0"
                       autoComplete="off"
                       className="flex-1 min-w-0 bg-transparent text-xl font-semibold text-white outline-none placeholder:text-white/25"
@@ -1067,7 +1108,7 @@ export default function RegistroVenta() {
                   </button>
                 ))}
               </div>
-              <button type="button" disabled={totalConIva <= 0} onClick={() => setMontoPagado(String(totalConIva))}
+              <button type="button" disabled={totalConIva <= 0} onClick={() => setMontoPagado(String(Math.ceil(totalConIva)))}
                 className="mt-2 flex w-full items-center justify-center gap-2 rounded-none border border-[var(--border-accent)] bg-[var(--accent-dim)] py-2 text-sm font-semibold text-[var(--accent)] transition-all hover:brightness-125 disabled:pointer-events-none disabled:opacity-40">
                 Monto exacto <Kbd>F6</Kbd>
               </button>
@@ -1093,7 +1134,7 @@ export default function RegistroVenta() {
                     type="text"
                     inputMode="numeric"
                     value={montoTransferencia}
-                    onChange={(e) => setMontoTransferencia(e.target.value.replace(/[^\d]/g, ""))}
+                    onChange={(e) => setMontoTransferencia(soloDigitos(e.target.value))}
                     placeholder="0"
                     autoComplete="off"
                     className="flex-1 min-w-0 bg-transparent text-xl font-semibold text-white outline-none placeholder:text-white/25"

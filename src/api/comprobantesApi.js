@@ -33,11 +33,17 @@ export function getExtrasLocal() {
 }
 
 export function guardarExtrasLocal(id, extras) {
-  if (id == null) return;
-  const all = getExtrasLocal();
-  const clave = String(id);
-  all[clave] = { ...EXTRAS_DEFAULT, ...all[clave], ...extras };
-  localStorage.setItem(KEY, JSON.stringify(all));
+  if (id == null) return false;
+  try {
+    const all = getExtrasLocal();
+    const clave = String(id);
+    all[clave] = { ...EXTRAS_DEFAULT, ...all[clave], ...extras };
+    localStorage.setItem(KEY, JSON.stringify(all));
+    return true;
+  } catch {
+    // localStorage bloqueado o cuota llena: no romper el guardado del timbrado.
+    return false;
+  }
 }
 
 /** Extras locales de un timbrado (con defaults si no hay nada guardado). */

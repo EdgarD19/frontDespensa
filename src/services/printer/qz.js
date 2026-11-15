@@ -30,11 +30,19 @@ function bytesABase64(bytes) {
 }
 
 async function elegirImpresora() {
-  const guardada = localStorage.getItem("despensa_qz_printer");
-  if (guardada) return guardada;
+  // localStorage puede estar bloqueado (modo privado): degradar sin romper.
+  let guardada = null;
+  try { guardada = localStorage.getItem("despensa_qz_printer"); } catch { /* sin persistencia */ }
 
   const impresoras = await qz.printers.find();
   const lista = Array.isArray(impresoras) ? impresoras : [impresoras].filter(Boolean);
+
+  // La impresora guardada puede haber sido renombrada/desinstalada: si ya no
+  // existe, se ignora y se vuelve a autodetectar en vez de fallar siempre.
+  if (guardada && lista.includes(guardada)) return guardada;
+  if (guardada) {
+    console.warn("[PRINTER][QZ] La impresora guardada ya no está instalada:", guardada);
+  }
 
   let elegida = null;
   try {
@@ -54,7 +62,7 @@ async function elegirImpresora() {
       "No se pudo elegir la impresora automática. Opciones instaladas: " + lista.join(" | ")
     );
   }
-  localStorage.setItem("despensa_qz_printer", elegida);
+  try { localStorage.setItem("despensa_qz_printer", elegida); } catch { /* sin persistencia */ }
   return elegida;
 }
 

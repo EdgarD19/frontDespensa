@@ -359,6 +359,10 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
   const [errorFormulario, setErrorFormulario] = useState(null);
 
   const pasoDetalle = Boolean(facturaSel);
+  // El back limita `observaciones` a 500; la marca de la factura se antepone,
+  // así que el campo del usuario solo puede ocupar el resto.
+  const marcaFactura = facturaSel?.numeroFactura ? `Factura: ${facturaSel.numeroFactura}` : "";
+  const maxObservaciones = Math.max(0, 500 - (marcaFactura ? marcaFactura.length + 3 : 0));
 
   useEscape(useCallback(() => {
     if (pasoDetalle) {
@@ -422,11 +426,13 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
     setFilas(detalles.map((d, i) => {
       const prod = productoMap.get(Number(d.idProducto));
       const unidad = esProductoPesable(prod) ? "KG" : "UN";
+      const cant = Number(d.cantidad);
       return {
         key: `${d.idDetalle ?? d.idProducto ?? i}-${i}`,
         idProducto: d.idProducto,
         nombre: d.nombreProducto || `Producto #${d.idProducto}`,
-        cantidadTicket: Number(d.cantidad) || 0,
+        // Sin cantidad válida no hay tope confiable: la fila no se puede intercambiar.
+        cantidadTicket: Number.isFinite(cant) && cant > 0 ? cant : 0,
         cantidadCambio: "",
         unidad,
       };
@@ -445,17 +451,61 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
   const handleRegistrar = async () => {
     if (!puedeRegistrar) return;
 
-    const completas = filas
-      .map((fl) => ({ fila: fl, n: Number(fl.cantidadCambio) }))
-      .filter((c) => Number.isFinite(c.n) && c.n > 0);
+    // Validación completa antes de enviar: id de producto, cantidad finita,
+    // entero en unidades, mínimo del back (0.01) y tope del ticket. Sin esto,
+    // un pegado de "1.5" en un producto por unidad descuenta stock fraccionario.
+    const completas = [];
+    for (const fl of filas) {
+      const raw = fl.cantidadCambio;
+      if (raw === "" || raw === null || raw === undefined) continue;
+
+      const idProducto = Number(fl.idProducto);
+      if (!Number.isInteger(idProducto) || idProducto <= 0) {
+        setErrorFormulario(`No se pudo identificar “${fl.nombre}”. Volvé a elegir el ticket.`);
+        return;
+      }
+
+      const n = Number(String(raw).trim().replace(",", "."));
+      if (!Number.isFinite(n)) {
+        setErrorFormulario(`La cantidad de “${fl.nombre}” no es válida.`);
+        return;
+      }
+      // "0" equivale a no intercambiar esa fila (el placeholder invita a 0).
+      if (n === 0) continue;
+      if (n < 0) {
+        setErrorFormulario(`La cantidad de “${fl.nombre}” no es válida.`);
+        return;
+      }
+      if (fl.unidad !== "KG" && !Number.isInteger(n)) {
+        setErrorFormulario(`La cantidad de “${fl.nombre}” debe ser un número entero.`);
+        return;
+      }
+      // numeric(38,2) en el back: más de 2 decimales se redondearía y el
+      // importe del intercambio no coincidiría con lo guardado.
+      if (fl.unidad === "KG") {
+        const decimales = String(raw).trim().split(/[.,]/)[1]?.length ?? 0;
+        if (decimales > 2) {
+          setErrorFormulario(`La cantidad de “${fl.nombre}” admite como máximo 2 decimales.`);
+          return;
+        }
+      }
+      if (n < 0.01) {
+        setErrorFormulario(`La cantidad de “${fl.nombre}” debe ser mayor o igual a 0,01.`);
+        return;
+      }
+      if (fl.cantidadTicket <= 0) {
+        setErrorFormulario(`“${fl.nombre}” no tiene una cantidad válida en el ticket.`);
+        return;
+      }
+      if (n > fl.cantidadTicket) {
+        setErrorFormulario(`La cantidad de “${fl.nombre}” no puede superar la del ticket (${fmtCant(fl.cantidadTicket, fl.unidad)}).`);
+        return;
+      }
+      completas.push({ fila: fl, idProducto, n });
+    }
 
     if (completas.length === 0) {
       setErrorFormulario("Indicá la cantidad a intercambiar de al menos un producto.");
-      return;
-    }
-    const exceden = completas.find((c) => c.n > c.fila.cantidadTicket);
-    if (exceden) {
-      setErrorFormulario(`La cantidad de “${exceden.fila.nombre}” no puede superar la del ticket (${exceden.fila.cantidadTicket}).`);
       return;
     }
 
@@ -467,21 +517,27 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
       // elegida viaja en `observaciones` para poder mostrarse en la tabla.
       const marca = facturaSel?.numeroFactura ? `Factura: ${facturaSel.numeroFactura}` : "";
       const obsUsuario = String(observaciones || "").trim();
-      const observacionesFinal = [marca, obsUsuario].filter(Boolean).join(" — ") || undefined;
+      // @Size(max = 500): la marca se antepone al texto del usuario, así que el
+      // total se recorta para no provocar un 400 por longitud.
+      const observacionesFinal =
+        [marca, obsUsuario].filter(Boolean).join(" — ").slice(0, 500) || undefined;
+      const idCliente = Number(facturaSel?.idCliente);
       const resp = await crearIntercambioVenta({
-        idCliente: facturaSel?.idCliente ? Number(facturaSel.idCliente) : undefined,
+        idCliente: Number.isInteger(idCliente) && idCliente > 0 ? idCliente : undefined,
         motivo: motivo,
         observaciones: observacionesFinal,
         detalles: completas.map((c) => ({
-          idProductoDefectuoso: c.fila.idProducto,
-          idProductoReemplazo: c.fila.idProducto,
+          idProductoDefectuoso: c.idProducto,
+          idProductoReemplazo: c.idProducto,
           cantidad: c.n,
         })),
       });
       onCreado(resp);
     } catch (err) {
       console.error("Error al registrar intercambio:", err);
-      setErrorOperacion(err?.message || apiErrorMessage(err));
+      // El mensaje de Axios ("Request failed with status code 400") siempre
+      // existe y taparía el detalle de validación del back.
+      setErrorOperacion(apiErrorMessage(err) || err?.message);
       setRegistrando(false);
     }
   };
@@ -611,7 +667,7 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
           type="text"
           value={observaciones}
           onChange={(e) => setObservaciones(e.target.value)}
-          maxLength={500}
+          maxLength={maxObservaciones}
           autoComplete="off"
           placeholder="Observaciones adicionales…"
           className={fieldClass}

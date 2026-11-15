@@ -8,16 +8,16 @@ import {
   Plus, X, Save, Search, FileText, AlertTriangle, CheckCircle, ArrowLeft,
   ArrowLeftRight, Ban, ChevronLeft, PackageCheck, XCircle, FilePlus2, Eye, ListChecks, PackageOpen, Undo2, ShieldAlert,
 } from "lucide-react";
-import { getFacturasCompra, getFacturaCompraById, getTimbradosProveedor } from "../../../api/facturasCompraApi";
+import { getFacturasCompraCompletas, getFacturaCompraById, getTimbradosProveedor } from "../../../api/facturasCompraApi";
 import {
-  getIntercambios,
+  getIntercambiosCompletos,
   crearIntercambio,
   marcarIntercambioRecibido,
   cerrarIntercambio,
   cancelarIntercambio,
-  getAnulaciones,
+  getAnulacionesCompletas,
   anularFactura,
-  getDevoluciones,
+  getDevolucionesCompletas,
   crearDevolucion,
   completarDevolucion,
   cancelarDevolucion,
@@ -25,7 +25,7 @@ import {
 import { apiErrorMessage } from "../../../api/errors";
 import { getProductos, getProductoById } from "../../../api/productosApi";
 import { getProveedores, getProveedorId, getProveedorNombre } from "../../../api/proveedoresApi";
-import { formatoFactura, hoyAsuncion, estadoTimbrado, etiquetaTimbrado, esKG } from "../utils";
+import { formatoFactura, hoyAsuncion, estadoTimbrado, etiquetaTimbrado, esKG, fmtCant } from "../utils";
 import CantidadInput from "../../../components/ui/CantidadInput";
 
 const nfGsOp = new Intl.NumberFormat("es-PY", { maximumFractionDigits: 0 });
@@ -299,8 +299,8 @@ export default function OperacionesTipo({ tipo }) {
     setLoadingFacturas(true);
     setError(null);
     try {
-      const res = await getFacturasCompra({ page: 0, pageSize: 1000 });
-      setFacturas(Array.isArray(res.content) ? res.content : []);
+      const res = await getFacturasCompraCompletas();
+      setFacturas(Array.isArray(res) ? res : []);
     } catch (err) {
       console.error("Error al cargar facturas:", err);
       setError("No se pudieron cargar las facturas.");
@@ -318,14 +318,14 @@ export default function OperacionesTipo({ tipo }) {
     setErrorOperacion(null);
     try {
       if (tipo === "DEVOLUCION") {
-        const res = await getDevoluciones({ page: 0, pageSize: 1000 });
-        setOperaciones(Array.isArray(res.content) ? res.content.map(formatearDevolucion) : []);
+        const res = await getDevolucionesCompletas();
+        setOperaciones(Array.isArray(res) ? res.map(formatearDevolucion) : []);
       } else if (tipo === "INTERCAMBIO") {
-        const res = await getIntercambios({ page: 0, pageSize: 1000 });
-        setOperaciones(Array.isArray(res.content) ? res.content.map(formatearIntercambio) : []);
+        const res = await getIntercambiosCompletos();
+        setOperaciones(Array.isArray(res) ? res.map(formatearIntercambio) : []);
       } else {
-        const res = await getAnulaciones({ page: 0, pageSize: 1000 });
-        setOperaciones(Array.isArray(res.content) ? res.content.map(formatearAnulacion) : []);
+        const res = await getAnulacionesCompletas();
+        setOperaciones(Array.isArray(res) ? res.map(formatearAnulacion) : []);
       }
     } catch (err) {
       console.error("Error al cargar operaciones:", err);
@@ -344,17 +344,17 @@ export default function OperacionesTipo({ tipo }) {
   const cargarPendientes = useCallback(async () => {
     const [devoluciones, intercambios] = await Promise.all([
       // El back filtra por estado: solo PENDIENTES (payload mínimo en vez de la tabla completa).
-      getDevoluciones({ pageSize: 500, estado: "PENDIENTE" }).catch(() => ({ content: [] })),
-      getIntercambios({ page: 0, pageSize: 1000 }).catch(() => ({ content: [] })),
+      getDevolucionesCompletas({ estado: "PENDIENTE", pageSize: 500 }).catch(() => []),
+      getIntercambiosCompletos().catch(() => []),
     ]);
     setPendientes({
-      devFacturas: (devoluciones.content || [])
+      devFacturas: (devoluciones || [])
         .filter((d) => String(d.estado || "").toUpperCase() === "PENDIENTE" && d.facturaOriginal?.idFactura != null)
         .map((d) => Number(d.facturaOriginal.idFactura)),
-      intFacturas: (intercambios.content || [])
+      intFacturas: (intercambios || [])
         .filter((o) => String(o.estado || "").toUpperCase() === "PENDIENTE" && o.idFactura != null)
         .map((o) => Number(o.idFactura)),
-      intProveedores: (intercambios.content || [])
+      intProveedores: (intercambios || [])
         .filter((o) => String(o.estado || "").toUpperCase() === "PENDIENTE" && o.idProveedor != null)
         .map((o) => Number(o.idProveedor)),
     });
@@ -1151,7 +1151,7 @@ function VerFacturaModal({ facturaId, items = [], estadoOperacion, motivo = "", 
                       return (
                         <tr key={d.idProducto ?? d.idDetalle} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                           <td className="px-4 py-3 text-white/80">{d.nombreProducto}</td>
-                          <td className="px-4 py-3 text-center tabular-nums text-white/70">{d.cantidad}</td>
+                          <td className="px-4 py-3 text-center tabular-nums text-white/70">{fmtCant(d.cantidad)}</td>
                           {esIntercambio && (
                             <td className={`px-4 py-3 text-center tabular-nums ${cambiado != null ? "font-medium text-amber-300" : "text-white/20"}`}>
                               {cambiado != null ? cambiado : "—"}
@@ -1488,6 +1488,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
   }, []);
 
   const hayFiltros = Boolean(filtroNumero || filtroProveedor || filtroFechaDesde || filtroFechaHasta);
+  const rangoInvertido = Boolean(filtroFechaDesde && filtroFechaHasta && filtroFechaDesde > filtroFechaHasta);
 
   const limpiarFiltros = () => {
     setFiltroNumero("");
@@ -1563,7 +1564,12 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
   const handleCambiarCantidad = (idProducto, cantidad) => {
     const d = facturaDetalle?.detalles?.find((x) => x.idProducto === idProducto);
     const max = d ? limitesCantidad(d, tipo) : 0;
-    const val = Math.max(0, Math.min(Number(cantidad) || 0, max));
+    // Vaciar el campo es válido (queda en 0), pero un valor no numérico o
+    // negativo no debe convertirse en 0 de forma silenciosa.
+    const texto = String(cantidad ?? "").trim();
+    const n = texto === "" ? 0 : Number(texto.replace(",", "."));
+    if (!Number.isFinite(n) || n < 0) return;
+    const val = Math.min(n, max);
     if (tipo === "DEVOLUCION") {
       setProductosDevueltos((prev) => ({ ...prev, [idProducto]: val }));
     } else {
@@ -1828,6 +1834,12 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
           </div>
         </div>
 
+        {rangoInvertido && (
+          <p className="rounded-none border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+            La fecha “Desde” es posterior a “Hasta”: no se encontraron facturas. Corregí el rango.
+          </p>
+        )}
+
         <div className="flex items-center justify-between gap-3 text-xs">
           <p className="text-white/40">
             {loadingFacturas ? "Cargando facturas…" : ""}
@@ -1992,9 +2004,9 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                       return (
                         <tr key={d.idProducto} className={`border-b border-white/10 last:border-0 ${falta ? "bg-red-500/[0.07]" : ""}`}>
                           <td className="px-4 py-3 text-white">{d.nombreProducto}</td>
-                          <td className="px-4 py-3 text-center tabular-nums text-white/60">{d.cantidad}</td>
+                          <td className="px-4 py-3 text-center tabular-nums text-white/60">{fmtCant(d.cantidad)}</td>
                           <td className={`px-4 py-3 text-center tabular-nums ${falta ? "font-semibold text-red-400" : "text-white/60"}`}>
-                            {stock === null || Number.isNaN(stock) ? "—" : stock}
+                            {stock === null || Number.isNaN(stock) ? "—" : fmtCant(stock)}
                           </td>
                         </tr>
                       );
@@ -2081,10 +2093,10 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                   return (
                     <tr key={d.idProducto} className={`border-b border-white/10 last:border-0 transition-colors ${activo ? "bg-[var(--accent)]/[0.04]" : "hover:bg-white/[0.03]"}`}>
                       <td className="px-4 py-3 text-white">{d.nombreProducto}</td>
-                      <td className="px-4 py-3 text-center tabular-nums text-white/60">{d.cantidad}</td>
+                      <td className="px-4 py-3 text-center tabular-nums text-white/60">{fmtCant(d.cantidad)}</td>
                       <td className={`px-4 py-3 text-center tabular-nums ${sinStock ? "text-red-400/80" : stockLimita ? "text-amber-400/80" : "text-white/60"}`}
                         title={stockLimita ? `Stock insuficiente: máximo ${max}` : undefined}>
-                        {stock === null ? "—" : stock}
+                        {stock === null ? "—" : fmtCant(stock)}
                       </td>
                       <td className="px-4 py-3">
                         <div className="mx-auto flex w-28 items-center gap-1">
@@ -2094,7 +2106,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                             onChange={(v) => handleCambiarCantidad(d.idProducto, v)}
                             permitirCero
                             max={max}
-                            maxDecimales={3}
+                            maxDecimales={2}
                             ariaLabel={`Cantidad a ${tipo === "DEVOLUCION" ? "devolver" : "intercambiar"} de ${d.nombreProducto}`}
                           />
                           <button

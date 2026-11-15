@@ -83,7 +83,7 @@ export default function ComprobanteImpresion({ datos }) {
                 <td className="cv-col-cod">{getCodigo(l)}</td>
                 <td>{getNombre(l)}</td>
                 <td className="cv-col-um">{getUm(l)}</td>
-                <td className="cv-num">{getCant(l).toLocaleString("es-PY", { maximumFractionDigits: 3 })}</td>
+                <td className="cv-num">{getCant(l).toLocaleString("es-PY", { maximumFractionDigits: 2 })}</td>
                 <td className="cv-num">{formatMoney(getPU(l))}</td>
                 <td className="cv-num">{formatMoney(getSub(l))}</td>
               </tr>

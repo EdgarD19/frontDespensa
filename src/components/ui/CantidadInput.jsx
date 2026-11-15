@@ -5,7 +5,7 @@ export default function CantidadInput({
   unidadMedida = "UN",
   value,
   onChange,
-  maxDecimales = 3,
+  maxDecimales = 2,
   disabled = false,
   permitirCero = false,
   max,
@@ -25,6 +25,9 @@ export default function CantidadInput({
   const [error, setError] = useState(null);
   const textRef = useRef("");
   const focusedRef = useRef(false);
+  // Fuerza un re-render cuando se rechaza un pegado inválido: el input es
+  // controlado y necesita volver a sincronizar el DOM con `text`.
+  const [, forceRender] = useState(0);
 
   const toText = (v) => {
     if (v === "" || v === null || v === undefined) return "";
@@ -61,6 +64,26 @@ export default function CantidadInput({
       }
       onChange(t);
     }
+  };
+
+  const textoValido = (txt) => {
+    if (txt === "") return true;
+    // UN: solo dígitos (los decimales llegan por pegado y rompen el stock).
+    if (!esKG) return /^\d*$/.test(txt);
+    // KG: dígitos + un único separador + máximo de decimales permitidos.
+    const norm = txt.replace(",", ".");
+    if (!/^\d*\.?\d*$/.test(norm)) return false;
+    const sep = norm.indexOf(".");
+    return sep === -1 || norm.length - sep - 1 <= maxDec;
+  };
+
+  const mensajeInvalido = (txt) => {
+    if (!esKG) return "La cantidad debe ser un número entero.";
+    const norm = txt.replace(",", ".");
+    if (/[^\d.,]/.test(txt) || (norm.match(/\./g) || []).length > 1) {
+      return "Ingrese una cantidad válida.";
+    }
+    return `La cantidad no puede tener más de ${maxDecimales} decimales.`;
   };
 
   const excedeMax = (txt) => {
@@ -226,7 +249,23 @@ export default function CantidadInput({
           }}
           onChange={(e) => {
             if (!focusedRef.current) focusedRef.current = true;
-            emit(e.target.value);
+            // El keydown ya bloquea letras/negativos, pero el pegado (o el
+            // autocompletado) lo esquiva: se rechaza el valor completo para no
+            // dejar estados intermedios inválidos (p. ej. "1.5" en unidades).
+            const limpio = e.target.value.replace(/\s/g, "");
+            if (!textoValido(limpio)) {
+              setError(mensajeInvalido(limpio));
+              forceRender((n) => n + 1);
+              return;
+            }
+            // El tope también se aplica al pegado (el keydown solo lo cubre al tipear).
+            if (excedeMax(limpio)) {
+              setError(`La cantidad no puede superar ${maxNum}.`);
+              forceRender((n) => n + 1);
+              return;
+            }
+            setError(null);
+            emit(limpio);
           }}
           onKeyDown={onKeyDown}
           className={`w-full bg-white/5 border rounded-none px-2 py-1 text-right text-sm font-mono text-white placeholder:text-white/25 outline-none transition-colors focus:border-[var(--accent)] ${
