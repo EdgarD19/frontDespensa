@@ -1,16 +1,23 @@
 import { useState, useEffect, useMemo } from "react";
 
 import PageHeader from "../../../components/ui/PageHeader";
-import { Link } from "react-router-dom";
-import {  } from "lucide-react";
 import ConsultaInventarioFilters from "./ConsultaInventarioFilters";
 import ConsultaInventarioReport from "./ConsultaInventarioReport";
-import { getProductos } from "../../../api/productosApi";
+import { getTodosLosProductos } from "../../../api/productosApi";
 import { getCategorias, getUnidades } from "../../../api/maestrosApi";
 import { apiErrorMessage } from "../../../api/errors";
 import { getEstadoStock } from "../utils";
 
 const ITEMS_PER_PAGE = 10;
+
+// Búsqueda tolerante a mayúsculas y tildes: "cafe" encuentra "Café".
+function normalizar(texto) {
+  return String(texto ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
 
 export default function ConsultaInventario() {
   const [productos, setProductos]           = useState([]);
@@ -31,19 +38,25 @@ export default function ConsultaInventario() {
       try {
         setError(null);
         setLoading(true);
-        const [es] = await Promise.all([getProductos({ pageSize: 500 })]);
-        if (!cancelled && es?.content) setProductos(es.content);
-        try {
-          const cats = await getCategorias();
-          if (!cancelled) setCategorias(cats.map((c) => ({ id: c.id, nombre: c.nombre })));
-        } catch {
-          /* el filtro sigue usando las categorías derivadas de los productos */
-        }
-        try {
-          const unis = await getUnidades();
-          if (!cancelled) setUnidades(unis.map((u) => u.nombre).filter(Boolean));
-        } catch {
-          /* el filtro sigue usando las unidades derivadas de los productos */
+        // Catálogo completo paginado: un tope fijo de 500 dejaba productos y
+        // filtros/estados de stock incompletos.
+        const todos = await getTodosLosProductos({
+          sortBy: "nombre",
+          sortDir: "ASC",
+        });
+        if (!cancelled) setProductos(todos);
+
+        const [catsRes, unisRes] = await Promise.allSettled([
+          getCategorias(),
+          getUnidades(),
+        ]);
+        if (!cancelled) {
+          if (catsRes.status === "fulfilled") {
+            setCategorias(catsRes.value.map((c) => ({ id: c.id, nombre: c.nombre })));
+          }
+          if (unisRes.status === "fulfilled") {
+            setUnidades(unisRes.value.map((u) => u.nombre).filter(Boolean));
+          }
         }
       } catch (err) {
         if (!cancelled) {
@@ -74,19 +87,21 @@ export default function ConsultaInventario() {
   }, [productos, categorias, unidades]);
 
   const productosFiltrados = useMemo(() => {
+    const q = normalizar(search);
     return productos
       .filter((p) => {
         const matchSearch =
-          !search ||
-          p.nombre?.toLowerCase().includes(search.toLowerCase()) ||
-          p.codigoBarras?.includes(search) ||
-          p.descripcion?.toLowerCase().includes(search.toLowerCase());
+          !q ||
+          normalizar(p.nombre).includes(q) ||
+          String(p.codigoBarras ?? "").includes(q) ||
+          normalizar(p.descripcion).includes(q);
         const matchCat = !filterCategoria || p.categoria === filterCategoria;
         const matchUnidad = !filterUnidad || p.unidadMedida === filterUnidad;
         const estado = getEstadoStock(p);
         const matchStock =
           filterStock === "todos" ||
           (filterStock === "normal" && estado === "normal") ||
+          (filterStock === "bajo"   && estado === "bajo") ||
           (filterStock === "sin"    && estado === "sin");
         return matchSearch && matchCat && matchUnidad && matchStock;
       })

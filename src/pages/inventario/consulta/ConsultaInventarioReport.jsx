@@ -1,6 +1,7 @@
 import { getEstadoStock } from "../utils";
 import { TABLE_SHELL,THEAD_ROW } from "../../../components/ui/styles";
 import Pagination from "../../../components/ui/Pagination";
+import { fmtCantidad } from "../../../utils/cantidad";
 
 const estadoStockConfig = {
   normal: { label: "Normal", cls: "bg-[var(--accent-dim)] text-[var(--accent)]" },
@@ -61,8 +62,10 @@ export default function ConsultaInventarioReport({
                 const stockUnknown =
                   rawStock === "" || rawStock === undefined || rawStock === null;
                 const stock = Number(rawStock ?? 0);
+                // El back guarda numeric(...,2): mostrar hasta 2 decimales,
+                // sin arrastrar ceros innecesarios.
                 const stockText =
-                  stockUnknown || !Number.isFinite(stock) ? "—" : `${stock}`;
+                  stockUnknown || !Number.isFinite(stock) ? "—" : fmtCantidad(stock);
                 const estado = getEstadoStock(p);
                 const estadoCfg = estadoStockConfig[estado] || estadoStockConfig.desconocido;
 

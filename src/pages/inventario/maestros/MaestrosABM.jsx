@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, createContext, useContext } from "react";
 
 import PageHeader from "../../../components/ui/PageHeader";
-import { Link } from "react-router-dom";
 import {
   Plus, Pencil, Check, X, ChevronDown, ToggleLeft, ToggleRight,
 } from "lucide-react";
+import { apiErrorMessage } from "../../../api/errors";
 import ConfirmModal from "../../../components/ui/ConfirmModal";
 import { getCategorias, getSubcategorias } from "../../../api/maestrosApi";
 import {
@@ -75,31 +75,45 @@ export function SeccionCategorias() {
   const [editName, setEditName] = useState("");
   const [confirmarCat, setConfirmarCat] = useState(null);
   const [cambiando, setCambiando] = useState(false);
+  const [guardando, setGuardando] = useState(false);
 
   const handleAdd = async () => {
+    if (guardando) return;
     setError("");
     const nombre = newName.trim();
-    if (!nombre) { setError("El nombre es obligatorio."); return; }
+    if (nombre.length < 2) {
+      setError("El nombre debe tener al menos 2 caracteres.");
+      return;
+    }
+    setGuardando(true);
     try {
       await crearCategoria(nombre);
       setNewName("");
       await load();
-    } catch {
-      setError("No se pudo crear la categoría (¿nombre duplicado?).");
+    } catch (err) {
+      setError(apiErrorMessage(err) || "No se pudo crear la categoría.");
+    } finally {
+      setGuardando(false);
     }
   };
 
   const handleEdit = async () => {
-    if (editId == null) return;
+    if (editId == null || guardando) return;
     setError("");
     const nombre = editName.trim();
-    if (!nombre) { setError("El nombre es obligatorio."); return; }
+    if (nombre.length < 2) {
+      setError("El nombre debe tener al menos 2 caracteres.");
+      return;
+    }
+    setGuardando(true);
     try {
       await actualizarCategoria(editId, nombre);
       setEditId(null);
       await load();
-    } catch {
-      setError("No se pudo actualizar la categoría (¿nombre duplicado?).");
+    } catch (err) {
+      setError(apiErrorMessage(err) || "No se pudo actualizar la categoría.");
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -113,8 +127,8 @@ export function SeccionCategorias() {
       await toggleActivoCategoria(confirmarCat.id, !confirmarCat.activar);
       setConfirmarCat(null);
       await load();
-    } catch {
-      setError("No se pudo cambiar el estado de la categoría.");
+    } catch (err) {
+      setError(apiErrorMessage(err) || "No se pudo cambiar el estado de la categoría.");
       setConfirmarCat(null);
     } finally {
       setCambiando(false);
@@ -127,8 +141,10 @@ export function SeccionCategorias() {
         <input value={newName} onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           placeholder="Nueva categoría..."
+          disabled={guardando}
           className={inputClass} />
-        <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent)] hover:text-black text-sm font-medium rounded-none transition-colors">
+        <button onClick={handleAdd} disabled={guardando}
+          className="flex items-center gap-1 px-3 py-2 bg-[var(--accent)] hover:text-black text-sm font-medium rounded-none transition-colors disabled:opacity-40 disabled:pointer-events-none">
           <Plus className="w-4 h-4" /> Agregar
         </button>
       </div>
@@ -148,8 +164,8 @@ export function SeccionCategorias() {
                   <input value={editName} onChange={(e) => setEditName(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleEdit()}
                     className="flex-1 bg-white/10 border border-white/20 rounded-none px-2 py-1 text-sm text-white focus:outline-none" autoFocus />
-                  <button onClick={handleEdit} className="p-1 text-[var(--accent)] hover:text-[var(--accent)]"><Check className="w-4 h-4" /></button>
-                  <button onClick={() => { setEditId(null); }} className="p-1 text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
+                  <button onClick={handleEdit} disabled={guardando} className="p-1 text-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-40"><Check className="w-4 h-4" /></button>
+                  <button onClick={() => { setEditId(null); }} disabled={guardando} className="p-1 text-white/40 hover:text-white disabled:opacity-40"><X className="w-4 h-4" /></button>
                 </>
               ) : (
                 <>
@@ -157,9 +173,9 @@ export function SeccionCategorias() {
                   <span className={`text-xs px-2 py-0.5 rounded-full ${c.activo === false ? "bg-red-500/10 text-red-400" : "bg-[var(--accent-dim)] text-[var(--accent)]"}`}>
                     {c.activo === false ? "Inactivo" : "Activo"}
                   </span>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => { setEditId(c.id); setEditName(c.nombre); }} className="p-1 text-white/40 hover:text-[var(--accent)]"><Pencil className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => handleToggle(c)} className="p-1 text-white/40 hover:text-[var(--accent)]">
+                  <div className="flex gap-1 opacity-60 focus-within:opacity-100 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => { setEditId(c.id); setEditName(c.nombre); }} disabled={guardando} className="p-1 text-white/40 hover:text-[var(--accent)] disabled:opacity-40" aria-label={`Editar ${c.nombre}`}><Pencil className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => handleToggle(c)} disabled={guardando} className="p-1 text-white/40 hover:text-[var(--accent)] disabled:opacity-40" aria-label={c.activo === false ? `Activar ${c.nombre}` : `Inactivar ${c.nombre}`}>
                       {c.activo === false ? <ToggleLeft className="w-3.5 h-3.5" /> : <ToggleRight className="w-3.5 h-3.5" />}
                     </button>
                   </div>
@@ -201,6 +217,7 @@ export function SeccionSubcategorias() {
   const [editName, setEditName] = useState("");
   const [confirmarSub, setConfirmarSub] = useState(null);
   const [cambiando, setCambiando] = useState(false);
+  const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
     if (cats.length && !idCategoria) setIdCategoria(String(cats[0].id));
@@ -227,30 +244,43 @@ export function SeccionSubcategorias() {
   }, [idCategoria]);
 
   const handleAdd = async () => {
+    if (guardando) return;
     setError("");
     const nombre = newName.trim();
     if (!idCategoria) { setError("Seleccioná una categoría."); return; }
-    if (!nombre) { setError("El nombre es obligatorio."); return; }
+    if (nombre.length < 2) {
+      setError("El nombre debe tener al menos 2 caracteres.");
+      return;
+    }
+    setGuardando(true);
     try {
       await crearSubcategoria(Number(idCategoria), nombre);
       setNewName("");
       await loadSubs(idCategoria);
-    } catch {
-      setError("No se pudo crear la subcategoría.");
+    } catch (err) {
+      setError(apiErrorMessage(err) || "No se pudo crear la subcategoría.");
+    } finally {
+      setGuardando(false);
     }
   };
 
   const handleEdit = async () => {
-    if (editId == null) return;
+    if (editId == null || guardando) return;
     setError("");
     const nombre = editName.trim();
-    if (!nombre) { setError("El nombre es obligatorio."); return; }
+    if (nombre.length < 2) {
+      setError("El nombre debe tener al menos 2 caracteres.");
+      return;
+    }
+    setGuardando(true);
     try {
       await actualizarSubcategoria(editId, nombre, Number(idCategoria));
       setEditId(null);
       await loadSubs(idCategoria);
-    } catch {
-      setError("No se pudo actualizar la subcategoría.");
+    } catch (err) {
+      setError(apiErrorMessage(err) || "No se pudo actualizar la subcategoría.");
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -264,8 +294,8 @@ export function SeccionSubcategorias() {
       await toggleActivoSubcategoria(confirmarSub.id, !confirmarSub.activar);
       setConfirmarSub(null);
       await loadSubs(idCategoria);
-    } catch {
-      setError("No se pudo cambiar el estado de la subcategoría.");
+    } catch (err) {
+      setError(apiErrorMessage(err) || "No se pudo cambiar el estado de la subcategoría.");
       setConfirmarSub(null);
     } finally {
       setCambiando(false);
@@ -290,8 +320,10 @@ export function SeccionSubcategorias() {
         <input value={newName} onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           placeholder="Nueva subcategoría..."
+          disabled={guardando}
           className={inputClass} />
-        <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent)] hover:text-black text-sm font-medium rounded-none transition-colors">
+        <button onClick={handleAdd} disabled={guardando}
+          className="flex items-center gap-1 px-3 py-2 bg-[var(--accent)] hover:text-black text-sm font-medium rounded-none transition-colors disabled:opacity-40 disabled:pointer-events-none">
           <Plus className="w-4 h-4" /> Agregar
         </button>
       </div>
@@ -311,8 +343,8 @@ export function SeccionSubcategorias() {
                   <input value={editName} onChange={(e) => setEditName(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleEdit()}
                     className="flex-1 bg-white/10 border border-white/20 rounded-none px-2 py-1 text-sm text-white focus:outline-none" autoFocus />
-                  <button onClick={handleEdit} className="p-1 text-[var(--accent)] hover:text-[var(--accent)]"><Check className="w-4 h-4" /></button>
-                  <button onClick={() => { setEditId(null); }} className="p-1 text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
+                  <button onClick={handleEdit} disabled={guardando} className="p-1 text-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-40"><Check className="w-4 h-4" /></button>
+                  <button onClick={() => { setEditId(null); }} disabled={guardando} className="p-1 text-white/40 hover:text-white disabled:opacity-40"><X className="w-4 h-4" /></button>
                 </>
               ) : (
                 <>
@@ -320,9 +352,9 @@ export function SeccionSubcategorias() {
                   <span className={`text-xs px-2 py-0.5 rounded-full ${s.activo === false ? "bg-red-500/10 text-red-400" : "bg-[var(--accent-dim)] text-[var(--accent)]"}`}>
                     {s.activo === false ? "Inactivo" : "Activo"}
                   </span>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => { setEditId(s.id); setEditName(s.nombre); }} className="p-1 text-white/40 hover:text-[var(--accent)]"><Pencil className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => handleToggle(s)} className="p-1 text-white/40 hover:text-[var(--accent)]">
+                  <div className="flex gap-1 opacity-60 focus-within:opacity-100 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => { setEditId(s.id); setEditName(s.nombre); }} disabled={guardando} className="p-1 text-white/40 hover:text-[var(--accent)] disabled:opacity-40" aria-label={`Editar ${s.nombre}`}><Pencil className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => handleToggle(s)} disabled={guardando} className="p-1 text-white/40 hover:text-[var(--accent)] disabled:opacity-40" aria-label={s.activo === false ? `Activar ${s.nombre}` : `Inactivar ${s.nombre}`}>
                       {s.activo === false ? <ToggleLeft className="w-3.5 h-3.5" /> : <ToggleRight className="w-3.5 h-3.5" />}
                     </button>
                   </div>

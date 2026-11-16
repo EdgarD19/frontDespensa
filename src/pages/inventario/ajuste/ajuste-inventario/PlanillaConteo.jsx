@@ -17,18 +17,34 @@
  */
 
 import { useMemo } from "react";
+import { redondearCantidad } from "../../../../utils/cantidad";
+import { parseConteo } from "./utils";
 
 const COMERCIO = "Despensa Sandra y Carlos";
 
-const MOTIVO_LABELS = { ROBO: "Robo", MERMA: "Merma", REGALO: "Regalo", ERROR: "Error", OTROS: "Otros" };
+const MOTIVO_LABELS = {
+  ROBO: "Robo",
+  MERMA: "Merma",
+  REGALO: "Regalo",
+  ERROR: "Error",
+  AJUSTE: "Ajuste",
+  OTROS: "Otros",
+};
 const nombreMotivo = (m) => MOTIVO_LABELS[m] || m || "—";
 
+const nfCantidad = new Intl.NumberFormat("es-PY", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
 // Formatea cantidades con separador local y sin decimales inútiles.
-const fmt = (n) =>
-  new Intl.NumberFormat("es-PY", { maximumFractionDigits: 3 }).format(n ?? 0);
+const fmt = (n) => {
+  const v = Number(n);
+  return Number.isFinite(v) ? nfCantidad.format(redondearCantidad(v)) : "—";
+};
 
 // Diferencia con signo explícito: el + importa tanto como el -.
-const fmtDif = (n) => (n > 0 ? `+${fmt(n)}` : fmt(n));
+const fmtDif = (n) => (Number.isFinite(Number(n)) && Number(n) > 0 ? `+${fmt(n)}` : fmt(n));
 
 const fmtFecha = (valor) => {
   if (!valor) return "—";
@@ -128,7 +144,13 @@ export default function PlanillaConteo({ sesion, modo = "informe", onVolver }) {
 
           <tbody>
             {detalles.map((d, i) => {
-              const dif = (d.stockFisico ?? 0) - (d.stockSistema ?? 0);
+              const fisico = parseConteo(d.stockFisico);
+              const sistema = Number(d.stockSistema ?? 0);
+              const dif =
+                Number.isFinite(fisico) && Number.isFinite(sistema)
+                  ? redondearCantidad(fisico - sistema)
+                  : NaN;
+              const difValida = Number.isFinite(dif);
               return (
                 <tr key={d.idProducto ?? d.codigo ?? i}>
                   <td className="pc-col-nro">{i + 1}</td>
@@ -139,18 +161,18 @@ export default function PlanillaConteo({ sesion, modo = "informe", onVolver }) {
                   {/* En modo conteo estas celdas quedan en blanco, con altura
                       suficiente para escribir encima. */}
                   <td className="pc-num pc-escribible">
-                    {esConteo ? "" : fmt(d.stockFisico)}
+                    {esConteo ? "" : fmt(fisico)}
                   </td>
                   <td
                     className={`pc-num pc-escribible ${
-                      !esConteo && dif !== 0
+                      !esConteo && difValida && dif !== 0
                         ? dif > 0
                           ? "pc-dif pc-dif--pos"
                           : "pc-dif pc-dif--neg"
                         : ""
                     }`}
                   >
-                    {esConteo ? "" : fmtDif(dif)}
+                    {esConteo ? "" : difValida ? fmtDif(dif) : "—"}
                   </td>
 
                   {esConteo && <td className="pc-col-obs" />}

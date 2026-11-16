@@ -17,7 +17,8 @@ import {
 import { getCatalogoLigero } from "../../../api/productosApi";
 import CantidadInput from "../../../components/ui/CantidadInput";
 import Pagination from "../../../components/ui/Pagination";
-import { esProductoPesable } from "../registro-venta/utils";
+import { esProductoPesable, unidadCorta } from "../registro-venta/utils";
+import { productoAdmiteDecimales } from "../../../utils/cantidad";
 import { esAnulada, fmtFecha, fmtMoneda } from "../common";
 import SearchField from "../../../components/ui/SearchField";
 
@@ -48,7 +49,7 @@ function motivoBadge(m) {
 
 function fmtCant(n, um) {
   const c = Number(n) || 0;
-  return `${c} ${um === "KG" ? "kg" : "u."}`;
+  return `${c} ${unidadCorta({ unidadMedida: um })}`;
 }
 
 const labelClass = "block text-xs text-white/50 mb-1";
@@ -425,7 +426,9 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
     const detalles = Array.isArray(f.detalles) ? f.detalles : [];
     setFilas(detalles.map((d, i) => {
       const prod = productoMap.get(Number(d.idProducto));
-      const unidad = esProductoPesable(prod) ? "KG" : "UN";
+      // La unidad real habilita decimales en CantidadInput (kg, g, L…); solo
+      // "Unidad"/"UN" exige entero. Sin producto en el catálogo: entero.
+      const unidad = prod?.unidadMedida || (esProductoPesable(prod) ? "KG" : "UN");
       const cant = Number(d.cantidad);
       return {
         key: `${d.idDetalle ?? d.idProducto ?? i}-${i}`,
@@ -476,13 +479,14 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
         setErrorFormulario(`La cantidad de “${fl.nombre}” no es válida.`);
         return;
       }
-      if (fl.unidad !== "KG" && !Number.isInteger(n)) {
+      // Entero solo para "Unidad"/"UN"; las unidades de medida admiten decimales.
+      if (!productoAdmiteDecimales({ unidadMedida: fl.unidad }) && !Number.isInteger(n)) {
         setErrorFormulario(`La cantidad de “${fl.nombre}” debe ser un número entero.`);
         return;
       }
       // numeric(38,2) en el back: más de 2 decimales se redondearía y el
       // importe del intercambio no coincidiría con lo guardado.
-      if (fl.unidad === "KG") {
+      if (productoAdmiteDecimales({ unidadMedida: fl.unidad })) {
         const decimales = String(raw).trim().split(/[.,]/)[1]?.length ?? 0;
         if (decimales > 2) {
           setErrorFormulario(`La cantidad de “${fl.nombre}” admite como máximo 2 decimales.`);

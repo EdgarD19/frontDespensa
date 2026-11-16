@@ -1,8 +1,17 @@
 import { useState } from "react";
 import { THEAD_ROW } from "../../../../components/ui/styles";
 import { Check, Search, Trash2, Barcode, X } from "lucide-react";
-import { stockEntero } from "./utils";
+import { stockCantidad } from "./utils";
+import { fmtCantidad } from "../../../../utils/cantidad";
 import { getProductoByCodigo } from "../../../../api/productosApi";
+
+function normalizar(texto) {
+  return String(texto ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
 
 export default function AjusteStock({ productos, categorias, disabled, onGenerar }) {
   const [categoria, setCategoria] = useState("");
@@ -11,15 +20,17 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
   const [motivo, setMotivo] = useState("");
   const [motivoError, setMotivoError] = useState(false);
   const [codigoNoEncontrado, setCodigoNoEncontrado] = useState("");
+  const [generando, setGenerando] = useState(false);
 
   const idsSeleccion = new Set(seleccion.map((p) => p.id));
+  const bloqueado = disabled || generando;
 
-  const q = search.trim().toLowerCase();
+  const q = normalizar(search);
   const base = q
     ? productos.filter((p) =>
-        String(p.nombre || "").toLowerCase().includes(q) ||
-        String(p.codigo || "").toLowerCase().includes(q) ||
-        String(p.unitAbbreviation || p.unidadMedida || "").toLowerCase().includes(q)
+        normalizar(p.nombre).includes(q) ||
+        String(p.codigoBarras ?? "").includes(q) ||
+        normalizar(p.unitAbbreviation || p.unidadMedida).includes(q)
       )
     : productos;
   const visibles = base
@@ -29,8 +40,15 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
 
   function toggleProducto(p) {
     setSeleccion((prev) =>
-      idsSeleccion.has(p.id) ? prev.filter((x) => x.id !== p.id) : [...prev, p]
+      prev.some((x) => x.id === p.id)
+        ? prev.filter((x) => x.id !== p.id)
+        : [...prev, p]
     );
+  }
+
+  // El escaneo siempre agrega: si el producto ya estaba seleccionado, se conserva.
+  function agregarProducto(p) {
+    setSeleccion((prev) => (prev.some((x) => x.id === p.id) ? prev : [...prev, p]));
   }
 
   async function buscarPorCodigo(codigo) {
@@ -43,8 +61,9 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
       prod = null;
     }
     if (prod) {
-      toggleProducto(prod);
+      agregarProducto(prod);
       setSearch("");
+      setCodigoNoEncontrado("");
       return;
     }
     setCodigoNoEncontrado(c);
@@ -67,19 +86,26 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
     setMotivoError(false);
   }
 
-  function generar() {
-    if (seleccion.length === 0) return;
+  async function generar() {
+    if (seleccion.length === 0 || generando) return;
     if (!motivo) {
       setMotivoError(true);
       return;
     }
     const cat = categorias.find((c) => Number(c.id) === Number(categoria));
-    onGenerar({
-      productos: seleccion,
-      descripcion: cat?.nombre || (categoria ? String(categoria) : "Manual"),
-      motivo,
-    });
-    limpiar();
+    setGenerando(true);
+    let ok = false;
+    try {
+      ok = await onGenerar({
+        productos: seleccion,
+        descripcion: cat?.nombre || (categoria ? String(categoria) : "Manual"),
+        motivo,
+      });
+    } finally {
+      setGenerando(false);
+    }
+    // Si el backend falló, conservamos la selección para reintentar.
+    if (ok) limpiar();
   }
 
   return (
@@ -103,15 +129,15 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
                     buscarPorCodigo(search);
                   }
                 }}
-                disabled={disabled}
+                disabled={bloqueado}
                 placeholder="Escanear código de barras o buscar por nombre…"
                 className="w-full rounded-none border border-white/10 bg-[#0c0c0e] pl-10 pr-12 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]/20 outline-none disabled:opacity-50"
               />
-              {search && !disabled ? (
+              {search && !bloqueado ? (
                 <button
                   type="button"
                   onClick={() => setSearch("")}
-                  disabled={disabled}
+                  disabled={bloqueado}
                   className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-white/40 hover:text-white transition-colors disabled:opacity-50"
                   title="Limpiar búsqueda"
                   aria-label="Limpiar búsqueda"
@@ -122,7 +148,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
                 <button
                   type="button"
                   onClick={() => buscarPorCodigo(search)}
-                  disabled={disabled}
+                  disabled={bloqueado}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors disabled:opacity-50"
                   title="Buscar por código de barras"
                 >
@@ -148,7 +174,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
                 <button
                   type="button"
                   onClick={seleccionarTodos}
-                  disabled={disabled}
+                  disabled={bloqueado}
                   className="text-xs font-medium text-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-40 transition-colors"
                 >
                   Seleccionar todos
@@ -170,7 +196,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
                     <button
                       type="button"
                       onClick={() => toggleProducto(p)}
-                      disabled={disabled}
+                      disabled={bloqueado}
                       className="w-full text-left px-3 py-2.5 flex items-center gap-2 hover:bg-[#13131a] transition-colors disabled:opacity-60"
                     >
                       <span className="flex-1 min-w-0 font-medium text-white text-sm truncate">
@@ -182,7 +208,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
                         </span>
                       ) : null}
                       <span className="text-xs font-semibold text-[var(--accent)] tabular-nums whitespace-nowrap">
-                        {stockEntero(p)}
+                        {fmtCantidad(stockCantidad(p))}
                       </span>
                     </button>
                   </li>
@@ -202,7 +228,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
             <select
               value={categoria}
               onChange={(e) => setCategoria(e.target.value)}
-              disabled={disabled}
+              disabled={bloqueado}
               className="w-full rounded-none border border-white/10 bg-[#0c0c0e] px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]/25 outline-none disabled:opacity-50"
             >
               <option value="">Todas las categorías</option>
@@ -222,7 +248,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
                 setMotivo(e.target.value);
                 setMotivoError(false);
               }}
-              disabled={disabled}
+              disabled={bloqueado}
               className="w-full rounded-none border border-white/10 bg-[#0c0c0e] px-3 py-2.5 text-sm text-white focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]/20 outline-none disabled:opacity-50"
             >
               <option value="">Seleccionar motivo…</option>
@@ -230,6 +256,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
               <option value="MERMA">Merma</option>
               <option value="REGALO">Regalo</option>
               <option value="ERROR">Error</option>
+              <option value="AJUSTE">Ajuste</option>
               <option value="OTROS">Otros</option>
             </select>
             {motivoError && (
@@ -269,13 +296,15 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
                             {p.unitAbbreviation || p.unidadMedida || "—"}
                           </td>
                           <td className="px-4 py-3 text-right text-[var(--accent)] font-semibold tabular-nums">
-                            {Number.isFinite(Number(p.stockActual)) ? stockEntero(p) : "—"}
+                            {Number.isFinite(Number(p.stockActual))
+                              ? fmtCantidad(stockCantidad(p))
+                              : "—"}
                           </td>
                           <td className="px-4 py-3 text-right">
                             <button
                               type="button"
                               onClick={() => toggleProducto(p)}
-                              disabled={disabled}
+                              disabled={bloqueado}
                               className="p-1 text-white/40 hover:text-red-400 transition-colors disabled:opacity-50"
                               title="Quitar"
                             >
@@ -306,7 +335,7 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
         <div className="flex items-center gap-2">
           <button
             type="button"
-            disabled={disabled || seleccion.length === 0}
+            disabled={bloqueado || seleccion.length === 0}
             onClick={limpiar}
             className="rounded-none border border-white/10 bg-[#0c0c0e] px-4 py-2.5 text-sm font-medium text-[#b0b0c0] hover:bg-[#1a1a22] hover:text-white disabled:opacity-40 transition-colors"
           >
@@ -315,11 +344,11 @@ export default function AjusteStock({ productos, categorias, disabled, onGenerar
           <button
             type="button"
             onClick={generar}
-            disabled={disabled || seleccion.length === 0}
+            disabled={bloqueado || seleccion.length === 0}
             className="inline-flex items-center gap-2 rounded-none bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-black text-sm font-semibold px-6 py-2.5 disabled:opacity-40 disabled:pointer-events-none transition-colors"
           >
             <Check className="w-4 h-4" aria-hidden />
-            Generar
+            {generando ? "Generando…" : "Generar"}
           </button>
         </div>
       </div>

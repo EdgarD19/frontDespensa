@@ -13,43 +13,46 @@ function normalizeAjuste(a) {
     cantidadItems: a.cantidadItems ?? 0,
     fechaCreacion: a.fechaCreacion ?? "",
     fechaConfirmacion: a.fechaConfirmacion ?? "",
+    // El back informa el flag `activo` en el listado.
+    activo: a.activo,
     detalles: Array.isArray(a.detalles) ? a.detalles : [],
   };
 }
 
 /**
  * GET listado de ajustes de inventario desde el backend (fuente de verdad).
- * Recorre todas las páginas; devuelve lista vacía si el back no responde.
+ * Recorre todas las páginas. Los errores se propagan para que la pantalla
+ * distinga "no hay listas" de "falló la carga".
+ *
+ * opts.activo: true = solo activos, false = solo desactivados, undefined =
+ * solo activos (el back omite el parámetro y aplica su default).
  */
-export async function getAjustes(pageSize = 500) {
-  try {
-    const all = [];
-    let page = 0;
-    let totalPages = 1;
-    let content = [];
-    do {
-      const { data } = await api.get("/api/ajuste-inventario", {
-        params: {
-          page,
-          size: pageSize,
-          sortBy: "fechaCreacion",
-          sortDirection: "desc",
-        },
-      });
-      const wrapper = data?.data ?? data;
-      content = Array.isArray(wrapper?.content)
-        ? wrapper.content
-        : Array.isArray(data)
-          ? data
-          : [];
-      all.push(...content);
-      totalPages = wrapper?.totalPages ?? 1;
-      page++;
-    } while (page < totalPages && content.length > 0 && all.length < 10000);
-    return all;
-  } catch {
-    return [];
-  }
+export async function getAjustes(pageSize = 500, { activo } = {}) {
+  const all = [];
+  let page = 0;
+  let totalPages = 1;
+  let content = [];
+  do {
+    const { data } = await api.get("/api/ajuste-inventario", {
+      params: {
+        page,
+        size: pageSize,
+        sortBy: "fechaCreacion",
+        sortDirection: "desc",
+        activo,
+      },
+    });
+    const wrapper = data?.data ?? data;
+    content = Array.isArray(wrapper?.content)
+      ? wrapper.content
+      : Array.isArray(data)
+        ? data
+        : [];
+    all.push(...content);
+    totalPages = wrapper?.totalPages ?? 1;
+    page++;
+  } while (page < totalPages && content.length > 0 && all.length < 10000);
+  return all;
 }
 
 /**

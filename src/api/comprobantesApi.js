@@ -1,9 +1,10 @@
-// Configuración de comprobantes de venta — datos que el back TODAVÍA no soporta.
-// El back (/api/timbrados-venta) persiste: numeroTimbrado, fechaInicio,
-// fechaVencimiento y activo. Establecimiento, punto de expedición y rango de
-// numeración no tienen endpoint, así que por el momento se guardan acá
-// (localStorage), asociados al id del timbrado. Cuando el back los exponga,
-// se migran y este módulo queda solo con los helpers de formato/estado.
+// Configuración de comprobantes de venta.
+//
+// El back (/api/timbrados-venta) solo persiste numeroTimbrado, fechaInicio,
+// fechaVencimiento y activo. La numeración (establecimiento, punto de
+// expedición y rango) ya tiene endpoint propio (/api/configuracion-venta),
+// pero esta pantalla todavía la guarda en localStorage, asociada al id del
+// timbrado; queda pendiente migrarla a ese endpoint.
 
 const KEY = "despensa_timbrados_venta_extras_v1";
 
@@ -51,7 +52,7 @@ export function extrasDe(id) {
   return { ...EXTRAS_DEFAULT, ...(getExtrasLocal()[String(id)] || {}) };
 }
 
-/** Hay rango cargado (el back no lo maneja, es dato local). */
+/** Hay rango cargado localmente (el back de timbrados no lo maneja). */
 export function tieneRango(c) {
   const desde = Math.trunc(Number(c?.numeroDesde));
   const hasta = Math.trunc(Number(c?.numeroHasta));

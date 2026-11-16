@@ -1,19 +1,32 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { TABLE_SHELL,THEAD_ROW } from "../../../components/ui/styles";
 import { Link } from "react-router-dom";
-import { Search, X, Eye } from "lucide-react";
+import { Search, X, Eye, Printer, Loader2 } from "lucide-react";
 import PageHeader from "../../../components/ui/PageHeader";
 import {
   getFacturasVenta,
   buscarFacturasVenta,
   getFacturasVentaPorCliente,
   getFacturaVentaById,
+  getTicketFacturaVenta,
   apiErrorMessage,
 } from "../../../api/facturasVentaApi";
 import { getClientes } from "../../../api/clientesApi";
-import { esAnulada, fmtFecha, fmtMoneda, diaISO } from "../common";
+import { printVenta } from "../../../services/printer";
+import {
+  esAnulada,
+  fmtFecha,
+  fmtMoneda,
+  diaISO,
+  FORMAS_PAGO_VENTA,
+  labelFormaPagoVenta,
+  formaPagoVenta,
+} from "../common";
+import { getMontosTransferenciaPorFactura } from "../../../api/transferenciasVentaApi";
 import SearchField from "../../../components/ui/SearchField";
 import Pagination from "../../../components/ui/Pagination";
+import TicketVenta from "../registro-venta/TicketVenta";
+import { ticketDesdeFactura } from "./ticketDesdeFactura";
 
 const PAGE_SIZE = 10;
 
@@ -55,6 +68,23 @@ const estadoVenta = (f) => {
   );
 };
 
+// Badge de forma de pago con la misma paleta que el historial de compras.
+const formaPagoBadge = (forma) => {
+  const cls =
+    forma === "EFECTIVO"
+      ? "bg-emerald-500/10 text-emerald-300"
+      : forma === "TRANSFERENCIA"
+        ? "bg-sky-500/15 text-sky-300"
+        : forma === "MIXTO"
+          ? "bg-amber-500/15 text-amber-400"
+          : "bg-white/10 text-white/60";
+  return (
+    <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${cls}`}>
+      {labelFormaPagoVenta(forma) || "—"}
+    </span>
+  );
+};
+
 export default function HistorialVentas() {
   const [filas, setFilas] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -75,8 +105,33 @@ export default function HistorialVentas() {
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [estado, setEstado] = useState("");
+  const [formaPago, setFormaPago] = useState("");
   const [seleccionada, setSeleccionada] = useState(null);
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
+
+  // Forma de pago: el listado de facturas de venta no la trae. Se deriva del
+  // monto transferido de cada venta (misma regla que el ticket del back), con
+  // UNA sola lectura del listado de transferencias. `null` = cargando o no
+  // disponible: la columna muestra "—" y no se inventa "Efectivo".
+  const [montosTransferencia, setMontosTransferencia] = useState(null);
+  useEffect(() => {
+    let activo = true;
+    (async () => {
+      try {
+        const mapa = await getMontosTransferenciaPorFactura();
+        if (activo) setMontosTransferencia(mapa);
+      } catch {
+        /* best-effort: queda "—" en la columna y el filtro deshabilitado */
+      }
+    })();
+    return () => { activo = false; };
+  }, []);
+
+  // Reimpresión de ticket viejo: preview + envío a la impresora (QZ Tray/MOCK).
+  const [ticketDatos, setTicketDatos] = useState(null);
+  const [ticketCargandoId, setTicketCargandoId] = useState(null);
+  const [reimprimiendo, setReimprimiendo] = useState(false);
+  const [ticketError, setTicketError] = useState(null);
 
   // La lista de clientes para el filtro se carga BAJO DEMANDA (al abrir el
   // select por primera vez): la mayoría de las visitas no lo usa, y así se
@@ -106,9 +161,6 @@ export default function HistorialVentas() {
   // Endpoint server-side según filtros: texto → /buscar; cliente → /cliente/{id};
   // sin filtros → listado paginado. (Back: GET paginado con page/pageSize.
   // OJO: el back espera "pageSize"; un "size" suelto se ignora.)
-  // ⚠️ BUG CONOCIDO DEL BACK: /buscar matchea solo por cliente — las facturas
-  // "Sin Nombre" no aparecen por N° (JOIN implícito a cliente en el repositorio).
-  // El arreglo correcto está en FacturaVentaRepository (informe al equipo del back).
   // AbortController: al cambiar texto/página/código se cancela la request anterior
   // (sin carreras de respuestas desordenadas ni segundos desperdiciados).
   const abortRef = useRef(null);
@@ -144,13 +196,20 @@ export default function HistorialVentas() {
     return () => abortRef.current?.abort();
   }, [cargar]);
 
-  // Filtros del back NO disponibles (fecha y estado): se refina la página actual.
+  // Filtros del back NO disponibles (fecha, estado y forma de pago): se refina
+  // la página actual.
+  const formaPagoDe = useCallback(
+    (f) => (montosTransferencia ? formaPagoVenta(totalFactura(f), montosTransferencia[f.idFacturaVenta]) : null),
+    [montosTransferencia],
+  );
+
   const filtradas = useMemo(() => {
     const d = (desde || "").trim();
     const h = (hasta || "").trim();
     return filas.filter((f) => {
       if (estado === "VIGENTES" && esAnulada(f)) return false;
       if (estado === "ANULADAS" && !esAnulada(f)) return false;
+      if (formaPago && formaPagoDe(f) !== formaPago) return false;
       if (d || h) {
         const fecha = diaISO(f.fechaEmision || f.fechaCreacion);
         if (d && fecha < d) return false;
@@ -158,11 +217,21 @@ export default function HistorialVentas() {
       }
       return true;
     });
-  }, [filas, estado, desde, hasta]);
+  }, [filas, estado, desde, hasta, formaPago, formaPagoDe]);
 
   // Cuando activan filtros locales escondí filas de la página: el "Mostrando"
   // del paginado deja de ser exacto → solo se informa si no hay filtro local.
-  const hayFiltroLocal = !!(estado || desde || hasta);
+  const hayFiltroLocal = !!(estado || desde || hasta || formaPago);
+  // Igual que en compras: el botón "Limpiar" aparece solo si hay algo aplicado.
+  const hayFiltros = Boolean(texto.trim() || idCliente || desde || hasta || estado || formaPago);
+  const limpiarFiltros = () => {
+    setTexto("");
+    setIdCliente("");
+    setDesde("");
+    setHasta("");
+    setEstado("");
+    setFormaPago("");
+  };
   // Un rango invertido no matchea ninguna fecha: se avisa en vez de mostrar
   // una tabla vacía sin explicación.
   const rangoInvertido = Boolean(desde && hasta && desde > hasta);
@@ -182,10 +251,47 @@ export default function HistorialVentas() {
     }
   }
 
-  const columns = 6;
+  // Abre el preview del ticket de una venta vieja; desde ahí se envía a la
+  // impresora con "Reimprimir". El back ya arma el ticket completo
+  // (GET /api/facturas-venta/{id}/ticket) con empresa, timbrado y cliente.
+  // La forma de pago se pisa con la derivación del front (formaPagoDe): el
+  // back cuenta transferencias DESCARTADAS que no fueron pago real.
+  async function imprimirTicket(f) {
+    if (ticketCargandoId) return;
+    setTicketError(null);
+    setTicketCargandoId(f.idFacturaVenta);
+    try {
+      const res = await getTicketFacturaVenta(f.idFacturaVenta);
+      setTicketDatos(
+        ticketDesdeFactura(res, {
+          formaPago: formaPagoDe(f),
+          montoTransferencia: montosTransferencia?.[f.idFacturaVenta],
+        })
+      );
+    } catch (err) {
+      setTicketError(apiErrorMessage(err) || "No se pudo preparar el ticket de la venta.");
+    } finally {
+      setTicketCargandoId(null);
+    }
+  }
+
+  // Envío del ticket viejo a la impresora física (QZ Tray → MOCK en dev).
+  async function reimprimirTicket() {
+    if (!ticketDatos || reimprimiendo) return;
+    setReimprimiendo(true);
+    try {
+      await printVenta(ticketDatos);
+    } catch (err) {
+      setTicketError(apiErrorMessage(err) || "No se pudo enviar el ticket a la impresora.");
+    } finally {
+      setReimprimiendo(false);
+    }
+  }
+
+  const columns = 7;
 
   return (
-    <div className="max-w-6xl mx-auto py-8 px-4 space-y-6">
+    <div className="w-full py-8 px-4 space-y-6">
       <PageHeader
         backTo="/ventas"
         backLabel="Volver a ventas"
@@ -225,7 +331,25 @@ export default function HistorialVentas() {
             className="w-full mt-1 bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors"
           />
         </div>
-        <div className="w-full sm:w-44">
+        <div className="w-full sm:w-36">
+          <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40" htmlFor="filtro-forma-pago">
+            Forma de pago
+          </label>
+          <select
+            id="filtro-forma-pago"
+            value={formaPago}
+            onChange={(e) => setFormaPago(e.target.value)}
+            disabled={!montosTransferencia}
+            title={!montosTransferencia ? "Cargando formas de pago…" : undefined}
+            className="w-full mt-1 bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <option value="">Todas</option>
+            {FORMAS_PAGO_VENTA.map((f) => (
+              <option key={f.value} value={f.value}>{f.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="w-full sm:w-32">
           <label className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40" htmlFor="filtro-estado">
             Estado
           </label>
@@ -259,10 +383,27 @@ export default function HistorialVentas() {
             ))}
           </select>
         </div>
+
+        {hayFiltros && (
+          <button
+            type="button"
+            onClick={limpiarFiltros}
+            className="md:ml-auto inline-flex h-10 w-full shrink-0 items-center justify-center gap-1.5 rounded-none border border-[var(--accent)]/50 bg-[var(--accent)]/10 px-3 text-sm font-medium text-[var(--accent)] transition-colors hover:border-[var(--accent)]/80 hover:bg-[var(--accent)]/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] md:w-auto"
+          >
+            <X size={14} aria-hidden="true" />
+            Limpiar
+          </button>
+        )}
       </div>
 
       {error && (
         <div className="rounded-none border border-red-500/30 bg-red-500/10 text-red-400 text-sm px-4 py-3">{error}</div>
+      )}
+
+      {ticketError && (
+        <div role="alert" className="rounded-none border border-amber-500/30 bg-amber-500/10 text-amber-200 text-sm px-4 py-3">
+          {ticketError}
+        </div>
       )}
 
       {rangoInvertido && (
@@ -280,9 +421,10 @@ export default function HistorialVentas() {
                 <th className="px-4 py-3 font-medium">Fecha Emisión</th>
                 <th className="px-4 py-3 font-medium">Cliente</th>
                 <th className="px-4 py-3 font-medium">N° Factura</th>
+                <th className="px-4 py-3 font-medium">Forma de pago</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
                 <th className="px-4 py-3 font-medium text-right">Monto Total</th>
-                <th className="px-4 py-3 font-medium w-12" aria-label="Acciones" />
+                <th className="px-4 py-3 font-medium text-right w-20" aria-label="Acciones" />
               </tr>
             </thead>
             <tbody>
@@ -295,9 +437,20 @@ export default function HistorialVentas() {
               ))}
               {!loading && paginadas.length === 0 && (
                 <tr><td colSpan={columns} className="px-4 py-8 text-center text-white/30">
-                  {texto.trim() || idCliente || desde || hasta || estado
-                    ? "No se encontraron ventas con los filtros aplicados."
-                    : "Aún no hay ventas registradas."}
+                  <p className="text-sm">
+                    {hayFiltros
+                      ? "No se encontraron ventas con los filtros aplicados."
+                      : "Aún no hay ventas registradas."}
+                  </p>
+                  {hayFiltros && (
+                    <button
+                      type="button"
+                      onClick={limpiarFiltros}
+                      className="mt-2 text-sm font-medium text-[var(--accent)] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                    >
+                      Limpiar filtros
+                    </button>
+                  )}
                 </td></tr>
               )}
               {!loading && paginadas.map((f) => {
@@ -307,17 +460,32 @@ export default function HistorialVentas() {
                     <td className="px-4 py-3 text-white/70 whitespace-nowrap">{fmtFecha(f.fechaEmision || f.fechaCreacion)}</td>
                     <td className="px-4 py-3 text-white">{f.nombreCliente || "Sin Nombre"}</td>
                     <td className="px-4 py-3 text-white/70 whitespace-nowrap">{f.numeroFactura || "—"}</td>
+                    <td className="px-4 py-3">{formaPagoBadge(formaPagoDe(f))}</td>
                     <td className="px-4 py-3">{estadoVenta(f)}</td>
                     <td className="px-4 py-3 text-white font-medium text-right whitespace-nowrap">{fmtMoneda(totalFactura(f))}</td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => verDetalle(f)}
-                        className="p-1.5 rounded-none text-white/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors"
-                        title="Ver detalle" aria-label="Ver detalle"
-                      >
-                        <Eye size={16} />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => imprimirTicket(f)}
+                          disabled={anulada || ticketCargandoId != null}
+                          className="p-1.5 rounded-none text-white/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                          title={anulada ? "Factura anulada: no se puede reimprimir" : "Imprimir ticket"}
+                          aria-label="Imprimir ticket"
+                        >
+                          {ticketCargandoId === f.idFacturaVenta
+                            ? <Loader2 size={16} className="animate-spin" />
+                            : <Printer size={16} />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => verDetalle(f)}
+                          className="p-1.5 rounded-none text-white/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors"
+                          title="Ver detalle" aria-label="Ver detalle"
+                        >
+                          <Eye size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -340,13 +508,29 @@ export default function HistorialVentas() {
       )}
       {hayFiltroLocal && paginadas.length === 0 && !loading && (
         <p className="text-xs text-white/40 text-center">
-          Los filtros de fecha y estado se aplican sobre la página actual (el back
-          todavía no los soporta en el listado). Probá limpiarlos si no ves resultados.
+          Los filtros de fecha, estado y forma de pago se aplican sobre la página
+          actual (el back todavía no los soporta en el listado). Probá limpiarlos
+          si no ves resultados.
         </p>
       )}
 
       {seleccionada && (
-        <DetalleFacturaVenta factura={seleccionada} cargando={cargandoDetalle} onClose={() => setSeleccionada(null)} />
+        <DetalleFacturaVenta
+          factura={seleccionada}
+          cargando={cargandoDetalle}
+          formaPago={formaPagoDe(seleccionada)}
+          onClose={() => setSeleccionada(null)}
+        />
+      )}
+
+      {ticketDatos && (
+        <TicketVenta
+          datos={ticketDatos}
+          onCerrar={() => setTicketDatos(null)}
+          onReimprimir={reimprimirTicket}
+          reimprimiendo={reimprimiendo}
+          etiquetaCerrar="Cerrar"
+        />
       )}
     </div>
   );
@@ -376,7 +560,7 @@ function TasaBadge({ tasa }) {
   );
 }
 
-function DetalleFacturaVenta({ factura, cargando = false, onClose }) {
+function DetalleFacturaVenta({ factura, cargando = false, formaPago = null, onClose }) {
   const detalles = Array.isArray(factura.detalles) ? factura.detalles : [];
 
   // Desglose calculado por tasa; el back manda iva5/iva10/ivaTotal/totalGeneral como fuente autoritativa.
@@ -442,7 +626,7 @@ function DetalleFacturaVenta({ factura, cargando = false, onClose }) {
 
         <dl className="grid grid-cols-2 gap-4 px-6 py-5 sm:grid-cols-3">
           <Dato titulo="Fecha de emisión">{fmtFecha(factura.fechaEmision)}</Dato>
-          <Dato titulo="N° de timbrado">{factura.numeroTimbrado || "—"}</Dato>
+          <Dato titulo="Forma de pago">{formaPagoBadge(formaPago)}</Dato>
           <Dato titulo="Estado">{estadoVenta(factura)}</Dato>
         </dl>
 

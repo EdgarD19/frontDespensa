@@ -8,11 +8,11 @@ export { apiErrorMessage };
 /**
  * Convierte el ProductoResponse del backend al shape que usa el frontend.
  *
- * El backend (ProductoController -> ProductoResponse) devuelve:
- *   { idProducto, nombre, codigoBarra, descripcion, stockActual,
- *     idCategoria, categoriaNombre, idUnidad, unidadNombre, activo,
- *     fechaCreacion, precioVentaVigente, fechaPrecioVentaVigente,
- *     habilitadoParaVenta, stockMinimo }
+ * Campos relevantes del response: idProducto, nombre, codigoBarra, descripcion,
+ * stockActual, stockMinimo, idCategoria/categoriaNombre,
+ * idSubcategoria/subcategoriaNombre, idUnidadMedida/nombreUnidadMedida,
+ * tasaIva, activo, precioVentaVigente/fechaPrecioVentaVigente y
+ * precioVentaFuturo/fechaPrecioVentaFuturo.
  */
 // Número decimal opcional (>= 0): acepta coma como separador.
 function parseDecimal(v) {
@@ -26,6 +26,9 @@ function toFrontendProduct(backend) {
 
   const precioStr =
     backend.precioVentaVigente != null ? String(backend.precioVentaVigente) : "";
+  const unidadNombre = String(
+    backend.nombreUnidadMedida ?? backend.unidadNombre ?? ""
+  );
 
   return {
     id: backend.idProducto,
@@ -35,19 +38,21 @@ function toFrontendProduct(backend) {
 
     idCategoria: backend.idCategoria ?? "",
     categoria: backend.categoriaNombre ?? "",
-    idSubcategoria: "",
-    subcategoria: "",
+    // Subcategoría opcional: llega como id + nombre.
+    idSubcategoria: backend.idSubcategoria ?? "",
+    subcategoria: backend.subcategoriaNombre ?? "",
 
-    productoPesable: /kilo/i.test(String(backend.nombreUnidadMedida ?? "")) ? "si" : "no",
+    // "Vende por peso" solo aplica a Kilogramo. Litro y Unidad se venden por
+    // unidad, aunque Litro sí admita cantidades decimales.
+    productoPesable: /kilo/i.test(unidadNombre) ? "si" : "no",
 
-    // Stock mínimo (ahora persistido en el back)
     stockMinimo: backend.stockMinimo != null ? String(backend.stockMinimo) : null,
 
     idMarca: "",
     marca: "",
 
     idUnidad: backend.idUnidadMedida ?? backend.idUnidad ?? "",
-    unidadMedida: backend.nombreUnidadMedida ?? backend.unidadNombre ?? "",
+    unidadMedida: unidadNombre,
     unitAbbreviation: "",
 
     precioVenta: precioStr,
@@ -73,8 +78,8 @@ function toFrontendProduct(backend) {
 /**
  * Arma el body para POST /api/productos.
  *
- * ProductoRequest (Spring) espera:
- *   nombre, codigoBarra, descripcion, stockActual, idCategoria, idUnidad, activo
+ * ProductoRequest (Spring): nombre, codigoBarra, descripcion, stockActual,
+ * stockMinimo, idCategoria, idSubcategoria, idUnidad, tasaIva, activo.
  */
 function toCreateBody(frontend, idUnidad) {
   const codigoBarras = String(frontend.codigoBarras || "").replace(/\D/g, "");
@@ -90,7 +95,8 @@ function toCreateBody(frontend, idUnidad) {
     idSubcategoria: Number(frontend.idSubcategoria) || undefined,
     idUnidad: idUnidad ? Number(idUnidad) : undefined,
     tasaIva: frontend.iva != null ? Number(frontend.iva) : 10,
-    activo: frontend.activo === true,
+    // Un producto nuevo se crea activo salvo que el formulario indique lo contrario.
+    activo: frontend.activo !== false,
   };
 }
 
@@ -98,7 +104,11 @@ function toCreateBody(frontend, idUnidad) {
  * Arma el body para PUT /api/productos/{id}.
  *
  * ProductoRequest (Spring): nombre, codigoBarra, descripcion, stockActual,
- * idCategoria, idUnidad, activo. Los campos null NO se actualizan.
+ * stockMinimo, idCategoria, idSubcategoria, idUnidad, tasaIva, activo.
+ *
+ * Limitación del back: un campo en `null`/`undefined` significa "no tocar", no
+ * "borrar". Por eso la subcategoría y el stock mínimo no se pueden vaciar desde
+ * el formulario (ver TestDespensa/docs/SOLICITUD_QUITAR_SUBCATEGORIA_STOCK_MINIMO.md).
  */
 function toPatchBody(producto, stockActual) {
   return {
@@ -159,6 +169,33 @@ export async function getProductos(params = {}) {
     page: pageData.page ?? 0,
     size: pageData.size ?? content.length,
   };
+}
+
+/**
+ * GET /api/productos recorriendo todas las páginas.
+ *
+ * Para pantallas que filtran/calculan sobre el catálogo completo (consulta de
+ * inventario, ajuste de stock). No usar en listados que ya paginan en el back.
+ * Devuelve el array de productos del frontend (no el wrapper de página).
+ */
+export async function getTodosLosProductos(params = {}) {
+  const pageSize = Math.max(1, Number(params.pageSize) || 200);
+  const all = [];
+  let page = 0;
+
+  for (;;) {
+    const res = await getProductos({ ...params, page, pageSize });
+    const content = res.content || [];
+    all.push(...content);
+    if (!content.length || all.length >= 20000) break;
+
+    // Si el back no informa totalPages, seguimos hasta recibir una página vacía.
+    const totalPages = Number(res.totalPages) || 0;
+    page += 1;
+    if (totalPages > 0 && page >= totalPages) break;
+  }
+
+  return all;
 }
 
 /**
@@ -297,7 +334,6 @@ export async function updateProductoPrecio(id, precio, fechaHora = null) {
 /**
  * DELETE /api/productos/{id}/programacion
  * Cancela el precio de venta programado a futuro.
- * El contrato actual no lo expone: puede fallar hasta que el backend lo implemente.
  */
 export async function cancelarProgramacionPrecio(id) {
   const { data } = await api.delete(`/api/productos/${id}/programacion`);
@@ -310,10 +346,24 @@ export async function cancelarProgramacionPrecio(id) {
  * Mapea al shape que espera el modal (incluye estado / variación).
  */
 export async function getHistorialPrecios(productoId) {
-  const { data } = await api.get(`/api/precios-venta/producto/${productoId}`, {
-    params: { page: 0, size: 100, sortBy: "fechaHora", sortDirection: "desc" },
-  });
-  const rows = Array.isArray(data) ? data : (data?.content || data?.data?.content || []);
+  // El endpoint es paginado: recorrer todas las páginas para no perder
+  // registros cuando un producto tiene muchas actualizaciones de precio.
+  const rows = [];
+  let page = 0;
+  let totalPages = 1;
+  do {
+    const { data } = await api.get(`/api/precios-venta/producto/${productoId}`, {
+      params: { page, size: 100, sortBy: "fechaHora", sortDirection: "desc" },
+    });
+    const content = Array.isArray(data)
+      ? data
+      : data?.content || data?.data?.content || [];
+    rows.push(...content);
+    totalPages = Number(data?.totalPages ?? data?.data?.totalPages) || 1;
+    if (!content.length) break;
+    page += 1;
+  } while (page < totalPages && rows.length < 5000);
+
   const ahora = Date.now();
   const parseTs = (r) => {
     const raw = r.fechaHora ?? r.fecha;

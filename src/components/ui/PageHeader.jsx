@@ -3,8 +3,7 @@ import { ArrowLeft } from "lucide-react";
 
 /**
  * Cabecera estándar de página: flecha atrás + título (+ subtítulo) y un slot
- * dererror para acciones (botón "Nuevo...", meta, etc).
- * Reemplaza las variantes manuales ArrowLeft+h1 repartidas por el proyecto.
+ * derecho para acciones (botón "Nuevo...", meta, etc.).
  */
 export default function PageHeader({ backTo = "/", title, subtitle, right = null, backLabel = "Volver" }) {
   return (

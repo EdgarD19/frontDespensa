@@ -115,9 +115,9 @@ export default function ProveedoresModal({
     setForm((prev) => ({ ...prev, celular: solo ? `+595${solo}` : "" }));
   }
 
-  // Celular del contacto: misma validación/formato que el celular del proveedor
-  // (+5959XXXXXXXX). Se guarda embebido en personaContacto porque el back no
-  // tiene aún un campo propio en el back (pendiente: exponerlo en Proveedor).
+  // Celular del contacto: misma validación/formato que el celular del
+  // proveedor (+5959XXXXXXXX). Se guarda embebido en personaContacto porque
+  // Proveedor todavía no tiene un campo propio para él.
   const contactoCelularResto = form.contactoCelular?.startsWith("+595")
     ? form.contactoCelular.slice(4)
     : form.contactoCelular ?? "";

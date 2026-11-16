@@ -1,5 +1,6 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronUp, ChevronDown } from "lucide-react";
+import { unidadAdmiteDecimales } from "../../utils/cantidad";
 
 export default function CantidadInput({
   unidadMedida = "UN",
@@ -16,8 +17,10 @@ export default function CantidadInput({
   className = "",
   onBlur,
 }) {
-  const esKG = unidadMedida === "KG";
-  const maxDec = esKG ? Math.max(0, maxDecimales | 0) : 0;
+  // Decimales según la unidad real (kg, g, L, etc.): solo "Unidad"/"UN" exige
+  // entero, igual que valida el backend.
+  const admiteDecimales = unidadAdmiteDecimales(unidadMedida);
+  const maxDec = admiteDecimales ? Math.max(0, maxDecimales | 0) : 0;
   const maxNum = max === undefined || max === null || isNaN(Number(max)) ? null : Number(max);
   const hayMax = maxNum !== null && maxNum >= 0;
 
@@ -31,7 +34,7 @@ export default function CantidadInput({
 
   const toText = (v) => {
     if (v === "" || v === null || v === undefined) return "";
-    return String(v).replace(".", esKG ? "." : "").replace(",", ".");
+    return String(v).replace(".", admiteDecimales ? "." : "").replace(",", ".");
   };
 
   useEffect(() => {
@@ -50,7 +53,7 @@ export default function CantidadInput({
     setText(txt);
     textRef.current = txt;
 
-    if (esKG) {
+    if (admiteDecimales) {
       const norm = t.replace(",", ".").replace(/\s/g, "");
       if (norm === "" || isNaN(Number(norm))) {
         onChange(norm === "" ? "" : undefined);
@@ -69,8 +72,8 @@ export default function CantidadInput({
   const textoValido = (txt) => {
     if (txt === "") return true;
     // UN: solo dígitos (los decimales llegan por pegado y rompen el stock).
-    if (!esKG) return /^\d*$/.test(txt);
-    // KG: dígitos + un único separador + máximo de decimales permitidos.
+    if (!admiteDecimales) return /^\d*$/.test(txt);
+    // Unidad decimal: dígitos + un único separador + máximo de decimales permitidos.
     const norm = txt.replace(",", ".");
     if (!/^\d*\.?\d*$/.test(norm)) return false;
     const sep = norm.indexOf(".");
@@ -78,7 +81,7 @@ export default function CantidadInput({
   };
 
   const mensajeInvalido = (txt) => {
-    if (!esKG) return "La cantidad debe ser un número entero.";
+    if (!admiteDecimales) return "La cantidad debe ser un número entero.";
     const norm = txt.replace(",", ".");
     if (/[^\d.,]/.test(txt) || (norm.match(/\./g) || []).length > 1) {
       return "Ingrese una cantidad válida.";
@@ -112,7 +115,7 @@ export default function CantidadInput({
       return;
     }
 
-    if (!esKG) {
+    if (!admiteDecimales) {
       // UN: solo dígitos
       if (!/^\d$/.test(k)) {
         e.preventDefault();
@@ -129,7 +132,7 @@ export default function CantidadInput({
       return;
     }
 
-    // KG
+    // Unidad con decimales
     if (/^\d$/.test(k)) {
       // bloquear decimales extra considerando la selección
       const cur = textRef.current;
@@ -166,7 +169,7 @@ export default function CantidadInput({
     const t = (txt ?? "").toString().trim();
     if (t === "") return { error: null, emit: false };
 
-    if (esKG) {
+    if (admiteDecimales) {
       const norm = t.replace(",", ".");
       const num = Number(norm);
       if (isNaN(num)) {
@@ -206,15 +209,15 @@ export default function CantidadInput({
     const res = resolveCommit(textRef.current);
     setError(res.error);
     if (res.emit !== false) {
-      const formatted = esKG ? res.emit : res.emit;
-      onChange(esKG ? formatted : parseInt(formatted, 10));
+      const formatted = admiteDecimales ? res.emit : res.emit;
+      onChange(admiteDecimales ? formatted : parseInt(formatted, 10));
       textRef.current = formatted;
       setText(formatted);
     }
   };
 
   const aplicarInt = (delta) => {
-    if (disabled || esKG) return;
+    if (disabled || admiteDecimales) return;
     const t = (textRef.current ?? "").toString().trim();
     const base = /^\d+$/.test(t) ? parseInt(t, 10) : (permitirCero ? 0 : 1);
     const floor = permitirCero ? 0 : 1;
@@ -232,7 +235,7 @@ export default function CantidadInput({
       <div className="relative flex items-center gap-1">
         <input
           type="text"
-          inputMode={esKG ? "decimal" : "numeric"}
+          inputMode={admiteDecimales ? "decimal" : "numeric"}
           autoComplete="off"
           id={id}
           name={name}
@@ -270,9 +273,9 @@ export default function CantidadInput({
           onKeyDown={onKeyDown}
           className={`w-full bg-white/5 border rounded-none px-2 py-1 text-right text-sm font-mono text-white placeholder:text-white/25 outline-none transition-colors focus:border-[var(--accent)] ${
             error ? "border-red-500/60" : "border-white/10"
-          } ${!esKG ? "pr-7" : ""}`}
+          } ${!admiteDecimales ? "pr-7" : ""}`}
         />
-        {!esKG && (
+        {!admiteDecimales && (
           <div className="absolute right-1 top-1/2 flex -translate-y-1/2 flex-col">
             <button
               type="button"

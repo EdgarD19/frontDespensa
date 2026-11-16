@@ -1,13 +1,17 @@
-export function stockEntero(producto) {
-  const n = Number(producto?.stockActual ?? 0);
-  if (!Number.isFinite(n)) return 0;
-  if (unidadAdmiteDecimales(producto?.unidadMedida)) return n;
-  return Math.trunc(n);
-}
+import {
+  redondearCantidad,
+  unidadAdmiteDecimales,
+} from "../../../../utils/cantidad";
 
-export function unidadAdmiteDecimales(unidad) {
-  const u = String(unidad || "").trim().toLowerCase();
-  return u.includes("kilogramo") || u.includes("kilo") || u === "kg";
+export { unidadAdmiteDecimales };
+
+/**
+ * Stock actual del producto como número, sin truncar: el backend guarda
+ * `numeric(19,2)` y admite decimales también fuera de Kilogramo.
+ */
+export function stockCantidad(producto) {
+  const n = Number(producto?.stockActual ?? 0);
+  return Number.isFinite(n) ? redondearCantidad(n) : 0;
 }
 
 export function sanitizarConteo(unidad, valor) {
@@ -16,10 +20,13 @@ export function sanitizarConteo(unidad, valor) {
     const limpio = v.replace(/[^0-9.,]/g, "");
     const pos = limpio.search(/[.,]/);
     if (pos === -1) return limpio;
-    return (
-      limpio.slice(0, pos + 1) +
-      limpio.slice(pos + 1).replace(/[.,]/g, "")
-    );
+    // El backend persiste numeric(...,2): no dejar cargar más decimales.
+    const entero = limpio.slice(0, pos);
+    const decimales = limpio
+      .slice(pos + 1)
+      .replace(/[.,]/g, "")
+      .slice(0, 2);
+    return `${entero}.${decimales}`;
   }
   return v.replace(/\D/g, "");
 }

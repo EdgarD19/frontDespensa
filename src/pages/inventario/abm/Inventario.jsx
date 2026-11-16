@@ -1,11 +1,5 @@
-// Hooks de React:
-//   useState   → guarda valores que pueden cambiar (estado local)
-//   useEffect  → ejecuta código cuando algo cambia (ej: al montar el componente)
-//   useCallback → memoriza una función para que no se recree en cada render
 import { useState, useEffect, useCallback, useRef } from "react";
 import PageHeader from "../../../components/ui/PageHeader";
-import { Link } from "react-router-dom";
-import {  } from "lucide-react";
 
 import ProductForm from "./ProductForm";
 import ProductList from "./ProductList";
@@ -15,24 +9,18 @@ import {
   getProductos,
   createProducto,
   updateProducto,
+  invalidarCatalogoLigero,
   apiErrorMessage,
 } from "../../../api/productosApi";
 import {
   getCategorias,
   getUnidades,
-  getProveedores,
   getSubcategorias,
 } from "../../../api/maestrosApi";
 
 const DEBOUNCE_MS = 400;
 
-// ESTADO INICIAL DEL FORMULARIO
-/*
-  INITIAL_FORM es un objeto "plantilla vacía" que representa un producto en blanco.
-  Se usa en dos momentos:
-    1. Al abrir el modal para CREAR un producto nuevo (todos los campos limpios).
-    2. Al cerrar o limpiar el formulario (resetear a valores vacíos).
-*/
+// Plantilla vacía del formulario: se usa al crear un producto y al limpiarlo.
 const INITIAL_FORM = {
   id: null,
   codigoBarras: "",
@@ -52,15 +40,14 @@ const INITIAL_FORM = {
   precio: "",
   iva: "10",
   stockMinimo: "",
-  activo: false,
+  // Los productos nuevos se crean activos; el formulario no expone este campo.
+  activo: true,
 };
 
-// FUNCIÓN AUXILIAR: mergeProductoLista
+// Al fusionar respuestas parciales, conserva los campos que `next` no trajo.
 function mergeProductoLista(prev, next) {
-  // Spread: empieza copiando todo de prev, luego pisa con lo que trae next
   const m = { ...prev, ...next };
 
-  // Para cada campo importante: si next lo trajo vacío/nulo, restauramos el de prev
   if (!next.categoria)     m.categoria     = prev.categoria;
   if (!next.idCategoria)   m.idCategoria   = prev.idCategoria;
   if (!next.idSubcategoria) m.idSubcategoria = prev.idSubcategoria;
@@ -70,21 +57,12 @@ function mergeProductoLista(prev, next) {
   if (!next.idProveedor)   m.idProveedor   = prev.idProveedor;
   if (!next.proveedor)     m.proveedor     = prev.proveedor;
 
-  // Precios: si next no los trajo, conservar los anteriores
   if (!next.precioCompra    && prev.precioCompra)    m.precioCompra    = prev.precioCompra;
   if (!next.precioCompraKg  && prev.precioCompraKg)  m.precioCompraKg  = prev.precioCompraKg;
 
   return m;
 }
-// COMPONENTE PRINCIPAL: Inventario
-/*
-  - Mantener el estado global del módulo (lista de productos, formulario, modal, etc.)
-  - Llamar a la API (backend)
-  - Pasar datos y funciones a los componentes hijos
 
-  "export default" significa que este componente es el que se exporta
-  cuando otro archivo hace: import Inventario from "./Inventario"
-*/
 export default function Inventario() {
   const [productos, setProductos]       = useState([]);
   const [loading, setLoading]           = useState(true);
@@ -102,17 +80,13 @@ export default function Inventario() {
 
   const [categorias, setCategorias]     = useState([]);
   const [unidades, setUnidades]         = useState([]);
-  const [proveedores, setProveedores]   = useState([]);
   const [subcategorias, setSubcategorias] = useState([]);
 
   useEffect(() => {
     const safe = async (fn) => { try { const v = await fn(); return Array.isArray(v) ? v : []; } catch { return []; } };
     (async () => {
-      const [cats, unids, provsRes] = await Promise.all([
-        safe(getCategorias), safe(getUnidades), safe(getProveedores),
-      ]);
-      const provs = Array.isArray(provsRes) ? provsRes : (provsRes?.content ?? []);
-      setCategorias(cats); setUnidades(unids); setProveedores(provs);
+      const [cats, unids] = await Promise.all([safe(getCategorias), safe(getUnidades)]);
+      setCategorias(cats); setUnidades(unids);
     })();
   }, []);
 
@@ -160,7 +134,10 @@ export default function Inventario() {
     if (!modalOpen) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const onKey = (ev) => { if (ev.key === "Escape") closeModal(); };
+    const onKey = (ev) => {
+      // No cerrar el formulario mientras se está guardando.
+      if (ev.key === "Escape" && !guardandoRef.current) closeModal();
+    };
     window.addEventListener("keydown", onKey);
     return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", onKey); };
   }, [modalOpen, closeModal]);
@@ -178,14 +155,13 @@ export default function Inventario() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Guard por ref: los clics múltiples SINCRÓNICOS llegan antes de que React
-    // re-renderice, así que el estado `guardando` solo no alcanza.
     if (guardandoRef.current) return;
-    guardandoRef.current = true;
     const data = { ...formData };
 
-    const idUnid = data.idUnidad     ? Number(data.idUnidad)     : null;
+    const idUnid = data.idUnidad ? Number(data.idUnidad) : null;
 
+    // Validar ANTES de activar el guard por ref: si una validación falla, el
+    // ref debe quedar libre para que el usuario pueda corregir y reintentar.
     if (!String(data.nombre || "").trim()) {
       setError("El nombre del producto es obligatorio.");
       return;
@@ -205,6 +181,10 @@ export default function Inventario() {
       data.codigoBarras = cb;
     }
 
+    // Guard por ref: los clics múltiples SINCRÓNICOS llegan antes de que React
+    // re-renderice, así que el estado `guardando` solo no alcanza.
+    guardandoRef.current = true;
+
     try {
       setGuardando(true);
       setError(null);
@@ -212,11 +192,11 @@ export default function Inventario() {
         const updated = await updateProducto(editingId, data);
         setProductos((prev) => prev.map((p) => (p.id === editingId ? mergeProductoLista(p, updated) : p)));
         setEditingId(null);
-        // Stock de alerta ya viaja en el payload (migración V24 del back).
       } else {
         await createProducto(data, idUnid);
         await loadProductos();
       }
+      invalidarCatalogoLigero();
       setFormData(INITIAL_FORM);
       setModalOpen(false);
     } catch (err) {
@@ -238,7 +218,7 @@ export default function Inventario() {
       idMarca:       producto.idMarca       ?? "",
       productoPesable: producto.productoPesable || "no",
       iva: producto.iva != null ? String(producto.iva) : "10",
-      // Fuente única de verdad: la columna stock_minimo del back (V24).
+      // Única fuente de verdad: la columna stock_minimo del back.
       stockMinimo: producto.stockMinimo != null ? String(producto.stockMinimo) : "",
       activo:        producto.activo !== false,
     });
@@ -288,6 +268,7 @@ export default function Inventario() {
       setProductos((prev) =>
         prev.map((p) => (p.id === id ? { ...p, activo: activar } : p))
       );
+      invalidarCatalogoLigero();
       setConfirmarProducto(null);
     } catch (err) {
       setError(apiErrorMessage(err) || "No se pudo cambiar el estado del producto.");
@@ -319,7 +300,10 @@ export default function Inventario() {
       />
 
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={closeModal}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+          onClick={() => { if (!guardandoRef.current) closeModal(); }}
+        >
           <div role="dialog" aria-modal="true" className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-2xl"
             onClick={(e) => e.stopPropagation()}>
             <ProductForm
@@ -331,7 +315,6 @@ export default function Inventario() {
               categorias={categorias}
               subcategorias={subcategorias}
               unidades={unidades}
-              proveedores={proveedores}
               guardando={guardando}
               loading={loading}
             />

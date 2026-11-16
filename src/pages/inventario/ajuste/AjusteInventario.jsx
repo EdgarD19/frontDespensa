@@ -6,7 +6,7 @@ import {
   Plus,
   ArrowLeft,
 } from "lucide-react";
-import { getProductos } from "../../../api/productosApi";
+import { getTodosLosProductos } from "../../../api/productosApi";
 import { apiErrorMessage } from "../../../api/errors";
 import {
   crearAjuste,
@@ -16,7 +16,12 @@ import {
 } from "../../../api/ajustesApi";
 import { getCategorias } from "../../../api/maestrosApi";
 import { canGestionarAjustesInventario } from "../../../auth/inventoryAccess";
-import { stockEntero, unidadAdmiteDecimales, sanitizarConteo, parseConteo } from "./ajuste-inventario/utils";
+import {
+  stockCantidad,
+  unidadAdmiteDecimales,
+  sanitizarConteo,
+  parseConteo,
+} from "./ajuste-inventario/utils";
 import ListasConteo from "./ajuste-inventario/ListasConteo";
 import NuevaListaModal from "./ajuste-inventario/NuevaListaModal";
 
@@ -28,7 +33,12 @@ function estadoAjuste(a) {
 }
 
 function cargarSesionesBack() {
-  return getAjustes().then((ajustes) =>
+  // Activos y desactivados van en dos llamadas (el back acepta `?activo=false`):
+  // así el filtro "Desactivadas" refleja lo guardado, no solo el estado local
+  // de la sesión.
+  return Promise.all([getAjustes(500, { activo: true }), getAjustes(500, { activo: false })])
+    .then(([activos, inactivos]) => [...(activos || []), ...(inactivos || [])])
+    .then((ajustes) =>
     (ajustes || [])
       .filter((a) => a?.idAjuste != null)
       .map((a) => {
@@ -73,7 +83,11 @@ export default function AjusteInventario() {
   const [fechaHasta, setFechaHasta] = useState("");
   const [filtroMotivo, setFiltroMotivo] = useState("");
 
-  const sesionesVisibles = sesiones.filter((s) => {
+  const rangoFechasInvalido = Boolean(
+    fechaDesde && fechaHasta && fechaDesde > fechaHasta
+  );
+
+  const sesionesVisibles = rangoFechasInvalido ? [] : sesiones.filter((s) => {
     if (filtroEstado === "BORRADOR" && s.estado !== "BORRADOR") return false;
     if (filtroEstado === "CONFIRMADO" && s.estado !== "CONFIRMADO") return false;
     if (filtroEstado === "DESACTIVADO" && s.estado !== "DESACTIVADO") return false;
@@ -96,15 +110,34 @@ export default function AjusteInventario() {
       try {
         setError(null);
         setLoading(true);
-        const [prodRes, cats, ajustes] = await Promise.all([
-          getProductos({ pageSize: 500 }),
+        // Productos y categorías son necesarios para armar la lista; las
+        // sesiones se cargan aparte para no ocultar el error de ajustes ni
+        // dejar la pantalla vacía si solo falla ese endpoint.
+        const [prodRes, catsRes, sesRes] = await Promise.allSettled([
+          getTodosLosProductos({ sortBy: "nombre", sortDir: "ASC" }),
           getCategorias(),
           cargarSesionesBack(),
         ]);
-        if (!cancelled) {
-          setProductos(prodRes.content || []);
-          setCategorias(cats || []);
-          setSesiones(ajustes || []);
+        if (cancelled) return;
+
+        if (prodRes.status === "fulfilled") {
+          setProductos(prodRes.value || []);
+        } else {
+          setProductos([]);
+          setError(
+            apiErrorMessage(prodRes.reason) || "Error al cargar productos"
+          );
+        }
+        if (catsRes.status === "fulfilled") {
+          setCategorias(catsRes.value || []);
+        }
+        if (sesRes.status === "fulfilled") {
+          setSesiones(sesRes.value || []);
+        } else if (prodRes.status === "fulfilled") {
+          setError(
+            apiErrorMessage(sesRes.reason) ||
+              "No se pudieron cargar las listas de conteo."
+          );
         }
       } catch (err) {
         if (!cancelled) {
@@ -147,7 +180,7 @@ export default function AjusteInventario() {
           nombre: p.nombre || `Producto #${p.id}`,
           codigo: p.codigoBarras || p.codigoBarra || "",
           unidadMedida: p.unidadMedida || "",
-          stockSistema: stockEntero(p),
+          stockSistema: stockCantidad(p),
           stockFisico: "",
         })),
       };
@@ -250,8 +283,12 @@ export default function AjusteInventario() {
         )
       );
 
-      const re = await getProductos({ pageSize: 500 });
-      if (re?.content) setProductos(re.content);
+      try {
+        const re = await getTodosLosProductos({ sortBy: "nombre", sortDir: "ASC" });
+        setProductos(re || []);
+      } catch {
+        /* el ajuste ya se aplicó; el stock se refresca al recargar */
+      }
 
       setAplicandoId(null);
       setAviso(
@@ -344,6 +381,15 @@ export default function AjusteInventario() {
             </div>
           ) : null}
 
+          {rangoFechasInvalido ? (
+            <div
+              role="alert"
+              className="rounded-none border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"
+            >
+              La fecha "Desde" no puede ser posterior a la fecha "Hasta".
+            </div>
+          ) : null}
+
           {aviso ? (
             <div
               role="status"
@@ -370,6 +416,7 @@ export default function AjusteInventario() {
             onAplicar={aplicarSesion}
             onDesactivar={desactivarSesion}
             error={error}
+            rangoFechasInvalido={rangoFechasInvalido}
           />
         </div>
       </div>
@@ -382,6 +429,7 @@ export default function AjusteInventario() {
         onGenerar={async (datos) => {
           const ok = await generarSesion(datos);
           if (ok) setModalAbierto(false);
+          return ok;
         }}
         onCerrar={() => setModalAbierto(false)}
       />

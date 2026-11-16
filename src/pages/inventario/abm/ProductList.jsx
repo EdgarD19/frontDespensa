@@ -3,11 +3,11 @@ import {
   Plus,
   Check,
   Ban,
-  Trash2,
 } from "lucide-react";
 import Pagination from "../../../components/ui/Pagination";
 import { TABLE_SHELL,THEAD_ROW } from "../../../components/ui/styles";
 import SearchField from "../../../components/ui/SearchField";
+import { moneyGs } from "../../../utils/money";
 
 /* ───────────── Helpers ───────────── */
 
@@ -16,7 +16,7 @@ function getPrecio(p) {
 }
 
 function formatPrecioVenta(p) {
-  return getPrecio(p).toLocaleString("es-PY");
+  return moneyGs(getPrecio(p));
 }
 
 const iconBtn =
@@ -150,8 +150,7 @@ export default function ProductList({
                         </span>
                       ) : (
                         <span className="font-semibold text-zinc-100">
-
-                          Gs. {formatPrecioVenta(p)}
+                          {formatPrecioVenta(p)}
                         </span>
                       )}
                     </td>

@@ -8,7 +8,7 @@ import { crearFacturaCompra, getTimbradosProveedor } from "../../../api/facturas
 import { apiErrorMessage } from "../../../api/errors";
 import TimbradosModal from "./TimbradosModal";
 import ResumenCompraExito from "../ResumenCompraExito";
-import { money, hoyAsuncion, formatoFactura, esKG, ivaLineaCompra, totalLineaCompra, CANTIDAD_MINIMA_KG, estadoTimbrado, etiquetaTimbrado, FORMAS_PAGO_COMPRA, S } from "../utils";
+import { money, hoyAsuncion, formatoFactura, esPesable, ivaLineaCompra, totalLineaCompra, CANTIDAD_MINIMA_KG, estadoTimbrado, etiquetaTimbrado, FORMAS_PAGO_COMPRA, S } from "../utils";
 import CantidadInput from "../../../components/ui/CantidadInput";
 
 // Desglose de IVA de la factura guardada. Se prefieren los totales que devuelve
@@ -156,7 +156,7 @@ export default function CompraEspontanea({ onVolver }) {
     if (existente) {
       setLineas((prev) =>
         prev.map((l) =>
-          l.producto.id === prod.id ? { ...l, cantidad: l.cantidad + (esKG(prod) ? CANTIDAD_MINIMA_KG : 1) } : l
+          l.producto.id === prod.id ? { ...l, cantidad: l.cantidad + (esPesable(prod) ? CANTIDAD_MINIMA_KG : 1) } : l
         )
       );
     } else {
@@ -164,7 +164,7 @@ export default function CompraEspontanea({ onVolver }) {
       if (!(costo > 0)) costo = await getPrecioCompraVigente(prod.id);
       setLineas((prev) => [...prev, {
         producto: prod,
-        cantidad: esKG(prod) ? 1.0 : 1,
+        cantidad: esPesable(prod) ? 1.0 : 1,
         precioUnitario: costo > 0 ? costo : 0,
       }]);
     }
@@ -190,7 +190,7 @@ export default function CompraEspontanea({ onVolver }) {
       if (texto === "") return { ...l, cantidad: "" };
       const n = Number(texto.replace(",", "."));
       if (!Number.isFinite(n) || n <= 0) return l;
-      return { ...l, cantidad: esKG(l.producto) ? Math.round(n * 100) / 100 : Math.floor(n) };
+      return { ...l, cantidad: esPesable(l.producto) ? Math.round(n * 100) / 100 : Math.floor(n) };
     }));
   };
 
@@ -228,7 +228,7 @@ export default function CompraEspontanea({ onVolver }) {
     for (const l of lineas) {
       const precio = Number(l.precioUnitario);
       const cant = Number(l.cantidad);
-      const min = esKG(l.producto) ? CANTIDAD_MINIMA_KG : 1;
+      const min = esPesable(l.producto) ? CANTIDAD_MINIMA_KG : 1;
       if (!Number.isFinite(precio) || precio <= 0) { setError(`Indicá el precio de costo de "${l.producto.nombre}"`); return; }
       if (!Number.isFinite(cant) || cant < min) {
         setError(`La cantidad de "${l.producto.nombre}" debe ser al menos ${min}`);
@@ -578,7 +578,7 @@ export default function CompraEspontanea({ onVolver }) {
                 {/* Cantidad */}
                 <div className="py-1.5 text-right bg-white/[0.03]">
                   <CantidadInput
-                unidadMedida={esKG(l.producto) ? "KG" : "UN"}
+                unidadMedida={l.producto.unidadMedida}
                 value={l.cantidad}
                 onChange={(v) => actualizarCantidad(l.producto.id, v)}
                 maxDecimales={2}

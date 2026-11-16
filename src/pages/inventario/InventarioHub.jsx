@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ClipboardList, Package, Search, Settings, ArrowRight } from "lucide-react";
+import { ClipboardList, Package, Search } from "lucide-react";
 import { hubCardClass as cardClass, hubIconClass } from "../../components/ui/hubStyles";
 
 const MODULOS = [

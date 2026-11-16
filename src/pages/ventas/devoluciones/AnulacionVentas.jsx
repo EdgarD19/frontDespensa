@@ -18,9 +18,8 @@ import { fmtMoneda } from "../common";
 
 /* ───────────── Utilidades y estilos ───────────── */
 
-// Regla del back (AnulacionFacturaVentaService.validarDiasLimite):
-// despensa.anulacion.dias-permitidos (default 15). Solo se pueden anular
-// facturas emitidas hace ≤ 15 días.
+// Plazo del back (AnulacionFacturaVentaService.validarDiasLimite):
+// `despensa.anulacion.dias-permitidos`, 15 días por defecto.
 const DIAS_PERMITIDOS_ANULACION_VENTA = 15;
 
 function diasDesdeEmision(f) {

@@ -1,7 +1,19 @@
+import { productoAdmiteDecimales, unidadCorta as unidadCortaDe } from "../../../utils/cantidad";
+
 export function esProductoPesable(producto) {
   if (producto?.productoPesable === "si" || producto?.productoPesable === true) return true;
   const u = String(producto?.unidadMedida || producto?.unitAbbreviation || producto?.nombreUnidadMedida || "").toUpperCase().trim();
   return u === "KG" || u === "KILOGRAMO" || u === "KILOGRAMOS" || u === "KG." || u === "KILO";
+}
+
+/**
+ * Etiqueta corta de unidad para mostrar junto a cantidades ("kg", "L" o "u."),
+ * delegando en el helper central de src/utils/cantidad.js.
+ */
+export function unidadCorta(producto) {
+  return productoAdmiteDecimales(producto)
+    ? unidadCortaDe(producto?.unidadMedida ?? producto?.nombreUnidadMedida ?? producto?.unitAbbreviation)
+    : "u.";
 }
 
 export function parsePrecioVenta(producto) {
@@ -30,8 +42,9 @@ export function parseStockDisponible(producto) {
   // Cantidades con 2 decimales (0.01), igual que numeric(19,2) / numeric(38,2)
   // del back: una cantidad con más precisión se redondearía en la base y el
   // total del ticket no coincidiría con la factura guardada.
-  // Kg se maneja con 2 decimales: el stock vendible no puede tener más precisión.
-  if (esProductoPesable(producto)) return Math.max(0, Math.floor(n * 100) / 100);
+  // Unidades de medida (kg, g, L, etc.) admiten 2 decimales; solo "Unidad"/"UN"
+  // exige entero.
+  if (productoAdmiteDecimales(producto)) return Math.max(0, Math.floor(n * 100) / 100);
   return Math.max(0, Math.trunc(n));
 }
 
@@ -93,7 +106,7 @@ function esSoloDigitosBarras(s) {
 }
 
 /**
- * Parses barcode input with optional quantity prefix.
+ * Interpreta un escaneo con prefijo de cantidad opcional.
  * "3*1234567890123" -> { quantity: 3, barcode: "1234567890123" }
  * "*1234567890123"  -> { quantity: 1, barcode: "1234567890123" }
  * "1234567890123"   -> { quantity: 1, barcode: "1234567890123" }
@@ -106,7 +119,8 @@ export function parseBarcodeInput(raw) {
   if (starIdx !== -1) {
     const qtyPart = s.substring(0, starIdx);
     const barcode = s.substring(starIdx + 1).trim();
-    const quantity = qtyPart === "" ? 1 : parseInt(qtyPart, 10);
+    // Cantidad con 2 decimales (0.01): permite "0.5*1234567890123" para pesables.
+    const quantity = qtyPart === "" ? 1 : Math.round(Number(qtyPart.replace(",", ".")) * 100) / 100;
     if (barcode && (Number.isFinite(quantity) && quantity > 0)) {
       return { quantity, barcode };
     }

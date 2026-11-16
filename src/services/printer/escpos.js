@@ -135,8 +135,7 @@ function money(v) {
 }
 
 // Monto compacto para la tabla de productos: enteros (guaraníes no usan
-// decimales); la ÚNICA cifra con decimales del papel es la CANTIDAD en kg
-// (hasta 3, impresa directamente desde el valor del carrito).
+// decimales); la única cifra con decimales del papel es la cantidad (máx. 2).
 function compMoney(v) {
   const num = Number(v) || 0;
   return Math.round(num).toLocaleString("es-PY", { maximumFractionDigits: 0 });
@@ -234,13 +233,16 @@ export function buildVentaEscPos(datos = {}) {
   parts.push(separator());
 
   // Items: 2 líneas por artículo (estándar en papel de 58 mm = 42 columnas):
-  //   línea 1: nombre del producto (con sufijo (KG) si pesable)
+  //   línea 1: nombre del producto (con sufijo kg/L si corresponde)
   //   línea 2: cant × precio unitario ……………… total
   // El IVA por artículo no se imprime en esta versión (el desglose total
   // por tasa está más abajo), igual que el ticket de pantalla.
   const unidadDe = (l) => {
-    const u = String(l?.unidadMedida || "").toUpperCase();
-    return l?.productoPesable === "si" || u === "KG" || u === "KILOGRAMO" || u === "KILOGRAMOS" ? "kg" : "u.";
+    const u = String(l?.unidadMedida || "").toLowerCase();
+    // Solo tres unidades en el proyecto: Kilogramo, Litro y Unidad.
+    if (l?.productoPesable === "si" || /kilo/.test(u)) return "kg";
+    if (/litro/.test(u)) return "L";
+    return "u.";
   };
   const wrapText = (str, w = WIDTH) => {
     const s = String(str ?? "");
@@ -253,8 +255,8 @@ export function buildVentaEscPos(datos = {}) {
     const cant = getCant(l);
     const pu = getPU(l);
     const sub = Math.round(cant * pu * 100) / 100;
-    const pesable = unidadDe(l) === "kg";
-    const nombreBase = getNombre(l) + (pesable ? " (KG)" : "");
+    const sufixo = unidadDe(l) !== "u." ? ` (${unidadDe(l).toUpperCase()})` : "";
+    const nombreBase = getNombre(l) + sufixo;
 
     // Línea 1: nombre (si es largo, se separa en varias líneas de 32)
     for (const tramo of wrapText(nombreBase)) {

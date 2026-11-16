@@ -1,4 +1,5 @@
 import { baseImponibleUnitaria, r2 } from "../../utils/iva";
+import { unidadAdmiteDecimales } from "../../utils/cantidad";
 
 // Formatter único y cacheado: construir Intl.NumberFormat en cada llamada es
 // caro y esto se ejecuta por fila en tablas densas (regla js-cache-function-results).
@@ -31,9 +32,13 @@ export function formatoFactura(val) {
   return `${p1}-${p2}-${p3}`;
 }
 
-export function esKG(prod) {
-  const u = (prod.unidadMedida || prod.unitAbbreviation || "").toUpperCase();
-  return u === "KG" || u === "KILOGRAMO" || u === "KILOGRAMOS";
+/**
+ * Un producto admite cantidades decimales (2 dec, 0.01) salvo que su unidad
+ * sea "Unidad"/"UN" (las tres unidades del proyecto: Kilogramo, Litro, Unidad).
+ * Igual que numeric(...,2) del back.
+ */
+export function esPesable(prod) {
+  return unidadAdmiteDecimales(prod?.unidadMedida || prod?.unitAbbreviation);
 }
 
 /* Formas de pago de una compra: al proveedor se le paga en efectivo o por

@@ -18,7 +18,7 @@ import { getProductos } from "../../../../api/productosApi";
 import RecepcionPedidoModal from "../recepcion/RecepcionPedidoModal";
 import Pagination from "../../../../components/ui/Pagination";
 import CantidadInput from "../../../../components/ui/CantidadInput";
-import { esKG, CANTIDAD_MINIMA_KG } from "../../utils";
+import { esPesable, CANTIDAD_MINIMA_KG } from "../../utils";
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
  
 const ESTADOS = ["solicitado", "recibido", "cancelado"];
@@ -492,7 +492,7 @@ function PedidoModal({
     if (pedido?.detalles?.length) {
       return pedido.detalles.map((it) => {
         const unidadMedida = it.nombreUnidadMedida || "";
-        const pesable = esKG({ unidadMedida });
+        const pesable = esPesable({ unidadMedida });
         const min = pesable ? CANTIDAD_MINIMA_KG : 1;
         const cant = Number(it.cantidad);
         return {
@@ -510,8 +510,8 @@ function PedidoModal({
     const existente = lineas.find((l) => l.idProducto === prod.id);
     if (existente) {
       // Re-agregar un producto suma su unidad mínima: 0.01 kg para pesables,
-      // 1 unidad para el resto (antes sumaba 1 kg a los pesables).
-      const incremento = esKG(existente) ? CANTIDAD_MINIMA_KG : 1;
+      // 1 unidad para el resto.
+      const incremento = esPesable(existente) ? CANTIDAD_MINIMA_KG : 1;
       setLineas((prev) => prev.map((l) => l.idProducto === prod.id
         ? { ...l, cantidad: Math.round((Number(l.cantidad) + incremento) * 100) / 100 }
         : l));
@@ -537,7 +537,7 @@ function PedidoModal({
       if (texto === "") return { ...l, cantidad: "" };
       const n = Number(texto.replace(",", "."));
       if (!Number.isFinite(n) || n <= 0) return l;
-      return { ...l, cantidad: esKG(l) ? Math.round(n * 100) / 100 : Math.floor(n) };
+      return { ...l, cantidad: esPesable(l) ? Math.round(n * 100) / 100 : Math.floor(n) };
     }));
   };
 
@@ -549,7 +549,7 @@ function PedidoModal({
     if (lineas.length === 0) return setFormError("Agregá al menos un producto.");
     for (const l of lineas) {
       const cant = Number(l.cantidad);
-      const min = esKG(l) ? CANTIDAD_MINIMA_KG : 1;
+      const min = esPesable(l) ? CANTIDAD_MINIMA_KG : 1;
       if (!Number.isFinite(cant) || cant < min) {
         return setFormError(`La cantidad de "${l.nombre}" debe ser al menos ${min}.`);
       }
@@ -686,7 +686,7 @@ function PedidoModal({
                       <td className="px-4 py-3 text-center text-white/50">{l.unidadMedida || "—"}</td>
                       <td className="px-4 py-3">
                         <CantidadInput
-                          unidadMedida={esKG(l) ? "KG" : "UN"}
+                          unidadMedida={l.unidadMedida}
                           value={l.cantidad}
                           onChange={(v) => actualizarCantidad(l.idProducto, v)}
                           ariaLabel={`Cantidad de ${l.nombre || "producto"}`}

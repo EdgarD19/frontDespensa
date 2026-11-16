@@ -1,4 +1,4 @@
-// Reportes de ventas (contrato + implementación 29-10-26)
+// Reportes de ventas.
 import { api } from "./client";
 
 /** GET /api/reportes/ventas/productos?desde&hasta&top — ranking por unidades vendidas

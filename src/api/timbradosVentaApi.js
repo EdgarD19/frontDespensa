@@ -1,7 +1,8 @@
-// Timbrados de venta (Datos DNIT) — API real.
-// El back solo persiste: numeroTimbrado (8 dígitos), fechaInicio, fechaVencimiento
-// y activo. El establecimiento/punto y el rango de numeración todavía NO están en el
-// back; eso vive en localStorage (ver comprobantesApi.js).
+// Timbrados de venta (datos DNIT) — API real.
+// El back (/api/timbrados-venta) persiste numeroTimbrado (8 dígitos),
+// fechaInicio, fechaVencimiento y activo. La numeración (establecimiento,
+// punto y rango) vive en localStorage hasta migrarla a
+// /api/configuracion-venta (ver comprobantesApi.js).
 import { api } from "./client";
 import { apiErrorMessage } from "./errors";
 

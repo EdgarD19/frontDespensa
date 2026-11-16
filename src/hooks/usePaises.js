@@ -7,7 +7,7 @@ import { getPaises } from "../api/maestrosApi";
  * baje el catálogo de países al montar cuando los datos ya están calientes.
  *
  * IMPORTANT: si se crea/edita un país (Configuración → Países y Ciudades),
- * llamar invalidarPaises() para quettlá TTL no muestre datos viejos 10 min.
+ * llamar invalidarPaises() para que el TTL no muestre datos viejos 10 min.
  */
 let _paises = null;
 let _paisesTs = 0;

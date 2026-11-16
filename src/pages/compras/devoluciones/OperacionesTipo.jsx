@@ -23,9 +23,9 @@ import {
   cancelarDevolucion,
 } from "../../../api/operacionesCompraApi";
 import { apiErrorMessage } from "../../../api/errors";
-import { getProductos, getProductoById } from "../../../api/productosApi";
+import { getTodosLosProductos, getProductoById } from "../../../api/productosApi";
 import { getProveedores, getProveedorId, getProveedorNombre } from "../../../api/proveedoresApi";
-import { formatoFactura, hoyAsuncion, estadoTimbrado, etiquetaTimbrado, esKG, fmtCant } from "../utils";
+import { formatoFactura, hoyAsuncion, estadoTimbrado, etiquetaTimbrado, fmtCant } from "../utils";
 import CantidadInput from "../../../components/ui/CantidadInput";
 
 const nfGsOp = new Intl.NumberFormat("es-PY", { maximumFractionDigits: 0 });
@@ -1431,11 +1431,11 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
 
   useEffect(() => {
     let activo = true;
-    getProductos({ page: 0, pageSize: 500, sortBy: "nombre", sortDirection: "asc" })
-      .then((res) => {
+    getTodosLosProductos({ sortBy: "nombre", sortDirection: "asc" })
+      .then((todos) => {
         if (!activo) return;
         const m = {};
-        (res.content || []).forEach((p) => {
+        (todos || []).forEach((p) => {
           if (p.id != null) m[Number(p.id)] = p.unidadMedida || "";
           registrarStock(p);
         });
@@ -1561,8 +1561,11 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
     }
   };
 
-  const handleCambiarCantidad = (idProducto, cantidad) => {
-    const d = facturaDetalle?.detalles?.find((x) => x.idProducto === idProducto);
+  // Cantidades keyeadas por ÍNDICE de línea del detalle (no por idProducto):
+  // una factura puede traer el mismo producto en dos líneas y cada una debe
+  // poder operarse por separado.
+  const handleCambiarCantidad = (idx, cantidad) => {
+    const d = facturaDetalle?.detalles?.[idx];
     const max = d ? limitesCantidad(d, tipo) : 0;
     // Vaciar el campo es válido (queda en 0), pero un valor no numérico o
     // negativo no debe convertirse en 0 de forma silenciosa.
@@ -1571,9 +1574,9 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
     if (!Number.isFinite(n) || n < 0) return;
     const val = Math.min(n, max);
     if (tipo === "DEVOLUCION") {
-      setProductosDevueltos((prev) => ({ ...prev, [idProducto]: val }));
+      setProductosDevueltos((prev) => ({ ...prev, [idx]: val }));
     } else {
-      setProductosEntregar((prev) => ({ ...prev, [idProducto]: val }));
+      setProductosEntregar((prev) => ({ ...prev, [idx]: val }));
     }
   };
 
@@ -1603,9 +1606,9 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
   // (en devolución queda 1 paso por debajo del 100%, que es una anulación).
   const marcarTodoElMaximo = () => {
     const todo = {};
-    (facturaDetalle?.detalles || []).forEach((d) => {
+    (facturaDetalle?.detalles || []).forEach((d, idx) => {
       const max = limitesCantidad(d, tipo);
-      if (max > 0) todo[d.idProducto] = max;
+      if (max > 0) todo[idx] = max;
     });
     if (tipo === "DEVOLUCION") setProductosDevueltos(todo);
     else setProductosEntregar(todo);
@@ -1616,8 +1619,8 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
     else setProductosEntregar({});
   };
 
-  const totalOperacion = facturaDetalle?.detalles?.reduce((sum, d) => {
-    const cant = (tipo === "DEVOLUCION" ? productosDevueltos : productosEntregar)[d.idProducto] || 0;
+  const totalOperacion = facturaDetalle?.detalles?.reduce((sum, d, idx) => {
+    const cant = (tipo === "DEVOLUCION" ? productosDevueltos : productosEntregar)[idx] || 0;
     return sum + (cant * (d.precioUnitario || 0));
   }, 0) || 0;
 
@@ -1626,8 +1629,8 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
   // Devolver el 100% de todos los productos es una anulación, no una devolución.
   // Se valida de forma cruzada: cada línea llega a su cantidad original.
   const esDevolucionTotal = tipo === "DEVOLUCION" && (facturaDetalle?.detalles?.length || 0) > 0
-    && facturaDetalle.detalles.every((d) => {
-      const cant = Number(productosDevueltos[d.idProducto]) || 0;
+    && facturaDetalle.detalles.every((d, idx) => {
+      const cant = Number(productosDevueltos[idx]) || 0;
       return cant >= (Number(d.cantidad) || 0);
     });
 
@@ -1711,11 +1714,12 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
 
     if (tipo === "DEVOLUCION") {
       const items = facturaDetalle.detalles
-        .filter((d) => (productosDevueltos[d.idProducto] || 0) > 0)
-        .map((d) => ({
+        .map((d, idx) => ({ d, idx }))
+        .filter(({ idx }) => (productosDevueltos[idx] || 0) > 0)
+        .map(({ d, idx }) => ({
           idProducto: d.idProducto,
           producto: d.nombreProducto,
-          cantidad: Number(productosDevueltos[d.idProducto]),
+          cantidad: Number(productosDevueltos[idx]),
           precioUnitario: d.precioUnitario,
           tipo: "devolver",
         }));
@@ -1731,11 +1735,12 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
       });
     } else if (tipo === "INTERCAMBIO") {
       const itemsEntregar = facturaDetalle.detalles
-        .filter((d) => (productosEntregar[d.idProducto] || 0) > 0)
-        .map((d) => ({
+        .map((d, idx) => ({ d, idx }))
+        .filter(({ idx }) => (productosEntregar[idx] || 0) > 0)
+        .map(({ d, idx }) => ({
           idProducto: d.idProducto,
           producto: d.nombreProducto,
-          cantidad: Number(productosEntregar[d.idProducto]),
+          cantidad: Number(productosEntregar[idx]),
           precioUnitario: d.precioUnitario,
           motivoIntercambio: "",
           tipo: "entregar",
@@ -1993,7 +1998,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                     </tr>
                   </thead>
                   <tbody>
-                    {facturaDetalle.detalles.map((d) => {
+                    {facturaDetalle.detalles.map((d, idx) => {
                       const baseFactura = facturas.find((f) => f.idFactura === facturaDetalle.idFactura);
                       const baseDet = baseFactura?.detalles?.find((x) => x.idProducto === d.idProducto);
                       const stockRaw = d?.stockActual ?? baseDet?.stockActual ?? d?.stock ?? baseDet?.stock ?? d?.cantidadDisponible ?? d?.existencia ?? d?.stockDisponible ?? null;
@@ -2002,7 +2007,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                         : null;
                       const falta = stock !== null && stock < (Number(d.cantidad) || 0);
                       return (
-                        <tr key={d.idProducto} className={`border-b border-white/10 last:border-0 ${falta ? "bg-red-500/[0.07]" : ""}`}>
+                        <tr key={idx} className={`border-b border-white/10 last:border-0 ${falta ? "bg-red-500/[0.07]" : ""}`}>
                           <td className="px-4 py-3 text-white">{d.nombreProducto}</td>
                           <td className="px-4 py-3 text-center tabular-nums text-white/60">{fmtCant(d.cantidad)}</td>
                           <td className={`px-4 py-3 text-center tabular-nums ${falta ? "font-semibold text-red-400" : "text-white/60"}`}>
@@ -2080,8 +2085,8 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                 </tr>
               </thead>
               <tbody>
-                {facturaDetalle.detalles?.map((d) => {
-                  const cant = cantidades[d.idProducto] || 0;
+                {facturaDetalle.detalles?.map((d, idx) => {
+                  const cant = cantidades[idx] || 0;
                   const max = limitesCantidad(d, tipo);
                   const activo = cant > 0;
                   const stockRaw = d?.stockActual ?? d?.stock ?? d?.cantidadDisponible ?? d?.existencia ?? d?.stockDisponible ?? null;
@@ -2091,7 +2096,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                   const sinStock = stock !== null && stock <= 0;
                   const stockLimita = stock !== null && max < maxPorFactura(d, tipo);
                   return (
-                    <tr key={d.idProducto} className={`border-b border-white/10 last:border-0 transition-colors ${activo ? "bg-[var(--accent)]/[0.04]" : "hover:bg-white/[0.03]"}`}>
+                    <tr key={idx} className={`border-b border-white/10 last:border-0 transition-colors ${activo ? "bg-[var(--accent)]/[0.04]" : "hover:bg-white/[0.03]"}`}>
                       <td className="px-4 py-3 text-white">{d.nombreProducto}</td>
                       <td className="px-4 py-3 text-center tabular-nums text-white/60">{fmtCant(d.cantidad)}</td>
                       <td className={`px-4 py-3 text-center tabular-nums ${sinStock ? "text-red-400/80" : stockLimita ? "text-amber-400/80" : "text-white/60"}`}
@@ -2101,9 +2106,9 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                       <td className="px-4 py-3">
                         <div className="mx-auto flex w-28 items-center gap-1">
                           <CantidadInput
-                            unidadMedida={esKG({ unidadMedida: unidadesById[Number(d.idProducto)] }) ? "KG" : "UN"}
+                            unidadMedida={unidadesById[Number(d.idProducto)] || "UN"}
                             value={cant}
-                            onChange={(v) => handleCambiarCantidad(d.idProducto, v)}
+                            onChange={(v) => handleCambiarCantidad(idx, v)}
                             permitirCero
                             max={max}
                             maxDecimales={2}
@@ -2111,7 +2116,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                           />
                           <button
                             type="button"
-                            onClick={() => handleCambiarCantidad(d.idProducto, max)}
+                            onClick={() => handleCambiarCantidad(idx, max)}
                             disabled={max <= 0}
                             title={max > 0 ? `Usar máximo permitido (${max})` : "No hay stock disponible"}
                             className="shrink-0 rounded-none border border-white/10 px-1.5 py-1.5 text-[10px] text-white/40 transition-colors hover:border-[var(--accent)]/40 hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-white/10 disabled:hover:text-white/40"

@@ -13,11 +13,12 @@ export default function NuevaListaModal({
   useEffect(() => {
     if (!abierto) return;
     function onKey(e) {
-      if (e.key === "Escape") onCerrar();
+      // No cerrar mientras se está creando la lista en el backend.
+      if (e.key === "Escape" && !disabled) onCerrar();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [abierto, onCerrar]);
+  }, [abierto, onCerrar, disabled]);
 
   if (!abierto) return null;
 
@@ -36,7 +37,8 @@ export default function NuevaListaModal({
           <button
             type="button"
             onClick={onCerrar}
-            className="p-1 text-white/40 hover:text-white transition-colors"
+            disabled={disabled}
+            className="p-1 text-white/40 hover:text-white transition-colors disabled:opacity-30 disabled:pointer-events-none"
             aria-label="Cerrar"
           >
             <X className="w-5 h-5" />

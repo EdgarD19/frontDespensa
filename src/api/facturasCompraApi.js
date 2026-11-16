@@ -34,7 +34,7 @@ export async function getTimbradosProveedor(idProveedor, { page = 0, pageSize = 
   return { ...pageData, content: list };
 }
 
-/** Crear factura de compra con el nuevo contrato (idTimbrado + IVA calculado por backend). */
+/** Crear factura de compra (idTimbrado + IVA calculado por el backend). */
 export async function crearFacturaCompra(payload) {
   const { data } = await api.post(BASE, payload);
   return data;

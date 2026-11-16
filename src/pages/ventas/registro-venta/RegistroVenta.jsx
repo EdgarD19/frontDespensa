@@ -20,11 +20,12 @@ import { cargarUltimaVenta, guardarUltimaVenta } from "./ultimaVentaStorage";
 import { printVenta } from "../../../services/printer";
 import CantidadInput from "../../../components/ui/CantidadInput";
 import {
-  parsePrecioVenta, parseStockDisponible, esProductoPesable, formatMoney,
+  parsePrecioVenta, parseStockDisponible, esProductoPesable, unidadCorta, formatMoney,
   labelCliente, docCliente, labelFormaPago, hoyISO, soloDigitos,
   FORMA_PAGO_EFECTIVO, FORMA_PAGO_TRANSFERENCIA, FORMA_PAGO_MIXTO,
   parseBarcodeInput,
 } from "./utils";
+import { productoAdmiteDecimales } from "../../../utils/cantidad";
 import { baseImponibleUnitaria, r2 } from "../../../utils/iva";
 
 const QUICK_AMOUNTS = [5000, 10000, 20000, 50000, 100000];
@@ -136,9 +137,6 @@ export default function RegistroVenta() {
     return () => { activo = false; };
   }, []);
 
-  // Sin dependencias locales: el habilitado del cobro, el número de factura y
-  // el timbrado los resuelve el backend (POST /api/facturas-venta).
-
   const searchRef = useRef(null);
   const qtyInputRef = useRef(null);
   const dropdownRef = useRef(null);
@@ -193,8 +191,8 @@ export default function RegistroVenta() {
     }
   }, []);
   useEffect(() => { rechequearTimbrado(); }, [rechequearTimbrado]);
-  // Contador de transferencias pendientes (badge del botón). Best-effort: el
-  // back corriendo puede no tener aún el módulo → el badge simplemente no se ve.
+  // Contador de transferencias pendientes (badge del botón). Best-effort: si
+  // falla la consulta, el badge simplemente no se ve.
   const cargarPendientesCount = useCallback(async () => {
     try {
       const lista = await getTransferenciasPorEstado("PENDIENTE");
@@ -395,18 +393,18 @@ export default function RegistroVenta() {
       });
       return;
     }
-    const pesable = esProductoPesable(producto);
+    const admiteDec = productoAdmiteDecimales(producto);
     // El back exige cantidad >= 0.01 (DetalleFacturaVentaRequest).
-    const min = pesable ? CANTIDAD_MINIMA_KG : 1;
+    const min = admiteDec ? CANTIDAD_MINIMA_KG : 1;
     const base = Number(String(cantidad ?? "").replace(",", "."));
     // Cantidad ausente/negativa/no numérica: no se agrega nada.
     if (!Number.isFinite(base) || base <= 0) return;
-    const q = Math.min(Math.max(min, pesable ? Math.floor(base * 100) / 100 : Math.trunc(base)), stock);
+    const q = Math.min(Math.max(min, admiteDec ? Math.floor(base * 100) / 100 : Math.trunc(base)), stock);
     // Stock truncado a 0.01 o menos: no se puede vender una cantidad válida.
     if (!Number.isFinite(q) || q < min) {
       mostrarAviso({
         titulo: "Stock insuficiente",
-        texto: <><span className="font-medium text-white">{nombre}</span> no alcanza el mínimo vendible ({min} {pesable ? "kg" : "u."}).</>,
+        texto: <><span className="font-medium text-white">{nombre}</span> no alcanza el mínimo vendible ({min} {unidadCorta(producto)}).</>,
         tone: "amber",
         icono: "alerta",
       });
@@ -441,20 +439,16 @@ export default function RegistroVenta() {
     });
   }, [mostrarAviso]);
 
-  // Pase automático desde Anulación (refacturación rápida): quedó fuera de este
-  // módulo. La búsqueda de tickets y la refacturación pasarán a
-  // /api/facturas-venta/buscar cuando exista contrato.
-
   const handleCambiarCantidad = useCallback((productoId, raw) => {
     setCarrito((prev) => prev.map((line) => {
       if (line.productoId !== productoId) return line;
-      const pesable = esProductoPesable(line);
+      const admiteDec = productoAdmiteDecimales(line);
       // Rechaza vacío, NaN y negativos en lugar de "clampearlos": un pegado de
       // "-2" no debe convertirse en 0.01 kg ni en 1 unidad.
-      const v = pesable
-        ? Number(String(raw ?? "").trim().replace(",", "."))
+      const v = admiteDec
+        ? Math.round(Number(String(raw ?? "").trim().replace(",", ".")) * 100) / 100
         : Math.trunc(Number(raw));
-      const min = pesable ? CANTIDAD_MINIMA_KG : 1;
+      const min = admiteDec ? CANTIDAD_MINIMA_KG : 1;
       if (!Number.isFinite(v) || v < min) return line;
       const stock = Number(line.stockDisponible);
       if (!Number.isFinite(stock) || stock < min) return line;
@@ -670,10 +664,9 @@ export default function RegistroVenta() {
       } catch { /* sin vigencia disponible */ }
       // fechaCreacion del back trae fecha + hora (LocalDateTime del servidor)
       const fechaVenta = data?.fechaCreacion ?? data?.fechaEmision ?? null;
-      // Contrato 27-10-26: si el pago es por transferencia, se registra la
-      // transferencia vinculada a la factura. Best-effort: si el back aún no
-      // despliega el endpoint (o falla), la venta queda registrada igual.
-      // Pago MIXTO: se registra por el monto parcial de transferencia (el
+      // Si el pago es por transferencia, se registra la transferencia vinculada
+      // a la factura. Best-effort: si falla, la venta queda registrada igual.
+      // Pago MIXTO: se registra solo el monto parcial de transferencia (el
       // restante se cobró en efectivo en el mostrador).
       const montoTransfer = esMixto ? Math.round(montoTransferenciaNum) : null;
       const registrarTransferencia =
@@ -703,7 +696,7 @@ export default function RegistroVenta() {
   confirmarRef.current = handleConfirmar;
 
   // Reimpresión del último ticket (si la impresora falló en el primer intento):
-  // null-safe contra técnicas datosImpresion persistida en sessionStorage.
+  // datosImpresion se hidrata desde sessionStorage y puede venir null.
   const [reimprimiendo, setReimprimiendo] = useState(false);
   const reimprimirTicket = useCallback(async () => {
     if (!datosImpresion || reimprimiendo) return;
@@ -822,11 +815,13 @@ export default function RegistroVenta() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium text-white first-letter:uppercase">{p.nombre}</p>
-                          <p className="text-xs text-white/50">{pesable ? `${formatMoney(precio)}/kg` : formatMoney(precio)}</p>
+                          <p className="text-xs text-white/50">
+                            {productoAdmiteDecimales(p) ? `${formatMoney(precio)}/${unidadCorta(p)}` : formatMoney(precio)}
+                          </p>
                         </div>
                         {sinStock
                           ? <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs text-red-400">Sin stock</span>
-                          : <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-white/60" style={MONO}>{stock} {pesable ? "kg" : "u."}</span>}
+                          : <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-white/60" style={MONO}>{stock} {unidadCorta(p)}</span>}
                       </button>
                     );
                   })}
@@ -963,7 +958,7 @@ export default function RegistroVenta() {
                                 }}
                               >
                                 <CantidadInput
-                                  unidadMedida={pesable ? "KG" : "UN"}
+                                  unidadMedida={line.unidadMedida || ""}
                                   value={line.cantidad}
                                   max={line.stockDisponible}
                                   onChange={(v) => handleCambiarCantidad(line.productoId, v)}
@@ -976,7 +971,7 @@ export default function RegistroVenta() {
                               <button type="button" onClick={() => setEditandoCantidad(line.productoId)} title="Editar cantidad"
                                 className="whitespace-nowrap rounded-none px-3 py-1.5 text-base text-white/80 transition-colors hover:bg-white/10 hover:text-white"
                                 style={MONO}>
-                                {line.cantidad} {pesable ? "kg" : "u."}
+                                {line.cantidad} {unidadCorta(line)}
                               </button>
                             )}
                           </td>
@@ -1008,7 +1003,7 @@ export default function RegistroVenta() {
                 </span>
               ))}
 
-              {/* Transferencias pendientes (contrato 27-10-26): esquina derecha
+              {/* Transferencias pendientes: esquina derecha
                   de la franja de atajos, cerca del flujo de dinero */}
               <button type="button" onClick={() => setShowTransferencias(true)}
                 title="Transferencias pendientes"
@@ -1308,7 +1303,7 @@ export default function RegistroVenta() {
   );
 }
 
-/* ───────── Modal: transferencias pendientes (contrato 27-10-26) ───────── */
+/* ───────── Modal: transferencias pendientes ───────── */
 
 function TransferenciasPendientesModal({ onCerrar, onCambio }) {
   const [lista, setLista] = useState([]);
@@ -1360,8 +1355,7 @@ function TransferenciasPendientesModal({ onCerrar, onCambio }) {
       : d.toLocaleString("es-PY", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
   };
 
-  // Más antigua arriba: la primera que se registra es la primera que corresponde
-  // recibir (el front ya trae quitas; el sort es defensivo).
+  // Más antigua arriba: la primera registrada es la primera que corresponde recibir.
   const ordenada = useMemo(
     () => [...lista].sort((a, b) => String(a?.fechaCreacion ?? "").localeCompare(String(b?.fechaCreacion ?? ""))),
     [lista]

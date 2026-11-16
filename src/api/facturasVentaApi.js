@@ -55,3 +55,13 @@ export async function getFacturaVentaById(id) {
   const { data } = await api.get(`${BASE}/${id}`);
   return data?.data ?? data;
 }
+
+/**
+ * Ticket de una factura de venta (GET /api/facturas-venta/{id}/ticket).
+ * Devuelve TicketFacturaVentaResponse: datos de empresa, timbrado, cliente,
+ * detalles y totales ya preparados para imprimir una venta vieja.
+ */
+export async function getTicketFacturaVenta(id) {
+  const { data } = await api.get(`${BASE}/${id}/ticket`);
+  return data?.data ?? data;
+}

@@ -2,9 +2,9 @@ import { useEffect } from "react";
 import { X, Loader2 } from "lucide-react";
 
 /**
- * Modal estándar del proyecto (antes ModalShell en ComprobantesConfig).
+ * Modal estándar del proyecto.
  * Panel #0c0c0e, borde white/10, footer con Cancelar + acción positiva.
- * Es responsable: onCerrar (clic afuera/Escape), onSubmit del form interno.
+ * Cierra con Escape y hace submit con el form interno.
  */
 export default function Modal({ titulo, onCerrar, onSubmit, children, textoOk, deshabilitado = false, enviando = false }) {
   useEffect(() => {

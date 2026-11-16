@@ -1,12 +1,5 @@
-/*
-  BrowserRouter: activa el sistema de rutas
-  Routes: Contenedor de rutas
-  Route: Define una ruta
-  Navigate: Redireccion
-
-  Code-splitting: cada página carga bajo demanda con React.lazy()
-  (build inicial ~solo MainLayout + la pantalla abierta; el resto baja al navegar).
-*/
+// Code-splitting: cada página carga bajo demanda con React.lazy()
+// (build inicial ~solo MainLayout + la pantalla abierta; el resto baja al navegar).
 import { lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from './components/layout/MainLayout';

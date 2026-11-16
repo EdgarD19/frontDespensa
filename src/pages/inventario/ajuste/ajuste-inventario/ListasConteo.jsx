@@ -4,11 +4,19 @@ import { ClipboardList, FileText, PenLine, Check, X, Save, Ban } from "lucide-re
 import Pagination from "../../../../components/ui/Pagination";
 import CantidadInput from "../../../../components/ui/CantidadInput";
 import PlanillaConteo from "./PlanillaConteo";
-import { unidadAdmiteDecimales } from "./utils";
+import { parseConteo, unidadAdmiteDecimales } from "./utils";
+import { fmtCantidad, redondearCantidad } from "../../../../utils/cantidad";
 
 const ITEMS_PER_PAGE = 10;
 
-const MOTIVO_LABELS = { ROBO: "Robo", MERMA: "Merma", REGALO: "Regalo", ERROR: "Error", OTROS: "Otros" };
+const MOTIVO_LABELS = {
+  ROBO: "Robo",
+  MERMA: "Merma",
+  REGALO: "Regalo",
+  ERROR: "Error",
+  AJUSTE: "Ajuste",
+  OTROS: "Otros",
+};
 function nombreMotivo(m) { return MOTIVO_LABELS[m] || m || "—"; }
 
 function fmtFechaHora(iso) {
@@ -45,12 +53,10 @@ function EstadoBadge({ estado }) {
 }
 
 function calcDiff(it) {
-  const raw = String(it.stockFisico ?? "").trim();
-  if (raw === "") return 0;
-  const f = Number(raw);
+  const f = parseConteo(it.stockFisico);
   const s = Number(it.stockSistema ?? 0);
-  if (!Number.isFinite(f)) return 0;
-  return f - s;
+  if (!Number.isFinite(f) || !Number.isFinite(s)) return NaN;
+  return redondearCantidad(f - s);
 }
 
 function completo(s) {
@@ -74,6 +80,7 @@ export default function ListasConteo({
   onAplicar,
   onDesactivar,
   error,
+  rangoFechasInvalido = false,
 }) {
   const [cargarId, setCargarId] = useState(null);
   const [confirmarId, setConfirmarId] = useState(null);
@@ -191,6 +198,12 @@ export default function ListasConteo({
           </label>
         </div>
 
+        {rangoFechasInvalido ? (
+          <p role="alert" className="mt-3 text-xs text-amber-300">
+            La fecha "Desde" no puede ser posterior a la fecha "Hasta".
+          </p>
+        ) : null}
+
         {filtrosActivos ? (
           <button
             type="button"
@@ -233,9 +246,11 @@ export default function ListasConteo({
                 {totalItems === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center text-sm text-white/40">
-                      {filtrosActivos
-                        ? "No se encontraron listas con esos filtros."
-                        : "Aún no generaste listas de conteo."}
+                      {rangoFechasInvalido
+                        ? "Corregí el rango de fechas para ver las listas."
+                        : filtrosActivos
+                          ? "No se encontraron listas con esos filtros."
+                          : "Aún no generaste listas de conteo."}
                     </td>
                   </tr>
                 ) : (
@@ -470,12 +485,15 @@ export default function ListasConteo({
                     <tbody>
                       {confirmar.items.map((it) => {
                         const diff = calcDiff(it);
+                        const diffValida = Number.isFinite(diff);
                         const diffCls =
-                          diff > 0
-                            ? "text-[var(--accent)]"
-                            : diff < 0
-                              ? "text-red-400"
-                              : "text-[#6e6e80]";
+                          !diffValida
+                            ? "text-[#6e6e80]"
+                            : diff > 0
+                              ? "text-[var(--accent)]"
+                              : diff < 0
+                                ? "text-red-400"
+                                : "text-[#6e6e80]";
                         return (
                           <tr key={it.idProducto} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
                             <td className="px-4 py-3 min-w-[12rem]">
@@ -489,15 +507,19 @@ export default function ListasConteo({
                               ) : null}
                             </td>
                             <td className="px-4 py-3 text-right tabular-nums text-white whitespace-nowrap">
-                              {it.stockSistema}
+                              {fmtCantidad(it.stockSistema)}
                             </td>
                             <td className="px-4 py-3 text-right tabular-nums text-white whitespace-nowrap">
-                              {it.stockFisico}
+                              {fmtCantidad(parseConteo(it.stockFisico))}
                             </td>
                             <td
                               className={`px-3 py-3 text-right font-semibold tabular-nums whitespace-nowrap ${diffCls}`}
                             >
-                              {diff > 0 ? `+${diff}` : diff}
+                              {!diffValida
+                                ? "—"
+                                : diff > 0
+                                  ? `+${fmtCantidad(diff)}`
+                                  : fmtCantidad(diff)}
                             </td>
                           </tr>
                         );

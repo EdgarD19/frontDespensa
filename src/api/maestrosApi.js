@@ -91,7 +91,9 @@ async function loadUnidades() {
   }
   for (const path of PATHS.unidades) {
     try {
-      const { data } = await api.get(path);
+      const { data } = await api.get(path, {
+        params: { page: 0, size: 500, sortBy: "nombre", sortDirection: "asc" },
+      });
       return unwrapList(data).map((r) => normalizeUnidadRow(r)).filter(Boolean);
     } catch {
       /* siguiente */
@@ -147,7 +149,10 @@ export async function getSubcategorias(idCategoria) {
   }
   for (const build of SUBCATEGORIA_PATH_TEMPLATES) {
     try {
-      const { data } = await api.get(build(idCategoria));
+      const { data } = await api.get(build(idCategoria), {
+        // El endpoint pagina con size=10 por defecto y perdía subcategorías.
+        params: { page: 0, size: 500, sortBy: "nombre", sortDirection: "asc" },
+      });
       return normalizeList(data);
     } catch {
       /* siguiente */

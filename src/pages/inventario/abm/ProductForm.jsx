@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import CantidadInput from "../../../components/ui/CantidadInput";
+import { unidadAdmiteDecimales } from "../../../utils/cantidad";
 
 const inputClass =
   "w-full rounded-none border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-[var(--accent)] outline-none transition-colors";
@@ -10,6 +11,16 @@ const selectClass =
 const labelClass = "block space-y-0.5";
 
 const labelText = "text-[11px] text-white/50";
+
+/** Solo Kilogramo es "venta por peso"; Litro y Unidad se venden por unidad. */
+function esUnidadDePeso(unidad) {
+  const abv = String(unidad?.abreviatura || "").trim().toLowerCase();
+  const nombre = String(unidad?.nombre || "").trim().toLowerCase();
+  return ["kg", "kg.", "kgs"].includes(abv) || /kilo/.test(nombre);
+}
+
+/** El proyecto usa solo tres unidades: Kilogramo, Litro y Unidad. */
+const UNIDADES_PERMITIDAS = /kilogramo|litro|unidad/i;
 
 export default function ProductForm({
   formData,
@@ -23,6 +34,23 @@ export default function ProductForm({
   guardando = false,
   loading = false,
 }) {
+  const isPeso = formData.productoPesable === "si";
+  const unidadesActivas = (unidades || []).filter((u) => u.activo !== false);
+  const unidadActual = unidadesActivas.find(
+    (u) => String(u.id) === String(formData.idUnidad)
+  );
+  const unidadOptions = unidadesActivas
+    // Se restringe a las tres unidades del proyecto (Kilogramo, Litro, Unidad)
+    // y al grupo que marca el radio "vende por peso".
+    .filter((u) => UNIDADES_PERMITIDAS.test(u.nombre))
+    .filter((u) => (isPeso ? esUnidadDePeso(u) : !esUnidadDePeso(u)));
+  // Si el producto editado trae una unidad que ya no entra en el filtro, hay
+  // que mostrarla igual para no perder silenciosamente el valor seleccionado.
+  if (unidadActual && !unidadOptions.some((u) => u.id === unidadActual.id)) {
+    unidadOptions.push(unidadActual);
+  }
+  const stockConDecimales = isPeso || (unidadActual ? unidadAdmiteDecimales(unidadActual.nombre) : false);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -30,6 +58,23 @@ export default function ProductForm({
 
   const handleRadioChange = (e) => {
     const { name, value } = e.target;
+    if (name === "productoPesable") {
+      const nextIsPeso = value === "si";
+      setFormData((prev) => {
+        const actual = unidadesActivas.find(
+          (u) => String(u.id) === String(prev.idUnidad)
+        );
+        const sigueSiendoValida =
+          !actual ||
+          (nextIsPeso ? esUnidadDePeso(actual) : !esUnidadDePeso(actual));
+        return {
+          ...prev,
+          [name]: value,
+          idUnidad: sigueSiendoValida ? prev.idUnidad : "",
+        };
+      });
+      return;
+    }
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -43,12 +88,6 @@ export default function ProductForm({
     onSubmit(e);
   };
 
-  const isPeso = formData.productoPesable === "si";
-  const unidadOptions = (unidades || []).filter((u) => {
-    const abv = (u.abreviatura || "").toLowerCase();
-    return isPeso ? ["kg", "gr"].includes(abv) : !["kg", "gr"].includes(abv);
-  });
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
       <div className="bg-[#0c0c0e] border border-white/10 rounded-none w-full max-w-2xl flex flex-col shadow-2xl">
@@ -58,8 +97,8 @@ export default function ProductForm({
           <h2 className="text-sm font-semibold text-white">
             {isEditing ? "Editar Producto" : "Nuevo Producto"}
           </h2>
-          <button type="button" onClick={onClose}
-            className="p-1 rounded-none text-white/40 hover:text-white hover:bg-[#1a1f2e] transition-colors">
+          <button type="button" onClick={onClose} disabled={guardando}
+            className="p-1 rounded-none text-white/40 hover:text-white hover:bg-[#1a1f2e] transition-colors disabled:opacity-40 disabled:pointer-events-none">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -194,7 +233,7 @@ export default function ProductForm({
             <label className={labelClass}>
               <span className={labelText}>Stock de alerta</span>
               <CantidadInput
-                unidadMedida={isPeso ? "KG" : "UN"}
+                unidadMedida={stockConDecimales ? "KG" : "UN"}
                 name="stockMinimo"
                 value={formData.stockMinimo ?? ""}
                 onChange={(v) => setFormData((prev) => ({ ...prev, stockMinimo: v ?? "" }))}

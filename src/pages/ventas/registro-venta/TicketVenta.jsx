@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Printer, X } from "lucide-react";
-import { formatMoney, labelCliente, esProductoPesable } from "./utils";
+import { formatMoney, labelCliente, unidadCorta } from "./utils";
+import { productoAdmiteDecimales } from "../../../utils/cantidad";
 import { baseImponibleUnitaria, r2 } from "../../../utils/iva";
 
-export default function TicketVenta({ datos, onCerrar, onReimprimir, reimprimiendo = false }) {
+export default function TicketVenta({ datos, onCerrar, onReimprimir, reimprimiendo = false, etiquetaCerrar = "Nueva compra" }) {
   const [status, setStatus] = useState("printing");
   const [printKey] = useState(0);
   const timerRef = useRef(null);
@@ -67,8 +68,9 @@ export default function TicketVenta({ datos, onCerrar, onReimprimir, reimprimien
   const getCantidad = (l) => Number(l.cantidad) || 0;
   const getPU = (l) => Number(l.precioUnitario) || 0;
   const getCodigo = (l) => l.codigoBarras || l.codigo || l.codigoBarra || "—";
-  const isPesable = (l) => esProductoPesable(l);
-  // Monto compacto para la tabla de productos: Gs necesitan 2 decimales salvo pesables.
+  // Unidad visible para la línea: "KG" o "L" según la unidad; en Unidad no se muestra.
+  const sufijoUnidad = (l) => (productoAdmiteDecimales(l) ? ` (${unidadCorta(l).toUpperCase()})` : "");
+  // Monto compacto para la tabla: entero sin decimales; conserva 2 si el valor los trae.
   const montoCorto = (v) => {
     const num = Number(v) || 0;
     const esEntero = Math.abs(num % 1) < 0.005;
@@ -112,7 +114,7 @@ export default function TicketVenta({ datos, onCerrar, onReimprimir, reimprimien
                 )}
                 {isCompleted && (
                   <button type="button" onClick={onCerrar} className="rounded-md bg-white px-2 py-0.5 text-[10px] font-semibold text-black transition-all hover:bg-white/90">
-                    Nueva compra
+                    {etiquetaCerrar}
                   </button>
                 )}
               </div>
@@ -201,7 +203,7 @@ export default function TicketVenta({ datos, onCerrar, onReimprimir, reimprimien
                             <span className="block truncate" title={String(getCodigo(l))}>{getCodigo(l)}</span>
                           </td>
                           <td className="align-top">
-                            <span className="block truncate" title={getNombre(l)}>{getNombre(l)}{isPesable(l) && " (KG)"}</span>
+                            <span className="block truncate" title={getNombre(l)}>{getNombre(l)}{sufijoUnidad(l)}</span>
                           </td>
                           <td className="text-right align-top">{cant.toLocaleString("es-PY", { maximumFractionDigits: 2 })}</td>
                           <td className="pl-1 text-left align-top">{montoCorto(pu)}</td>
@@ -256,7 +258,9 @@ export default function TicketVenta({ datos, onCerrar, onReimprimir, reimprimien
                   <span>{(() => {
                     const articulos = lineas.reduce((acc, l) => {
                       const cant = getCantidad(l);
-                      return acc + (esProductoPesable(l) ? 1 : Math.trunc(cant));
+                      // Un producto con unidad decimal (kg, g, L…) cuenta como
+                      // 1 artículo; los enteros suman sus unidades.
+                      return acc + (productoAdmiteDecimales(l) ? 1 : Math.trunc(cant));
                     }, 0);
                     return articulos.toLocaleString("es-PY", { maximumFractionDigits: 0 });
                   })()}</span>

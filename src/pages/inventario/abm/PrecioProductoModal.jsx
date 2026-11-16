@@ -3,24 +3,23 @@ import { TABLE_SHELL,THEAD_ROW } from "../../../components/ui/styles";
 import { X, Save, History, Search, Clock } from "lucide-react";
 import { getHistorialPrecios, updateProductoPrecio, cancelarProgramacionPrecio, getProductoById } from "../../../api/productosApi";
 import { apiErrorMessage } from "../../../api/errors";
+import { moneyGs } from "../../../utils/money";
 
 const inputClass =
   "w-full rounded-none border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-[var(--accent)] outline-none transition-colors";
-
-// Formatter único cacheado (js-cache-function-results)
-const nfGsPpm = new Intl.NumberFormat("es-PY", { minimumFractionDigits: 0 });
-function formatMoney(n) {
-  const v = Number(n);
-  if (!Number.isFinite(v)) return "—";
-  return `Gs. ${nfGsPpm.format(v)}`;
-}
 
 // ISO → DD/MM/AAAA (con hora si el valor la trae). Los "yyyy-MM-dd" crudos
 // quedan solo para inputs/`type="date"` y comparaciones; lo visible se formatea.
 function fmtFechaEs(v) {
   if (!v) return "—";
-  const s = String(v);
-  const d = new Date(/^\d{4}-\d{2}-\d{2}(T|$)/.test(s) ? s : `invalido`);
+  const s = String(v).trim();
+
+  // `new Date("YYYY-MM-DD")` se interpreta como UTC y en Paraguay mostraba el
+  // día anterior. Las fechas sin hora se formatean sin pasar por Date.
+  const soloFecha = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (soloFecha) return `${soloFecha[3]}/${soloFecha[2]}/${soloFecha[1]}`;
+
+  const d = new Date(s);
   if (Number.isNaN(d.getTime())) return s.replace("T", " ");
   const fecha = d.toLocaleDateString("es-PY", { day: "2-digit", month: "2-digit", year: "numeric" });
   const hora = s.includes("T") ? d.toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit" }) : "";
@@ -86,9 +85,13 @@ export default function PrecioProductoModal({ producto, onClose, onPrecioActuali
   async function handleGuardar(e) {
     e.preventDefault();
     if (!productoActual?.id) return;
-    const precio = parseFloat(String(nuevoPrecio).replace(",", "."));
+    const precio = Number(String(nuevoPrecio).replace(",", ".").trim());
     if (!Number.isFinite(precio) || precio <= 0) {
       setError("El precio de venta debe ser mayor que 0.");
+      return;
+    }
+    if (!Number.isInteger(precio)) {
+      setError("El precio de venta debe expresarse en guaraníes, sin decimales.");
       return;
     }
     let vigencia = null;
@@ -119,8 +122,14 @@ export default function PrecioProductoModal({ producto, onClose, onPrecioActuali
       }
       const base = updated?.id ? updated : productoActual;
       if (vigencia) {
-        // Precio programado a futuro: NO reemplaza el precio vigente actual
-        const precioData = { ...base, id: productoActual.id };
+        // Precio programado a futuro: NO reemplaza el precio vigente actual.
+        // Si el GET del producto falló, igual reflejamos la programación local.
+        const precioData = {
+          ...base,
+          id: productoActual.id,
+          precioFuturo: base.precioFuturo ?? precio,
+          fechaVigencia: base.fechaVigencia ?? vigencia,
+        };
         setProductoActual(precioData);
         onPrecioActualizado?.(precioData);
         setAviso(`Precio programado: se aplicará el ${fmtFechaEs(vigencia)}.`);
@@ -137,6 +146,7 @@ export default function PrecioProductoModal({ producto, onClose, onPrecioActuali
         };
         setProductoActual(precioData);
         onPrecioActualizado?.(precioData);
+        setGuardando(false);
         onClose?.();
       }
     } catch (err) {
@@ -152,7 +162,10 @@ export default function PrecioProductoModal({ producto, onClose, onPrecioActuali
   if (!producto) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+      onClick={() => { if (!guardando) onClose(); }}
+    >
       <div
         onClick={(e) => e.stopPropagation()}
         className="bg-[#0c0c0e] border border-white/10 rounded-none w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl"
@@ -165,8 +178,8 @@ export default function PrecioProductoModal({ producto, onClose, onPrecioActuali
               Precio de venta — {producto.nombre}
             </h2>
           </div>
-          <button type="button" onClick={onClose}
-            className="p-1 rounded-none text-white/40 hover:text-white hover:bg-[#1a1f2e] transition-colors shrink-0">
+          <button type="button" onClick={onClose} disabled={guardando}
+            className="p-1 rounded-none text-white/40 hover:text-white hover:bg-[#1a1f2e] transition-colors shrink-0 disabled:opacity-40 disabled:pointer-events-none">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -186,7 +199,7 @@ export default function PrecioProductoModal({ producto, onClose, onPrecioActuali
             <div className="text-xs text-amber-200 bg-amber-500/10 border border-amber-500/20 rounded-none px-3 py-2 flex items-center justify-between gap-2">
               <span className="flex items-center gap-2">
                 <Clock className="w-3.5 h-3.5 shrink-0" />
-                Precio a futuro pendiente: Gs. {Math.round(Number(productoActual.precioFuturo)).toLocaleString("es-PY")} desde{" "}
+                Precio a futuro pendiente: {moneyGs(productoActual.precioFuturo)} desde{" "}
                 {fmtFechaEs(productoActual.fechaVigencia)}
               </span>
               <button type="button" onClick={handleCancelarProgramacion} disabled={guardando}
@@ -296,7 +309,7 @@ export default function PrecioProductoModal({ producto, onClose, onPrecioActuali
                             )}
                           </td>
                           <td className="px-4 py-3 text-white/70 tabular-nums">
-                            {h.precioVentaAnterior != null ? formatMoney(h.precioVentaAnterior) : "—"}
+                            {h.precioVentaAnterior != null ? moneyGs(h.precioVentaAnterior) : "—"}
                             {Number.isFinite(variacion) && h.precioVentaAnterior != null && variacion !== 0 && (
                               <span className={`ml-1 text-[10px] ${variacion > 0 ? "text-[var(--accent)]" : "text-red-400"}`}>
                                 ({variacion > 0 ? "+" : ""}{variacion}%)
@@ -304,7 +317,7 @@ export default function PrecioProductoModal({ producto, onClose, onPrecioActuali
                             )}
                           </td>
                           <td className={`px-4 py-3 text-right font-semibold tabular-nums ${esProgramado ? "text-amber-200" : "text-[var(--accent)]"}`}>
-                            {formatMoney(h.precioVenta)}
+                            {moneyGs(h.precioVenta)}
                           </td>
                         </tr>
                       );

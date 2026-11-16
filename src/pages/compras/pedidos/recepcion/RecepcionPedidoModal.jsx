@@ -12,7 +12,7 @@ import { apiErrorMessage } from "../../../../api/errors";
 import CantidadInput from "../../../../components/ui/CantidadInput";
 import TimbradosModal from "../../factura/TimbradosModal";
 import ResumenCompraExito from "../../ResumenCompraExito";
-import { money, hoyAsuncion, formatoFactura, esKG, ivaLineaCompra, totalLineaCompra, CANTIDAD_MINIMA_KG, estadoTimbrado, etiquetaTimbrado, FORMAS_PAGO_COMPRA, S } from "../../utils";
+import { money, hoyAsuncion, formatoFactura, esPesable, ivaLineaCompra, totalLineaCompra, CANTIDAD_MINIMA_KG, estadoTimbrado, etiquetaTimbrado, FORMAS_PAGO_COMPRA, S } from "../../utils";
 
 export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
   const [proveedor, setProveedor] = useState(null);
@@ -95,7 +95,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
             unitAbbreviation: "",
             iva: d.tasaIva != null ? d.tasaIva : 10,
           };
-          const min = esKG(producto) ? CANTIDAD_MINIMA_KG : 1;
+          const min = esPesable(producto) ? CANTIDAD_MINIMA_KG : 1;
           const cant = Number(d.cantidad);
           return {
             producto,
@@ -148,7 +148,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
     if (existente) {
       setLineas((prev) =>
         prev.map((l) =>
-          l.producto.id === prod.id ? { ...l, cantidad: l.cantidad + (esKG(prod) ? CANTIDAD_MINIMA_KG : 1) } : l
+          l.producto.id === prod.id ? { ...l, cantidad: l.cantidad + (esPesable(prod) ? CANTIDAD_MINIMA_KG : 1) } : l
         )
       );
     } else {
@@ -156,7 +156,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
       if (!(costo > 0)) costo = await getPrecioCompraVigente(prod.id).catch(() => 0);
       setLineas((prev) => [...prev, {
         producto: { ...prod, iva: prod.iva != null ? prod.iva : 10 },
-        cantidad: esKG(prod) ? 1.0 : 1,
+        cantidad: esPesable(prod) ? 1.0 : 1,
         precioUnitario: costo > 0 ? costo : 0,
       }]);
     }
@@ -182,7 +182,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
       if (texto === "") return { ...l, cantidad: "" };
       const n = Number(texto.replace(",", "."));
       if (!Number.isFinite(n) || n <= 0) return l;
-      return { ...l, cantidad: esKG(l.producto) ? Math.round(n * 100) / 100 : Math.floor(n) };
+      return { ...l, cantidad: esPesable(l.producto) ? Math.round(n * 100) / 100 : Math.floor(n) };
     }));
   };
 
@@ -217,7 +217,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
     for (const l of lineas) {
       const precio = Number(l.precioUnitario);
       const cant = Number(l.cantidad);
-      const min = esKG(l.producto) ? CANTIDAD_MINIMA_KG : 1;
+      const min = esPesable(l.producto) ? CANTIDAD_MINIMA_KG : 1;
       if (!Number.isFinite(precio) || precio <= 0) { setError(`Indicá el precio de costo de "${l.producto.nombre}"`); return; }
       if (!Number.isFinite(cant) || cant < min) {
         setError(`La cantidad de "${l.producto.nombre}" debe ser al menos ${min}`);
@@ -514,7 +514,7 @@ export default function RecepcionPedidoModal({ pedido, onClose, onCambio }) {
                   </div>
                   <div className="py-1.5 text-right bg-white/[0.03]">
                     <CantidadInput
-                      unidadMedida={esKG(l.producto) ? "KG" : "UN"}
+                      unidadMedida={l.producto.unidadMedida}
                       value={l.cantidad}
                       onChange={(v) => actualizarCantidad(l.producto.id, v)}
                       className="mx-auto w-20"

@@ -10,7 +10,7 @@ import { Search, X } from "lucide-react";
  *  - onEnter: (opcional) al pulsar Enter (escáner/confirmar)
  *  - size: "lg" (h-12, input del POS) | "md" (h-9/10 clásicos)
  *  - right: nodo custom de la derecha; por defecto la X de limpiar
- *  - wrapperClass/className: para estados locales (ancho, margenattop, etc)
+ *  - wrapperClass/className: para estados locales (ancho, margen superior, etc.)
  */
 export default function SearchField({
   value,

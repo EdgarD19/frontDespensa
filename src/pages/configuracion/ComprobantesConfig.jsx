@@ -130,8 +130,8 @@ export default function ComprobantesConfig() {
 
   /* ── Paso 1: timbrado (solo back) ── */
   async function guardarTimbrado(form) {
-    // El estado activo ya no se gestiona en el front: la disponibilidad del
-    // timbrado depende solo de su fecha de vigencia.
+    // La disponibilidad del timbrado depende solo de su fecha de vigencia;
+    // el flag `activo` del back no se usa para bloquear ventas.
     const payload = {
       numeroTimbrado: String(form.numeroTimbrado).trim(),
       fechaInicio: form.fechaInicio || null,
@@ -336,7 +336,6 @@ function TarjetaTimbrado({ c, onEditarTimbrado, onConfigurarFactura }) {
 }
 
 /* ───────────────────────── Piezas compartidas de modal ───────────────────────── */
-/* ModalShell fue promovido a components/ui/Modal.jsx (import arriba) */
 
 function Campo({ label, requerido, ayuda, error, children }) {
   return (

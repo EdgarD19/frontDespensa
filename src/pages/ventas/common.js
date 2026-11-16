@@ -1,9 +1,8 @@
-// Helpers compartidos del módulo de ventas (antes duplicados en cada pantalla).
+// Helpers compartidos del módulo de ventas.
 //
-// Convicción de zona horaria: Paraguay es UTC-3 y `new Date("2026-10-11")`
-// (sin hora) se interpreta como UTC → en pantallas de fecha retrocedía un día.
-// Toda fecha "solo fecha" (yyyy-MM-dd) se parsea con hora local para que el
-// día mostrado sea el del string.
+// Paraguay es UTC-3 y `new Date("2026-10-11")` (sin hora) se interpreta como
+// UTC: en pantallas de fecha el día retrocedía. Toda fecha "solo fecha"
+// (yyyy-MM-dd) se parsea con hora local para conservar el día del string.
 
 const NULO = "—";
 
@@ -50,4 +49,37 @@ export function fmtMoneda(n) {
   const v = Number(n);
   if (!Number.isFinite(v)) return NULO;
   return `${v < 0 ? "-" : ""}Gs. ${nfGsCommon.format(Math.abs(Math.round(v)))}`;
+}
+
+/* ── Forma de pago ──────────────────────────────────────────────────────── */
+
+/** Opciones de forma de pago de una venta (las mismas que imprime el ticket). */
+export const FORMAS_PAGO_VENTA = [
+  { value: "EFECTIVO", label: "Efectivo" },
+  { value: "TRANSFERENCIA", label: "Transferencia" },
+  { value: "MIXTO", label: "Mixto" },
+];
+
+/** Etiqueta visible de una forma de pago; null si el valor no se reconoce. */
+export function labelFormaPagoVenta(valor) {
+  const v = String(valor ?? "").toUpperCase();
+  if (v === "EFECTIVO") return "Efectivo";
+  if (v === "TRANSFERENCIA") return "Transferencia";
+  if (v === "MIXTO") return "Mixto";
+  return null;
+}
+
+/**
+ * Forma de pago derivada de la transferencia, con la MISMA regla que
+ * `FacturaVentaService.obtenerTicket` del back:
+ *   - sin transferencia (o monto 0) → "EFECTIVO"
+ *   - monto transferido >= total     → "TRANSFERENCIA"
+ *   - monto transferido <  total     → "MIXTO"
+ * El listado de facturas de venta no devuelve la forma de pago, por eso se
+ * deriva acá a partir del monto transferido.
+ */
+export function formaPagoVenta(total, montoTransferencia) {
+  const monto = Number(montoTransferencia);
+  if (!Number.isFinite(monto) || monto <= 0) return "EFECTIVO";
+  return monto < Number(total) ? "MIXTO" : "TRANSFERENCIA";
 }

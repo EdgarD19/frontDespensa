@@ -44,10 +44,16 @@ function fmtNumero(n) {
   return new Intl.NumberFormat("es-PY", { maximumFractionDigits: 2 }).format(n ?? 0);
 }
 
-const unidad = (p) => (p.unidadMedida === "Kilogramo" ? "kg" : "u.");
-// Dado el NOMBRE de la unidad de medida del back ("Kilogramo", "Unidad"…), devuelve la abreviatura.
-const unidadDe = (nombre) =>
-  /kilo/i.test(String(nombre ?? "")) ? "kg" : "u.";
+// Dado el NOMBRE de la unidad de medida del back ("Kilogramo", "Litro",
+// "Unidad"…), devuelve la abreviatura corta.
+const unidadDe = (nombre) => {
+  const u = String(nombre ?? "").toLowerCase();
+  if (/kilo/.test(u)) return "kg";
+  if (/litro/.test(u)) return "L";
+  return "u.";
+};
+
+const unidad = (p) => unidadDe(p.unidadMedida);
 
 /* ───────── Piezas de UI ───────── */
 

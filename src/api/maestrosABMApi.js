@@ -1,6 +1,6 @@
 import { api } from "./client";
 
-// Endpoints reales del contrato (04-09-26).
+// Endpoints reales del back.
 // El backend NO implementa DELETE para categorías/subcategorías:
 // el "eliminar/desactivar" usa PATCH .../desactivar y se vuelve con PATCH .../activar.
 const CATEGORIAS = "/api/categorias";
