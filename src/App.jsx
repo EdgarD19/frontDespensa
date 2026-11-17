@@ -33,6 +33,9 @@ const OperacionesTipo = lazy(() => import('./pages/compras/devoluciones/Operacio
 const DevolucionesIntercambiosHub = lazy(() => import('./pages/compras/devoluciones/DevolucionesIntercambiosHub'));
 
 const Caja = lazy(() => import('./pages/caja/Caja'));
+const AperturaCierre = lazy(() => import('./pages/caja/AperturaCierre'));
+const IngresosEgresos = lazy(() => import('./pages/caja/IngresosEgresos'));
+const DashboardFinanciero = lazy(() => import('./pages/caja/DashboardFinanciero'));
 
 const ConfiguracionHub = lazy(() => import('./pages/configuracion/ConfiguracionHub'));
 const CategoriasABM = lazy(() => import('./pages/configuracion/CategoriasABM'));
@@ -82,7 +85,12 @@ export default function App() {
               <Route path="devoluciones-intercambios/anulaciones" element={<OperacionesTipo tipo="ANULACION" />} />
             </Route>
 
-            <Route path="caja"       element={<Caja />} />
+            <Route path="caja">
+              <Route index element={<Caja />} />
+              <Route path="apertura-cierre" element={<AperturaCierre />} />
+              <Route path="ingresos-egresos" element={<IngresosEgresos />} />
+              <Route path="dashboard" element={<DashboardFinanciero />} />
+            </Route>
 
             <Route path="configuracion">
               <Route index element={<ConfiguracionHub />} />
