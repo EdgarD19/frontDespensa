@@ -11,6 +11,7 @@ import {
 import {
   crearIntercambioVenta, getIntercambiosVenta, apiErrorMessage,
 } from "../../../api/ventasDevolucionesApi";
+import { getProductoById } from "../../../api/productosApi";
 import {
   getFacturasVenta, buscarFacturasVenta,
 } from "../../../api/facturasVentaApi";
@@ -438,15 +439,56 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
         cantidadTicket: Number.isFinite(cant) && cant > 0 ? cant : 0,
         cantidadCambio: "",
         unidad,
+        // Precio unitario informativo del ticket: el back lo guarda tal cual
+        // (si no se envía, usa el precio vigente, que puede haber cambiado).
+        precioUnitario: Number(d.precioUnitario) || 0,
+        // Stock/activo reales: se completan con getProductoById (ver efecto de abajo).
+        stock: null,
+        inactivo: null,
       };
     }));
     setObservaciones("");
     setFacturaSel(f);
     setErrorFormulario(null);
+
+    // Stock y estado real de cada producto del ticket: sin esto, un tope mayor
+    // al stock solo se descubre con el 409 del back al confirmar. Best-effort:
+    // si falla la consulta, la fila queda con el tope del ticket y el back
+    // valida igual al enviar.
+    const ids = [...new Set(detalles.map((d) => Number(d.idProducto)).filter(Number.isInteger))];
+    Promise.allSettled(ids.map((id) => getProductoById(id))).then((resultados) => {
+      const info = {};
+      ids.forEach((id, i) => {
+        if (resultados[i].status !== "fulfilled" || !resultados[i].value) return;
+        const p = resultados[i].value;
+        const stock = Number(p.stockActual);
+        info[id] = {
+          stock: Number.isFinite(stock) ? stock : null,
+          inactivo: p.activo === false,
+          unidad: p.unidadMedida,
+        };
+      });
+      setFilas((prev) => prev.map((fl) => ({
+        ...fl,
+        stock: info[Number(fl.idProducto)]?.stock ?? null,
+        inactivo: info[Number(fl.idProducto)]?.inactivo ?? null,
+        unidad: info[Number(fl.idProducto)]?.unidad || fl.unidad,
+      })));
+    });
   };
 
   const setFilaCantidad = (key, valor) => {
     setFilas((prev) => prev.map((fl) => (fl.key === key ? { ...fl, cantidadCambio: valor } : fl)));
+  };
+
+  // Tope real de la fila: la cantidad del ticket limitada por el stock actual
+  // del producto de reemplazo (el back rechaza con 409 si no hay stock). Si el
+  // stock no se pudo consultar, rige el tope del ticket.
+  const maxFila = (fl) => {
+    if (fl.stock != null && Number.isFinite(fl.stock)) {
+      return Math.max(0, Math.min(fl.cantidadTicket, fl.stock));
+    }
+    return fl.cantidadTicket;
   };
 
   const puedeRegistrar = !registrando;
@@ -501,8 +543,21 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
         setErrorFormulario(`“${fl.nombre}” no tiene una cantidad válida en el ticket.`);
         return;
       }
-      if (n > fl.cantidadTicket) {
-        setErrorFormulario(`La cantidad de “${fl.nombre}” no puede superar la del ticket (${fmtCant(fl.cantidadTicket, fl.unidad)}).`);
+      // Producto inactivo: el back lo rechaza con 400; se avisa antes de enviar.
+      if (fl.inactivo) {
+        setErrorFormulario(`“${fl.nombre}” está inactivo y no puede intercambiarse.`);
+        return;
+      }
+      const max = maxFila(fl);
+      if (max <= 0) {
+        setErrorFormulario(`“${fl.nombre}” no tiene stock disponible para el reemplazo.`);
+        return;
+      }
+      if (n > max) {
+        const motivoTope = fl.stock != null && fl.stock < fl.cantidadTicket
+          ? `el stock disponible (${fmtCant(fl.stock, fl.unidad)})`
+          : `la del ticket (${fmtCant(fl.cantidadTicket, fl.unidad)})`;
+        setErrorFormulario(`La cantidad de “${fl.nombre}” no puede superar ${motivoTope}.`);
         return;
       }
       completas.push({ fila: fl, idProducto, n });
@@ -534,6 +589,8 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
           idProductoDefectuoso: c.idProducto,
           idProductoReemplazo: c.idProducto,
           cantidad: c.n,
+          // Precio informativo del ticket; el back lo guarda tal cual.
+          precioUnitario: c.fila.precioUnitario || undefined,
         })),
       });
       onCreado(resp);
@@ -633,27 +690,40 @@ function NuevoIntercambioModal({ onCerrar, onCreado }) {
             {filas.length === 0 && (
               <tr><td colSpan={3} className="px-4 py-8 text-center text-white/30">El ticket no tiene productos.</td></tr>
             )}
-            {filas.map((fl) => (
-              <tr key={fl.key} className="border-b border-white/10 last:border-0">
-                <td className="px-4 py-2.5 font-medium text-white">{fl.nombre}</td>
-                <td className="whitespace-nowrap px-4 py-2.5 text-right tabular-nums text-white/70">
-                  {fmtCant(fl.cantidadTicket, fl.unidad)}
-                </td>
-                <td className="px-4 py-2.5">
-                  <div className="ml-auto w-32">
-                    <CantidadInput
-                      ariaLabel={`Cantidad a intercambiar de ${fl.nombre}`}
-                      unidadMedida={fl.unidad}
-                      value={fl.cantidadCambio}
-                      onChange={(v) => setFilaCantidad(fl.key, v)}
-                      max={fl.cantidadTicket}
-                      placeholder="0"
-                      className="w-full"
-                    />
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {filas.map((fl) => {
+              const max = maxFila(fl);
+              const sinStock = fl.stock != null && fl.stock <= 0;
+              return (
+                <tr key={fl.key} className="border-b border-white/10 last:border-0">
+                  <td className="px-4 py-2.5 font-medium text-white">
+                    {fl.nombre}
+                    {fl.inactivo && (
+                      <span className="ml-2 rounded-none bg-red-500/15 px-1.5 py-0.5 text-[10px] font-medium text-red-400">inactivo</span>
+                    )}
+                    {sinStock && (
+                      <span className="ml-2 rounded-none bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">sin stock</span>
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-2.5 text-right tabular-nums text-white/70">
+                    {fmtCant(fl.cantidadTicket, fl.unidad)}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <div className="ml-auto w-32">
+                      <CantidadInput
+                        ariaLabel={`Cantidad a intercambiar de ${fl.nombre}`}
+                        unidadMedida={fl.unidad}
+                        value={fl.cantidadCambio}
+                        onChange={(v) => setFilaCantidad(fl.key, v)}
+                        max={max}
+                        placeholder="0"
+                        disabled={fl.inactivo || max <= 0}
+                        className="w-full"
+                      />
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

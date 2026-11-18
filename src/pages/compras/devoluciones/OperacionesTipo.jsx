@@ -1551,6 +1551,27 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
       if (seleccionSeq.current !== miSeq) return;
       setFacturaDetalle(conStock(res, res?.detalles));
       if (tipo !== "ANULACION") setFacturaSel(factura);
+      // Devolución: lo ya devuelto en operaciones previas limita lo disponible
+      // (el back suma PENDIENTE + COMPLETADA de esta factura por producto).
+      if (tipo === "DEVOLUCION") {
+        setYaDevueltoPorProducto({});
+        getDevolucionesCompletas({ pageSize: 1000 })
+          .then((todas) => {
+            if (seleccionSeq.current !== miSeq) return;
+            const mapa = {};
+            (todas || []).forEach((dv) => {
+              if (Number(dv?.facturaOriginal?.idFactura) !== Number(factura.idFactura)) return;
+              if (!["PENDIENTE", "COMPLETADA"].includes(String(dv?.estado || "").toUpperCase())) return;
+              (dv?.detalles || []).forEach((x) => {
+                const id = x?.producto?.idProducto;
+                if (id == null) return;
+                mapa[id] = (Number(mapa[id]) || 0) + (Number(x.cantidadDevuelta) || 0);
+              });
+            });
+            setYaDevueltoPorProducto(mapa);
+          })
+          .catch(() => { /* best-effort: sin datos, el back valida al enviar */ });
+      }
     } catch (err) {
       if (seleccionSeq.current !== miSeq) return;
       console.error("Error al cargar detalle:", err);
@@ -1564,6 +1585,14 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
   // Cantidades keyeadas por ÍNDICE de línea del detalle (no por idProducto):
   // una factura puede traer el mismo producto en dos líneas y cada una debe
   // poder operarse por separado.
+  // Cantidad ya devuelta por producto en devoluciones previas de ESTA factura
+  // (PENDIENTE + COMPLETADA, igual que suma el back): disponible =
+  // cantidad original − ya devuelto. Best-effort: si falla la consulta, se
+  // asume 0 y el back rechaza al enviar.
+  const [yaDevueltoPorProducto, setYaDevueltoPorProducto] = useState({});
+  const yaDevueltoDe = (d) => Number(yaDevueltoPorProducto[d.idProducto]) || 0;
+  const disponibleDe = (d) => Math.max(0, (Number(d.cantidad) || 0) - yaDevueltoDe(d));
+
   const handleCambiarCantidad = (idx, cantidad) => {
     const d = facturaDetalle?.detalles?.[idx];
     const max = d ? limitesCantidad(d, tipo) : 0;
@@ -1591,15 +1620,17 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
   };
 
   // Límite máximo de cantidad por producto según el tipo de operación.
-  // El stock físico actual es siempre el techo: el backend rechaza con
-  // StockInsuficienteParaDevolucion/ParaIntercambio si no alcanza.
+  // Devolución: lo disponible es la cantidad original MENOS lo ya devuelto en
+  // devoluciones previas de la factura, y además el stock físico actual techo
+  // (el back rechaza con StockInsuficienteParaDevolucion si no alcanza).
+  // Intercambio: cantidad del ticket limitada por el stock (el producto se va).
   const limitesCantidad = (d, tipoOp) => {
-    const topeFactura = maxPorFactura(d, tipoOp);
+    const topeBase = tipoOp === "DEVOLUCION" ? disponibleDe(d) : maxPorFactura(d, tipoOp);
     const stockActual = d?.stockActual !== undefined && d?.stockActual !== null
       ? Number(d.stockActual)
       : null;
-    if (stockActual === null || !Number.isFinite(stockActual)) return topeFactura;
-    return Math.max(0, Math.min(topeFactura, stockActual));
+    if (stockActual === null || !Number.isFinite(stockActual)) return Math.max(0, topeBase);
+    return Math.max(0, Math.min(topeBase, stockActual));
   };
 
   // Atajo de comodidad: marcar todos los productos con su cantidad máxima
@@ -1627,12 +1658,57 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
   const tieneProductos = Object.values(tipo === "DEVOLUCION" ? productosDevueltos : productosEntregar).some((v) => Number(v) > 0);
 
   // Devolver el 100% de todos los productos es una anulación, no una devolución.
-  // Se valida de forma cruzada: cada línea llega a su cantidad original.
+  // Espejo del back: considerando lo YA DEVUELTO en devoluciones previas, si el
+  // pedido cubre la cantidad original de TODOS los productos de la factura,
+  // corresponde al flujo de Anulación. Por producto (no por línea): el back
+  // fusiona las líneas repetidas.
   const esDevolucionTotal = tipo === "DEVOLUCION" && (facturaDetalle?.detalles?.length || 0) > 0
-    && facturaDetalle.detalles.every((d, idx) => {
+    && (() => {
+      const porProducto = new Map();
+      facturaDetalle.detalles.forEach((d, idx) => {
+        const e = porProducto.get(d.idProducto) ?? {
+          pedido: 0,
+          original: Number(d.cantidad) || 0,
+          yaDev: yaDevueltoDe(d),
+        };
+        e.pedido += Number(productosDevueltos[idx]) || 0;
+        porProducto.set(d.idProducto, e);
+      });
+      const conPedido = [...porProducto.values()].filter((e) => e.pedido > 0);
+      if (conPedido.length !== porProducto.size) return false;
+      return conPedido.every((e) => e.yaDev + e.pedido >= e.original);
+    })();
+
+  // Espejo del back: el total pedido por PRODUCTO (fusiona líneas repetidas)
+  // no puede superar lo disponible (original − ya devuelto) ni el stock.
+  const avisoTopes = useMemo(() => {
+    if (tipo !== "DEVOLUCION" || !facturaDetalle) return null;
+    const porProducto = new Map();
+    facturaDetalle.detalles.forEach((d, idx) => {
       const cant = Number(productosDevueltos[idx]) || 0;
-      return cant >= (Number(d.cantidad) || 0);
+      if (cant <= 0) return;
+      const e = porProducto.get(d.idProducto) ?? {
+        nombre: d.nombreProducto || `Producto #${d.idProducto}`,
+        pedido: 0,
+        original: Number(d.cantidad) || 0,
+        yaDev: yaDevueltoDe(d),
+        stock: d?.stockActual != null && d?.stockActual !== "" ? Number(d.stockActual) : null,
+      };
+      e.pedido += cant;
+      porProducto.set(d.idProducto, e);
     });
+    for (const e of porProducto.values()) {
+      const disponible = Math.max(0, e.original - e.yaDev);
+      if (e.pedido > disponible) {
+        return `El total a devolver de “${e.nombre}” (${fmtCant(e.pedido)}) supera lo disponible (${fmtCant(disponible)}) — ya se devolvieron ${fmtCant(e.yaDev)} en devoluciones anteriores.`;
+      }
+      if (Number.isFinite(e.stock) && e.pedido > e.stock) {
+        return `El total a devolver de “${e.nombre}” (${fmtCant(e.pedido)}) supera el stock actual (${fmtCant(e.stock)}).`;
+      }
+    }
+    return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- yaDevueltoPorProducto entra por yaDevueltoDe
+  }, [tipo, facturaDetalle, productosDevueltos, yaDevueltoPorProducto]);
 
   // ----- Prevalidación de anulación (espejo de las reglas del backend) -----
   // Espejo de AnulacionFacturaService.anular: estado RECIBIDA (esto cubre de
@@ -1694,7 +1770,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
   const bloqueaDevolucion = avisosDevolucion.length > 0;
   const puedeRegistrar = tipo === "ANULACION"
     ? !bloqueaAnulacion
-    : tieneProductos && !esDevolucionTotal && !bloqueaDevolucion;
+    : tieneProductos && !esDevolucionTotal && !bloqueaDevolucion && !avisoTopes;
 
   const handleRegistrar = () => {
     if (!puedeRegistrar || registrando) return;
@@ -2079,6 +2155,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                 <tr className={THEAD_ROW}>
                   <th className="px-4 py-3 font-medium">Producto</th>
                   <th className="px-4 py-3 text-center font-medium">Comprado</th>
+                  {tipo === "DEVOLUCION" && <th className="px-4 py-3 text-center font-medium">Ya dev.</th>}
                   <th className="px-4 py-3 text-center font-medium">Stock</th>
                   <th className="w-32 px-4 py-3 text-center font-medium">{tipo === "DEVOLUCION" ? "Devolver" : "Intercambiar"}</th>
                   <th className="px-4 py-3 text-right font-medium">Importe</th>
@@ -2095,12 +2172,23 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                     : null;
                   const sinStock = stock !== null && stock <= 0;
                   const stockLimita = stock !== null && max < maxPorFactura(d, tipo);
+                  const yaDev = yaDevueltoDe(d);
                   return (
                     <tr key={idx} className={`border-b border-white/10 last:border-0 transition-colors ${activo ? "bg-[var(--accent)]/[0.04]" : "hover:bg-white/[0.03]"}`}>
-                      <td className="px-4 py-3 text-white">{d.nombreProducto}</td>
+                      <td className="px-4 py-3 text-white">
+                        {d.nombreProducto}
+                        {tipo === "DEVOLUCION" && yaDev > 0 && (
+                          <span className="ml-2 rounded-none bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
+                            ya devuelto {fmtCant(yaDev)}
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-center tabular-nums text-white/60">{fmtCant(d.cantidad)}</td>
+                      {tipo === "DEVOLUCION" && (
+                        <td className="px-4 py-3 text-center tabular-nums text-white/60">{fmtCant(yaDev)}</td>
+                      )}
                       <td className={`px-4 py-3 text-center tabular-nums ${sinStock ? "text-red-400/80" : stockLimita ? "text-amber-400/80" : "text-white/60"}`}
-                        title={stockLimita ? `Stock insuficiente: máximo ${max}` : undefined}>
+                        title={stockLimita ? `Máximo permitido: ${fmtCant(max)}` : undefined}>
                         {stock === null ? "—" : fmtCant(stock)}
                       </td>
                       <td className="px-4 py-3">
@@ -2112,6 +2200,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                             permitirCero
                             max={max}
                             maxDecimales={2}
+                            disabled={max <= 0}
                             ariaLabel={`Cantidad a ${tipo === "DEVOLUCION" ? "devolver" : "intercambiar"} de ${d.nombreProducto}`}
                           />
                           <button
@@ -2142,7 +2231,7 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
               type="text"
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
-              maxLength={tipo === "INTERCAMBIO" ? 100 : 500}
+              maxLength={100}
               autoComplete="off"
               placeholder="Ej: Producto defectuoso, error en pedido"
               className={fieldClass}
@@ -2240,6 +2329,11 @@ function NuevaOperacionModal({ tipo, facturas, loadingFacturas, facturasBloquead
                     <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                     Estás devolviendo el total de la factura. Para eso, usá la sección{" "}
                     <span className="font-semibold">Anulaciones</span>.
+                  </p>
+                ) : avisoTopes ? (
+                  <p className="flex items-center gap-1.5 text-red-400" role="alert">
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                    {avisoTopes}
                   </p>
                 ) : (
                   <p className="text-white/40">

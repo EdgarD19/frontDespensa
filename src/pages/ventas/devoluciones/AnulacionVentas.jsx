@@ -354,7 +354,7 @@ function NuevaAnulacionModal({ onCerrar, onAnulada }) {
     setErrorFacturas(null);
     (async () => {
       try {
-        const res = q.length >= 3
+        const res = q.length >= 2
           ? await buscarFacturasVenta(q, { pageSize: 50, sortDir: "DESC" })
           : await getFacturasVenta({ page: 0, pageSize: 50, sortDir: "DESC" });
         if (!activo) return;
@@ -431,7 +431,7 @@ function NuevaAnulacionModal({ onCerrar, onAnulada }) {
           autoFocus
         />
         <p className="mt-1 text-xs text-white/40">
-          Escribí al menos 3 caracteres para buscar; vacío muestra las facturas más recientes. Solo se anula la factura completa.
+          Escribí al menos 2 caracteres para buscar; vacío muestra las facturas más recientes. Solo se anula la factura completa.
         </p>
       </div>
 
@@ -625,7 +625,7 @@ function NuevaAnulacionModal({ onCerrar, onAnulada }) {
             <div className="flex items-center justify-between gap-3 border-t border-white/10 px-5 py-3.5">
               <div className="flex flex-1 items-start gap-2 text-xs">
                 <p className="text-white/40">
-                  La anulación revierte el stock de <span className="font-semibold tabular-nums text-[var(--accent)]">{fmtMoneda(facturaSel?.totalGeneral)}</span> en productos.
+                  La anulación reintegra al inventario todos los productos de la factura y no se puede deshacer.
                 </p>
               </div>
               <div className="flex gap-2">
