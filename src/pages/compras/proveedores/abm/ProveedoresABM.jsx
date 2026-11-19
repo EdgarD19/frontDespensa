@@ -187,7 +187,7 @@ export default function ProveedoresABM() {
           confirmarClass={
             confirmarProveedor.activar
               ? "bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)]"
-              : "bg-[#ef4444] text-black hover:bg-[#dc2626]"
+              : "bg-red-500 text-white hover:bg-red-400"
           }
           cargando={cambiando}
           onConfirmar={confirmarCambioEstado}

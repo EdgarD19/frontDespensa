@@ -110,22 +110,33 @@ export default function HistorialVentas() {
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
 
   // Forma de pago: el listado de facturas de venta no la trae. Se deriva del
-  // monto transferido de cada venta (misma regla que el ticket del back), con
-  // UNA sola lectura del listado de transferencias. `null` = cargando o no
-  // disponible: la columna muestra "—" y no se inventa "Efectivo".
+  // monto de transferencias RECIBIDAS de cada venta, con UNA lectura del
+  // listado de transferencias. `null` = cargando o no disponible: la columna
+  // muestra "—" y no se inventa "Efectivo".
   const [montosTransferencia, setMontosTransferencia] = useState(null);
-  useEffect(() => {
-    let activo = true;
-    (async () => {
-      try {
-        const mapa = await getMontosTransferenciaPorFactura();
-        if (activo) setMontosTransferencia(mapa);
-      } catch {
-        /* best-effort: queda "—" en la columna y el filtro deshabilitado */
-      }
-    })();
-    return () => { activo = false; };
+  const cargarMontosTransferencia = useCallback(async () => {
+    try {
+      const mapa = await getMontosTransferenciaPorFactura();
+      setMontosTransferencia(mapa);
+    } catch {
+      /* best-effort: queda "—" en la columna y el filtro deshabilitado */
+    }
   }, []);
+
+  useEffect(() => { cargarMontosTransferencia(); }, [cargarMontosTransferencia]);
+
+  // La transferencia se puede recibir/descartar desde el POS u otra pestaña
+  // mientras esta pantalla está abierta: al volver el foco, refrescar el mapa
+  // para que la columna refleje el estado actual (pendiente/recibida).
+  useEffect(() => {
+    const onFocus = () => cargarMontosTransferencia();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+  }, [cargarMontosTransferencia]);
 
   // Reimpresión de ticket viejo: preview + envío a la impresora (QZ Tray/MOCK).
   const [ticketDatos, setTicketDatos] = useState(null);
@@ -197,16 +208,37 @@ export default function HistorialVentas() {
   }, [cargar]);
 
   // Filtros del back NO disponibles (fecha, estado y forma de pago): se refina
-  // la página actual.
-  const formaPagoDe = useCallback(
-    (f) => (montosTransferencia ? formaPagoVenta(totalFactura(f), montosTransferencia[f.idFacturaVenta]) : null),
+  // la página actual. Regla de negocio: la venta MIXTA recién aparece en el
+  // historial cuando el cobro está completo (transferencia RECIBIDA); mientras
+  // está PENDIENTE la fila se oculta. Transferencia pura pendiente: se ve con
+  // la marca "Pendiente de cobro". DESCARTADO queda Efectivo.
+  const formaPagoInfoDe = useCallback(
+    (f) => {
+      if (!montosTransferencia) return null;
+      const entry = montosTransferencia[f.idFacturaVenta];
+      if (!entry) return { label: "EFECTIVO", pendiente: false };
+      if (entry.estado === "PENDIENTE") {
+        // Mixto pendiente: fila oculta hasta recibir la transferencia.
+        if (formaPagoVenta(totalFactura(f), entry.monto) === "MIXTO") {
+          return { label: null, pendiente: true, oculta: true };
+        }
+        return { label: null, pendiente: true };
+      }
+      return { label: formaPagoVenta(totalFactura(f), entry.monto), pendiente: false };
+    },
     [montosTransferencia],
+  );
+  const formaPagoDe = useCallback(
+    (f) => formaPagoInfoDe(f)?.label ?? null,
+    [formaPagoInfoDe],
   );
 
   const filtradas = useMemo(() => {
     const d = (desde || "").trim();
     const h = (hasta || "").trim();
     return filas.filter((f) => {
+      // Mixto con transferencia pendiente: la fila no aparece (cobro incompleto).
+      if (formaPagoInfoDe(f)?.oculta) return false;
       if (estado === "VIGENTES" && esAnulada(f)) return false;
       if (estado === "ANULADAS" && !esAnulada(f)) return false;
       if (formaPago && formaPagoDe(f) !== formaPago) return false;
@@ -217,11 +249,15 @@ export default function HistorialVentas() {
       }
       return true;
     });
-  }, [filas, estado, desde, hasta, formaPago, formaPagoDe]);
+  }, [filas, estado, desde, hasta, formaPago, formaPagoDe, formaPagoInfoDe]);
 
   // Cuando activan filtros locales escondí filas de la página: el "Mostrando"
   // del paginado deja de ser exacto → solo se informa si no hay filtro local.
   const hayFiltroLocal = !!(estado || desde || hasta || formaPago);
+  // Ventas mixtas de la página cuyo cobro está incompleto (transferencia
+  // pendiente): no aparecen en la tabla y se avisa acá para que no parezcan
+  // perdidas.
+  const ocultasPorCobro = filas.filter((f) => formaPagoInfoDe(f)?.oculta).length;
   // Igual que en compras: el botón "Limpiar" aparece solo si hay algo aplicado.
   const hayFiltros = Boolean(texto.trim() || idCliente || desde || hasta || estado || formaPago);
   const limpiarFiltros = () => {
@@ -254,18 +290,21 @@ export default function HistorialVentas() {
   // Abre el preview del ticket de una venta vieja; desde ahí se envía a la
   // impresora con "Reimprimir". El back ya arma el ticket completo
   // (GET /api/facturas-venta/{id}/ticket) con empresa, timbrado y cliente.
-  // La forma de pago se pisa con la derivación del front (formaPagoDe): el
-  // back cuenta transferencias DESCARTADAS que no fueron pago real.
+  // La forma de pago se pisa con la derivación del front: mientras la
+  // transferencia está PENDIENTE el cobro no está completo, así que el
+  // ticket informa PENDIENTE en vez de la forma de pago final (que el back
+  // derive incluso con transferencias descartadas).
   async function imprimirTicket(f) {
     if (ticketCargandoId) return;
     setTicketError(null);
     setTicketCargandoId(f.idFacturaVenta);
     try {
       const res = await getTicketFacturaVenta(f.idFacturaVenta);
+      const info = formaPagoInfoDe(f);
       setTicketDatos(
         ticketDesdeFactura(res, {
-          formaPago: formaPagoDe(f),
-          montoTransferencia: montosTransferencia?.[f.idFacturaVenta],
+          formaPago: info?.pendiente ? "PENDIENTE" : info?.label ?? null,
+          montoTransferencia: info?.pendiente ? undefined : montosTransferencia?.[f.idFacturaVenta]?.monto,
         })
       );
     } catch (err) {
@@ -440,7 +479,9 @@ export default function HistorialVentas() {
                   <p className="text-sm">
                     {hayFiltros
                       ? "No se encontraron ventas con los filtros aplicados."
-                      : "Aún no hay ventas registradas."}
+                      : ocultasPorCobro > 0
+                        ? "Aún no hay ventas cobradas por completo en esta página."
+                        : "Aún no hay ventas registradas."}
                   </p>
                   {hayFiltros && (
                     <button
@@ -460,7 +501,25 @@ export default function HistorialVentas() {
                     <td className="px-4 py-3 text-white/70 whitespace-nowrap">{fmtFecha(f.fechaEmision || f.fechaCreacion)}</td>
                     <td className="px-4 py-3 text-white">{f.nombreCliente || "Sin Nombre"}</td>
                     <td className="px-4 py-3 text-white/70 whitespace-nowrap">{f.numeroFactura || "—"}</td>
-                    <td className="px-4 py-3">{formaPagoBadge(formaPagoDe(f))}</td>
+                    <td className="px-4 py-3">
+                      {(() => {
+                        const info = formaPagoInfoDe(f);
+                        return (
+                          <div className="space-y-1">
+                            {info?.pendiente ? (
+                              <span
+                                className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-400"
+                                title="Cobro incompleto: falta recibir la transferencia."
+                              >
+                                ⏳ Pendiente de cobro
+                              </span>
+                            ) : (
+                              formaPagoBadge(info?.label)
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </td>
                     <td className="px-4 py-3">{estadoVenta(f)}</td>
                     <td className="px-4 py-3 text-white font-medium text-right whitespace-nowrap">{fmtMoneda(totalFactura(f))}</td>
                     <td className="px-4 py-3 text-right">
@@ -518,7 +577,7 @@ export default function HistorialVentas() {
         <DetalleFacturaVenta
           factura={seleccionada}
           cargando={cargandoDetalle}
-          formaPago={formaPagoDe(seleccionada)}
+          formaPago={formaPagoInfoDe(seleccionada)?.pendiente ? "PENDIENTE" : formaPagoDe(seleccionada)}
           onClose={() => setSeleccionada(null)}
         />
       )}

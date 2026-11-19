@@ -144,7 +144,7 @@ export function SeccionCategorias() {
           disabled={guardando}
           className={inputClass} />
         <button onClick={handleAdd} disabled={guardando}
-          className="flex items-center gap-1 px-3 py-2 bg-[var(--accent)] hover:text-black text-sm font-medium rounded-none transition-colors disabled:opacity-40 disabled:pointer-events-none">
+          className="flex items-center gap-1 px-3 py-2 bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)] text-sm font-medium rounded-none transition-colors disabled:opacity-40 disabled:pointer-events-none">
           <Plus className="w-4 h-4" /> Agregar
         </button>
       </div>
@@ -194,7 +194,7 @@ export function SeccionCategorias() {
           confirmarClass={
             confirmarCat.activar
               ? "bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)]"
-              : "bg-[#ef4444] text-black hover:bg-[#dc2626]"
+              : "bg-red-500 text-white hover:bg-red-400"
           }
           cargando={cambiando}
           onConfirmar={confirmarCambioEstado}
@@ -323,7 +323,7 @@ export function SeccionSubcategorias() {
           disabled={guardando}
           className={inputClass} />
         <button onClick={handleAdd} disabled={guardando}
-          className="flex items-center gap-1 px-3 py-2 bg-[var(--accent)] hover:text-black text-sm font-medium rounded-none transition-colors disabled:opacity-40 disabled:pointer-events-none">
+          className="flex items-center gap-1 px-3 py-2 bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)] text-sm font-medium rounded-none transition-colors disabled:opacity-40 disabled:pointer-events-none">
           <Plus className="w-4 h-4" /> Agregar
         </button>
       </div>
@@ -373,7 +373,7 @@ export function SeccionSubcategorias() {
           confirmarClass={
             confirmarSub.activar
               ? "bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)]"
-              : "bg-[#ef4444] text-black hover:bg-[#dc2626]"
+              : "bg-red-500 text-white hover:bg-red-400"
           }
           cargando={cambiando}
           onConfirmar={confirmarCambioEstado}

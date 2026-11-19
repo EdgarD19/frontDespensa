@@ -801,11 +801,12 @@ export default function RegistroVenta() {
                     const stock = parseStockDisponible(p);
                     const pesable = esProductoPesable(p);
                     const sinStock = stock <= 0;
+                    const inactivo = p.activo === false;
                     return (
                       <button
                         key={p.id}
                         type="button"
-                        disabled={sinStock}
+                        disabled={sinStock || inactivo}
                         onClick={() => { seleccionJustoAhoraRef.current = true; agregarProducto(p, 1); setSearch(""); setMostrarDropdown(false); focusSearch(); }}
                         className="flex w-full items-center gap-3 border-b border-white/5 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-white/[0.05] disabled:pointer-events-none disabled:opacity-40">
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-none border border-white/10 bg-white/[0.04]">
@@ -819,9 +820,11 @@ export default function RegistroVenta() {
                             {productoAdmiteDecimales(p) ? `${formatMoney(precio)}/${unidadCorta(p)}` : formatMoney(precio)}
                           </p>
                         </div>
-                        {sinStock
-                          ? <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs text-red-400">Sin stock</span>
-                          : <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-white/60" style={MONO}>{stock} {unidadCorta(p)}</span>}
+                        {inactivo
+                          ? <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs text-amber-400">Inactivo</span>
+                          : sinStock
+                            ? <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs text-red-400">Sin stock</span>
+                            : <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-white/60" style={MONO}>{stock} {unidadCorta(p)}</span>}
                       </button>
                     );
                   })}
@@ -1355,9 +1358,9 @@ function TransferenciasPendientesModal({ onCerrar, onCambio }) {
       : d.toLocaleString("es-PY", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
   };
 
-  // Más antigua arriba: la primera registrada es la primera que corresponde recibir.
+  // Más reciente arriba: las últimas cobradas por transferencia quedan a la vista.
   const ordenada = useMemo(
-    () => [...lista].sort((a, b) => String(a?.fechaCreacion ?? "").localeCompare(String(b?.fechaCreacion ?? ""))),
+    () => [...lista].sort((a, b) => String(b?.fechaCreacion ?? "").localeCompare(String(a?.fechaCreacion ?? ""))),
     [lista]
   );
   const totalPendiente = ordenada.reduce((acc, t) => acc + (Number(t?.monto) || 0), 0);

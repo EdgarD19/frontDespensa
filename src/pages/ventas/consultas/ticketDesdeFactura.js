@@ -11,10 +11,11 @@
  * transferido que trae el front.
  *
  * ⚠️ El back (obtenerTicket) cuenta TODA transferencia de la factura, incluso
- * una DESCARTADA: si el pago se rechazó y la venta se cobró en efectivo,
+ * una DESCARTADA o PENDIENTE: si el pago se rechazó (o aún no se recibió),
  * `t.formaPago` dice TRANSFERENCIA/MIXTO. Por eso el consumidor puede pasar
- * `formaPago`/`montoTransferencia` derivados en el front (excluyen DESCARTADO,
- * ver ventas/common.js) para pisar lo que informa el back.
+ * `formaPago`/`montoTransferencia` derivados en el front (solo cuentan las
+ * RECIBIDAS, ver ventas/common.js y transferenciasVentaApi.js) para pisar lo
+ * que informa el back.
  */
 
 export function ticketDesdeFactura(t, { formaPago: formaPagoFront, montoTransferencia } = {}) {

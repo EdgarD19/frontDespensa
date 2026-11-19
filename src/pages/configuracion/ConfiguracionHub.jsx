@@ -34,7 +34,7 @@ export default function ConfiguracionHub() {
     <div className="max-w-5xl mx-auto py-8 px-4 space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold text-white tracking-tight">Configuración</h1>
-        <p className="text-sm text-white/40">Selecciona un módulo para continuar</p>
+        <p className="text-sm text-white/40">Selecciona una opción para continuar</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 max-w-3xl mx-auto gap-4">

@@ -66,17 +66,22 @@ export function labelFormaPagoVenta(valor) {
   if (v === "EFECTIVO") return "Efectivo";
   if (v === "TRANSFERENCIA") return "Transferencia";
   if (v === "MIXTO") return "Mixto";
+  // Cobro incompleto: la transferencia sigue PENDIENTE (historial/detalle).
+  if (v === "PENDIENTE") return "Pendiente de cobro";
   return null;
 }
 
 /**
- * Forma de pago derivada de la transferencia, con la MISMA regla que
- * `FacturaVentaService.obtenerTicket` del back:
+ * Forma de pago derivada del monto de la transferencia (PENDING y RECIBIDA
+ * cuentan; DESCARTADA no):
  *   - sin transferencia (o monto 0) → "EFECTIVO"
  *   - monto transferido >= total     → "TRANSFERENCIA"
  *   - monto transferido <  total     → "MIXTO"
- * El listado de facturas de venta no devuelve la forma de pago, por eso se
- * deriva acá a partir del monto transferido.
+ * Regla de visualización del historial: la venta MIXTA recién aparece cuando
+ * el cobro está completo (transferencia RECIBIDA) — mientras la transferencia
+ * está PENDIENTE la fila se oculta (HistorialVentas.formaPagoInfoDe). El
+ * listado de facturas de venta no devuelve la forma de pago, por eso se
+ * deriva acá.
  */
 export function formaPagoVenta(total, montoTransferencia) {
   const monto = Number(montoTransferencia);

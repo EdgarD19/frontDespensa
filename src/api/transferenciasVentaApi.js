@@ -56,27 +56,32 @@ export async function getTransferenciasPorFactura(idFacturaVenta) {
 }
 
 /**
- * Mapa `idFacturaVenta → monto transferido`, para derivar la forma de pago en
- * el historial de ventas (el listado de facturas de venta no la devuelve).
+ * Mapa `idFacturaVenta → { monto, estado }` de la transferencia de cada venta,
+ * para derivar la forma de pago en el historial (el listado de facturas de
+ * venta no la devuelve).
  *
  * Se recorre el listado paginado porque el back no permite pedir varias
  * facturas juntas y `/factura/{id}` responde 500 (no 404) cuando la venta no
  * tiene transferencia.
  *
- * Una transferencia con estado DESCARTADO no cuenta como pago: la venta se
- * cobró por otra vía. Si no se puede leer el listado completo, lanza error para
- * que el consumidor muestre "—" en lugar de afirmar "Efectivo".
+ * Estados: RECIBIDO es pago confirmado; PENDIENTE es cobro en curso (la
+ * venta muestra Transferencia/Mixto con la marca "pendiente de cobro");
+ * DESCARTADO no fue pago real (la venta queda EFECTIVO). Si no se puede leer
+ * el listado completo, lanza error para que el consumidor muestre "—" en
+ * lugar de inventar.
  */
 export async function getMontosTransferenciaPorFactura({ pageSize = 200, maxPaginas = 25 } = {}) {
   const mapa = {};
   for (let page = 0; page < maxPaginas; page++) {
     const { content, totalElements } = await getTransferenciasVenta({ page, pageSize });
     for (const t of content) {
-      if (String(t?.estado || "").toUpperCase() === "DESCARTADO") continue;
+      // PENDIENTE = cobro en curso (se muestra con marca); DESCARTADO no fue pago.
+      const estado = String(t?.estado || "").toUpperCase();
+      if (estado !== "RECIBIDO" && estado !== "PENDIENTE") continue;
       const id = t?.idFacturaVenta ?? t?.facturaVenta?.idFacturaVenta;
       const monto = Number(t?.monto);
       if (id == null || !Number.isFinite(monto)) continue;
-      mapa[id] = monto;
+      mapa[id] = { monto, estado };
     }
     const total = Number(totalElements);
     if (content.length < pageSize) return mapa;

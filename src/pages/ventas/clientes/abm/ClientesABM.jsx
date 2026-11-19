@@ -3,6 +3,7 @@ import PageHeader from "../../../../components/ui/PageHeader";
 import usePaises from "../../../../hooks/usePaises";
 import { Link } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react"
+import { X, Ban } from "lucide-react";
 import ClientesTabla from "./ClientesTabla"
 import ClientesModal from "./ClientesModal"
 import { getCiudades } from "../../../../api/maestrosApi"
@@ -225,16 +226,16 @@ export default function ClientesABM() {
                                 <button
                                     type="button"
                                     onClick={() => setToggleModal(null)}
-                                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0c0c0e] hover:bg-[#1a1a22] text-[#b0b0c0] font-medium rounded-none transition-colors"
+                                    className="rounded-none border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white/70 transition-colors hover:text-white"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     type="button"
                                     onClick={handleConfirmToggle}
-                                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-medium rounded-none transition-colors"
+                                    className="rounded-none bg-red-500 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-400"
                                 >
-                                    <Ban className="w-4 h-4" />
+                                    <Ban className="w-4 h-4 inline mr-1 -mt-0.5" />
                                     {toggleModal.activo ? "Inactivar" : "Activar"}
                                 </button>
                             </div>

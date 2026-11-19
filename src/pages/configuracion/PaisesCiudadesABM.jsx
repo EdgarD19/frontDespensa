@@ -108,7 +108,7 @@ function SeccionPaises() {
           placeholder="Código (PY)"
           maxLength={2}
           className="w-28 bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent)]" />
-        <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent)] hover:text-black text-sm font-medium rounded-none transition-colors">
+        <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)] text-sm font-medium rounded-none transition-colors">
           <Plus className="w-4 h-4" /> Agregar
         </button>
       </div>
@@ -163,7 +163,7 @@ function SeccionPaises() {
           confirmarClass={
             confirmarPais.activar
               ? "bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)]"
-              : "bg-[#ef4444] text-black hover:bg-[#dc2626]"
+              : "bg-red-500 text-white hover:bg-red-400"
           }
           cargando={cambiando}
           onConfirmar={confirmarCambioEstado}
@@ -302,7 +302,7 @@ function SeccionCiudades() {
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           placeholder="Código postal"
           className="w-32 bg-white/5 border border-white/10 rounded-none px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[var(--accent)]" />
-        <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent)] hover:text-black text-sm font-medium rounded-none transition-colors">
+        <button onClick={handleAdd} className="flex items-center gap-1 px-3 py-2 bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)] text-sm font-medium rounded-none transition-colors">
           <Plus className="w-4 h-4" /> Agregar
         </button>
       </div>
@@ -356,7 +356,7 @@ function SeccionCiudades() {
           confirmarClass={
             confirmarCiudad.activar
               ? "bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)]"
-              : "bg-[#ef4444] text-black hover:bg-[#dc2626]"
+              : "bg-red-500 text-white hover:bg-red-400"
           }
           cargando={cambiando}
           onConfirmar={confirmarCambioEstado}

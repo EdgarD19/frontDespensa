@@ -63,29 +63,28 @@ export function getProveedorById(id) {
   return api.get(`${BASE}/${id}`);
 }
 
-// Mapea el formulario del frontend al ProveedorRequest del contrato.
+// Mapea el formulario del frontend al ProveedorRequest del back.
+// OJO: el PUT del back ignora los campos `null` ("no tocar"), así que los
+// campos de texto opcionales se envían con "" para que se puedan VACIAR.
+// (Verificado: el back limpia el campo cuando llega "".)
 function buildProveedorBody(data) {
   const body = {
     nombre: data.nombre?.trim() || "",
     tipoPersona: data.tipoPersona || "FISICA",
     tipoDocumento: data.tipoDocumento || (data.tipoPersona === "JURIDICA" ? "RUC" : "CI"),
     numeroDocumento: data.numeroDocumento?.trim() || null,
-    descripcion: data.descripcionNegocio?.trim() || null,
-    personaContacto: data.personaContacto?.trim() || null,
-    email: data.email?.trim() || null,
+    descripcion: data.descripcionNegocio?.trim() || "",
+    personaContacto: data.personaContacto?.trim() || "",
+    email: data.email?.trim() || "",
     idPais: data.idPais ? Number(data.idPais) : null,
     idCiudad: data.idCiudad ? Number(data.idCiudad) : null,
-    direccion: data.direccion?.trim() || null,
-    telefono: data.telefono?.trim() || null,
-    celular: data.celular?.trim() || null,
+    direccion: data.direccion?.trim() || "",
+    telefono: data.telefono?.trim() || "",
+    celular: data.celular?.trim() || "",
     activo: data.activo !== false,
   };
 
-  if (data.tipoPersona === "FISICA") {
-    body.apellido = data.apellido?.trim() || null;
-  } else {
-    body.apellido = null;
-  }
+  body.apellido = data.apellido?.trim() || "";
 
   return body;
 }

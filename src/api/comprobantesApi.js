@@ -20,8 +20,10 @@ export function pad3(n) {
   return String(Math.max(0, Math.trunc(Number(n) || 0))).padStart(3, "0");
 }
 
-function pad6(n) {
-  return String(Math.max(0, Math.trunc(Number(n) || 0))).padStart(6, "0");
+// Ancho del correlativo del back: String.format("%s%07d", ...) en
+// ConfiguracionFacturaVentaService.formatear -> "001-001-0000034" (7 dígitos).
+function padNumero(n) {
+  return String(Math.max(0, Math.trunc(Number(n) || 0))).padStart(7, "0");
 }
 
 export function getExtrasLocal() {
@@ -64,12 +66,12 @@ export function tieneRango(c) {
 }
 
 export function numeroCompleto(c, num) {
-  return `${pad3(c?.establecimiento)}-${pad3(c?.puntoExpedicion)}-${pad6(num)}`;
+  return `${pad3(c?.establecimiento)}-${pad3(c?.puntoExpedicion)}-${padNumero(num)}`;
 }
 
 export function rangoDisplay(c) {
   if (!tieneRango(c)) return "—";
-  return `${pad6(c.numeroDesde)} → ${pad6(c.numeroHasta)}`;
+  return `${padNumero(c.numeroDesde)} → ${padNumero(c.numeroHasta)}`;
 }
 
 export function proximoNumero(c) {

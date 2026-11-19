@@ -605,7 +605,7 @@ export default function ListasConteo({
                     setDesactivarId(null);
                   }}
                   disabled={desactivandoConfirm}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-red-500 hover:bg-red-600 disabled:opacity-40 disabled:pointer-events-none text-white font-medium rounded-none transition-colors"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-red-500 hover:bg-red-400 disabled:opacity-40 disabled:pointer-events-none text-white font-semibold rounded-none transition-colors"
                 >
                   <Ban className="w-4 h-4" />
                   {desactivandoConfirm ? "Desactivando…" : "Desactivar lista"}

@@ -7,7 +7,7 @@ import { Link } from "react-router-dom";
 import { ChevronDown, Eye, X, Receipt, Building2, Package, Percent } from "lucide-react";
 import { getFacturasCompraCompletas, apiErrorMessage } from "../../../api/facturasCompraApi";
 import { getProveedores, getProveedorId, getProveedorNombre } from "../../../api/proveedoresApi";
-import { formaPagoLabel, fmtCant, totalLineaCompra } from "../utils";
+import { formaPagoLabel, fmtCant, totalLineaCompra, ivaLineaCompra } from "../utils";
 
 const money = (n) => {
   const v = Number(n);
@@ -268,7 +268,8 @@ export default function ReportesCompras() {
       row.importe += Number(f.totalGeneral || 0);
       map.set(clave, row);
     }
-    return [...map.values()].sort((a, b) => a.fecha.localeCompare(b.fecha));
+    // Más reciente arriba: los días/meses con actividad más nueva primero.
+    return [...map.values()].sort((a, b) => b.fecha.localeCompare(a.fecha));
   }, [filtradas, agrupFecha]);
 
   const paramsHeader = useMemo(() => {
@@ -372,9 +373,6 @@ export default function ReportesCompras() {
                     {nombre}
                   </label>
                 ))}
-                <p className="px-2 pt-1.5 text-[11px] text-white/30">
-                  Filtrar por categoría no disponible (requiere backend).
-                </p>
               </div>
             )}
           </div>
@@ -483,14 +481,13 @@ export default function ReportesCompras() {
                 <tr className={THEAD_ROW}>
                   <th className={th}>Proveedor</th>
                   <th className={thR}>Cant. Facturas</th>
-                  <th className={thR}>Cant. Productos</th>
+                  <th className={thR}>Unidades</th>
                   <th className={thR}>Importe Total</th>
-                  <th className={thR}>Saldo Pendiente</th>
                 </tr>
               </thead>
               <tbody>
                 {porProveedor.length === 0 && (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-white/30">No hay compras en el rango seleccionado.</td></tr>
+                  <tr><td colSpan={4} className="px-4 py-8 text-center text-white/30">No hay compras en el rango seleccionado.</td></tr>
                 )}
                 {porProveedor.map((r) => (
                   <tr key={r.idProveedor ?? r.nombre} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
@@ -498,7 +495,6 @@ export default function ReportesCompras() {
                     <td className="px-4 py-3 text-white/70 text-right tabular-nums">{r.cantFacturas}</td>
                     <td className="px-4 py-3 text-white/70 text-right tabular-nums">{fmtCant(r.cantProductos)}</td>
                     <td className="px-4 py-3 text-white font-medium text-right tabular-nums">{money(r.importe)}</td>
-                    <td className="px-4 py-3 text-white/30 text-right">—</td>
                   </tr>
                 ))}
               </tbody>
@@ -508,14 +504,10 @@ export default function ReportesCompras() {
                   <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">{kpis.volumen}</td>
                   <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">{fmtCant(totalUnidades)}</td>
                   <td className="px-4 py-3 text-right font-semibold text-[var(--accent)] tabular-nums">{money(kpis.montoTotal)}</td>
-                  <td className="px-4 py-3" />
                 </tr>
               </tfoot>
             </table>
           </div>
-          <p className="px-4 py-3 text-[11px] text-white/30 border-t border-white/5">
-            Saldo pendiente no disponible: requiere el módulo de pagos (no implementado en el backend).
-          </p>
         </div>
       ) : reporte === "producto" ? (
         <div className={TABLE_SHELL}>
@@ -628,10 +620,9 @@ function ReportePeriodo({ agrupFecha, setAgrupFecha, filtradas, porFecha, kpis, 
   return (
     <div className="space-y-4">
       {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <KpiCard label="Total de Compras" value={String(kpis.volumen)} accent="var(--accent)" />
         <KpiCard label="Importe Total Comprado" value={money(kpis.montoTotal)} accent="#38bdf8" />
-        <KpiCard label="Cantidad Total de Productos" value={fmtCant(totalUnidades)} accent="#f59e0b" />
       </div>
 
       <div className={TABLE_SHELL}>
@@ -666,7 +657,7 @@ function ReportePeriodo({ agrupFecha, setAgrupFecha, filtradas, porFecha, kpis, 
                 <tr className={THEAD_ROW}>
                   <th className={th}>{agrupFecha === "dia" ? "Fecha" : "Mes"}</th>
                   <th className={thR}>Cant. Facturas</th>
-                  <th className={thR}>Cant. Productos</th>
+                  <th className={thR}>Unidades</th>
                   <th className={thR}>Importe Total</th>
                 </tr>
               </thead>
@@ -703,7 +694,7 @@ function ReportePeriodo({ agrupFecha, setAgrupFecha, filtradas, porFecha, kpis, 
                   <th className={th}>Fecha</th>
                   <th className={th}>N° Factura</th>
                   <th className={th}>Proveedor</th>
-                  <th className={thR}>Cant. Productos</th>
+                  <th className={thR}>Unidades</th>
                   <th className={thR}>Importe Total</th>
                   <th className={`${th} w-12`} aria-label="Acciones" />
                 </tr>
@@ -755,94 +746,180 @@ function ReportePeriodo({ agrupFecha, setAgrupFecha, filtradas, porFecha, kpis, 
   );
 }
 
+// Piezas del detalle (mismas que ListaFacturas, declaradas fuera del render).
+function DetalleDato({ titulo, children }) {
+  return (
+    <div>
+      <dt className="text-xs text-white/50">{titulo}</dt>
+      <dd className="mt-1 text-sm font-medium text-white">{children}</dd>
+    </div>
+  );
+}
+
+function DetalleTasaBadge({ tasa }) {
+  const t = Number(tasa) || 0;
+  return (
+    <span
+      className={`inline-flex min-w-14 justify-center rounded-none px-2 py-0.5 text-xs font-medium ${
+        t ? "bg-white/10 text-white/90" : "border border-white/20 text-white/70"
+      }`}
+    >
+      {t ? `${t}%` : "Exenta"}
+    </span>
+  );
+}
+
+const formaPagoBadgeDetalle = (c) => {
+  const label = formaPagoLabel(c);
+  const cls = c === "CONTADO"
+    ? "bg-emerald-500/10 text-emerald-300"
+    : c === "TRANSFERENCIA"
+      ? "bg-sky-500/15 text-sky-300"
+      : c === "CREDITO"
+        ? "bg-amber-500/15 text-amber-400"
+        : "bg-white/10 text-white/60";
+  return <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${cls}`}>{label}</span>;
+};
+
+// Detalle de una factura en el reporte: MISMO diseño que el detalle del
+// historial de compras (ListaFacturas.DetalleFactura) — diálogo con scroll
+// interno, tabla con tasa/IVA por línea y pie con liquidación de IVA.
 function DetalleCompra({ factura, onClose, nombreProv }) {
   const detalles = Array.isArray(factura.detalles) ? factura.detalles : [];
 
+  // Se prefiere el valor persistido por el back; fórmula espejo solo de respaldo.
+  const ivaLinea = (d) => {
+    const iva = Number(d?.iva);
+    if (d?.iva != null && Number.isFinite(iva)) return iva;
+    return ivaLineaCompra(d?.precioUnitario, d?.cantidad, d?.tasaIva);
+  };
+  const totalLinea = (d) =>
+    d?.total != null && Number.isFinite(Number(d.total))
+      ? Number(d.total)
+      : totalLineaCompra(d?.precioUnitario, d?.cantidad, d?.tasaIva);
+  const totalFactura = (f) => {
+    const total = Number(f?.totalGeneral);
+    if (f?.totalGeneral != null && Number.isFinite(total)) return total;
+    return detalles.reduce((s, d) => s + totalLinea(d), 0);
+  };
+  const desglose = detalles.reduce(
+    (acc, d) => {
+      const t = Number(d.tasaIva) || 0;
+      (acc[t] || (acc[t] = { subtotal: 0, iva: 0 })).subtotal += totalLinea(d) - ivaLinea(d);
+      if (t > 0) acc[t].iva += ivaLinea(d);
+      return acc;
+    },
+    { 5: { subtotal: 0, iva: 0 }, 10: { subtotal: 0, iva: 0 }, 0: { subtotal: 0, iva: 0 } },
+  );
+  const iva5 = factura.iva5 != null && Number.isFinite(Number(factura.iva5)) ? Number(factura.iva5) : desglose[5].iva;
+  const iva10 = factura.iva10 != null && Number.isFinite(Number(factura.iva10)) ? Number(factura.iva10) : desglose[10].iva;
+  const ivaTotal = factura.ivaTotal != null && Number.isFinite(Number(factura.ivaTotal)) ? Number(factura.ivaTotal) : iva5 + iva10;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div
-        className="w-full max-w-3xl my-4 bg-[#0c0c0e] border border-white/10 rounded-none p-6 space-y-5 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Detalle de factura"
+        className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden border border-white/10 bg-[#0c0c0e] shadow-2xl"
       >
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-1">
-            <h2 className="text-lg font-semibold text-white">Factura {factura.numeroFactura || "—"}</h2>
-            <p className="text-sm text-white/40">{nombreProv(factura) || "Proveedor desconocido"}</p>
+        {/* Cabecera */}
+        <header className="flex items-start justify-between gap-4 px-6 pt-6">
+          <h2 className="text-lg font-semibold text-white">
+            Factura {factura.numeroFactura || "—"}
+          </h2>
+          <div className="flex items-center gap-3">
+            <p className="rounded-none border border-white/15 bg-white/5 px-2.5 py-1 text-sm font-medium text-white/80">{nombreProv(factura) || "Proveedor desconocido"}</p>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Cerrar"
+              className="-mr-2 -mt-1 rounded-none p-2 text-white/50 transition hover:bg-white/10 hover:text-white"
+            >
+              <X size={20} />
+            </button>
           </div>
-          <button onClick={onClose} className="p-2 rounded-none hover:bg-white/10 text-white/50 transition-colors" aria-label="Cerrar">
-            <X size={18} />
-          </button>
-        </div>
+        </header>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-          <div className="space-y-0.5">
-            <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40">Fecha emisión</p>
-            <p className="text-white">{fmtFecha(factura.fechaEmision)}</p>
-          </div>
-          <div className="space-y-0.5">
-            <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40">N° Timbrado</p>
-            <p className="text-white">{factura.numeroTimbrado || "—"}</p>
-          </div>
-          <div className="space-y-0.5">
-            <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40">Forma de pago</p>
-            <p className="text-white">{formaPagoLabel(factura.condicionPago)}</p>
-          </div>
-          <div className="space-y-0.5">
-            <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40">Proveedor</p>
-            <p className="text-white">{nombreProv(factura)}</p>
-          </div>
-        </div>
+        <dl className="grid grid-cols-2 gap-4 px-6 py-5 sm:grid-cols-3">
+          <DetalleDato titulo="Fecha de emisión">{fmtFecha(factura.fechaEmision)}</DetalleDato>
+          <DetalleDato titulo="N° de timbrado">{factura.numeroTimbrado || "—"}</DetalleDato>
+          <DetalleDato titulo="Forma de pago">{formaPagoBadgeDetalle(factura.condicionPago)}</DetalleDato>
+        </dl>
 
-        <div className="bg-white/5 border border-white/10 rounded-none overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+        {/* Ítems: solo esta zona scrollea, cabecera y pie quedan fijos */}
+        <section className="flex min-h-0 flex-1 flex-col px-6 pb-5">
+          <div className="mb-2 flex items-baseline justify-between">
+            <h3 className="text-sm font-medium text-white">Productos ({detalles.length})</h3>
+            <p className="text-xs text-white/50">Montos con IVA incluido</p>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-auto border border-white/10 bg-[#0c0c0e]">
+            <table className="w-full min-w-[34rem] text-sm">
               <thead>
-                <tr className={THEAD_ROW}>
-                  <th className="px-4 py-3 font-medium">Producto</th>
-                  <th className="px-4 py-3 font-medium text-right">Cantidad</th>
-                  <th className="px-4 py-3 font-medium text-right">Costo unit.</th>
-                  <th className="px-4 py-3 font-medium text-right">Importe</th>
+                <tr>
+                  <th scope="col" className="sticky top-0 z-10 bg-[#0c0c0e] border-b border-white/10 px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">Producto</th>
+                  <th scope="col" className="sticky top-0 z-10 bg-[#0c0c0e] border-b border-white/10 px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">Cant.</th>
+                  <th scope="col" className="sticky top-0 z-10 bg-[#0c0c0e] border-b border-white/10 px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">Costo unit.</th>
+                  <th scope="col" className="sticky top-0 z-10 bg-[#0c0c0e] border-b border-white/10 px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">Tasa</th>
+                  <th scope="col" className="sticky top-0 z-10 bg-[#0c0c0e] border-b border-white/10 px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">IVA</th>
+                  <th scope="col" className="sticky top-0 z-10 bg-[#0c0c0e] border-b border-white/10 px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">Total</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-white/5">
                 {detalles.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="px-4 py-6 text-center text-white/30">Sin productos.</td>
-                  </tr>
+                  <tr><td colSpan={6} className="px-4 py-6 text-center text-white/30">Sin productos.</td></tr>
                 )}
                 {detalles.map((d) => (
                   <tr key={d.idDetalle ?? `${d.idProducto}-${d.nombreProducto}`} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
-                    <td className="px-4 py-3 text-white">{d.nombreProducto || `Producto #${d.idProducto}`}</td>
-                    <td className="px-4 py-3 text-white/70 text-right whitespace-nowrap">{fmtCant(d.cantidad)}</td>
-                    <td className="px-4 py-3 text-white/70 text-right whitespace-nowrap">{money(d.precioUnitario)}</td>
-                    <td className="px-4 py-3 text-white text-right whitespace-nowrap">
-                      {money(d?.total != null && Number.isFinite(Number(d.total))
-                        ? Number(d.total)
-                        : totalLineaCompra(d?.precioUnitario, d?.cantidad, d?.tasaIva))}
+                    <td className="px-4 py-3 font-medium text-white">{d.nombreProducto || `Producto #${d.idProducto}`}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white/80">{fmtCant(d.cantidad)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white/80">{money(d.precioUnitario)}</td>
+                    <td className="px-4 py-3 text-center">
+                      <DetalleTasaBadge tasa={Number(d.tasaIva)} />
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white/80">
+                      {Number(d.tasaIva) ? money(ivaLinea(d)) : "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right font-medium tabular-nums text-white">
+                      {money(totalLinea(d))}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
 
-        <div className="pt-3 border-t border-white/10 flex items-end justify-between gap-3 flex-wrap">
-          <div className="max-w-xs w-full space-y-1 font-mono text-sm">
-            <div className="flex items-center justify-between text-white/70">
-              <span className="text-white/40">Cant. Productos</span>
-              <span>{Number(detalles.length)}</span>
+        {/* Liquidación de IVA + Total factura */}
+        <footer className="border-t border-white/10 bg-white/[0.02] px-6 py-4">
+          <div className="flex items-center justify-between gap-6">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-sm">
+              <span className="border border-white/15 bg-white/5 px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-white/80">Liquidación IVA</span>
+              {iva5 > 0 && (
+                <span className="text-white/70">
+                  <span className="text-white/40">5%: </span>{money(iva5)}
+                </span>
+              )}
+              {iva10 > 0 && (
+                <span className="text-white/70">
+                  <span className="text-white/40">10%: </span>{money(iva10)}
+                </span>
+              )}
+              <span className="text-white/90 font-semibold">
+                <span className="text-white/40">Total IVA: </span>{money(ivaTotal)}
+              </span>
             </div>
-            <div className="flex items-center justify-between text-white/70">
-              <span className="text-white/40">Total IVA</span>
-              <span>{money(factura.ivaTotal)}</span>
+
+            <div className="shrink-0 text-right">
+              <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/50">Total factura</p>
+              <p className="text-xl font-semibold tabular-nums text-[var(--accent)]">{money(totalFactura(factura))}</p>
             </div>
           </div>
-          <div className="text-right">
-            <p className="text-xs text-white/40 uppercase tracking-[0.12em]">Importe total de la compra</p>
-            <p className="font-mono text-3xl font-bold tracking-tight text-[var(--accent)]">{money(factura.totalGeneral)}</p>
-          </div>
-        </div>
+        </footer>
       </div>
     </div>
   );
