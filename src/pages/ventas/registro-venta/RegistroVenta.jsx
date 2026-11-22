@@ -665,9 +665,10 @@ export default function RegistroVenta() {
       // fechaCreacion del back trae fecha + hora (LocalDateTime del servidor)
       const fechaVenta = data?.fechaCreacion ?? data?.fechaEmision ?? null;
       // Si el pago es por transferencia, se registra la transferencia vinculada
-      // a la factura. Best-effort: si falla, la venta queda registrada igual.
-      // Pago MIXTO: se registra solo el monto parcial de transferencia (el
-      // restante se cobró en efectivo en el mostrador).
+      // a la factura junto con el control de pago (VentaPendiente del back).
+      // Best-effort: si falla, la venta queda registrada igual.
+      // MIXTO: efectivo + transferencia deben sumar el total; el efectivo
+      // se recibió exacto en el mostrador (vuelto 0, el back lo calcula).
       const montoTransfer = esMixto ? Math.round(montoTransferenciaNum) : null;
       const registrarTransferencia =
         (formaPago === FORMA_PAGO_TRANSFERENCIA || (esMixto && montoTransfer > 0)) &&
@@ -676,7 +677,10 @@ export default function RegistroVenta() {
         try {
           await crearTransferenciaVenta({
             idFacturaVenta: data.idFacturaVenta,
+            formaPago: esMixto ? "MIXTO" : "TRANSFERENCIA",
             monto: esMixto ? montoTransfer : totalConIva,
+            montoEfectivo: esMixto ? Math.round(totalConIva - montoTransfer) : undefined,
+            efectivoRecibido: esMixto ? Math.round(totalConIva - montoTransfer) : undefined,
             observacion: `Venta ${numFactura || "—"}`,
           });
         } catch (e) {
