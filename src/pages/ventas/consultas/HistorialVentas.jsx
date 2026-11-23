@@ -208,22 +208,16 @@ export default function HistorialVentas() {
   }, [cargar]);
 
   // Filtros del back NO disponibles (fecha, estado y forma de pago): se refina
-  // la página actual. Regla de negocio: la venta MIXTA recién aparece en el
-  // historial cuando el cobro está completo (transferencia RECIBIDA); mientras
-  // está PENDIENTE la fila se oculta. Transferencia pura pendiente: se ve con
-  // la marca "Pendiente de cobro". DESCARTADO queda Efectivo.
+  // la página actual. Regla de negocio: la venta recién aparece en el historial
+  // cuando el cobro está completo — si la transferencia está PENDIENTE la fila
+  // se oculta (sea mixta o pura); al recibirla muestra Transferencia/Mixto.
+  // DESCARTADO queda Efectivo (no fue pago).
   const formaPagoInfoDe = useCallback(
     (f) => {
       if (!montosTransferencia) return null;
       const entry = montosTransferencia[f.idFacturaVenta];
       if (!entry) return { label: "EFECTIVO", pendiente: false };
-      if (entry.estado === "PENDIENTE") {
-        // Mixto pendiente: fila oculta hasta recibir la transferencia.
-        if (formaPagoVenta(totalFactura(f), entry.monto) === "MIXTO") {
-          return { label: null, pendiente: true, oculta: true };
-        }
-        return { label: null, pendiente: true };
-      }
+      if (entry.estado === "PENDIENTE") return { label: null, pendiente: true, oculta: true };
       return { label: formaPagoVenta(totalFactura(f), entry.monto), pendiente: false };
     },
     [montosTransferencia],
@@ -254,9 +248,8 @@ export default function HistorialVentas() {
   // Cuando activan filtros locales escondí filas de la página: el "Mostrando"
   // del paginado deja de ser exacto → solo se informa si no hay filtro local.
   const hayFiltroLocal = !!(estado || desde || hasta || formaPago);
-  // Ventas mixtas de la página cuyo cobro está incompleto (transferencia
-  // pendiente): no aparecen en la tabla y se avisa acá para que no parezcan
-  // perdidas.
+  // Ventas con transferencia pendiente (mixtas o puras) de la página: su cobro
+  // está incompleto, no aparecen en la tabla.
   const ocultasPorCobro = filas.filter((f) => formaPagoInfoDe(f)?.oculta).length;
   // Igual que en compras: el botón "Limpiar" aparece solo si hay algo aplicado.
   const hayFiltros = Boolean(texto.trim() || idCliente || desde || hasta || estado || formaPago);
@@ -501,25 +494,7 @@ export default function HistorialVentas() {
                     <td className="px-4 py-3 text-white/70 whitespace-nowrap">{fmtFecha(f.fechaEmision || f.fechaCreacion)}</td>
                     <td className="px-4 py-3 text-white">{f.nombreCliente || "Sin Nombre"}</td>
                     <td className="px-4 py-3 text-white/70 whitespace-nowrap">{f.numeroFactura || "—"}</td>
-                    <td className="px-4 py-3">
-                      {(() => {
-                        const info = formaPagoInfoDe(f);
-                        return (
-                          <div className="space-y-1">
-                            {info?.pendiente ? (
-                              <span
-                                className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-400"
-                                title="Cobro incompleto: falta recibir la transferencia."
-                              >
-                                ⏳ Pendiente de cobro
-                              </span>
-                            ) : (
-                              formaPagoBadge(info?.label)
-                            )}
-                          </div>
-                        );
-                      })()}
-                    </td>
+                    <td className="px-4 py-3">{formaPagoBadge(formaPagoInfoDe(f)?.label)}</td>
                     <td className="px-4 py-3">{estadoVenta(f)}</td>
                     <td className="px-4 py-3 text-white font-medium text-right whitespace-nowrap">{fmtMoneda(totalFactura(f))}</td>
                     <td className="px-4 py-3 text-right">

@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import {
   Search, ShoppingCart, Trash2, Scale, Package,
   Banknote, Landmark, Coins, AlertTriangle, RotateCcw, Check,
-  ArrowLeft, Barcode, X, ClipboardList, Loader2, Printer,
+  ArrowLeft, Barcode, X, ClipboardList, Loader2,
 } from "lucide-react";
 import { getProductos, getProductoByCodigo } from "../../../api/productosApi";
 import { getClientes } from "../../../api/clientesApi";
@@ -43,7 +43,7 @@ const ATAJOS = [
   ["F6", "Monto exacto"],
   ["F7", "Efectivo"],
   ["F8", "Transferencia"],
-  ["F9", "Cobrar"],
+  ["Enter", "Cobrar"],
   ["Esc", "Cancelar"],
 ];
 
@@ -142,6 +142,10 @@ export default function RegistroVenta() {
   const dropdownRef = useRef(null);
   const clienteDropdownRef = useRef(null);
   const [mostrarDropdown, setMostrarDropdown] = useState(false);
+  // Al tipear, la lista vuelve a abrirse: tras una selección el campo ya está
+  // enfocado (el clic no roba el foco), así que sin esto la próxima letra no
+  // mostraría el filtrado.
+  useEffect(() => { if (search.trim()) setMostrarDropdown(true); }, [search]);
   const seleccionJustoAhoraRef = useRef(false);
   const confirmarRef = useRef(null);
   const carritoRef = useRef(null);
@@ -291,15 +295,15 @@ export default function RegistroVenta() {
 
   const productosFiltrados = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) {
-      return mostrarDropdown && !isBarcode ? productos.slice(0, 8) : [];
-    }
+    // El dropdown SOLO aparece cuando hay texto (tecleado o escaneado): al
+    // enfocar el buscador vacío no se lista nada, solo queda el puntero.
+    if (!q) return [];
     if (isBarcode) return [];
     const fuente = serverProductos != null ? serverProductos : productos;
     return fuente
       .filter((p) => (p.nombre || "").toLowerCase().includes(q))
       .slice(0, 8);
-  }, [productos, serverProductos, search, isBarcode, mostrarDropdown]);
+  }, [productos, serverProductos, search, isBarcode]);
 
   // El precio de venta del back es IVA incluido y la tasa depende de cada
   // producto (5% / 10% / exento). Se replica el cálculo del back (CalculoIvaUtil)
@@ -547,6 +551,16 @@ export default function RegistroVenta() {
       if (puedeConfirmar && !confirmando) confirmarRef.current?.();
       return;
     }
+    if (key === "Enter") {
+      // Cobrar con Enter (convención de POS). Excepciones: en el buscador de
+      // productos CON texto, Enter agrega el producto (lo maneja el propio
+      // input); en el buscador de clientes, Enter no cobra (flujo de clientes).
+      const id = e.target?.id;
+      if (id === "venta-buscar" && searchStringRef.current?.trim()) return;
+      if (id === "venta-cliente") return;
+      if (puedeConfirmar && !confirmando) { e.preventDefault(); confirmarRef.current?.(); }
+      return;
+    }
     if (key === "Delete" && !isInput) {
       e.preventDefault();
       const c = carritoRef.current;
@@ -716,37 +730,11 @@ export default function RegistroVenta() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden px-6">
-      {/* Encabezado estándar (PageHeader) con meta de la última venta a la derecha */}
+      {/* Encabezado estándar (PageHeader) */}
       <div className="shrink-0">
         <PageHeader
           backTo="/ventas"
           title="Nueva venta"
-          right={
-            datosImpresion && (
-              <div className="hidden items-center gap-2 text-xs text-white/50 md:flex">
-                <Check className="h-4 w-4 text-[var(--accent)]" />
-                <p
-                  className="min-w-0"
-                  title={datosImpresion.guardadaEn
-                    ? `Guardada el ${new Date(datosImpresion.guardadaEn).toLocaleString("es-PY")}`
-                    : undefined}
-                >
-                  Última venta <span className="text-white/80" style={MONO}>{datosImpresion.numero}</span>
-                  {" · "}{formatMoney(datosImpresion.total)}
-                  {datosImpresion.cambio > 0 && <> · vuelto {formatMoney(datosImpresion.cambio)}</>}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setMostrarTicket(true)}
-                  className="flex items-center gap-1.5 rounded-none border border-white/10 px-2 py-1 text-[11px] font-medium text-white/70 transition-colors hover:border-[var(--accent)] hover:text-white"
-                  title="Abrir el último ticket para revisarlo o reimprimirlo"
-                >
-                  <Printer className="h-3.5 w-3.5" />
-                  Ver ticket
-                </button>
-              </div>
-            )
-          }
         />
       </div>
 
@@ -811,6 +799,9 @@ export default function RegistroVenta() {
                         key={p.id}
                         type="button"
                         disabled={sinStock || inactivo}
+                        // onMouseDown + preventDefault: el clic no roba el foco
+                        // al buscador, así que el puntero queda en el campo.
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => { seleccionJustoAhoraRef.current = true; agregarProducto(p, 1); setSearch(""); setMostrarDropdown(false); focusSearch(); }}
                         className="flex w-full items-center gap-3 border-b border-white/5 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-white/[0.05] disabled:pointer-events-none disabled:opacity-40">
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-none border border-white/10 bg-white/[0.04]">
@@ -1182,7 +1173,7 @@ export default function RegistroVenta() {
               style={{ boxShadow: puedeConfirmar ? "0 4px 20px var(--accent-glow)" : "none" }}>
               <Check className="h-5 w-5" strokeWidth={3} />
               {confirmando ? "Registrando…" : "Cobrar"}
-              <Kbd tone="accent">F9</Kbd>
+              <Kbd tone="accent">Enter</Kbd>
             </button>
             {ayudaCobro && <p className="mt-2 text-center text-xs text-white/40">{ayudaCobro}</p>}
           </div>
