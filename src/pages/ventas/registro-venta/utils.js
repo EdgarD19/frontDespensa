@@ -1,0 +1,134 @@
+import { productoAdmiteDecimales, unidadCorta as unidadCortaDe } from "../../../utils/cantidad";
+
+export function esProductoPesable(producto) {
+  if (producto?.productoPesable === "si" || producto?.productoPesable === true) return true;
+  const u = String(producto?.unidadMedida || producto?.unitAbbreviation || producto?.nombreUnidadMedida || "").toUpperCase().trim();
+  return u === "KG" || u === "KILOGRAMO" || u === "KILOGRAMOS" || u === "KG." || u === "KILO";
+}
+
+/**
+ * Etiqueta corta de unidad para mostrar junto a cantidades ("kg", "L" o "u."),
+ * delegando en el helper central de src/utils/cantidad.js.
+ */
+export function unidadCorta(producto) {
+  return productoAdmiteDecimales(producto)
+    ? unidadCortaDe(producto?.unidadMedida ?? producto?.nombreUnidadMedida ?? producto?.unitAbbreviation)
+    : "u.";
+}
+
+export function parsePrecioVenta(producto) {
+  if (producto?.precioUnitario != null) {
+    const u = Number(producto.precioUnitario);
+    return Number.isFinite(u) && u >= 0 ? u : 0;
+  }
+  if (esProductoPesable(producto) && producto.precioPorKg) {
+    const n = parseFloat(String(producto.precioPorKg).replace(",", "."));
+    if (Number.isFinite(n) && n >= 0) return n;
+  }
+  const raw = producto?.precioVenta ?? producto?.precio ?? "";
+  const n = parseFloat(String(raw).replace(",", "."));
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
+// Formatter único cacheado (regla js-cache-function-results): construir
+// Intl.NumberFormat por llamada es caro en tablas densas.
+const nfGsRv = new Intl.NumberFormat("es-PY", { maximumFractionDigits: 0 });
+
+export function parseStockDisponible(producto) {
+  const raw = producto?.stockDisponible ?? producto?.stockActual;
+  if (raw === "" || raw === undefined || raw === null) return 0;
+  const n = parseFloat(String(raw).replace(",", "."));
+  if (!Number.isFinite(n)) return 0;
+  // Cantidades con 2 decimales (0.01), igual que numeric(19,2) / numeric(38,2)
+  // del back: una cantidad con más precisión se redondearía en la base y el
+  // total del ticket no coincidiría con la factura guardada.
+  // Unidades de medida (kg, g, L, etc.) admiten 2 decimales; solo "Unidad"/"UN"
+  // exige entero.
+  if (productoAdmiteDecimales(producto)) return Math.max(0, Math.floor(n * 100) / 100);
+  return Math.max(0, Math.trunc(n));
+}
+
+export function formatMoney(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return "—";
+  return `${x < 0 ? "-" : ""}Gs. ${nfGsRv.format(Math.abs(Math.round(x)))}`;
+}
+
+// Guaraníes: sin decimales. Cualquier separador (punto de miles, coma) o letra
+// se descarta antes de convertir, para que "50.000" no se lea como 50.
+export function soloDigitos(valor, maxLength = 15) {
+  return String(valor ?? "").replace(/[^\d]/g, "").slice(0, maxLength);
+}
+
+export const FORMA_PAGO_EFECTIVO = "EFECTIVO";
+export const FORMA_PAGO_TRANSFERENCIA = "TRANSFERENCIA";
+export const FORMA_PAGO_MIXTO = "MIXTO";
+
+export function labelFormaPago(codigo) {
+  if (codigo === FORMA_PAGO_TRANSFERENCIA) return "Transferencia";
+  if (codigo === FORMA_PAGO_MIXTO) return "Mixto";
+  return "Efectivo";
+}
+
+export function labelCliente(c) {
+  if (!c) return "Sin nombre";
+  if (c.tipoCliente === "JURIDICA" && c.razonSocial) return c.razonSocial;
+  const fn = c.firstName ?? c.nombre ?? c.name ?? c.first_name ?? "";
+  const ln = c.lastName ?? c.apellido ?? c.last_name ?? "";
+  const nombre = `${fn} ${ln}`.trim();
+  if (nombre) return nombre;
+  const doc = c.documentNumber ?? c.numeroDocumento ?? c.document_number;
+  if (doc) return String(doc);
+  const id = c.idCliente ?? c.id;
+  return id != null ? `Cliente #${id}` : "Cliente";
+}
+
+export function docCliente(c) {
+  if (!c) return "";
+  const tipo = c.tipoDocumento ?? c.tipoCliente ?? "";
+  const num = c.numeroDocumento ?? c.documentNumber ?? c.document_number ?? c.ruc ?? "";
+  const s = String(num || "").trim();
+  if (!s) return "";
+  return tipo ? `${tipo} ${s}` : s;
+}
+
+export function hoyISO() {
+  // Fecha LOCAL (yyyy-MM-dd). Ojo: toISOString() es UTC y después de las ~21:00
+  // en UTC-3 ya devuelve el día siguiente, que el back rechaza por "futura".
+  const d = new Date();
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return local.toISOString().split("T")[0];
+}
+
+function esSoloDigitosBarras(s) {
+  const t = String(s || "").trim();
+  return /^\d{8,14}$/.test(t);
+}
+
+/**
+ * Interpreta un escaneo con prefijo de cantidad opcional.
+ * "3*1234567890123" -> { quantity: 3, barcode: "1234567890123" }
+ * "*1234567890123"  -> { quantity: 1, barcode: "1234567890123" }
+ * "1234567890123"   -> { quantity: 1, barcode: "1234567890123" }
+ */
+export function parseBarcodeInput(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return null;
+
+  const starIdx = s.indexOf("*");
+  if (starIdx !== -1) {
+    const qtyPart = s.substring(0, starIdx);
+    const barcode = s.substring(starIdx + 1).trim();
+    // Cantidad con 2 decimales (0.01): permite "0.5*1234567890123" para pesables.
+    const quantity = qtyPart === "" ? 1 : Math.round(Number(qtyPart.replace(",", ".")) * 100) / 100;
+    if (barcode && (Number.isFinite(quantity) && quantity > 0)) {
+      return { quantity, barcode };
+    }
+  }
+
+  if (esSoloDigitosBarras(s)) {
+    return { quantity: 1, barcode: s };
+  }
+
+  return null;
+}

@@ -1,0 +1,588 @@
+import { useState, useEffect, useMemo } from "react";
+const nfGsLista = new Intl.NumberFormat("es-PY", { maximumFractionDigits: 0 });
+import { TABLE_SHELL,THEAD_ROW } from "../../../components/ui/styles";
+
+import PageHeader from "../../../components/ui/PageHeader";
+import { X, Eye } from "lucide-react";
+import {
+  getFacturasCompraCompletas,
+  getFacturaCompraById,
+  apiErrorMessage,
+} from "../../../api/facturasCompraApi";
+import { getProveedores, getProveedorId, getProveedorNombre } from "../../../api/proveedoresApi";
+import Pagination from "../../../components/ui/Pagination";
+import SearchField from "../../../components/ui/SearchField";
+import { FORMAS_PAGO_COMPRA, formaPagoLabel, formatoFactura, fmtCant, ivaLineaCompra, totalLineaCompra } from "../utils";
+
+const money = (n) => {
+  const v = Number(n);
+  return Number.isFinite(v) ? `Gs. ${nfGsLista.format(Math.round(v))}` : "—";
+};
+
+// Los números de factura se comparan solo por dígitos: así "001-001-0001234",
+// "0010010001234" y "0001234" encuentran la misma factura.
+const soloDigitos = (valor) => String(valor ?? "").replace(/\D/g, "");
+
+// Barra de filtros: una sola fila con controles de la misma altura.
+const FILTRO_LABEL = "text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/40";
+const FILTRO_FIELD =
+  "mt-1 h-10 w-full bg-white/[0.03] border border-white/10 rounded-none px-2 text-sm text-white outline-none focus:border-[var(--accent)] transition-colors";
+
+// El total autoritativo es el que devuelve el back (suma exacta de líneas).
+// Solo si falta se recalcula con la fórmula espejo; así no aparecen diferencias
+// de 1 Gs entre el listado y la factura guardada.
+const totalFactura = (f) => {
+  const total = Number(f?.totalGeneral);
+  if (f?.totalGeneral != null && Number.isFinite(total)) return total;
+  if (!Array.isArray(f?.detalles) || f.detalles.length === 0) return 0;
+  return f.detalles.reduce(
+    (s, d) => s + totalLineaCompra(d?.precioUnitario, d?.cantidad, d?.tasaIva),
+    0,
+  );
+};
+
+// IVA de una línea: se prefiere el valor persistido por el back.
+const ivaLineaDetalle = (d) => {
+  const iva = Number(d?.iva);
+  if (d?.iva != null && Number.isFinite(iva)) return iva;
+  return ivaLineaCompra(d?.precioUnitario, d?.cantidad, d?.tasaIva);
+};
+
+const fmtFecha = (iso) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString("es-PY", { day: "2-digit", month: "2-digit", year: "numeric" });
+};
+
+const fmtFechaHora = (iso) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString("es-PY", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+};
+
+const formaPagoBadge = (c) => {
+  const label = formaPagoLabel(c);
+  const cls = c === "CONTADO"
+    ? "bg-emerald-500/10 text-emerald-300"
+    : c === "TRANSFERENCIA"
+      ? "bg-sky-500/15 text-sky-300"
+      : c === "CREDITO"
+        ? "bg-amber-500/15 text-amber-400"
+        : "bg-white/10 text-white/60";
+  return <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${cls}`}>{label}</span>;
+};
+
+const esAnulada = (f) => {
+  const raw = String(f?.estado || "").toUpperCase();
+  return raw === "ANULADO" || raw === "ANULADA" || raw === "CANCELADA" || f?.activo === false;
+};
+
+const estadoFactura = (f) => {
+  // El back marca "RECIBIDA" toda factura de compra no anulada y "ANULADO" al anular.
+  // En el historial se muestra "Vigente" / "Anulada" para coincidir con el filtro
+  // (Vigentes / Anuladas).
+  if (esAnulada(f)) {
+    return (
+      <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-red-500/15 text-red-400">
+        Anulada
+      </span>
+    );
+  }
+  return (
+    <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-[var(--accent-dim)] text-[var(--accent)]">
+      Vigente
+    </span>
+  );
+};
+
+export default function ListaFacturas() {
+  const [todas, setTodas] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const [proveedores, setProveedores] = useState([]);
+  const [idProveedor, setIdProveedor] = useState("");
+  const [texto, setTexto] = useState("");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
+  const [condicion, setCondicion] = useState("");
+  const [estado, setEstado] = useState("");
+  const [seleccionada, setSeleccionada] = useState(null);
+  const [cargandoDetalle, setCargandoDetalle] = useState(false);
+
+  const proveedoresMap = useMemo(() => {
+    const m = {};
+    for (const pr of proveedores) {
+      const id = getProveedorId(pr) ?? pr.idProveedor;
+      if (id != null) m[id] = pr;
+    }
+    return m;
+  }, [proveedores]);
+
+  function nombreProv(f) {
+    if (!f) return "—";
+    const id = f.idProveedor ?? f.id;
+    const fromMap = id != null ? proveedoresMap[id] : null;
+    if (fromMap) return getProveedorNombre(fromMap) || f.nombreProveedor || "—";
+    return f.nombreProveedor || "—";
+  }
+
+  useEffect(() => {
+    let activo = true;
+    (async () => {
+      try {
+        const res = await getProveedores({ pageSize: 500, sortBy: "nombre", sortDir: "ASC" });
+        if (activo) setProveedores(Array.isArray(res.content) ? res.content : []);
+      } catch { /* sin proveedores */ }
+    })();
+    return () => { activo = false; };
+  }, []);
+
+  useEffect(() => {
+    let activo = true;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await getFacturasCompraCompletas();
+        if (activo) setTodas(Array.isArray(res) ? res : []);
+      } catch (err) {
+        if (activo) setError(apiErrorMessage(err) || "Error al cargar facturas");
+      } finally {
+        if (activo) setLoading(false);
+      }
+    })();
+    return () => { activo = false; };
+  }, []);
+
+  const filtradas = useMemo(() => {
+    const q = soloDigitos(texto);
+    const d = (desde || "").trim();
+    const h = (hasta || "").trim();
+    return todas.filter((f) => {
+      if (estado === "VIGENTES" && esAnulada(f)) return false;
+      if (estado === "ANULADAS" && !esAnulada(f)) return false;
+      if (idProveedor && Number(f.idProveedor) !== Number(idProveedor)) return false;
+      if (q && !soloDigitos(f.numeroFactura).includes(q)) return false;
+      if (condicion && String(f.condicionPago || "") !== condicion) return false;
+      if (d || h) {
+        const fecha = String(f.fechaCreacion || "").slice(0, 10);
+        if (d && fecha < d) return false;
+        if (h && fecha > h) return false;
+      }
+      return true;
+    });
+  }, [todas, idProveedor, texto, condicion, desde, hasta, estado]);
+
+  const paginadas = useMemo(() => filtradas.slice(page * 10, page * 10 + 10), [filtradas, page]);
+
+  useEffect(() => { setPage(0); }, [idProveedor, texto, condicion, desde, hasta, estado]);
+  useEffect(() => { setTotalPages(Math.max(1, Math.ceil(filtradas.length / 10))); }, [filtradas]);
+  // Si los filtros achican la lista estando en una página alta, no dejar la tabla vacía.
+  useEffect(() => { setPage((p) => Math.max(0, Math.min(p, totalPages - 1))); }, [totalPages]);
+
+  const hayFiltros = Boolean(texto.trim() || idProveedor || desde || hasta || condicion || estado);
+  const rangoInvertido = Boolean(desde && hasta && desde > hasta);
+  const limpiarFiltros = () => {
+    setTexto("");
+    setIdProveedor("");
+    setDesde("");
+    setHasta("");
+    setCondicion("");
+    setEstado("");
+  };
+
+  async function verDetalle(f) {
+    setSeleccionada(f);
+    setCargandoDetalle(true);
+    try {
+      const res = await getFacturaCompraById(f.idFactura);
+      const detalle = res?.data ?? res;
+      if (detalle?.idFactura) setSeleccionada(detalle);
+    } catch {
+      /* si falla, se mantiene la fila del listado */
+    } finally {
+      setCargandoDetalle(false);
+    }
+  }
+
+  const columns = 7;
+
+  return (
+    <div className="w-full py-8 px-4 space-y-6">
+      <PageHeader backTo="/compras" title="Historial de compras" />
+
+      {/* Filtros: todos en una fila; en ventanas angostas la barra scrollea */}
+      <div className="flex flex-nowrap items-end gap-2 overflow-x-auto pb-1">
+        <div className="min-w-[10rem] max-w-md flex-1">
+          <label className={FILTRO_LABEL} htmlFor="filtro-numero">N° factura</label>
+          <SearchField
+            id="filtro-numero"
+            value={texto}
+            onChange={(v) => setTexto(formatoFactura(v))}
+            placeholder="Buscar por N° de factura"
+            ariaLabel="Buscar por número de factura"
+            wrapperClass="relative mt-1"
+          />
+        </div>
+        <div className="w-40 shrink-0">
+          <label className={FILTRO_LABEL} htmlFor="filtro-desde">Desde</label>
+          <input
+            id="filtro-desde"
+            type="date"
+            value={desde}
+            onChange={(e) => setDesde(e.target.value)}
+            className={FILTRO_FIELD}
+          />
+        </div>
+        <div className="w-40 shrink-0">
+          <label className={FILTRO_LABEL} htmlFor="filtro-hasta">Hasta</label>
+          <input
+            id="filtro-hasta"
+            type="date"
+            value={hasta}
+            onChange={(e) => setHasta(e.target.value)}
+            className={FILTRO_FIELD}
+          />
+        </div>
+        <div className="w-36 shrink-0">
+          <label className={FILTRO_LABEL} htmlFor="filtro-condicion">Forma de pago</label>
+          <select
+            id="filtro-condicion"
+            value={condicion}
+            onChange={(e) => setCondicion(e.target.value)}
+            className={FILTRO_FIELD}
+          >
+            <option value="">Todas</option>
+            {FORMAS_PAGO_COMPRA.map((f) => (
+              <option key={f.value} value={f.value}>{f.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="w-32 shrink-0">
+          <label className={FILTRO_LABEL} htmlFor="filtro-estado">Estado</label>
+          <select
+            id="filtro-estado"
+            value={estado}
+            onChange={(e) => setEstado(e.target.value)}
+            className={FILTRO_FIELD}
+          >
+            <option value="">Todos</option>
+            <option value="VIGENTES">Vigentes</option>
+            <option value="ANULADAS">Anuladas</option>
+          </select>
+        </div>
+        <div className="w-64 shrink-0">
+          <label className={FILTRO_LABEL} htmlFor="filtro-proveedor">Proveedor</label>
+          <select
+            id="filtro-proveedor"
+            value={idProveedor}
+            onChange={(e) => setIdProveedor(e.target.value)}
+            className={FILTRO_FIELD}
+          >
+            <option value="">Todos los proveedores</option>
+            {proveedores.map((p) => (
+              <option key={p.id ?? p.idProveedor} value={p.id ?? p.idProveedor}>{p.tipoPersona === "FISICA" ? [p.nombre, p.apellido].filter(Boolean).join(" ") : p.nombre}</option>
+            ))}
+          </select>
+        </div>
+        {hayFiltros && (
+          <button
+            type="button"
+            onClick={limpiarFiltros}
+            className="ml-auto inline-flex h-10 shrink-0 items-center gap-1.5 rounded-none border border-[var(--accent)]/50 bg-[var(--accent)]/10 px-3 text-sm font-medium text-[var(--accent)] transition-colors hover:border-[var(--accent)]/80 hover:bg-[var(--accent)]/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+          >
+            <X size={14} aria-hidden="true" />
+            Limpiar
+          </button>
+        )}
+      </div>
+
+      {rangoInvertido && (
+        <div className="rounded-none border border-amber-500/30 bg-amber-500/10 text-amber-300 text-sm px-4 py-3">
+          La fecha “Desde” es posterior a “Hasta”: no se muestran facturas. Corregí el rango para ver resultados.
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-none border border-red-500/30 bg-red-500/10 text-red-400 text-sm px-4 py-3">{error}</div>
+      )}
+
+      {/* Tabla */}
+      <div className={TABLE_SHELL}>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className={THEAD_ROW + " whitespace-nowrap"}>
+                <th className="px-4 py-3 font-medium">Fecha Registro</th>
+                <th className="px-4 py-3 font-medium">Proveedor</th>
+                <th className="px-4 py-3 font-medium">N° Factura</th>
+                <th className="px-4 py-3 font-medium">Forma de pago</th>
+                <th className="px-4 py-3 font-medium">Estado</th>
+                <th className="px-4 py-3 font-medium text-right">Monto Total</th>
+                <th className="px-4 py-3 font-medium w-12" aria-label="Acciones" />
+              </tr>
+            </thead>
+            <tbody>
+              {loading && Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
+                  {Array.from({ length: columns }).map((_, j) => (
+                    <td key={j} className="px-4 py-3"><div className="h-4 bg-white/10 rounded-none animate-pulse w-3/4" /></td>
+                  ))}
+                </tr>
+              ))}
+              {!loading && paginadas.length === 0 && (
+                <tr><td colSpan={columns} className="px-4 py-10 text-center text-white/40">
+                  <p className="text-sm">
+                    {hayFiltros ? "Ninguna factura coincide con los filtros." : "Todavía no hay compras registradas."}
+                  </p>
+                  {hayFiltros && (
+                    <button
+                      type="button"
+                      onClick={limpiarFiltros}
+                      className="mt-2 text-sm font-medium text-[var(--accent)] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                    >
+                      Limpiar filtros
+                    </button>
+                  )}
+                </td></tr>
+              )}
+              {!loading && paginadas.map((f) => {
+                const cancelada = esAnulada(f);
+                return (
+                  <tr key={f.idFactura} className={`border-b border-white/10 last:border-0 hover:bg-white/[0.04] transition-colors ${cancelada ? "opacity-60" : ""}`}>
+                    <td className="px-4 py-3 text-white/70 whitespace-nowrap">{fmtFechaHora(f.fechaCreacion)}</td>
+                    <td className="px-4 py-3 text-white">{nombreProv(f)}</td>
+                    <td className="px-4 py-3 text-white/70 whitespace-nowrap">{f.numeroFactura || "—"}</td>
+                    <td className="px-4 py-3">{formaPagoBadge(f.condicionPago)}</td>
+                    <td className="px-4 py-3">{estadoFactura(f)}</td>
+                    <td className="px-4 py-3 text-white font-medium text-right whitespace-nowrap">{money(totalFactura(f))}</td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => verDetalle(f)}
+                        className="p-1.5 rounded-none text-white/40 hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors"
+                        title="Ver detalle" aria-label="Ver detalle"
+                      >
+                        <Eye size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {!loading && paginadas.length > 0 && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          pageSize={10}
+          totalItems={filtradas.length}
+        />
+      )}
+
+      {seleccionada && (
+        <DetalleFactura factura={seleccionada} cargando={cargandoDetalle} onClose={() => setSeleccionada(null)} proveedoresMap={proveedoresMap} getProveedorNombre={getProveedorNombre} />
+      )}
+    </div>
+  );
+}
+
+const TH = "sticky top-0 z-10 bg-[#0c0c0e] border-b border-white/10 px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]";
+
+function Dato({ titulo, children }) {
+  return (
+    <div>
+      <dt className="text-xs text-white/50">{titulo}</dt>
+      <dd className="mt-1 text-sm font-medium text-white">{children}</dd>
+    </div>
+  );
+}
+
+function TasaBadge({ tasa }) {
+  const t = Number(tasa) || 0;
+  return (
+    <span
+      className={`inline-flex min-w-14 justify-center rounded-none px-2 py-0.5 text-xs font-medium ${
+        t ? "bg-white/10 text-white/90" : "border border-white/20 text-white/70"
+      }`}
+    >
+      {t ? `${t}%` : "Exenta"}
+    </span>
+  );
+}
+
+function DetalleFactura({ factura, cargando = false, onClose, proveedoresMap, getProveedorNombre }) {
+  const detalles = Array.isArray(factura.detalles) ? factura.detalles : [];
+
+  function nombreProvDet(f) {
+    if (!f) return "—";
+    const id = f.idProveedor ?? f.id;
+    const fromMap = id != null ? proveedoresMap[id] : null;
+    if (fromMap) return getProveedorNombre(fromMap) || f.nombreProveedor || "—";
+    return f.nombreProveedor || "—";
+  }
+
+  const desglose = detalles.reduce(
+    (acc, d) => {
+      const t = Number(d.tasaIva) || 0;
+      const ivaLinea = ivaLineaDetalle(d);
+      const total = d?.total != null && Number.isFinite(Number(d.total))
+        ? Number(d.total)
+        : totalLineaCompra(d?.precioUnitario, d?.cantidad, d?.tasaIva);
+      const base = d?.baseImponible != null && Number.isFinite(Number(d.baseImponible))
+        ? Number(d.baseImponible)
+        : total - ivaLinea;
+      (acc[t] || (acc[t] = { subtotal: 0, iva: 0 })).subtotal += base;
+      if (t > 0) acc[t].iva += ivaLinea;
+      acc.totales.total += total;
+      acc.totales.iva += ivaLinea;
+      return acc;
+    },
+    { 0: { subtotal: 0, iva: 0 }, 5: { subtotal: 0, iva: 0 }, 10: { subtotal: 0, iva: 0 }, totales: { total: 0, iva: 0 } },
+  );
+  const iva5Mostrar = factura.iva5 != null && Number.isFinite(Number(factura.iva5)) ? Number(factura.iva5) : desglose[5].iva;
+  const iva10Mostrar = factura.iva10 != null && Number.isFinite(Number(factura.iva10)) ? Number(factura.iva10) : desglose[10].iva;
+  const ivaTotalMostrar = factura.ivaTotal != null && Number.isFinite(Number(factura.ivaTotal)) ? Number(factura.ivaTotal) : desglose.totales.iva;
+
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    const overflowPrevio = document.body.style.overflow;
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = overflowPrevio;
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="factura-detalle-titulo"
+        className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden border border-white/10 bg-[#0c0c0e] shadow-2xl"
+      >
+        {/* Cabecera */}
+        <header className="flex items-start justify-between gap-4 px-6 pt-6">
+          <h2 id="factura-detalle-titulo" className="text-lg font-semibold text-white">
+            Factura {factura.numeroFactura || "—"}
+          </h2>
+          <div className="flex items-center gap-3">
+            <p className="rounded-none border border-white/15 bg-white/5 px-2.5 py-1 text-sm font-medium text-white/80">{nombreProvDet(factura) || "Proveedor desconocido"}</p>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Cerrar"
+              className="-mr-2 -mt-1 rounded-none p-2 text-white/50 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/60"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        </header>
+
+        <dl className="grid grid-cols-2 gap-4 px-6 py-5 sm:grid-cols-3">
+          <Dato titulo="Fecha de emisión">{fmtFecha(factura.fechaEmision)}</Dato>
+          <Dato titulo="N° de timbrado">{factura.numeroTimbrado || "—"}</Dato>
+          <Dato titulo="Forma de pago">{formaPagoBadge(factura.condicionPago)}</Dato>
+        </dl>
+
+        {/* Ítems: solo esta zona scrollea, cabecera y pie quedan fijos */}
+        <section className="flex min-h-0 flex-1 flex-col px-6 pb-5">
+          <div className="mb-2 flex items-baseline justify-between">
+            <h3 className="text-sm font-medium text-white">Productos ({detalles.length})</h3>
+            <p className="text-xs text-white/50">Montos con IVA incluido</p>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-auto border border-white/10 bg-[#0c0c0e]">
+            <table className="w-full min-w-[34rem] text-sm">
+              <thead>
+                <tr>
+                  <th scope="col" className={`${TH} text-left`}>Producto</th>
+                  <th scope="col" className={`${TH} text-right`}>Cant.</th>
+                  <th scope="col" className={`${TH} text-right`}>Costo unit.</th>
+                  <th scope="col" className={`${TH} text-center`}>Tasa</th>
+                  <th scope="col" className={`${TH} text-right`}>IVA</th>
+                  <th scope="col" className={`${TH} text-right`}>Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {cargando && detalles.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-6 text-center text-white/30">
+                      <span className="inline-block h-4 w-16 bg-white/10 rounded-none animate-pulse align-middle mr-2" />
+                      Cargando productos…
+                    </td>
+                  </tr>
+                )}
+                {!cargando && detalles.length === 0 && (
+                  <tr><td colSpan={6} className="px-4 py-6 text-center text-white/30">Sin productos.</td></tr>
+                )}
+                {detalles.map((d) => (
+                  <tr key={d.idDetalle ?? `${d.idProducto}-${d.nombreProducto}`} className="border-b border-white/10 last:border-0 transition hover:bg-white/[0.04]">
+                    <td className="px-4 py-3 font-medium text-white">{d.nombreProducto || `Producto #${d.idProducto}`}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white/80">{fmtCant(d.cantidad)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white/80">{money(d.precioUnitario)}</td>
+                    <td className="px-4 py-3 text-center">
+                      <TasaBadge tasa={Number(d.tasaIva)} />
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-white/80">
+                      {Number(d.tasaIva) ? money(ivaLineaDetalle(d)) : "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right font-medium tabular-nums text-white">
+                      {money(d?.total != null && Number.isFinite(Number(d.total))
+                        ? Number(d.total)
+                        : totalLineaCompra(d?.precioUnitario, d?.cantidad, d?.tasaIva))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* Liquidación de IVA + Total factura */}
+        <footer className="border-t border-white/10 bg-white/[0.02] px-6 py-4">
+          <div className="flex items-center justify-between gap-6">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-sm">
+              <span className="border border-white/15 bg-white/5 px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-white/80">Liquidación IVA</span>
+              {iva5Mostrar > 0 && (
+                <span className="text-white/70">
+                  <span className="text-white/40">5%: </span>{money(iva5Mostrar)}
+                </span>
+              )}
+              {iva10Mostrar > 0 && (
+                <span className="text-white/70">
+                  <span className="text-white/40">10%: </span>{money(iva10Mostrar)}
+                </span>
+              )}
+              <span className="text-white/90 font-semibold">
+                <span className="text-white/40">Total IVA: </span>{money(ivaTotalMostrar)}
+              </span>
+            </div>
+
+            <div className="shrink-0 text-right">
+              <p className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-white/50">Total factura</p>
+              <p className="text-xl font-semibold tabular-nums text-[var(--accent)]">{money(totalFactura(factura))}</p>
+            </div>
+          </div>
+        </footer>
+      </div>
+    </div>
+  );
+}
