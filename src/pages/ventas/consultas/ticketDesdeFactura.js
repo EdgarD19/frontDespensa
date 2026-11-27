@@ -3,7 +3,7 @@
  * -----------------------------------------------------------------------------
  * Convierte el TicketFacturaVentaResponse del back
  * (GET /api/facturas-venta/{id}/ticket) al formato `datos` que consumen el
- * preview TicketVenta y la impresión física printVenta (POS58 / MOCK), tal
+ * preview TicketVenta y la impresión física printVenta (POS58), tal
  * como RegistroVenta lo arma al finalizar una venta.
  *
  * Diferencias con el ticket de una venta recién cobrada: en un pago MIXTO el

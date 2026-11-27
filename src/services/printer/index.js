@@ -18,24 +18,29 @@ async function hayQZ() {
   }
 }
 
+export async function estadoImpresora() {
+  const qzMod = await hayQZ();
+  if (qzMod && typeof qzMod.estado === "function") {
+    const estado = await qzMod.estado();
+    return { ...estado, modo: "QZ-TRAY" };
+  }
+  return { qzConectado: false, impresora: null, impresoras: [] };
+}
+
 export async function getPrinter() {
   if (printerInstance) return printerInstance;
 
-  // 1) QZ Tray (impresión silenciosa vía spooler del sistema). Va primero
-  // porque en Windows el driver USB (usbprint) es dueño del dispositivo y
-  // WebUSB no puede reclamarlo; además QZ ya está instalado y configurado.
+  // Impresión silenciosa vía QZ Tray (spooler del sistema). Sin QZ no hay
+  // fallback: el error se muestra en el ticket con el mensaje claro.
   const qzMod = await hayQZ();
   if (qzMod) {
     printerInstance = qzMod;
     console.info("[PRINTER] Modo: QZ Tray (impresión silenciosa)");
     return printerInstance;
   }
-
-  // 2) Sin impresora: emulador — console muestra "Texto legible"
-  console.info("[PRINTER] Modo: MOCK (emulador de ticket en consola)");
-  const mod = await import("./mock");
-  printerInstance = mod.default;
-  return printerInstance;
+  throw new Error(
+    "Impresora no conectada: QZ Tray no está corriendo (ícono en la bandeja del sistema)."
+  );
 }
 
 export async function connectPrinter() {

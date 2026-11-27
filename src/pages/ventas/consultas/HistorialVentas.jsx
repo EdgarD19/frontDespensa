@@ -138,7 +138,7 @@ export default function HistorialVentas() {
     };
   }, [cargarMontosTransferencia]);
 
-  // Reimpresión de ticket viejo: preview + envío a la impresora (QZ Tray/MOCK).
+  // Reimpresión de ticket viejo: preview + envío a la impresora (QZ Tray).
   const [ticketDatos, setTicketDatos] = useState(null);
   const [ticketCargandoId, setTicketCargandoId] = useState(null);
   const [reimprimiendo, setReimprimiendo] = useState(false);
@@ -307,7 +307,7 @@ export default function HistorialVentas() {
     }
   }
 
-  // Envío del ticket viejo a la impresora física (QZ Tray → MOCK en dev).
+  // Envío del ticket viejo a la impresora física (QZ Tray).
   async function reimprimirTicket() {
     if (!ticketDatos || reimprimiendo) return;
     setReimprimiendo(true);

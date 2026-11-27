@@ -91,4 +91,32 @@ export default {
     await qz.print(config, [{ type: "raw", format: "base64", data: base64 }]);
     return { success: true };
   },
+
+  /**
+   * Estado de la impresión para el indicador del POS: QZ Tray conectado,
+   * impresoras detectadas y cuál se usaría (misma lógica que elegirImpresora,
+   * sin lanzar errores). Best-effort: nunca lanza.
+   */
+  async estado() {
+    try {
+      if (!conectado) {
+        await this.connect();
+        conectado = true;
+      }
+    } catch {
+      return { qzConectado: false, impresora: null, impresoras: [] };
+    }
+    try {
+      const impresoras = await qz.printers.find();
+      const lista = Array.isArray(impresoras) ? impresoras : [impresoras].filter(Boolean);
+      let guardada = null;
+      try { guardada = localStorage.getItem("despensa_qz_printer"); } catch { /* sin persistencia */ }
+      const elegida = guardada && lista.includes(guardada)
+        ? guardada
+        : lista.find((p) => PRINTER_MATCH.test(String(p))) || (lista.length === 1 ? lista[0] : null);
+      return { qzConectado: true, impresora: elegida, impresoras: lista };
+    } catch {
+      return { qzConectado: true, impresora: null, impresoras: [] };
+    }
+  },
 };

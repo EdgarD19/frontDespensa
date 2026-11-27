@@ -17,7 +17,7 @@ import { getTimbradoVentaPorFecha } from "../../../api/timbradosVentaApi";
 import { crearTransferenciaVenta, getTransferenciasPorEstado, recibirTransferenciaVenta, descartarTransferenciaVenta } from "../../../api/transferenciasVentaApi";
 import TicketVenta from "./TicketVenta";
 import { cargarUltimaVenta, guardarUltimaVenta } from "./ultimaVentaStorage";
-import { printVenta } from "../../../services/printer";
+import { printVenta, estadoImpresora } from "../../../services/printer";
 import CantidadInput from "../../../components/ui/CantidadInput";
 import {
   parsePrecioVenta, parseStockDisponible, esProductoPesable, unidadCorta, formatMoney,
@@ -99,6 +99,31 @@ export default function RegistroVenta() {
   // Modal de transferencias pendientes + contador para el badge
   const [showTransferencias, setShowTransferencias] = useState(false);
   const [pendientesCount, setPendientesCount] = useState(null);
+
+  // Estado de la impresora para el indicador de la franja de atajos:
+  // { cargando, qzConectado, impresora, impresoras } — best-effort, nunca lanza.
+  const [estadoPrinter, setEstadoPrinter] = useState({ cargando: true });
+  const verificarImpresora = useCallback(async () => {
+    setEstadoPrinter({ cargando: true });
+    try {
+      const e = await estadoImpresora();
+      setEstadoPrinter({ cargando: false, ...e });
+    } catch {
+      setEstadoPrinter({ cargando: false, qzConectado: false, impresora: null, impresoras: [] });
+    }
+  }, []);
+  useEffect(() => { verificarImpresora(); }, [verificarImpresora]);
+  // Re-chequear al volver el foco: la impresora puede conectarse/apagarse
+  // mientras el POS queda abierto.
+  useEffect(() => {
+    const onFocus = () => verificarImpresora();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+  }, [verificarImpresora]);
   // Disponibilidad del timbrado de venta: null (cargando) | { estado: "ok" | "sinTimbrado", numero, fechaVencimiento }
   const [timbradoEstado, setTimbradoEstado] = useState(null);
   // Toast corto cuando un escaneo no matchea: no bloquea, se limpia solo en 2 s
@@ -220,7 +245,7 @@ export default function RegistroVenta() {
   useEffect(() => {
     if (!loading) focusSearch();
   }, [loading, focusSearch]);
-  // Impresión directa por impresora térmica/mock; no usar window.print() del navegador.
+  // Impresión directa por impresora térmica (QZ Tray); no usar window.print() del navegador.
   useEffect(() => {
     if (editandoCantidad !== null) {
       setTimeout(() => {
@@ -623,8 +648,13 @@ export default function RegistroVenta() {
     setMostrarTicket(true);
     try {
       await printVenta(datosTicket);
+      setErrorImpresion(null);
     } catch (e) {
       console.warn("[VENTA] No se pudo imprimir directamente:", e);
+      // Mensaje visible en el ticket: motivo + qué revisar.
+      setErrorImpresion(
+        `${e?.message || "Error de impresión."} Verificá que la térmica esté instalada en el sistema y que QZ Tray esté abierto.`
+      );
     }
     focusSearch();
   }, [carrito, cliente, totalConIva, montoNum, cambio, formaPago, esMixto, montoTransferenciaNum, efectivoMixto, cargarProductos, focusSearch, empresaConfig]);
@@ -716,17 +746,28 @@ export default function RegistroVenta() {
   // Reimpresión del último ticket (si la impresora falló en el primer intento):
   // datosImpresion se hidrata desde sessionStorage y puede venir null.
   const [reimprimiendo, setReimprimiendo] = useState(false);
+  const [errorImpresion, setErrorImpresion] = useState(null);
   const reimprimirTicket = useCallback(async () => {
     if (!datosImpresion || reimprimiendo) return;
     setReimprimiendo(true);
     setErrorGlobal(null);
     try {
       await printVenta(datosImpresion);
+      setErrorImpresion(null);
     } catch (e) {
       console.warn("[VENTA] Reimpresión fallida:", e);
-      setErrorGlobal("No se pudo reenviar el ticket a la impresora (" + (e?.message || e) + ").");
+      setErrorImpresion(
+        `${e?.message || "Error de impresión."} Verificá que la térmica esté instalada en el sistema y que QZ Tray esté abierto.`
+      );
     } finally { setReimprimiendo(false); }
   }, [datosImpresion, reimprimiendo]);
+
+  // Selección de impresora desde el ticket: queda guardada para las próximas.
+  const elegirImpresora = useCallback(async (nombre) => {
+    try { localStorage.setItem("despensa_qz_printer", nombre); } catch { /* sin persistencia */ }
+    setErrorImpresion(null);
+    await verificarImpresora();
+  }, [verificarImpresora]);
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden px-6">
@@ -735,6 +776,32 @@ export default function RegistroVenta() {
         <PageHeader
           backTo="/ventas"
           title="Nueva venta"
+          right={
+            <button
+              type="button"
+              onClick={verificarImpresora}
+              title="Estado de la impresora térmica. Clic para re-verificar."
+              aria-label="Estado de la impresora"
+              className="flex items-center gap-1.5 rounded-none border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white/60 transition-colors hover:bg-white/[0.06] hover:text-white"
+            >
+                <span className={`h-2 w-2 shrink-0 rounded-full ${
+                  estadoPrinter.cargando
+                    ? "bg-white/30"
+                    : !estadoPrinter.qzConectado
+                      ? "bg-red-400"
+                      : estadoPrinter.impresora
+                        ? "bg-[var(--accent)]"
+                        : "bg-amber-400"
+                }`} />
+                {estadoPrinter.cargando
+                  ? "Impresora: verificando…"
+                  : !estadoPrinter.qzConectado
+                    ? "Impresora no conectada"
+                    : estadoPrinter.impresora
+                      ? `Impresora lista: ${estadoPrinter.impresora}`
+                      : "Sin impresora instalada"}
+              </button>
+          }
         />
       </div>
 
@@ -1191,6 +1258,9 @@ export default function RegistroVenta() {
           }}
           onReimprimir={reimprimirTicket}
           reimprimiendo={reimprimiendo}
+          errorImpresion={errorImpresion}
+          estadoImpresora={estadoPrinter}
+          onElegirImpresora={elegirImpresora}
         />
       )}
 

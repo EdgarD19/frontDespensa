@@ -4,10 +4,13 @@ import { formatMoney, labelCliente, unidadCorta } from "./utils";
 import { productoAdmiteDecimales } from "../../../utils/cantidad";
 import { baseImponibleUnitaria, r2 } from "../../../utils/iva";
 
-export default function TicketVenta({ datos, onCerrar, onReimprimir, reimprimiendo = false, etiquetaCerrar = "Nueva compra" }) {
+export default function TicketVenta({ datos, onCerrar, onReimprimir, reimprimiendo = false, etiquetaCerrar = "Nueva compra", errorImpresion = null, estadoImpresora = null, onElegirImpresora }) {
   const [status, setStatus] = useState("printing");
   const [printKey] = useState(0);
   const timerRef = useRef(null);
+  // Selector de impresora: lista lo que detecta QZ Tray + ingreso manual.
+  const [elegirAbierto, setElegirAbierto] = useState(false);
+  const [manualNombre, setManualNombre] = useState("");
 
   const {
     fecha,
@@ -119,6 +122,78 @@ export default function TicketVenta({ datos, onCerrar, onReimprimir, reimprimien
                 )}
               </div>
             </div>
+
+            {/* Error de impresión: mensaje claro del motivo + acceso al selector */}
+            {isCompleted && errorImpresion && (
+              <div className="mb-2 rounded-md border border-red-500/30 bg-red-500/10 px-2.5 py-2 text-[11px] text-red-300">
+                <p className="font-medium text-red-200">No se pudo imprimir</p>
+                <p className="mt-0.5 break-words">{errorImpresion}</p>
+                {onElegirImpresora && (
+                  <button
+                    type="button"
+                    onClick={() => setElegirAbierto((v) => !v)}
+                    className="mt-1.5 font-medium text-amber-300 underline-offset-2 hover:underline"
+                  >
+                    {elegirAbierto ? "Ocultar impresoras" : "Elegir impresora"}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Selector de impresora: lista detectada + ingreso manual */}
+            {elegirAbierto && onElegirImpresora && (
+              <div className="mb-2 rounded-md border border-[#2a2a2a] bg-[#0E0E0E] p-2.5 text-[11px]">
+                {!estadoImpresora?.qzConectado ? (
+                  <p className="text-amber-300">
+                    QZ Tray no está corriendo (ícono en la bandeja del sistema). Abrilo y volvé a intentar.
+                  </p>
+                ) : (
+                  <>
+                    {estadoImpresora?.impresora && (
+                      <p className="mb-1.5 text-white/50">
+                        Actual: <span className="font-mono text-white/80">{estadoImpresora.impresora}</span>
+                      </p>
+                    )}
+                    {(estadoImpresora?.impresoras || []).length === 0 && (
+                      <p className="text-amber-300">
+                        No se detectaron impresoras. Verificá que la térmica esté instalada en el sistema.
+                      </p>
+                    )}
+                    {(estadoImpresora?.impresoras || []).map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => { onElegirImpresora(String(p)); setElegirAbierto(false); }}
+                        className={`block w-full rounded px-2 py-1 text-left font-mono transition-colors ${
+                          p === estadoImpresora?.impresora
+                            ? "bg-[var(--accent)]/15 text-[var(--accent)]"
+                            : "text-white/70 hover:bg-white/10 hover:text-white"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                    <div className="mt-1.5 flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        value={manualNombre}
+                        onChange={(e) => setManualNombre(e.target.value)}
+                        placeholder="Nombre a mano…"
+                        className="min-w-0 flex-1 rounded border border-[#2a2a2a] bg-[#141414] px-2 py-1 font-mono text-white/80 outline-none focus:border-[var(--accent)]"
+                      />
+                      <button
+                        type="button"
+                        disabled={!manualNombre.trim()}
+                        onClick={() => { onElegirImpresora(manualNombre.trim()); setElegirAbierto(false); }}
+                        className="rounded border border-[#2a2a2a] px-2 py-1 font-semibold text-white/80 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
+                      >
+                        Usar
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
             <div className="relative flex h-3 w-full items-center justify-center overflow-hidden rounded-full border border-[#1F1F1F] bg-[#050505] shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)]">
               <div className="h-[1px] w-3/4 bg-gradient-to-r from-transparent via-[#1F1F1F] to-transparent" />
             </div>
